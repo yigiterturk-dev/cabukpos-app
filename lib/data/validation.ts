@@ -202,6 +202,10 @@ const sectorEnum = z.enum([
   "psikolog",
   "doktor",
   "dishekimi",
+  "restoran",
+  "market",
+  "kafe",
+  "pastane",
 ]);
 export const validateSector = (v: unknown) => parse(sectorEnum, v);
 

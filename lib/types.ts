@@ -8,7 +8,11 @@ export type SectorId =
   | "diyetisyen"
   | "psikolog"
   | "doktor"
-  | "dishekimi";
+  | "dishekimi"
+  | "restoran"
+  | "market"
+  | "kafe"
+  | "pastane";
 
 export type AppointmentStatus = "bekliyor" | "geldi" | "iptal";
 

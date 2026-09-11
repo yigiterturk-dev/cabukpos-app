@@ -20,15 +20,15 @@ const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
   {
     items: [
       { href: "/dashboard", label: "Genel Bakış", Icon: IcGrid },
-      { href: "/takvim", label: "Takvim", Icon: IcCalendar },
-      { href: "/musteriler", label: "Müşteriler", Icon: IcUsers },
+      { href: "/masalar", label: "Masalar", Icon: IcCalendar },
+      { href: "/hesaplar", label: "Hesaplar", Icon: IcUsers },
     ],
   },
   {
     title: "Yönetim",
     items: [
       { href: "/kasa", label: "Kasa & Cari", Icon: IcWallet },
-      { href: "/hizmetler", label: "Hizmetler", Icon: IcScissors },
+      { href: "/urunler", label: "Ürünler", Icon: IcScissors },
       { href: "/personel", label: "Personel & Prim", Icon: IcStaff },
       { href: "/raporlar", label: "Raporlar", Icon: IcReport },
     ],
@@ -38,7 +38,7 @@ const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
     items: [
       { href: "/kampanyalar", label: "Kampanyalar", Icon: IcMegaphone },
       { href: "/hatirlatma", label: "Hatırlatma", Icon: IcBell },
-      { href: "/rezervasyon", label: "Online Rezervasyon", Icon: IcLink },
+      { href: "/rezervasyon", label: "Online Sipariş", Icon: IcLink },
       { href: "/abonelik", label: "Abonelik", Icon: IcCard },
     ],
   },
@@ -47,8 +47,8 @@ const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
 // Mobil hızlı erişim (4 ikon); kalan tüm sayfalar "Menü" açılırında listelenir.
 const MOBILE_QUICK = [
   { href: "/dashboard", Icon: IcGrid },
-  { href: "/takvim", Icon: IcCalendar },
-  { href: "/musteriler", Icon: IcUsers },
+  { href: "/masalar", Icon: IcCalendar },
+  { href: "/hesaplar", Icon: IcUsers },
   { href: "/kasa", Icon: IcWallet },
 ];
 
@@ -102,7 +102,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <aside className="sticky top-0 hidden h-screen w-[236px] shrink-0 flex-col border-r border-line bg-surface px-4 py-5 lg:flex">
         <Link href="/dashboard" className="mb-7 flex items-center gap-2.5 px-2">
           <Logo />
-          <span className="font-display text-[19px] font-700 tracking-tight text-ink">Yanında POS</span>
+          <span className="font-display text-[19px] font-700 tracking-tight text-ink">Çabuk POS</span>
         </Link>
 
         <nav className="flex flex-col gap-4 overflow-y-auto">
@@ -189,7 +189,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
               <Logo />
-              <span className="font-display text-[16px] font-700">Yanında POS</span>
+              <span className="font-display text-[16px] font-700">Çabuk POS</span>
             </Link>
             <span className="hidden text-[13px] font-medium text-muted sm:inline">{prettyDate(todayISO())}</span>
             {!isDb && (

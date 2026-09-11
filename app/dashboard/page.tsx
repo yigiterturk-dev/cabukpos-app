@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Shell } from "@/components/Shell";
 import { Card, SectionTitle, StatusChip, StaffAvatar } from "@/components/ui";
-import { AddAppointmentModal } from "@/components/AddAppointmentModal";
+import { OrderModal } from "@/components/OrderModal";
 import { useStore } from "@/lib/store";
 import { sectorTerms } from "@/lib/sectors";
 import {
@@ -52,11 +52,11 @@ export default function DashboardPage() {
   // Boş başlatma (empty seed): henüz müşteri ve randevu yoksa "Hızlı başlangıç" rehberi göster.
   const emptyStart = state.customers.length === 0 && state.appointments.length === 0;
   const checklist = [
-    { done: state.services.length > 0, label: "İlk hizmetini ekle", href: "/hizmetler" },
-    { done: state.staff.length > 0, label: `İlk ${terms.staff.toLowerCase()} ekle`, href: "/personel" },
-    { done: state.customers.length > 0, label: `İlk ${terms.customer.toLowerCase()} ekle`, href: "/musteriler" },
-    { done: state.appointments.length > 0, label: `İlk ${terms.appointment.toLowerCase()} oluştur`, href: "/takvim" },
-    { done: false, label: "Online rezervasyon linkini paylaş", href: "/rezervasyon" },
+    { done: state.services.length > 0, label: "İlk ürününü menüye ekle", href: "/urunler" },
+    { done: state.staff.length > 0, label: `Kurye/Garson ekle`, href: "/personel" },
+    { done: state.customers.length > 0, label: `İlk veresiye müşterini kaydet`, href: "/hesaplar" },
+    { done: state.appointments.length > 0, label: `İlk masayı aç / Sipariş gir`, href: "/masalar" },
+    { done: false, label: "Online sipariş linkini paylaş", href: "/rezervasyon" },
   ];
 
   return (
@@ -253,7 +253,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <AddAppointmentModal open={modal} onClose={() => setModal(false)} date={today} />
+      {modal && (
+        <OrderModal open={modal} onClose={() => setModal(false)} />
+      )}
     </Shell>
   );
 }

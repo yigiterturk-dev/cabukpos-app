@@ -18,6 +18,10 @@ const SECTOR_ART: Record<SectorId, { emoji: string; accent: string }> = {
   psikolog: { emoji: "🧠", accent: "#8B5CF6" },
   doktor: { emoji: "🩺", accent: "#2F5BEA" },
   dishekimi: { emoji: "🦷", accent: "#06B6D4" },
+  restoran: { emoji: "🍔", accent: "#F59E0B" },
+  market: { emoji: "🛒", accent: "#10B981" },
+  kafe: { emoji: "☕", accent: "#8B5CF6" },
+  pastane: { emoji: "🥐", accent: "#EC4899" },
 };
 
 const STAFF_COLORS = ["#2F5BEA", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"];
@@ -63,6 +67,26 @@ const SERVICE_TEMPLATES: Record<SectorId, [string, number, number, number][]> = 
     ["Muayene", 20, 400, 30],
     ["Diş Temizliği", 30, 800, 35],
     ["Dolgu", 45, 1200, 40],
+  ],
+  restoran: [
+    ["Hamburger Menü", 15, 250, 0],
+    ["Margarita Pizza", 20, 300, 0],
+    ["Kutu Kola", 5, 50, 0],
+  ],
+  market: [
+    ["Ekmek", 5, 10, 0],
+    ["Su (1L)", 5, 15, 0],
+    ["Çikolata", 5, 30, 0],
+  ],
+  kafe: [
+    ["Filtre Kahve", 10, 80, 0],
+    ["Latte", 10, 100, 0],
+    ["Cheesecake", 5, 150, 0],
+  ],
+  pastane: [
+    ["Poğaça", 5, 20, 0],
+    ["Su Böreği (Porsiyon)", 5, 100, 0],
+    ["Yaş Pasta (Dilim)", 5, 120, 0],
   ],
 };
 

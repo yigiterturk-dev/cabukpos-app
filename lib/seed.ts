@@ -224,6 +224,59 @@ const SECTOR_DATA: Record<
     ]),
     notes: { 0: "Kanal tedavisi 2. seans.", 3: "İmplant kontrolü — 6. ay.", 6: "Diş hassasiyeti var." },
   },
+  restoran: {
+    businessName: "Gusto Restoran",
+    staff: mkStaff([
+      ["Ahmet Kurye", "Kurye"],
+      ["Mehmet Garson", "Garson"],
+      ["Ayşe Mutfak", "Aşçı"],
+    ]),
+    services: mkServices([
+      ["Hamburger Menü", 15, 250, 0],
+      ["Margarita Pizza", 20, 300, 0],
+      ["Kutu Kola", 5, 50, 0],
+    ]),
+    notes: { 0: "Soğansız, bol soslu.", 3: "Paket servis (Acil)." },
+  },
+  market: {
+    businessName: "Bizim Bakkal",
+    staff: mkStaff([
+      ["Ali Kasa", "Kasiyer"],
+      ["Veli Depo", "Depo"],
+    ]),
+    services: mkServices([
+      ["Ekmek", 5, 10, 0],
+      ["Su (1L)", 5, 15, 0],
+      ["Çikolata", 5, 30, 0],
+    ]),
+    notes: { 0: "Veresiye hesabı", 2: "Cari bakiyesi var." },
+  },
+  kafe: {
+    businessName: "Bean Coffee",
+    staff: mkStaff([
+      ["Can Barista", "Barista"],
+      ["Ece Garson", "Garson"],
+    ]),
+    services: mkServices([
+      ["Filtre Kahve", 10, 80, 0],
+      ["Latte", 10, 100, 0],
+      ["Cheesecake", 5, 150, 0],
+    ]),
+    notes: { 1: "Süt alerjisi, yulaf sütlü.", 5: "Daimi müşteri." },
+  },
+  pastane: {
+    businessName: "Tatlı Fırın",
+    staff: mkStaff([
+      ["Usta Hasan", "Usta"],
+      ["Merve Kasa", "Tezgahtar"],
+    ]),
+    services: mkServices([
+      ["Poğaça", 5, 20, 0],
+      ["Su Böreği (Porsiyon)", 5, 100, 0],
+      ["Yaş Pasta (Dilim)", 5, 120, 0],
+    ]),
+    notes: { 2: "Toplu sipariş (20 adet poğaça).", 6: "Doğum günü pastası." },
+  },
 };
 
 function todayStr(offsetDays = 0) {

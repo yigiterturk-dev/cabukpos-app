@@ -104,9 +104,9 @@ export default function KasaPage() {
             <div>
               <h3 className="text-[15px] font-semibold text-ink">Ciro mu, tahsilat mı?</h3>
               <p className="mt-1 max-w-[560px] text-[13px] text-muted">
-                <strong className="text-ink">Ciro</strong> tamamlanan randevuların toplam bedeli — yani hak
+                <strong className="text-ink">Ciro</strong> tamamlanan adisyon ve siparişlerin toplam bedeli — yani hak
                 ettiğin para. <strong className="text-ink">Tahsilat</strong> ise kasaya fiilen giren para.
-                Aradaki fark müşterilerin sana olan borcudur.
+                Aradaki fark veresiyeler / müşterilerin sana olan borcudur.
               </p>
             </div>
             <div className="flex items-center gap-5">

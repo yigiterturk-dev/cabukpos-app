@@ -89,11 +89,55 @@ export const SECTORS: Record<SectorId, SectorConfig> = {
       customer: "Hasta",
     },
   },
+  restoran: {
+    id: "restoran",
+    label: "Restoran / Lokanta",
+    tagline: "Masa takibi, adisyonlar ve paket servisler tek panelde.",
+    terms: {
+      appointment: "Adisyon",
+      staff: "Garson",
+      service: "Ürün",
+      customer: "Hesap",
+    },
+  },
+  kafe: {
+    id: "kafe",
+    label: "Kafe / Kahveci",
+    tagline: "Hızlı sipariş, adisyon takibi ve ciro kontrol altında.",
+    terms: {
+      appointment: "Sipariş",
+      staff: "Barista",
+      service: "Ürün",
+      customer: "Hesap",
+    },
+  },
+  market: {
+    id: "market",
+    label: "Market / Bakkal",
+    tagline: "Hızlı satış, barkodlu okutma ve veresiye takibi.",
+    terms: {
+      appointment: "Satış",
+      staff: "Kasiyer",
+      service: "Ürün",
+      customer: "Cari",
+    },
+  },
+  pastane: {
+    id: "pastane",
+    label: "Pastane / Fırın",
+    tagline: "Sipariş takibi, günlük satışlar ve özel pasta siparişleri.",
+    terms: {
+      appointment: "Sipariş",
+      staff: "Tezgahtar",
+      service: "Ürün",
+      customer: "Hesap",
+    },
+  },
 };
 
 export const SECTOR_LIST = Object.values(SECTORS);
 
 export function sectorTerms(id: SectorId | null) {
-  if (!id) return SECTORS.berber.terms;
+  if (!id) return SECTORS.restoran.terms;
   return SECTORS[id].terms;
 }
