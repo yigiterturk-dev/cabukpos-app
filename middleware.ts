@@ -25,6 +25,7 @@ const PROTECTED = [
   "/hatirlatma",
   "/rezervasyon",
   "/abonelik",
+  "/entegrasyonlar",
 ];
 
 function isProtected(pathname: string): boolean {

@@ -41,7 +41,8 @@ const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
     items: [
       { href: "/kampanyalar", label: "Kampanyalar", Icon: IcMegaphone },
       { href: "/hatirlatma", label: "Hatırlatma", Icon: IcBell },
-      { href: "/rezervasyon", label: "Online Sipariş", Icon: IcLink },
+      { href: "/entegrasyonlar", label: "Entegrasyonlar", Icon: IcLink, sectors: ["restoran", "kafe", "market", "pastane"] },
+      { href: "/rezervasyon", label: "Online Sipariş", Icon: IcMore },
       { href: "/abonelik", label: "Abonelik", Icon: IcCard },
     ],
   },

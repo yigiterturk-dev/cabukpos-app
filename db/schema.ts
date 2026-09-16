@@ -15,6 +15,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -375,6 +376,42 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
     references: [businesses.id],
   }),
 }));
+
+// ---- Online sipariş entegrasyonları (bkz. db/integrations.sql) ----
+
+export const integrationOrders = pgTable(
+  "integration_orders",
+  {
+    id: text("id").primaryKey(),
+    platform: text("platform").notNull(),
+    externalId: text("external_id").notNull(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("received"),
+    payload: jsonb("payload").notNull(),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("integration_orders_business_created_idx").on(t.businessId, t.createdAt),
+  ]
+);
+
+export const integrationCredentials = pgTable(
+  "integration_credentials",
+  {
+    platform: text("platform").notNull(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    secret: text("secret").notNull(),
+    branchRef: text("branch_ref"),
+    enabled: boolean("enabled").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.platform, t.businessId] })]
+);
 
 // Inferred tipler (data-layer Faz 2c'de kullanılacak)
 export type Business = typeof businesses.$inferSelect;
