@@ -38,7 +38,6 @@ export function CheckoutModal({ open, onClose, tableId }: Props) {
       method,
       customerId: cid,
       note: `${tableId} - Tahsilat`,
-      createdAt: new Date().toISOString(),
     });
 
     // Masadaki tüm siparişleri "geldi" (kapalı/ödendi) durumuna al

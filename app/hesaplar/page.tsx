@@ -74,7 +74,6 @@ export default function HesaplarPage() {
       method: payMethod,
       customerId: selectedId,
       note: payNote.trim() || "Cari Tahsilat",
-      createdAt: new Date().toISOString(),
     });
 
     setPaymentModal({ open: false, type: "tahsilat" });
@@ -223,19 +222,19 @@ export default function HesaplarPage() {
                       <div key={i} className="grid grid-cols-1 gap-2 px-5 py-3 md:grid-cols-[1fr_2fr_1fr_1fr_1fr] md:items-center text-[13.5px]">
                         <div className="font-medium text-muted">{shortDate(row.date)}</div>
                         <div className="font-semibold text-ink">
-                          {row.type === "appointment" ? row.description || "Adisyon" : row.description || "Tahsilat"}
+                          {row.label}
                         </div>
                         <div className="text-right font-medium text-rose md:block flex justify-between">
                           <span className="md:hidden text-muted text-[12px]">Borç: </span>
-                          {row.debt > 0 ? formatTRY(-row.debt) : "—"}
+                          {row.kind === "borc" ? formatTRY(row.amount) : "—"}
                         </div>
                         <div className="text-right font-medium text-emerald-500 md:block flex justify-between">
                           <span className="md:hidden text-muted text-[12px]">Alacak: </span>
-                          {row.credit > 0 ? formatTRY(row.credit) : "—"}
+                          {row.kind === "tahsilat" ? formatTRY(-row.amount) : "—"}
                         </div>
                         <div className="text-right font-bold text-brand md:block flex justify-between pt-2 md:pt-0 border-t border-line border-dashed md:border-none">
                           <span className="md:hidden text-muted text-[12px]">Bakiye: </span>
-                          {formatTRY(row.balanceAfter)}
+                          {formatTRY(row.running)}
                         </div>
                       </div>
                     ))}
