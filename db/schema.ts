@@ -96,6 +96,10 @@ export const services = pgTable(
     price: doublePrecision("price").notNull(),
     commissionRate: doublePrecision("commission_rate").notNull(),
     active: boolean("active").default(true),
+    // POS (market/restoran) alanları — nullable, eski kayıtlar etkilenmez
+    barcode: text("barcode"),
+    stock: integer("stock"),
+    trackStock: boolean("track_stock"),
   },
   (t) => [index("services_business_id_idx").on(t.businessId)]
 );

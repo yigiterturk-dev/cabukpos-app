@@ -21,6 +21,13 @@ npx tsc --noEmit   # tip kontrolü
 npm run build
 ```
 
+> ⛔ **`npm run db:push` ÇALIŞTIRMA!** Canlı veritabanı, `db/schema.ts`'in ötesinde elle
+> uygulanan güvenlik katmanları taşır (RLS politikaları, tenant rolü, cron fonksiyonu).
+> drizzle-kit push bunları "drift" sanıp **KAPATIR/SILIR** (2026-09-16'da denendi; RLS
+> 12 tabloda kapatıldı, `db/rls.sql` ile geri geldi). Şema değişikliği için:
+> `db/schema.ts` + eşleşen `db/*.sql` dosyasına idempotent `ALTER/CREATE IF NOT EXISTS`
+> ekle ve psql ile uygula (örnek: `db/pos.sql`).
+
 ## Ortam değişkenleri
 | Değişken | Zorunlu | Açıklama |
 |---|---|---|

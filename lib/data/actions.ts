@@ -20,6 +20,7 @@ import { rateLimited } from "@/lib/rate-limit";
 import type {
   Appointment,
   AppointmentStatus,
+  BusinessState,
   Campaign,
   Customer,
   Expense,
@@ -44,6 +45,11 @@ async function requireBusinessId(): Promise<string> {
     throw new Error("Yetkisiz: oturum bulunamadı.");
   }
   return session.businessId;
+}
+
+/** KDS gibi gerçek zamanlı ekranlar için tam state yeniden okuması. */
+export async function loadStateAction(): Promise<BusinessState | null> {
+  return data.loadBusinessState(await requireBusinessId());
 }
 
 // ---- Hizmet ----

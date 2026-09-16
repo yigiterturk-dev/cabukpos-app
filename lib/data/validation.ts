@@ -55,6 +55,15 @@ const serviceSchema = z.object({
   price: money,
   commissionRate: rate,
   active: z.boolean().optional(),
+  // POS alanları (opsiyonel)
+  barcode: z
+    .string()
+    .trim()
+    .max(64, "Barkod en fazla 64 karakter olabilir.")
+    .optional()
+    .or(z.literal("")),
+  stock: z.number().int().min(0, "Stok negatif olamaz.").max(1_000_000).optional(),
+  trackStock: z.boolean().optional(),
 });
 export const validateService = (v: Service): Service => parse(serviceSchema, v) as Service;
 

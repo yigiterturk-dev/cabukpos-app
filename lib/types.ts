@@ -23,6 +23,10 @@ export interface Service {
   price: number; // TRY
   commissionRate: number; // 0..1 — personele giden prim oranı
   active?: boolean;
+  // POS (market/restoran) alanları — hizmet sektörlerinde kullanılmaz, opsiyonel.
+  barcode?: string; // barkod/PLU — Hızlı Kasa'da aramada birebir eşleşir
+  stock?: number; // mevcut stok (trackStock true ise satışta düşülür)
+  trackStock?: boolean; // stok takibi yapılsın mı
 }
 
 export interface Staff {

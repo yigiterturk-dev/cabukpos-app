@@ -208,3 +208,24 @@ export const IcMore = (p: P) => (
     <circle cx="19" cy="12" r="1.4" />
   </svg>
 );
+
+export const IcBarcode = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M4 6v12" />
+    <path d="M7.5 6v12" />
+    <path d="M11 6v12" />
+    <path d="M14.5 6v9" />
+    <path d="M14.5 18v.5" />
+    <path d="M18 6v12" />
+    <path d="M20.5 6v12" />
+  </svg>
+);
+
+export const IcKitchen = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M7 3v6a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V3" />
+    <path d="M9 11v10" />
+    <path d="M17 3c-1.5 1.5-2 3.5-2 5.5 0 1.5 1 2.5 2 2.5s2-1 2-2.5C19 6.5 18.5 4.5 17 3Z" />
+    <path d="M17 11v10" />
+  </svg>
+);

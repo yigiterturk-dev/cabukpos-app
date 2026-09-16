@@ -19,6 +19,7 @@ import type {
 } from "./types";
 import { seedFor } from "./seed";
 import {
+  loadStateAction,
   addServiceAction,
   updateServiceAction,
   deleteServiceAction,
@@ -185,6 +186,8 @@ interface StoreApi {
   // DB modunda kurulum yazımının Promise'ını döner (onboarding await edebilsin); demo modunda void.
   chooseSector: (sector: SectorId, businessNameOrOpts?: string | SetupOptions) => void | Promise<void>;
   resetAll: () => void;
+  /** DB modunda sunucudan tam state yeniden okur (KDS gibi gerçek zamanlı ekranlar için). */
+  reload: () => Promise<void>;
   // randevu
   addAppointment: (a: Omit<Appointment, "id">) => void;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
@@ -710,6 +713,17 @@ export function StoreProvider({
     [isDb, rollback]
   );
 
+  // DB modunda sunucudan tam state'i yeniden okur (KDS polling, çoklu terminal senkronu).
+  const reload = useCallback(async () => {
+    if (!isDb) return;
+    try {
+      const next = await loadStateAction();
+      if (next) setState(next);
+    } catch {
+      // sessiz geç — KDS bir sonraki tiktte yeniden dener
+    }
+  }, [isDb]);
+
   const api = useMemo<StoreApi>(
     () => ({
       state,
@@ -719,6 +733,7 @@ export function StoreProvider({
       businessName,
       chooseSector,
       resetAll,
+      reload,
       addAppointment,
       updateAppointmentStatus,
       updateAppointment,
@@ -743,7 +758,7 @@ export function StoreProvider({
       addExpense,
       deleteExpense,
     }),
-    [state, ready, mode, businessName, chooseSector, resetAll, addAppointment, updateAppointmentStatus, updateAppointment, setApproval, deleteAppointment, addCustomer, updateCustomerNote, updateCustomer, upsertService, deleteService, upsertStaff, deleteStaff, addCampaign, toggleCampaign, deleteCampaign, sendCampaign, updateReminderSettings, simulateReminders, changePlan, addPayment, deletePayment, addExpense, deleteExpense]
+    [state, ready, mode, businessName, chooseSector, resetAll, reload, addAppointment, updateAppointmentStatus, updateAppointment, setApproval, deleteAppointment, addCustomer, updateCustomerNote, updateCustomer, upsertService, deleteService, upsertStaff, deleteStaff, addCampaign, toggleCampaign, deleteCampaign, sendCampaign, updateReminderSettings, simulateReminders, changePlan, addPayment, deletePayment, addExpense, deleteExpense]
   );
 
   return <StoreContext.Provider value={api}>{children}</StoreContext.Provider>;

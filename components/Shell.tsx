@@ -12,6 +12,7 @@ import { disableDemoMode } from "@/lib/auth/mode";
 import {
   IcGrid, IcCalendar, IcUsers, IcStaff, IcSettings,
   IcReport, IcMegaphone, IcBell, IcCard, IcLink, IcScissors, IcMore, IcWallet,
+  IcBarcode, IcKitchen,
 } from "@/components/icons";
 
 type NavItem = { href: string; label: string; Icon: (p: React.SVGProps<SVGSVGElement>) => React.ReactElement; sectors?: SectorId[] };
@@ -20,7 +21,9 @@ const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
   {
     items: [
       { href: "/dashboard", label: "Genel Bakış", Icon: IcGrid },
-      { href: "/masalar", label: "Masalar", Icon: IcCalendar },
+      { href: "/hizli-kasa", label: "Hızlı Kasa", Icon: IcBarcode, sectors: ["restoran", "kafe", "market", "pastane"] },
+      { href: "/masalar", label: "Masalar", Icon: IcCalendar, sectors: ["restoran", "kafe", "pastane"] },
+      { href: "/mutfak", label: "Sipariş Ekranı", Icon: IcKitchen, sectors: ["restoran", "kafe", "pastane"] },
       { href: "/hesaplar", label: "Hesaplar", Icon: IcUsers },
     ],
   },

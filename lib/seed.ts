@@ -59,6 +59,21 @@ function mkServices(rows: [string, number, number, number][]): Service[] {
   }));
 }
 
+/** POS sektörleri (market/restoran) için barkod + stok eklenmiş ürün listesi. */
+function mkPosProducts(rows: [string, number, number, string, number][]): Service[] {
+  return rows.map(([name, durationMin, price, barcode, stock], i) => ({
+    id: "svc-" + (i + 1),
+    name,
+    durationMin,
+    price,
+    commissionRate: 0,
+    active: true,
+    barcode,
+    stock,
+    trackStock: true,
+  }));
+}
+
 const CUSTOMER_NAMES = [
   "Ahmet Yılmaz", "Elif Demir", "Mehmet Kaya", "Zeynep Şahin", "Mustafa Çelik",
   "Fatma Aydın", "Burak Öztürk", "Selin Arslan", "Emre Doğan", "Ayşe Koç",
@@ -231,10 +246,10 @@ const SECTOR_DATA: Record<
       ["Mehmet Garson", "Garson"],
       ["Ayşe Mutfak", "Aşçı"],
     ]),
-    services: mkServices([
-      ["Hamburger Menü", 15, 250, 0],
-      ["Margarita Pizza", 20, 300, 0],
-      ["Kutu Kola", 5, 50, 0],
+    services: mkPosProducts([
+      ["Hamburger Menü", 15, 250, "8690000000017", 40],
+      ["Margarita Pizza", 20, 300, "8690000000024", 30],
+      ["Kutu Kola", 5, 50, "8690000000031", 120],
     ]),
     notes: { 0: "Soğansız, bol soslu.", 3: "Paket servis (Acil)." },
   },
@@ -244,10 +259,10 @@ const SECTOR_DATA: Record<
       ["Ali Kasa", "Kasiyer"],
       ["Veli Depo", "Depo"],
     ]),
-    services: mkServices([
-      ["Ekmek", 5, 10, 0],
-      ["Su (1L)", 5, 15, 0],
-      ["Çikolata", 5, 30, 0],
+    services: mkPosProducts([
+      ["Ekmek", 5, 10, "8690000000048", 200],
+      ["Su (1L)", 5, 15, "8690000000055", 300],
+      ["Çikolata", 5, 30, "8690000000062", 150],
     ]),
     notes: { 0: "Veresiye hesabı", 2: "Cari bakiyesi var." },
   },
@@ -257,10 +272,10 @@ const SECTOR_DATA: Record<
       ["Can Barista", "Barista"],
       ["Ece Garson", "Garson"],
     ]),
-    services: mkServices([
-      ["Filtre Kahve", 10, 80, 0],
-      ["Latte", 10, 100, 0],
-      ["Cheesecake", 5, 150, 0],
+    services: mkPosProducts([
+      ["Filtre Kahve", 10, 80, "8690000000079", 80],
+      ["Latte", 10, 100, "8690000000086", 80],
+      ["Cheesecake", 5, 150, "8690000000093", 25],
     ]),
     notes: { 1: "Süt alerjisi, yulaf sütlü.", 5: "Daimi müşteri." },
   },
@@ -270,10 +285,10 @@ const SECTOR_DATA: Record<
       ["Usta Hasan", "Usta"],
       ["Merve Kasa", "Tezgahtar"],
     ]),
-    services: mkServices([
-      ["Poğaça", 5, 20, 0],
-      ["Su Böreği (Porsiyon)", 5, 100, 0],
-      ["Yaş Pasta (Dilim)", 5, 120, 0],
+    services: mkPosProducts([
+      ["Poğaça", 5, 20, "8690000000109", 150],
+      ["Su Böreği (Porsiyon)", 5, 100, "8690000000116", 40],
+      ["Yaş Pasta (Dilim)", 5, 120, "8690000000123", 30],
     ]),
     notes: { 2: "Toplu sipariş (20 adet poğaça).", 6: "Doğum günü pastası." },
   },

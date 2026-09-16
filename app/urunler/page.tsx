@@ -45,7 +45,19 @@ export default function UrunlerPage() {
               <div className="divide-y divide-line">
                 {products.map((p) => (
                   <div key={p.id} className="group grid grid-cols-1 gap-2 px-5 py-3 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-center">
-                    <div className="font-semibold text-ink">{p.name}</div>
+                    <div>
+                      <div className="font-semibold text-ink">{p.name}</div>
+                      {(p.barcode || p.trackStock) && (
+                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11.5px] text-muted">
+                          {p.barcode && <span className="rounded bg-canvas px-1.5 py-0.5 font-mono">{p.barcode}</span>}
+                          {p.trackStock && (
+                            <span className={`rounded px-1.5 py-0.5 font-semibold ${(p.stock ?? 0) > 0 ? "bg-brand-soft text-brand-deep" : "bg-rose/10 text-rose"}`}>
+                              Stok: {p.stock ?? 0}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     
                     <div className="flex items-center justify-between sm:justify-end">
                       <span className="text-[12px] text-muted sm:hidden">Fiyat</span>
@@ -104,6 +116,9 @@ function ProductModal({ product, onClose, onSave }: { product: Service; onClose:
   const [name, setName] = useState(product.name);
   const [price, setPrice] = useState(String(product.price || ""));
   const [comm, setComm] = useState(product.commissionRate > 0 ? String(product.commissionRate * 100) : "");
+  const [barcode, setBarcode] = useState(product.barcode ?? "");
+  const [trackStock, setTrackStock] = useState(product.trackStock ?? false);
+  const [stock, setStock] = useState(product.trackStock ? String(product.stock ?? 0) : "");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm animate-in fade-in" onClick={onClose}>
@@ -151,6 +166,38 @@ function ProductModal({ product, onClose, onSave }: { product: Service; onClose:
               />
             </div>
           </div>
+
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-ink">Barkod (isteğe bağlı)</label>
+            <input
+              className="w-full rounded-xl border border-line bg-canvas px-4 py-2.5 text-[14px] text-ink outline-none transition-colors focus:border-brand focus:bg-surface focus:ring-4 focus:ring-brand/10"
+              placeholder="Örn: 8690000000017"
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+            />
+          </div>
+
+          <div className="rounded-xl bg-canvas p-3.5">
+            <label className="flex items-center gap-2.5">
+              <input
+                type="checkbox"
+                checked={trackStock}
+                onChange={(e) => setTrackStock(e.target.checked)}
+                className="h-4 w-4 accent-[#1B7A5A]"
+              />
+              <span className="text-[13.5px] font-semibold text-ink">Stok takibi yapılsın</span>
+            </label>
+            {trackStock && (
+              <input
+                type="number"
+                min={0}
+                className="mt-2.5 w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-[14px] text-ink outline-none transition-colors focus:border-brand focus:ring-4 focus:ring-brand/10"
+                placeholder="Mevcut stok adedi"
+                value={stock}
+                onChange={(e) => setStock(e.target.value)}
+              />
+            )}
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
@@ -166,6 +213,9 @@ function ProductModal({ product, onClose, onSave }: { product: Service; onClose:
                 price: Number(price) || 0,
                 durationMin: 5, // POS için süre gereksiz ama veritabanı şeması için 5 dk sabitliyoruz.
                 commissionRate: (Number(comm) || 0) / 100,
+                barcode: barcode.trim() || undefined,
+                trackStock: trackStock || undefined,
+                stock: trackStock ? Math.max(0, Number(stock) || 0) : undefined,
               });
             }}
             className="rounded-xl bg-ink px-5 py-2.5 text-[14px] font-semibold text-white shadow-md transition-colors hover:bg-ink-light"

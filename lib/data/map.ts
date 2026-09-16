@@ -116,6 +116,9 @@ export function rowToService(r: ServiceRow, businessId: string): Service {
     price: r.price,
     commissionRate: r.commissionRate,
     active: u(r.active),
+    barcode: u(r.barcode),
+    stock: u(r.stock),
+    trackStock: u(r.trackStock),
   };
 }
 
@@ -253,6 +256,9 @@ export function serviceToInsert(s: Service, businessId: string): typeof services
     price: s.price,
     commissionRate: s.commissionRate,
     active: s.active ?? true,
+    barcode: s.barcode?.trim() ? s.barcode.trim() : null,
+    stock: s.trackStock ? (s.stock ?? 0) : null,
+    trackStock: s.trackStock ?? null,
   };
 }
 
