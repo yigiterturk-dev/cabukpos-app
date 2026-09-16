@@ -37,7 +37,7 @@ import * as data from "@/lib/data";
 import * as v from "./validation";
 
 /** Oturumdan businessId çıkarır; yoksa fail-closed (yetkisiz). */
-async function requireBusinessId(): Promise<string> {
+export async function requireBusinessId(): Promise<string> {
   // getLiveSession: imza + süre YETMEZ; kullanıcı hâlâ var mı ve erişimi iptal
   // edilmemiş mi diye de bakar (db/session-epoch.sql). Fail-closed.
   const session = await getLiveSession();
