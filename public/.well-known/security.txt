@@ -1,4 +1,0 @@
-Contact: mailto:info@yanindapos.com
-Preferred-Languages: tr, en
-Canonical: https://app.yanindapos.com/.well-known/security.txt
-Expires: 2027-09-03T00:00:00.000Z

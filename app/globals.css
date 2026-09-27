@@ -1,70 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  --r-brand: #2f5bea;
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-brand: #c2410c;
+  --color-brand-soft: #fff7ed;
+  --color-ink: #1c1917;
+  --color-muted: #78716c;
+  --color-line: #e7e5e4;
 }
 
-html,
 body {
-  background: #f7f8fa;
-  color: #16181d;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+  background: #ffffff;
+  color: var(--color-ink);
 }
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #d4d9e2 transparent;
-}
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-thumb {
-  background: #d4d9e2;
-  border-radius: 999px;
-}
-
-@layer utilities {
-  .tnum {
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum";
-  }
-  .grid-fade {
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 24px);
-    mask-image: linear-gradient(to bottom, transparent, #000 24px);
-  }
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    transition-duration: 0.001ms !important;
-  }
-}
-
-/* Görünür focus */
-:focus-visible {
-  outline: 2px solid var(--r-brand);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-
-@keyframes rezzy-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.animate-fade-up {
-  animation: rezzy-fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+.tabular { font-variant-numeric: tabular-nums; }

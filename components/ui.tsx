@@ -1,44 +1,60 @@
-"use client";
+// Ortak küçük UI parçaları. Native <select> kullanılmaz (bkz. components/Select.tsx).
+import type { ComponentProps, ReactNode } from "react";
 
-import { STATUS_META } from "@/lib/utils";
-import type { Staff } from "@/lib/types";
+export function Button({ variant = "primary", className = "", ...p }: ComponentProps<"button"> & { variant?: "primary" | "ghost" | "danger" }) {
+  const v = {
+    primary: "bg-brand text-white hover:bg-orange-800",
+    ghost: "border border-line bg-white hover:bg-stone-50",
+    danger: "border border-red-200 bg-white text-red-700 hover:bg-red-50",
+  }[variant];
+  return <button {...p} className={`inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition disabled:opacity-50 ${v} ${className}`} />;
+}
 
-export function StatusChip({ status, size = "sm" }: { status: string; size?: "sm" | "xs" }) {
-  const m = STATUS_META[status] ?? STATUS_META.bekliyor;
+export function Input({ className = "", ...p }: ComponentProps<"input">) {
+  return <input {...p} className={`w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-orange-100 ${className}`} />;
+}
+
+export function Textarea({ className = "", ...p }: ComponentProps<"textarea">) {
+  return <textarea {...p} className={`w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-orange-100 ${className}`} />;
+}
+
+export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border font-medium ${m.chip} ${m.text} ${
-        size === "xs" ? "px-1.5 py-0.5 text-[10.5px]" : "px-2 py-0.5 text-[11.5px]"
-      }`}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />
-      {m.label}
-    </span>
+    <label className="block space-y-1.5">
+      <span className="text-sm font-medium">{label}</span>
+      {children}
+      {hint && <span className="block text-xs text-muted">{hint}</span>}
+    </label>
   );
 }
 
-export function StaffAvatar({ staff, size = 32 }: { staff: Staff; size?: number }) {
-  return (
-    <span
-      className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
-      style={{ background: staff.color, width: size, height: size, fontSize: size * 0.36 }}
-    >
-      {staff.initials}
-    </span>
-  );
+export function Card({ className = "", ...p }: ComponentProps<"div">) {
+  return <div {...p} className={`rounded-xl border border-line bg-white ${className}`} />;
 }
 
-export function SectionTitle({ children, sub }: { children: React.ReactNode; sub?: string }) {
+export function PageHeader({ title, desc, actions }: { title: string; desc?: string; actions?: ReactNode }) {
   return (
-    <div>
-      <h1 className="font-display text-[22px] font-700 tracking-tight text-ink">{children}</h1>
-      {sub && <p className="mt-0.5 text-[13.5px] text-muted">{sub}</p>}
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        {desc && <p className="mt-1 text-sm text-muted">{desc}</p>}
+      </div>
+      {actions}
     </div>
   );
 }
 
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-2xl border border-line bg-surface shadow-card ${className}`}>{children}</div>
-  );
+export function Badge({ tone = "neutral", children }: { tone?: "neutral" | "ok" | "warn" | "bad" | "brand"; children: ReactNode }) {
+  const t = {
+    neutral: "bg-stone-100 text-stone-700",
+    ok: "bg-emerald-50 text-emerald-700",
+    warn: "bg-amber-50 text-amber-800",
+    bad: "bg-red-50 text-red-700",
+    brand: "bg-brand-soft text-brand",
+  }[tone];
+  return <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${t}`}>{children}</span>;
+}
+
+export function Empty({ children }: { children: ReactNode }) {
+  return <div className="rounded-xl border border-dashed border-line p-10 text-center text-sm text-muted">{children}</div>;
 }
