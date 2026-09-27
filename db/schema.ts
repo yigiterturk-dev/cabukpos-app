@@ -47,6 +47,13 @@ export const devices = pgTable("devices", {
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("devices_prefix_uq").on(t.tenantId, t.receiptPrefix)]);
 
+/** Deneme sayacı (e-posta, IP, cihaz başına kayan pencere); RLS dışı. */
+export const loginAttempts = pgTable("login_attempts", {
+  key: text("key").primaryKey(),
+  n: integer("n").notNull().default(0),
+  since: ts("since").notNull().defaultNow(),
+});
+
 // — İş tabloları (RLS: tenant_id = app.tenant_id) —
 export const stores = pgTable("stores", {
   id: uuid("id").primaryKey().defaultRandom(),

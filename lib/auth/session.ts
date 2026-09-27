@@ -1,0 +1,37 @@
+// Yönetici (işletme sahibi/müdür) oturumu: cz_session, 14 gün. Sürüm (tokenVersion) DB'de kontrol edilir.
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { getDb, schema } from "@/db";
+import { signJwt, verifyJwt } from "./jwt";
+
+export { ADMIN_COOKIE } from "./session-cookie";
+import { ADMIN_COOKIE } from "./session-cookie";
+const MAX_AGE = 60 * 60 * 24 * 14;
+
+export async function setAdminSession(userId: string, tenantId: string, v: number) {
+  (await cookies()).set(ADMIN_COOKIE, await signJwt("admin", { userId, tenantId, v }, MAX_AGE), {
+    httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: MAX_AGE,
+  });
+}
+
+export async function clearAdminSession() {
+  (await cookies()).delete(ADMIN_COOKIE);
+}
+
+export async function getAdmin() {
+  const p = await verifyJwt("admin", (await cookies()).get(ADMIN_COOKIE)?.value);
+  if (!p || typeof p.userId !== "string") return null;
+  const u = schema.users, t = schema.tenants;
+  const [row] = await getDb()
+    .select({ id: u.id, name: u.name, email: u.email, role: u.role, active: u.active, v: u.tokenVersion, tenantId: u.tenantId, tenantName: t.name, vertical: t.vertical })
+    .from(u).innerJoin(t, eq(t.id, u.tenantId)).where(eq(u.id, p.userId));
+  if (!row || !row.active || row.v !== p.v || row.tenantId !== p.tenantId) return null;
+  return { id: row.id, name: row.name, email: row.email, role: row.role, tenantId: row.tenantId, tenantName: row.tenantName, vertical: row.vertical };
+}
+
+export async function requireAdmin() {
+  const a = await getAdmin();
+  if (!a) redirect("/giris");
+  return a;
+}
