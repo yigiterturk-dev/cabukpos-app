@@ -12,8 +12,16 @@ Eski (YanındaPOS tabanlı) kod: git etiketi `yanindapos-tabanli-v0`. Bu dal (`p
 - [x] T6 Kayıt, giriş, proxy
 - [x] T7 Ürün/kategori yönetimi
 - [x] T8 Personel PIN + cihaz eşleme
-- [~] T9 Kasa: eşleme, PIN, vardiya açma — kod yazıldı (tsc/lint temiz), tarayıcıda DENENMEDİ
-- [~] T10 Satış ekranı + idempotent satış — recordSale testli (2/2); ekran yazıldı, tarayıcıda DENENMEDİ
-- [ ] T11 Bilgi fişi (/kasa/fis/[id]), gün sonu (/kasa/gun-sonu; closeShiftAction + loadShiftSummary HAZIR), /yonetim/raporlar, E2E e2e/m1.mjs (planda tam kod) — KALAN
+- [x] T9 Kasa: eşleme, PIN, vardiya açma (E2E ile tarayıcıda doğrulandı)
+- [x] T10 Satış ekranı + idempotent satış (E2E: karma ödeme, para üstü)
+- [x] T11 Bilgi fişi 80 mm (/kasa/fis/[id]), gün sonu (/kasa/gun-sonu), /yonetim/raporlar (+ayrıntı), E2E e2e/m1.mjs → "M1 OK"
+
+**M1 BİTTİ (2026-09-28).** Kapanış kapısı: npm test 12/12, eslint + tsc temiz, E2E M1 OK (yerel DB).
+Sıradaki: production kurulumu kararı (Neon `cabukpos_app` rolü + env) → main'e birleştirme; sonra M2 (çevrimdışı).
 
 Not: sunucu `node --env-file=.env.local node_modules/.bin/next start -p 3800`; plan kodu `python3 scripts/plan-extract.py <yol>` ile çıkarılır.
+
+## Çalıştırma
+- DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).
+- E2E: `npm run build` → `node --env-file=.env.local node_modules/.bin/next start -p 3800` → `node --env-file=.env.local e2e/m1.mjs`. Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt); aşılırsa yerel DB'de `delete from login_attempts where key like 'signup:%'`.
+- Gün sonu kapanınca kasiyer oturumu düşer; cihazın son 15 dk içinde kapanan vardiyası /kasa/gun-sonu'da PIN'siz yazdırılabilir.

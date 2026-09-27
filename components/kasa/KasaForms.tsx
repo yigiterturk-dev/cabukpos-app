@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useState } from "react";
-import { openShiftAction, pairDevice, pinLogin, type KasaState } from "@/lib/kasa/actions";
+import { closeShiftAction, openShiftAction, pairDevice, pinLogin, type KasaState } from "@/lib/kasa/actions";
 import { Button, Field, Input } from "@/components/ui";
 
 export function PairForm() {
@@ -44,6 +44,17 @@ export function OpenShiftForm() {
       <Field label="Kasadaki açılış nakdi (TL)"><Input name="openingCash" inputMode="decimal" defaultValue="0" className="text-lg" required /></Field>
       {state.error && <p className="text-sm text-red-700">{state.error}</p>}
       <Button type="submit" disabled={pending} className="w-full">Vardiyayı aç</Button>
+    </form>
+  );
+}
+
+export function CloseShiftForm() {
+  const [state, action, pending] = useActionState<KasaState, FormData>(closeShiftAction, {});
+  return (
+    <form action={action} className="space-y-4">
+      <Field label="Sayılan nakit (TL)" hint="Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır."><Input name="countedCash" inputMode="decimal" className="text-lg" required /></Field>
+      {state.error && <p className="text-sm text-red-700">{state.error}</p>}
+      <Button type="submit" disabled={pending} className="w-full">{pending ? "Kapatılıyor…" : "Gün sonunu kapat"}</Button>
     </form>
   );
 }
