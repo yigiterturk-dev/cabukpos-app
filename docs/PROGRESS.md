@@ -5,13 +5,15 @@ Eski (YanındaPOS tabanlı) kod: git etiketi `yanindapos-tabanli-v0`. Bu dal (`p
 
 ## M1 — Çekirdek + kasa
 - [x] T1 İskelet + test düzeni
-- [ ] T2 Para ve sepet çekirdeği
-- [ ] T3 Ödeme + vardiya özeti
-- [ ] T4 PIN + cihaz jetonları
-- [ ] T5 Şema + RLS + withTenant
-- [ ] T6 Kayıt, giriş, proxy
-- [ ] T7 Ürün/kategori yönetimi
-- [ ] T8 Personel PIN + cihaz eşleme
-- [ ] T9 Kasa: eşleme, PIN, vardiya açma
-- [ ] T10 Satış ekranı + idempotent satış
-- [ ] T11 Bilgi fişi, gün sonu, rapor, E2E
+- [x] T2 Para ve sepet çekirdeği
+- [x] T3 Ödeme + vardiya özeti
+- [x] T4 PIN + cihaz jetonları
+- [x] T5 Şema + RLS + withTenant
+- [x] T6 Kayıt, giriş, proxy
+- [x] T7 Ürün/kategori yönetimi
+- [x] T8 Personel PIN + cihaz eşleme
+- [~] T9 Kasa: eşleme, PIN, vardiya açma — kod yazıldı (tsc/lint temiz), tarayıcıda DENENMEDİ
+- [~] T10 Satış ekranı + idempotent satış — recordSale testli (2/2); ekran yazıldı, tarayıcıda DENENMEDİ
+- [ ] T11 Bilgi fişi (/kasa/fis/[id]), gün sonu (/kasa/gun-sonu; closeShiftAction + loadShiftSummary HAZIR), /yonetim/raporlar, E2E e2e/m1.mjs (planda tam kod) — KALAN
+
+Not: sunucu `node --env-file=.env.local node_modules/.bin/next start -p 3800`; plan kodu `python3 scripts/plan-extract.py <yol>` ile çıkarılır.
