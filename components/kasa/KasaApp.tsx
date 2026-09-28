@@ -205,7 +205,16 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
   const [data, setData] = useState<ShiftReportData | null>(null);
   const shiftId = closed ? meta.lastClosed?.id : meta.shift?.id;
   useEffect(() => {
-    if (shiftId) void shiftSales(shiftId).then((s) => setData(reportData(meta, s, closed)));
+    if (!shiftId) return;
+    void shiftSales(shiftId).then(async (s) => {
+      const d = reportData(meta, s, closed);
+      setData(d);
+      // M8: kesilemeyen e-Arşiv sayısı buluttan (çevrimdışıysa gösterilmez)
+      if (d && s.some((x) => x.fiscal)) {
+        const n = await fetch(`/api/fiscal/shift?shiftId=${shiftId}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j: { errors?: number } | null) => j?.errors).catch(() => undefined);
+        if (n) setData({ ...d, fiscalErrors: n });
+      }
+    });
   }, [shiftId, meta, closed]);
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-6">
@@ -214,7 +223,7 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
         {closed && data && meta.agent && (
           <Button variant="ghost" onClick={() => {
             const sh = meta.lastClosed!;
-            void printShift(meta, { deviceName: meta.device!.name, openedByName: data.openedByName, closedByName: data.closedByName, openingCash: sh.openingCash, openedAt: new Date(sh.openedAt), closedAt: new Date(sh.closedAt), countedCash: sh.countedCash, expectedCash: sh.expectedCash, summary: data.summary });
+            void printShift(meta, { deviceName: meta.device!.name, openedByName: data.openedByName, closedByName: data.closedByName, openingCash: sh.openingCash, openedAt: new Date(sh.openedAt), closedAt: new Date(sh.closedAt), countedCash: sh.countedCash, expectedCash: sh.expectedCash, summary: data.summary, fiscalErrors: data.fiscalErrors });
           }}>Fiş yazıcısına</Button>
         )}
         {closed && <Button variant="ghost" onClick={() => window.print()}>Yazdır / PDF</Button>}

@@ -84,6 +84,7 @@ export type ShiftPrint = {
   deviceName: string; openedByName: string; closedByName: string;
   openingCash: number; openedAt: Date; closedAt: Date | null; countedCash: number | null; expectedCash: number | null;
   summary: ReturnType<typeof summarizeShift>;
+  fiscalErrors?: number;
 };
 
 export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts): Uint8Array {
@@ -104,6 +105,7 @@ export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts)
     const d = s.countedCash - expected;
     p.cols2("Sayılan nakit", formatTL(s.countedCash)).bold(true).cols2("Fark", `${d < 0 ? "-" : d > 0 ? "+" : ""}${formatTL(Math.abs(d))}`).bold(false);
   }
+  if (s.fiscalErrors) p.rule().bold(true).cols2("Kesilemeyen e-Arşiv", String(s.fiscalErrors)).bold(false);
   p.rule().align("center").lines("Mali Z raporu değildir.").align("left").feed(3).cut();
   return p.bytes();
 }

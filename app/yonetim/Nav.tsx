@@ -19,6 +19,7 @@ const items: { href: string; label: string; only?: "restoran" | "market" }[] = [
   { href: "/yonetim/personel", label: "Personel" },
   { href: "/yonetim/cihazlar", label: "Cihazlar" },
   { href: "/yonetim/donanim", label: "Donanım" },
+  { href: "/yonetim/mali", label: "Mali" },
   { href: "/yonetim/raporlar", label: "Raporlar" },
 ];
 

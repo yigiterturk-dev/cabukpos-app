@@ -10,6 +10,7 @@ export type ShiftReportData = {
   openedByName: string;
   closedByName: string;
   sales: { id: string; receiptNo: string; createdAt: Date; total: number }[];
+  fiscalErrors?: number; // M8: vardiyada kesilemeyen e-Arşiv (0/undefined → gösterilmez)
 };
 
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
@@ -41,6 +42,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
         <h2 className="mb-1 font-semibold">Satışlar</h2>
         <div className="divide-y divide-line border-y border-line">
           <Row label="Satış sayısı" value={`${s.saleCount} satış`} />
+          {data.fiscalErrors ? <Row label="Kesilemeyen e-Arşiv" value={`${data.fiscalErrors} belge`} tone="bad" /> : null}
           {s.refundCount > 0 && <Row label="İade" value={`${s.refundCount} iade · -${formatTL(s.refundTotal)}`} tone="bad" />}
           <Row label={s.refundCount > 0 ? "Ciro (iadeler düşülmüş)" : "Ciro (KDV dahil)"} value={formatTL(s.gross)} strong />
           {shownMethods(s.byMethod).map((m) => (
