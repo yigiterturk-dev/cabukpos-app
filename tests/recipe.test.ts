@@ -52,3 +52,27 @@ test("miktar birimi: lt ve eski tartılı", () => {
   assert.equal(formatQty(1500, "lt"), "1,500 lt");
   assert.equal(formatQty(-250, "tartili"), "−0,250 kg");
 });
+
+test("reçete kuralı: derinlik 1, kendine yok, stok takipli", async () => {
+  const { recipeError } = await import("@/lib/core/recipe");
+  const n = (id: string, o: Partial<{ sellable: boolean; trackStock: boolean; hasRecipe: boolean }> = {}) => ({ id, name: id, sellable: false, trackStock: true, hasRecipe: false, ...o });
+  assert.equal(recipeError({ id: "lah", sellable: true }, [n("harc", { hasRecipe: true }), n("un")], []), null);
+  assert.equal(recipeError({ id: null, sellable: true }, [n("kiyma")], []), null);
+  assert.equal(recipeError({ id: "harc", sellable: false, yieldMilli: 1000 }, [n("kiyma"), n("un")], [{ sellable: true }]), null);
+  assert.match(recipeError({ id: "harc", sellable: false }, [n("un")], [])!, /parti/);
+  assert.match(recipeError({ id: "harc", sellable: false, yieldMilli: 1000 }, [n("sos", { hasRecipe: true })], [])!, /ara ürün olamaz/);
+  assert.match(recipeError({ id: "sos", sellable: false, yieldMilli: 1000 }, [n("un")], [{ sellable: false }])!, /iç içe/);
+  assert.match(recipeError({ id: "ayran", sellable: true }, [n("sut")], [{ sellable: true }])!, /iç içe/);
+  assert.match(recipeError({ id: "lah", sellable: true }, [n("menu", { sellable: true, hasRecipe: true })], [])!, /yalnız ara ürün/);
+  assert.match(recipeError({ id: "lah", sellable: true }, [n("lah")], [])!, /kendi/);
+  assert.match(recipeError({ id: "lah", sellable: true }, [n("pide", { sellable: true, trackStock: false })], [])!, /stok takipli/);
+  assert.equal(recipeError({ id: "ayran", sellable: true }, [], [{ sellable: true }]), null); // reçeteyi boşaltmak serbest
+});
+
+test("reçete miktarı: kg/lt gram-ml tam sayı, adet ondalıklı", async () => {
+  const { parseRecipeQty } = await import("@/lib/admin/recipe");
+  assert.equal(parseRecipeQty("150", "kg"), 150);
+  assert.equal(parseRecipeQty("1,5", "lt"), null);
+  assert.equal(parseRecipeQty("0,5", "adet"), 500);
+  assert.equal(parseRecipeQty("0", "adet"), null);
+});

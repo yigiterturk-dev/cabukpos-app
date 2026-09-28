@@ -60,3 +60,21 @@ export function productionMoves(productId: string, batchesMilli: number, yieldMi
 }
 
 export const isCritical = (level: number, minStock: number | null | undefined) => minStock != null && level <= minStock;
+
+/** Reçete kaydı kuralı (derinlik 1). Ara ürün = satılmaz üründe reçete. null = geçerli. */
+export type RecipeNode = { id: string; name: string; sellable: boolean; trackStock: boolean; hasRecipe: boolean };
+export function recipeError(
+  target: { id: string | null; sellable: boolean; yieldMilli?: number | null }, // seçenek: id null, sellable true
+  ingredients: RecipeNode[],
+  usedBy: { sellable: boolean }[], // hedefi malzeme olarak kullanan reçetelerin sahipleri
+): string | null {
+  const intermediate = target.id !== null && !target.sellable;
+  if (intermediate && !target.yieldMilli) return "Ara ürün için önce ürün formunda parti miktarını girin.";
+  if (ingredients.length && target.id && (target.sellable ? usedBy.length : usedBy.some((u) => !u.sellable))) return "Bu ürün başka bir reçetede malzeme; iç içe reçete yok.";
+  for (const i of ingredients) {
+    if (i.id === target.id) return "Ürün kendi reçetesinde olamaz.";
+    if (!i.trackStock) return `${i.name} stok takipli değil.`;
+    if (i.hasRecipe && (i.sellable || intermediate)) return `${i.name} reçeteli; ${intermediate ? "ara ürünün reçetesinde ara ürün olamaz" : "yalnız ara ürün malzeme olabilir"}.`;
+  }
+  return null;
+}

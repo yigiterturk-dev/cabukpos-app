@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
-import { parseQty } from "@/lib/core/stock";
+import { parseQty, stockUnitOf } from "@/lib/core/stock";
 import { firstStoreId } from "./stock";
 
 export type StockState = { error?: string; field?: string; savedAt?: number };
@@ -19,10 +19,11 @@ export async function addStockMove(productId: string, _: StockState, form: FormD
   const note = String(form.get("note") ?? "").trim().slice(0, 200) || null;
   if (kind === "fire" && !note) return { error: "Fire için neden yazın.", field: "note" };
   const err = await withTenant(a.tenantId, async (tx) => {
-    const [p] = await tx.select({ kind: schema.products.kind, trackStock: schema.products.trackStock }).from(schema.products).where(eq(schema.products.id, productId));
+    const [p] = await tx.select({ kind: schema.products.kind, unit: schema.products.unit, sellable: schema.products.sellable, trackStock: schema.products.trackStock }).from(schema.products).where(eq(schema.products.id, productId));
     if (!p?.trackStock) return { error: "Ürün stok takipli değil." };
-    const q = parseQty(String(form.get("qty") ?? ""), p.kind, kind === "sayim");
-    if (q === null) return { error: p.kind === "adet" ? "Miktar tam sayı olmalı." : "Miktar kg (ör. 2,5).", field: "qty" };
+    const unit = stockUnitOf(p);
+    const q = parseQty(String(form.get("qty") ?? ""), unit, kind === "sayim");
+    if (q === null) return { error: unit === "adet" ? "Miktar tam sayı olmalı." : `Miktar ${unit} (ör. 2,5).`, field: "qty" };
     const storeId = await firstStoreId(tx);
     if (!storeId) return { error: "Şube yok." };
     const qtyMilli = kind === "fire" ? -q : q;

@@ -36,7 +36,7 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
   const a = await requireAdmin();
   if (id && !UUID.test(id)) return { error: "Ürün bulunamadı." };
   const f: Record<string, string> = {};
-  for (const k of ["name", "price", "vatRate", "categoryId", "barcodes", "kind", "plu", "trackStock", "quick"]) f[k] = String(form.get(k) ?? "");
+  for (const k of ["name", "price", "vatRate", "categoryId", "barcodes", "kind", "plu", "trackStock", "quick", "sellable", "unit", "cost", "minStock", "yieldMilli"]) f[k] = String(form.get(k) ?? "");
   const p = parseProduct(f);
   if (!p.ok) return { error: p.error, field: p.field };
   const P = schema.products;
@@ -60,11 +60,11 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
     }
     if (id) {
       // Fiyat değişince raf etiketi kuyruğuna girer.
-      const [row] = await tx.update(P).set({ ...p.value, ...(salon ? { stationId } : {}), priceChangedAt: sql`case when ${P.price} <> ${p.value.price} then now() else ${P.priceChangedAt} end` }).where(eq(P.id, id)).returning({ id: P.id });
+      const [row] = await tx.update(P).set({ ...p.value, ...(salon ? { stationId } : {}), priceChangedAt: sql`case when ${P.price} <> ${p.value.price} then now() else ${P.priceChangedAt} end`, costAt: sql`case when ${P.cost} is distinct from ${p.value.cost}::integer then now() else ${P.costAt} end` }).where(eq(P.id, id)).returning({ id: P.id });
       if (!row) return { error: "Ürün bulunamadı.", field: "" };
       if (salon) await linkGroups(tx, a.tenantId, id, groupIds);
     } else {
-      const [row] = await tx.insert(schema.products).values({ tenantId: a.tenantId, ...p.value, ...(salon ? { stationId } : {}) }).returning({ id: P.id });
+      const [row] = await tx.insert(schema.products).values({ tenantId: a.tenantId, ...p.value, costAt: p.value.cost === null ? null : new Date(), ...(salon ? { stationId } : {}) }).returning({ id: P.id });
       if (salon) await linkGroups(tx, a.tenantId, row.id, groupIds);
     }
     await audit(tx, a.tenantId, `user:${a.id}`, id ? "product.update" : "product.create", { id, name: p.value.name, price: p.value.price });

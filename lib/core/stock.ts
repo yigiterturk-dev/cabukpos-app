@@ -16,6 +16,8 @@ export type StockUnit = (typeof STOCK_UNITS)[number];
 /** "tartili" = satılan tartılı ürün (kg); eski çağıranlar için. */
 export type QtyUnit = StockUnit | "tartili";
 const unitOf = (u: QtyUnit): StockUnit => (u === "tartili" ? "kg" : u);
+/** Stok birimi: satılan üründe türden (tartılı → kg), satılmaz üründe (hammadde/ara ürün) products.unit. */
+export const stockUnitOf = (p: { sellable: boolean; kind: "adet" | "tartili"; unit: StockUnit }): StockUnit => (p.sellable ? unitOf(p.kind) : p.unit);
 
 /** Stok formu miktarı: adet tam sayı, kg/lt en çok 3 ondalık → qtyMilli. Sayımda 0 serbest. */
 export function parseQty(s: string, unit: QtyUnit, allowZero = false): number | null {

@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 const items: { href: string; label: string; only?: "restoran" | "market" }[] = [
   { href: "/yonetim/urunler", label: "Ürünler" },
   { href: "/yonetim/stok", label: "Stok" },
+  { href: "/yonetim/receteler", label: "Reçeteler", only: "restoran" },
+  { href: "/yonetim/uretim", label: "Üretim", only: "restoran" },
   { href: "/yonetim/salon", label: "Salon", only: "restoran" },
   { href: "/yonetim/secenekler", label: "Seçenekler", only: "restoran" },
   { href: "/yonetim/istasyonlar", label: "İstasyonlar", only: "restoran" },
