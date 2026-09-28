@@ -47,7 +47,7 @@ export async function retryFiscal(id: string): Promise<FiscalState> {
   const a = await requireAdmin();
   const d = await docById(a.tenantId, id);
   if (!d) return { error: "Belge bulunamadı." };
-  const r = await issueOne(a.tenantId, d.saleId);
+  const r = await issueOne(a.tenantId, d.saleId, { force: true });
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "fiscal.retry", { id, status: r?.status }));
   revalidatePath("/yonetim/mali");
   if (r?.status === "issued") return { info: `Kesildi: ${r.number}` };

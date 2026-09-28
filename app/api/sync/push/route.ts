@@ -1,7 +1,7 @@
 // Giden kutusu yukarı: FIFO parti, belge başına sonuç. Aynı belge tekrar gelirse ikinci kayıt oluşmaz.
 import { after } from "next/server";
 import { getDevice } from "@/lib/auth/kasa";
-import { processDue } from "@/lib/fiscal/issue";
+import { issueOne, processDue } from "@/lib/fiscal/issue";
 import { applyDoc } from "@/lib/sync/apply";
 import { PUSH_BATCH, type DocResult } from "@/lib/sync/docs";
 
@@ -18,6 +18,11 @@ export async function POST(req: Request) {
   const results: DocResult[] = [];
   for (const doc of body.docs) results.push(await applyDoc(ctx, doc));
   // M8: vadesi gelmiş e-Arşiv kesimleri/iptalleri yanıttan sonra (satışı geciktirmez)
-  after(() => processDue(device.tenantId).catch(() => {}));
+  // Bu partide eşitlenen satışların e-Arşivi hemen (kasanın 3 sn beklemesi yavaş ağda kaçabilir); sonra vadesi gelenler.
+  const sold = body.docs.flatMap((d, i) => (results[i]?.ok && (d as { kind?: unknown }).kind === "sale" ? [results[i].id] : []));
+  after(async () => {
+    for (const id of sold) await issueOne(device.tenantId, id).catch(() => null);
+    await processDue(device.tenantId).catch(() => {});
+  });
   return Response.json({ results }, { headers: { "Cache-Control": "no-store" } });
 }

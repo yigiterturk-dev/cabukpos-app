@@ -23,7 +23,10 @@ export async function openFiscalDoc(tx: Tx, tenantId: string, saleId: string, ch
 
 const trYear = (d: Date) => Number(new Intl.DateTimeFormat("en", { timeZone: "Europe/Istanbul", year: "numeric" }).format(d));
 
-export async function issueOne(tenantId: string, saleId: string): Promise<IssueOutcome | null> {
+const RECENT_TRY_MS = 10_000;
+
+/** force: yönetim/zamanlanmış deneme. Zorlanmayan çağrı (kasa, push sonrası) son 10 sn'de denenmiş belgeyi yeniden denemez. */
+export async function issueOne(tenantId: string, saleId: string, { force = false } = {}): Promise<IssueOutcome | null> {
   const res = await withTenant(tenantId, async (tx) => {
     const [doc] = await tx.select().from(D).where(and(eq(D.saleId, saleId), inArray(D.status, ["pending", "error"]))).for("update");
     // Kilit bekler: eşzamanlı ikinci çağrı ilk kesim bitince satırı yeniden değerlendirir, issued görür, numara yakmaz.
@@ -31,6 +34,7 @@ export async function issueOne(tenantId: string, saleId: string): Promise<IssueO
       const [cur] = await tx.select().from(D).where(eq(D.saleId, saleId));
       return cur ? { out: outcome(cur), mail: false } : null;
     }
+    if (!force && doc.lastTryAt && Date.now() - doc.lastTryAt.getTime() < RECENT_TRY_MS) return { out: outcome(doc), mail: false };
     const fail = async (error: string, retryable: boolean) => {
       const [d] = await tx.update(D).set({ status: "error", attempts: retryable ? sql`${D.attempts} + 1` : MAX_ATTEMPTS, lastError: error.slice(0, 500), lastTryAt: new Date() }).where(eq(D.id, doc.id)).returning();
       return { out: outcome(d), mail: false };
@@ -115,7 +119,7 @@ export async function processDue(tenantId: string, limit = 5, now = new Date()) 
       : [];
     return { due, cancels, mails };
   });
-  for (const d of due) await issueOne(tenantId, d.saleId);
+  for (const d of due) await issueOne(tenantId, d.saleId, { force: true });
   for (const c of cancels) await cancelOne(tenantId, c.id);
   for (const m of mails) await sendMail(tenantId, m.saleId).catch(() => {});
 }

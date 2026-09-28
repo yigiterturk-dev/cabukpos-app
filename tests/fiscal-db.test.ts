@@ -165,3 +165,14 @@ test("iade: tam → cancelled, kısmi → cancel_rejected, 8 gün → cancel_rej
   await refund(f, unissued, 3000);
   assert.equal((await docOf(f, unissued)).status, "cancelled");
 });
+
+test("zorlanmayan çağrı 10 sn içinde yeniden denemez; force dener", async () => {
+  const f = await fixture("MALI-YAKIN");
+  await setFs(f, { channelModes: { kasa: "earsiv", masa: "info", paket: "info", platform: "info" }, fakeFail: true });
+  const s1 = await sync(f);
+  assert.equal((await issueOne(f.t.id, s1))?.status, "error");
+  await setFs(f, { fakeFail: false });
+  assert.equal((await issueOne(f.t.id, s1))?.status, "error"); // push sonrası + kasa çakışması: tek deneme
+  assert.equal((await docOf(f, s1)).attempts, 1);
+  assert.equal((await issueOne(f.t.id, s1, { force: true }))?.status, "issued");
+});

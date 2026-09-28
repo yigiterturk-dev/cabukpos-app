@@ -104,16 +104,17 @@ async function issueFiscal(sale: LocalSale, pushed: Promise<void> | undefined): 
   if (!navigator.onLine) return sale;
   const deadline = Date.now() + FISCAL_WAIT_MS;
   const timeout = (ms: number) => new Promise<"timeout">((r) => setTimeout(() => r("timeout"), Math.max(0, ms)));
-  try {
-    if ((await Promise.race([pushed ?? Promise.resolve(), timeout(deadline - Date.now())])) === "timeout") return sale;
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), Math.max(0, deadline - Date.now()));
-    const res = await fetch("/api/fiscal/issue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ saleId: sale.id }), signal: ctl.signal }).finally(() => clearTimeout(t));
+  // Bütçe aşılsa da iş arka planda sürer: yerel satışa numara yazılır (fiş yeniden basılınca görünür).
+  const work = (async () => {
+    await pushed;
+    const res = await fetch("/api/fiscal/issue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ saleId: sale.id }) });
     if (!res.ok) return sale;
     const j = (await res.json()) as { status: string; number: string | null; ettn: string | null };
     if (j.status !== "issued" || !j.number || !j.ettn) return sale;
     return (await setSaleFiscal(sale.id, j.number, j.ettn)) ?? sale;
-  } catch { return sale; }
+  })().catch(() => sale);
+  const r = await Promise.race([work, timeout(deadline - Date.now())]);
+  return r === "timeout" ? sale : r;
 }
 
 function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSale; onBack: () => void; onPrinted: (r: PrintResult) => void }) {
