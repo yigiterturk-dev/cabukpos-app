@@ -1,11 +1,12 @@
 // db/schema.ts
+import { sql } from "drizzle-orm";
 import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index, bigserial } from "drizzle-orm/pg-core";
 
 export const vertical = pgEnum("vertical", ["restoran", "market"]);
 export const userRole = pgEnum("user_role", ["sahip", "mudur"]);
-export const staffRole = pgEnum("staff_role", ["kasiyer", "mudur", "garson"]);
-export const deviceRole = pgEnum("device_role", ["kasa", "garson", "mutfak"]);
-export const payMethod = pgEnum("pay_method", ["nakit", "kart", "yemek_karti"]);
+export const staffRole = pgEnum("staff_role", ["kasiyer", "mudur", "garson", "kurye"]);
+export const deviceRole = pgEnum("device_role", ["kasa", "garson", "mutfak", "kurye"]);
+export const payMethod = pgEnum("pay_method", ["nakit", "kart", "yemek_karti", "online"]);
 export const saleChannel = pgEnum("sale_channel", ["kasa", "masa", "paket", "platform"]);
 export const saleStatus = pgEnum("sale_status", ["kapandi", "iptal", "iade"]);
 export const productKind = pgEnum("product_kind", ["adet", "tartili"]);
@@ -271,8 +272,8 @@ export const tabEvents = pgTable("tab_events", {
   tenantId: tenantRef(),
   storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
   tabId: uuid("tab_id").notNull(),
-  tableId: uuid("table_id").notNull(),
-  deviceId: uuid("device_id").notNull().references(() => devices.id),
+  tableId: uuid("table_id"), // M6: paket/platform adisyonu masasız
+  deviceId: uuid("device_id").references(() => devices.id), // M6: webhook (sunucu) olayında boş
   staffId: uuid("staff_id").references(() => staff.id),
   approvedBy: uuid("approved_by").references(() => staff.id),
   at: ts("at").notNull(),
@@ -280,4 +281,65 @@ export const tabEvents = pgTable("tab_events", {
   payload: jsonb("payload").notNull(),
   review: text("review"),
   syncedAt: ts("synced_at").notNull().defaultNow(),
-}, (t) => [index("tab_events_store_seq_idx").on(t.storeId, t.seq), index("tab_events_tab_idx").on(t.tabId)]);
+}, (t) => [
+  index("tab_events_store_seq_idx").on(t.storeId, t.seq), index("tab_events_tab_idx").on(t.tabId),
+  // M6: aynı platform siparişi (webhook tekrarı) ikinci kez yazılmaz
+  uniqueIndex("tab_events_platform_order_uq").on(t.storeId, sql`(${t.payload}->'source'->>'externalId')`).where(sql`${t.type} = 'order' and ${t.payload}->'source'->>'externalId' is not null`),
+]);
+
+// — M6: paket servis —
+export const deliveryZones = pgTable("delivery_zones", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  fee: integer("fee").notNull().default(0), // kuruş
+  minOrder: integer("min_order").notNull().default(0),
+  sort: integer("sort").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+});
+
+/** Müşteri defteri: kiracı + normalize telefon benzersiz. Bulut "order" olayından doldurur. */
+export const customers = pgTable("customers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  phone: text("phone").notNull(),
+  name: text("name").notNull(),
+  note: text("note"),
+  lastOrderAt: ts("last_order_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("customers_phone_uq").on(t.tenantId, t.phone)]);
+
+export const customerAddresses = pgTable("customer_addresses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  label: text("label"),
+  address: text("address").notNull(),
+  directions: text("directions"),
+  zoneId: uuid("zone_id").references(() => deliveryZones.id, { onDelete: "set null" }),
+  deleted: boolean("deleted").notNull().default(false),
+  lastUsedAt: ts("last_used_at").notNull().defaultNow(),
+}, (t) => [index("customer_addresses_customer_idx").on(t.customerId)]);
+
+/** Platform bağlantısı. Webhook kiracıyı bilmeden gelir → RLS dışı kimlik tablosu (devices gibi); her sorguda tenantId koşulu. */
+export const platformConnections = pgTable("platform_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(), // mock | yemeksepeti | trendyol …
+  credentials: text("credentials"), // şifreli; sahte platformda boş
+  webhookSecret: text("webhook_secret").notNull(),
+  autoAccept: boolean("auto_accept").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("platform_connections_uq").on(t.storeId, t.platform)]);
+
+export const productPlatformCodes = pgTable("product_platform_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(),
+  code: text("code").notNull(),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+}, (t) => [uniqueIndex("product_platform_codes_uq").on(t.storeId, t.platform, t.code)]);

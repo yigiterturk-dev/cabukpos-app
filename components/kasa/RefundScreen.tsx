@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { totals } from "@/lib/core/cart";
 import { formatTL } from "@/lib/core/money";
-import { PAY_METHODS, type PayMethod } from "@/lib/core/payment";
+import { SELECTABLE_METHODS, type PayMethod } from "@/lib/core/payment";
 import type { RefLine } from "@/lib/core/refund";
 import { findLocalSale, recordRefundLocal } from "@/lib/offline/db";
 import type { LocalSale, Meta } from "@/lib/offline/state";
@@ -111,7 +111,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Geri ödeme">
             <span className="text-sm">Geri ödeme:</span>
-            {PAY_METHODS.map((m) => (
+            {SELECTABLE_METHODS.map((m) => (
               <button key={m.value} type="button" aria-pressed={method === m.value} onClick={() => setMethod(m.value)} className={`rounded-lg border px-3 py-2 text-sm ${method === m.value ? "border-brand bg-brand-soft font-medium text-brand" : "border-line"}`}>{m.label}</button>
             ))}
           </div>

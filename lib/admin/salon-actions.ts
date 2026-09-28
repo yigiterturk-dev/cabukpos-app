@@ -163,7 +163,7 @@ export async function setDeviceRole(deviceId: string, _: SalonState, form: FormD
   const a = await requireAdmin();
   if (!UUID.test(deviceId)) return { error: "Cihaz bulunamadı." };
   const role = str(form, "role");
-  if (role !== "kasa" && role !== "garson" && role !== "mutfak") return { error: "Rol geçersiz." };
+  if (role !== "kasa" && role !== "garson" && role !== "mutfak" && role !== "kurye") return { error: "Rol geçersiz." };
   const wanted = form.getAll("stations").map(String).filter((s) => UUID.test(s));
   const stations = role === "mutfak" && wanted.length
     ? (await withTenant(a.tenantId, (tx) => tx.select({ id: schema.stations.id }).from(schema.stations).where(inArray(schema.stations.id, wanted)))).map((s) => s.id)

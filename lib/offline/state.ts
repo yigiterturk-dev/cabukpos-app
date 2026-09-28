@@ -6,15 +6,16 @@ import type { SyncDoc } from "@/lib/sync/docs";
 import type { KasaAgent } from "@/lib/agent/config";
 import type { LineOption, OptionGroup } from "@/lib/core/options";
 
-export type DeviceRole = "kasa" | "garson" | "mutfak";
+export type DeviceRole = "kasa" | "garson" | "mutfak" | "kurye";
 export type DeviceInfo = { id: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role?: DeviceRole; stations?: string[]; storeName: string; storeAddress: string | null; nextReceiptNo: number };
 export type KasaProduct = { id: string; name: string; price: number; vatRate: VatRate; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; quick: boolean; stationId?: string | null; optionGroupIds?: string[] };
-export type KasaStaff = { id: string; name: string; role: "kasiyer" | "mudur" | "garson"; pinHash: string };
+export type KasaStaff = { id: string; name: string; role: "kasiyer" | "mudur" | "garson" | "kurye"; pinHash: string };
 export type Area = { id: string; name: string };
 export type Table = { id: string; areaId: string; name: string };
 export type Station = { id: string; name: string; printer: string | null };
+export type DeliveryZone = { id: string; name: string; fee: number; minOrder: number };
 // M5: restoran salonu (market kataloğunda yok)
-export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[] };
+export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[] };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
 export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number };
 
@@ -33,9 +34,9 @@ export type Meta = {
 
 export type LocalSale = {
   id: string; shiftId: string; staffId: string; staffName: string; seq: number; receiptNo: string; at: string;
-  lines: { productId: string; name: string; unitPrice: number; vatRate: VatRate; qtyMilli: number; options?: LineOption[]; note?: string | null; discount?: number }[];
+  lines: { productId: string | null; name: string; unitPrice: number; vatRate: VatRate; qtyMilli: number; options?: LineOption[]; note?: string | null; discount?: number }[];
   payments: Payment[]; total: number; change: number; vat: VatLine[];
-  tabId?: string; tableName?: string; // M5: masadan parça ödeme
+  tabId?: string; tableName?: string; // M5: masadan parça ödeme (M6: paket/platform başlığı)
   refund?: boolean; refundOf?: string; refundOfNo?: string; approvedBy?: string; // iade fişi
 };
 export type OutboxRow = { n?: number; id: string; doc: SyncDoc };

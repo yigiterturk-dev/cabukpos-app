@@ -1,6 +1,6 @@
 // lib/core/receipt.ts — Bilgi fişi ve gün sonu raporunun ESC/POS hâli (ekrandaki fişle aynı içerik).
 import { formatTL } from "./money";
-import { PAY_METHODS } from "./payment";
+import { PAY_METHODS, shownMethods } from "./payment";
 import type { Payment } from "./payment";
 import type { VatLine } from "./cart";
 import type { summarizeShift } from "./shift";
@@ -9,7 +9,7 @@ import { EscPos, type Codepage, type PaperWidth } from "./escpos";
 export type PrintOpts = { width: PaperWidth; codepage: Codepage; drawer?: boolean };
 export type ReceiptSale = {
   receiptNo: string; at: string; staffName: string;
-  lines: { productId: string; name: string; unitPrice: number; qtyMilli: number; options?: { name: string }[]; note?: string | null; discount?: number }[];
+  lines: { productId: string | null; name: string; unitPrice: number; qtyMilli: number; options?: { name: string }[]; note?: string | null; discount?: number }[];
   payments: Payment[]; total: number; change: number; vat: VatLine[];
   refund?: boolean; refundOfNo?: string; tableName?: string;
 };
@@ -44,7 +44,7 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
   for (const l of sale.lines) {
     p.lines(l.name);
     for (const o of l.options ?? []) p.lines(`  + ${o.name}`);
-    p.cols2(`  ${qtyText(l.qtyMilli, weighed(l.productId))} x ${formatTL(l.unitPrice)}`, formatTL(Math.round((l.unitPrice * l.qtyMilli) / 1000)));
+    p.cols2(`  ${qtyText(l.qtyMilli, Boolean(l.productId && weighed(l.productId)))} x ${formatTL(l.unitPrice)}`, formatTL(Math.round((l.unitPrice * l.qtyMilli) / 1000)));
     if (l.discount) p.cols2("  İndirim", `-${formatTL(l.discount)}`);
   }
   p.rule();
@@ -73,7 +73,7 @@ export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts)
   p.rule().cols2("Satış sayısı", String(m.saleCount));
   if (m.refundCount > 0) p.cols2(`İade (${m.refundCount})`, `-${formatTL(m.refundTotal)}`);
   p.bold(true).cols2("Ciro", formatTL(m.gross)).bold(false);
-  for (const x of PAY_METHODS) if (x.value !== "yemek_karti" || m.byMethod.yemek_karti !== 0) p.cols2(x.label, formatTL(m.byMethod[x.value]));
+  for (const x of shownMethods(m.byMethod)) p.cols2(x.label, formatTL(m.byMethod[x.value]));
   if (m.vat.length) { p.rule(); for (const v of m.vat) p.cols2(`KDV %${v.rate}  matrah ${formatTL(v.net)}`, formatTL(v.vat)); }
   p.rule().cols2("Açılış nakdi", formatTL(s.openingCash)).bold(true).cols2("Beklenen kasa", formatTL(expected)).bold(false);
   if (s.countedCash !== null) {

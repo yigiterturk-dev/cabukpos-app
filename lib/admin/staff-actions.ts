@@ -17,7 +17,7 @@ export async function saveStaff(id: string | null, _: StaffState, form: FormData
   const role = String(form.get("role") ?? "kasiyer");
   const pin = String(form.get("pin") ?? "").trim();
   if (name.length < 2 || name.length > 60) return { error: "Ad 2-60 karakter.", field: "name" };
-  if (role !== "kasiyer" && role !== "mudur" && role !== "garson") return { error: "Rol geçersiz.", field: "role" };
+  if (!["kasiyer", "mudur", "garson", "kurye"].includes(role)) return { error: "Rol geçersiz.", field: "role" };
   if (!id || pin) {
     const p = pinProblem(pin);
     if (p) return { error: p, field: "pin" };
@@ -27,7 +27,7 @@ export async function saveStaff(id: string | null, _: StaffState, form: FormData
       const others = await tx.select({ pinHash: schema.staff.pinHash }).from(schema.staff).where(id ? and(eq(schema.staff.active, true), ne(schema.staff.id, id)) : eq(schema.staff.active, true));
       for (const o of others) if (await verifyPin(pin, o.pinHash)) return "Bu PIN başka birinde kullanılıyor.";
     }
-    const set = { name, role: role as "kasiyer" | "mudur" | "garson", ...(pin ? { pinHash: await hashPin(pin) } : {}) };
+    const set = { name, role: role as "kasiyer" | "mudur" | "garson" | "kurye", ...(pin ? { pinHash: await hashPin(pin) } : {}) };
     if (id) {
       const [row] = await tx.update(schema.staff).set(set).where(eq(schema.staff.id, id)).returning({ id: schema.staff.id });
       if (!row) return "Personel bulunamadı.";

@@ -28,7 +28,7 @@ export default async function Personel({ searchParams }: { searchParams: Promise
               {rows.map((r) => (
                 <tr key={r.id} className={r.active ? "" : "opacity-60"}>
                   <td className="p-3 font-medium">{r.name}</td>
-                  <td className="p-3">{r.role === "mudur" ? "Müdür" : r.role === "garson" ? "Garson" : "Kasiyer"}</td>
+                  <td className="p-3">{r.role === "mudur" ? "Müdür" : r.role === "garson" ? "Garson" : r.role === "kurye" ? "Kurye" : "Kasiyer"}</td>
                   <td className="p-3">{r.active ? <Badge tone="ok">Aktif</Badge> : <Badge>Pasif</Badge>}</td>
                   <td className="whitespace-nowrap p-3 text-right">
                     <Link href={`/yonetim/personel?duzenle=${r.id}`} className="mr-3 text-brand underline">Düzenle</Link>

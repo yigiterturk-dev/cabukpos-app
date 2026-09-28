@@ -5,7 +5,7 @@ import { foldTabs } from "@/lib/core/tab";
 import type { TabDoc } from "@/lib/sync/docs";
 import { kasaDb } from "./db";
 
-export type NewTabEvent = { tabId: string; tableId: string; staffId: string | null; approvedBy?: string | null; ev: TabEv };
+export type NewTabEvent = { tabId: string; tableId: string | null; staffId: string | null; approvedBy?: string | null; ev: TabEv };
 
 /** Olayları (sırayla) yerel depoya ve giden kutusuna yazar. Aynı milisaniyede sıra bozulmasın diye zaman 1 ms artar. */
 export async function addTabEvents(list: NewTabEvent[]): Promise<TabEvent[]> {

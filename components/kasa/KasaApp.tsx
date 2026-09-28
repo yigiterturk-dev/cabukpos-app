@@ -130,7 +130,7 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
             <div key={i} className="py-0.5">
               <div>{l.name}</div>
               {l.options?.map((o) => <div key={o.id} className="pl-2">+ {o.name}</div>)}
-              <div className="flex justify-between pl-2"><span>{qty(l.qtyMilli, weighed(l.productId))} × {formatTL(l.unitPrice)}</span><span>{formatTL(Math.round((l.unitPrice * l.qtyMilli) / 1000))}</span></div>
+              <div className="flex justify-between pl-2"><span>{qty(l.qtyMilli, Boolean(l.productId && weighed(l.productId)))} × {formatTL(l.unitPrice)}</span><span>{formatTL(Math.round((l.unitPrice * l.qtyMilli) / 1000))}</span></div>
               {l.discount ? <div className="flex justify-between pl-2"><span>İndirim</span><span>-{formatTL(l.discount)}</span></div> : null}
             </div>
           ))}

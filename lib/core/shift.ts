@@ -8,7 +8,7 @@ import type { Payment, PayMethod } from "./payment";
 export type ShiftSale = { total: Kurus; change: Kurus; payments: Payment[]; vat: VatLine[]; refund?: boolean };
 
 export function summarizeShift(openingCash: Kurus, sales: ShiftSale[]) {
-  const byMethod: Record<PayMethod, Kurus> = { nakit: 0, kart: 0, yemek_karti: 0 };
+  const byMethod: Record<PayMethod, Kurus> = { nakit: 0, kart: 0, yemek_karti: 0, online: 0 };
   const byRate = new Map<VatRate, Kurus>();
   let gross = 0, saleCount = 0, refundCount = 0, refundTotal = 0;
   for (const s of sales) {

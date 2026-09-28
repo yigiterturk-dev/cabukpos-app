@@ -21,7 +21,7 @@ test("vardiya özeti: yöntem bazında, net nakit, beklenen kasa, KDV", () => {
   ]);
   assert.equal(s.saleCount, 2);
   assert.equal(s.gross, 39500);
-  assert.deepEqual(s.byMethod, { nakit: 19500, kart: 20000, yemek_karti: 0 });
+  assert.deepEqual(s.byMethod, { nakit: 19500, kart: 20000, yemek_karti: 0, online: 0 });
   assert.equal(s.expectedCash, 69500);
   assert.deepEqual(s.vat.map((v) => [v.rate, v.gross, v.vat]), [[10, 38500, 3500], [20, 1000, 167]]);
 });

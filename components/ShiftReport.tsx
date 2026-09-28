@@ -1,6 +1,6 @@
 // Vardiya (gün sonu) raporu — kasa gün sonu ve yönetim raporlarında aynı görünüm.
 import { formatTL } from "@/lib/core/money";
-import { PAY_METHODS } from "@/lib/core/payment";
+import { shownMethods } from "@/lib/core/payment";
 import type { summarizeShift } from "@/lib/core/shift";
 
 /** Bulutta (yönetim) loadShiftSummary, kasada yerel satışlardan üretilir. */
@@ -43,7 +43,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
           <Row label="Satış sayısı" value={`${s.saleCount} satış`} />
           {s.refundCount > 0 && <Row label="İade" value={`${s.refundCount} iade · -${formatTL(s.refundTotal)}`} tone="bad" />}
           <Row label={s.refundCount > 0 ? "Ciro (iadeler düşülmüş)" : "Ciro (KDV dahil)"} value={formatTL(s.gross)} strong />
-          {PAY_METHODS.filter((m) => m.value !== "yemek_karti" || s.byMethod.yemek_karti !== 0).map((m) => (
+          {shownMethods(s.byMethod).map((m) => (
             <Row key={m.value} label={m.value === "nakit" ? (s.refundCount > 0 ? "Nakit (para üstü ve iade düşülmüş)" : "Nakit (para üstü düşülmüş)") : m.label} value={formatTL(s.byMethod[m.value])} />
           ))}
         </div>

@@ -1,7 +1,7 @@
 // lib/offline/db.ts — Kasa IndexedDB'si (Dexie). Yalnız tarayıcıda.
 // Satış, vardiya açma ve gün sonu tek işlemde hem yerel kayda hem giden kutusuna yazılır.
 import Dexie, { type Table } from "dexie";
-import { totals, type CartLine } from "@/lib/core/cart";
+import { totals, type AnyLine } from "@/lib/core/cart";
 import { settle, type Payment } from "@/lib/core/payment";
 import { refundable, type RefLine } from "@/lib/core/refund";
 import { summarizeShift } from "@/lib/core/shift";
@@ -60,9 +60,9 @@ export async function openShiftLocal(staffId: string, openingCash: number): Prom
   });
 }
 
-export type SaleCartLine = CartLine & { options?: LineOption[]; note?: string | null };
+export type SaleCartLine = AnyLine & { options?: LineOption[]; note?: string | null };
 /** Masadan parça ödeme: satış belgesi tab alanı taşır, yerelde "paid" olayı aynı işlemde yazılır. */
-export type SaleTab = { tabId: string; tableId: string; tableName: string; paidLines: PaidLine[] };
+export type SaleTab = { tabId: string; tableId: string | null; tableName: string; paidLines: PaidLine[] };
 
 export async function recordSaleLocal(staff: { id: string; name: string }, cart: SaleCartLine[], payments: Payment[], saleId: string, tab?: SaleTab): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
   const d = kasaDb();
@@ -97,7 +97,7 @@ export async function findLocalSale(receiptNo: string): Promise<LookedUpSale | n
   const sale = (await d.sales.where("receiptNo").equals(receiptNo).toArray()).find((s) => !s.refund);
   if (!sale) return null;
   const refunds = await d.sales.where("refundOf").equals(sale.id).toArray();
-  return { id: sale.id, receiptNo: sale.receiptNo, at: sale.at, lines: refundable(sale.lines, refunds.flatMap((r) => r.lines)) };
+  return { id: sale.id, receiptNo: sale.receiptNo, at: sale.at, lines: refundable(sale.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])), refunds.flatMap((r) => r.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])))) };
 }
 
 /** İade: yerel kayıt + giden kutusu, aynı fiş sayacı. Geri ödeme tek yöntemle, tutar = iade toplamı. */

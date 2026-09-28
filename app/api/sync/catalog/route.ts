@@ -37,7 +37,7 @@ export async function GET(req: Request) {
   }));
   const catalog = {
     categories: cats.map(({ id, name }) => ({ id, name })), products, staff,
-    ...(salon ? { areas: salon.areas, tables: salon.tables, stations: salon.stations, optionGroups: salon.optionGroups } : {}),
+    ...(salon ? { areas: salon.areas, tables: salon.tables, stations: salon.stations, optionGroups: salon.optionGroups, deliveryZones: salon.deliveryZones } : {}),
   };
   const v = await sha256(JSON.stringify(catalog));
   const since = new URL(req.url).searchParams.get("v");
@@ -55,17 +55,18 @@ export async function GET(req: Request) {
 
 /** Restoran: şubenin bölge/masa/istasyonları + kiracının seçenek grupları ve ürün bağları. */
 function salonCatalog(device: { tenantId: string; storeId: string }) {
-  const A = schema.areas, T = schema.tables, S = schema.stations, G = schema.optionGroups, O = schema.options, L = schema.productOptionGroups;
+  const A = schema.areas, T = schema.tables, S = schema.stations, G = schema.optionGroups, O = schema.options, L = schema.productOptionGroups, Z = schema.deliveryZones;
   return withTenant(device.tenantId, async (tx) => {
-    const [areas, tables, stations, groups, opts, links] = await Promise.all([
+    const [areas, tables, stations, groups, opts, links, deliveryZones] = await Promise.all([
       tx.select({ id: A.id, name: A.name }).from(A).where(eq(A.storeId, device.storeId)).orderBy(asc(A.sort), asc(A.name)),
       tx.select({ id: T.id, areaId: T.areaId, name: T.name }).from(T).innerJoin(A, eq(A.id, T.areaId)).where(and(eq(A.storeId, device.storeId), eq(T.active, true))).orderBy(asc(T.sort), asc(T.name)),
       tx.select({ id: S.id, name: S.name, printer: S.printer }).from(S).where(eq(S.storeId, device.storeId)).orderBy(asc(S.sort), asc(S.name)),
       tx.select({ id: G.id, name: G.name, min: G.min, max: G.max }).from(G).orderBy(asc(G.sort), asc(G.name)),
       tx.select({ id: O.id, groupId: O.groupId, name: O.name, delta: O.delta }).from(O).orderBy(asc(O.sort), asc(O.name)),
       tx.select({ productId: L.productId, groupId: L.groupId }).from(L).orderBy(asc(L.sort)),
+      tx.select({ id: Z.id, name: Z.name, fee: Z.fee, minOrder: Z.minOrder }).from(Z).where(and(eq(Z.storeId, device.storeId), eq(Z.active, true))).orderBy(asc(Z.sort), asc(Z.name)),
     ]);
     const optionGroups = groups.map((g) => ({ ...g, options: opts.filter((o) => o.groupId === g.id).map(({ id, name, delta }) => ({ id, name, delta })) }));
-    return { areas, tables, stations, optionGroups, links };
+    return { areas, tables, stations, optionGroups, links, deliveryZones };
   });
 }

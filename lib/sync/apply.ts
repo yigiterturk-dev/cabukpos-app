@@ -4,7 +4,7 @@
 // Reddedilen yalnız biçimi bozuk ya da bu cihaza/kiracıya ait olmayan kimlik taşıyan belgedir.
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { schema, withTenant, type Tx } from "@/db";
-import { lineTotal, totals, type CartLine } from "@/lib/core/cart";
+import { lineTotal, totals, type AnyLine } from "@/lib/core/cart";
 import { settle } from "@/lib/core/payment";
 import { summarizeShift } from "@/lib/core/shift";
 import type { VatLine } from "@/lib/core/cart";
@@ -12,6 +12,8 @@ import type { PayMethod } from "@/lib/core/payment";
 import { audit } from "@/lib/audit";
 import { refundable, type RefLine } from "@/lib/core/refund";
 import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
+import { normalizePhone } from "@/lib/core/delivery";
+import { notifyPlatform } from "@/lib/platform/notify";
 import { formatReceipt, syncDoc, type DocResult, type RefundDoc, type SaleDoc, type SyncDoc, type TabDoc } from "./docs";
 
 export type DeviceCtx = { tenantId: string; storeId: string; deviceId: string; receiptPrefix: string };
@@ -22,11 +24,14 @@ export async function applyDoc(ctx: DeviceCtx, raw: unknown): Promise<DocResult>
   const id = typeof (raw as { id?: unknown })?.id === "string" ? String((raw as { id: string }).id).slice(0, 64) : "";
   if (!parsed.success) return { id, ok: false, error: "Geçersiz belge." };
   const doc = parsed.data;
-  return withTenant(ctx.tenantId, async (tx) => {
+  const res: DocResult = await withTenant(ctx.tenantId, async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${doc.id}))`);
     const error = await apply(tx, ctx, doc);
     return error ? { id: doc.id, ok: false, error } : { id: doc.id, ok: true };
   });
+  // M6: platform siparişi kabul/red → platforma bildir (işlem sonrası; hata olayı geri almaz, review işaretler)
+  if (res.ok && doc.kind === "tab" && (doc.ev.type === "accept" || doc.ev.type === "reject")) await notifyPlatform(ctx.tenantId, doc.id, doc.tabId, doc.ev);
+  return res;
 }
 
 async function staffExists(tx: Tx, staffId: string) {
@@ -81,10 +86,10 @@ async function expectedCashOf(tx: Tx, shiftId: string, openingCash: number) {
   return summarizeShift(openingCash, sales.map((s) => ({ refund: s.status === "iade", total: s.total, change: s.change, vat: s.vat as VatLine[], payments: pays.filter((p) => p.saleId === s.id).map((p) => ({ method: p.method as PayMethod, amount: p.amount })) }))).expectedCash;
 }
 
-type Checked = { lines: (CartLine & { known: boolean; trackStock: boolean; options?: { id: string; name: string; delta: number }[]; note?: string | null })[]; reasons: string[] };
+type Checked = { lines: (AnyLine & { known: boolean; trackStock: boolean; options?: { id: string; name: string; delta: number }[]; note?: string | null })[]; reasons: string[] };
 
 /** Ortak ön kontrol: idempotentlik, vardiya, personel, ürün anlık görüntüsü. string → reddet; null → zaten yazılmış. */
-async function precheck(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc): Promise<string | null | Checked> {
+async function precheck(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, freeOk = false): Promise<string | null | Checked> {
   const [done] = await tx.select({ deviceId: schema.sales.deviceId }).from(schema.sales).where(eq(schema.sales.id, doc.id));
   if (done) return done.deviceId === ctx.deviceId ? null : "Satış başka cihazda.";
   const [shift] = await tx.select({ closedAt: schema.shifts.closedAt }).from(schema.shifts).where(and(eq(schema.shifts.id, doc.shiftId), eq(schema.shifts.deviceId, ctx.deviceId)));
@@ -93,13 +98,14 @@ async function precheck(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc): Promi
 
   const reasons: string[] = [];
   if (shift.closedAt) reasons.push("kapanmış vardiyaya geldi");
-  const ids = [...new Set(doc.lines.map((l) => l.productId))];
-  const prods = await tx.select({ id: schema.products.id, price: schema.products.price, vatRate: schema.products.vatRate, active: schema.products.active, trackStock: schema.products.trackStock }).from(schema.products).where(inArray(schema.products.id, ids));
+  const ids = [...new Set(doc.lines.flatMap((l) => (l.productId ? [l.productId] : [])))];
+  const prods = !ids.length ? [] : await tx.select({ id: schema.products.id, price: schema.products.price, vatRate: schema.products.vatRate, active: schema.products.active, trackStock: schema.products.trackStock }).from(schema.products).where(inArray(schema.products.id, ids));
   const optIds = [...new Set(doc.lines.flatMap((l) => (l.options ?? []).map((o) => o.id)))];
   const opts = optIds.length ? await tx.select({ id: schema.options.id, delta: schema.options.delta }).from(schema.options).where(inArray(schema.options.id, optIds)) : [];
   const lines = doc.lines.map((l) => {
-    const p = prods.find((x) => x.id === l.productId);
-    if (doc.kind === "sale") {
+    const p = l.productId ? prods.find((x) => x.id === l.productId) : undefined;
+    if (!l.productId) { if (!freeOk) reasons.push(`serbest satır: ${l.name}`); }
+    else if (doc.kind === "sale") {
       const expected = p ? p.price + (l.options ?? []).reduce((a, o) => a + (opts.find((x) => x.id === o.id)?.delta ?? NaN), 0) : NaN;
       if (!p) reasons.push(`silinmiş ürün: ${l.name}`);
       else if (!p.active) reasons.push(`satıştan kalkmış ürün: ${l.name}`);
@@ -120,7 +126,7 @@ async function freeReceiptNo(tx: Tx, ctx: DeviceCtx, seq: number, reasons: strin
   }
 }
 
-async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checked, payments: { method: PayMethod; amount: number }[], change: number, extra: { status: "kapandi" | "iade"; refundOf?: string; approvedBy?: string; tabId?: string; tableId?: string; channel?: "masa" }) {
+async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checked, payments: { method: PayMethod; amount: number }[], change: number, extra: { status: "kapandi" | "iade"; refundOf?: string; approvedBy?: string; tabId?: string; tableId?: string | null; channel?: "masa" | "paket" | "platform" }) {
   const t = totals(c.lines);
   const receiptNo = await freeReceiptNo(tx, ctx, doc.receiptSeq, c.reasons);
   const at = clampAt(doc.at, c.reasons);
@@ -129,27 +135,27 @@ async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checke
   await tx.insert(schema.payments).values(payments.map((p) => ({ tenantId: ctx.tenantId, saleId: doc.id, method: p.method, amount: p.amount })));
   const sign = extra.status === "iade" ? 1 : -1;
   const stock = c.lines.filter((l) => l.known && l.trackStock);
-  if (stock.length) await tx.insert(schema.stockMovements).values(stock.map((l) => ({ tenantId: ctx.tenantId, storeId: ctx.storeId, productId: l.productId, kind: extra.status === "iade" ? ("iade" as const) : ("satis" as const), qtyMilli: sign * l.qtyMilli, at, saleId: doc.id, actor: `staff:${doc.staffId}` })));
+  if (stock.length) await tx.insert(schema.stockMovements).values(stock.map((l) => ({ tenantId: ctx.tenantId, storeId: ctx.storeId, productId: l.productId!, kind: extra.status === "iade" ? ("iade" as const) : ("satis" as const), qtyMilli: sign * l.qtyMilli, at, saleId: doc.id, actor: `staff:${doc.staffId}` })));
   await tx.update(schema.devices).set({ nextReceiptNo: sql`greatest(${schema.devices.nextReceiptNo}, ${doc.receiptSeq + 1})` }).where(and(eq(schema.devices.id, ctx.deviceId), eq(schema.devices.tenantId, ctx.tenantId)));
 }
 
 async function applySale(tx: Tx, ctx: DeviceCtx, doc: SaleDoc): Promise<string | null> {
-  const c = await precheck(tx, ctx, doc);
+  const tab = doc.tab;
+  const state = tab ? foldTabs(await tabEventsOf(tx, tab.tabId)).get(tab.tabId) : undefined;
+  const c = await precheck(tx, ctx, doc, Boolean(state && state.kind !== "masa"));
   if (c === null || typeof c === "string") return c;
   const total = totals(c.lines).total;
   const s = settle(total, doc.payments);
   if (!s.ok) c.reasons.push(`ödeme: ${s.error}`);
-  const tab = doc.tab;
   if (tab) {
     // Masadan parça ödeme: adisyonda kalandan fazlası (çift ödeme, çevrimdışı çakışma) → yine yazılır, incelenir.
-    const state = foldTabs(await tabEventsOf(tx, tab.tabId)).get(tab.tabId);
     if (!state) c.reasons.push("adisyon bulunamadı");
     else for (const p of tab.paidLines) {
       const l = state.lines.find((x) => x.lineId === p.lineId);
       if (!l || l.voided || l.paidMilli + p.qtyMilli > l.qtyMilli) { c.reasons.push("adisyonda ödenmiş/olmayan satır"); break; }
     }
   }
-  await write(tx, ctx, doc, c, s.ok ? s.payments : doc.payments, s.ok ? s.change : 0, { status: "kapandi", ...(tab ? { tabId: tab.tabId, tableId: tab.tableId, channel: "masa" as const } : {}) });
+  await write(tx, ctx, doc, c, s.ok ? s.payments : doc.payments, s.ok ? s.change : 0, { status: "kapandi", ...(tab ? { tabId: tab.tabId, tableId: tab.tableId, channel: state?.kind ?? ("masa" as const) } : {}) });
   if (tab) {
     const ev: TabEv = { type: "paid", saleId: doc.id, lines: tab.paidLines, amount: total };
     await tx.insert(schema.tabEvents).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, tabId: tab.tabId, tableId: tab.tableId, deviceId: ctx.deviceId, staffId: doc.staffId, at: clampAt(doc.at), type: ev.type, payload: ev }).onConflictDoNothing();
@@ -167,14 +173,14 @@ export async function tabEventsOf(tx: Tx, tabId: string): Promise<TabEvent[]> {
 export const toTabEvent = (r: typeof schema.tabEvents.$inferSelect): TabEvent =>
   ({ id: r.id, tabId: r.tabId, tableId: r.tableId, at: r.at.toISOString(), staffId: r.staffId, approvedBy: r.approvedBy, seq: r.seq, ev: r.payload as TabEv });
 
-const NEEDS_MANAGER = new Set(["comp", "discount"]);
+const NEEDS_MANAGER = new Set(["comp", "discount", "cancel"]);
 
 async function applyTab(tx: Tx, ctx: DeviceCtx, doc: TabDoc): Promise<string | null> {
   const E = schema.tabEvents;
   const [done] = await tx.select({ id: E.id }).from(E).where(eq(E.id, doc.id));
   if (done) return null;
-  const tableIds = [doc.tableId, ...(doc.ev.type === "move" ? [doc.ev.toTableId] : [])];
-  const tbls = await tx.select({ id: schema.tables.id }).from(schema.tables).where(inArray(schema.tables.id, tableIds));
+  const tableIds = [...(doc.tableId ? [doc.tableId] : []), ...(doc.ev.type === "move" ? [doc.ev.toTableId] : [])];
+  const tbls = tableIds.length ? await tx.select({ id: schema.tables.id }).from(schema.tables).where(inArray(schema.tables.id, tableIds)) : [];
   if (tbls.length !== new Set(tableIds).size) return "Masa bulunamadı.";
   if (doc.staffId && !(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
   if (!doc.staffId && !["kitchen", "printed"].includes(doc.ev.type)) return "Personel gerekli.";
@@ -183,10 +189,23 @@ async function applyTab(tx: Tx, ctx: DeviceCtx, doc: TabDoc): Promise<string | n
   const ev = doc.ev;
   const state = foldTabs(await tabEventsOf(tx, doc.tabId)).get(doc.tabId);
   if (state?.closed && ["add", "send", "comp", "discount", "move"].includes(ev.type)) reasons.push("kapanmış adisyona olay");
+  const kind = state?.kind ?? (ev.type === "open" ? (ev.kind ?? "masa") : "masa");
   if (ev.type === "add") {
-    const [p] = await tx.select({ id: schema.products.id }).from(schema.products).where(eq(schema.products.id, ev.productId));
-    if (!p) reasons.push(`silinmiş ürün: ${ev.name}`);
+    if (!ev.productId) { if (kind === "masa") reasons.push(`serbest satır: ${ev.name}`); }
+    else {
+      const [p] = await tx.select({ id: schema.products.id }).from(schema.products).where(eq(schema.products.id, ev.productId));
+      if (!p) reasons.push(`silinmiş ürün: ${ev.name}`);
+    }
   }
+  if (ev.type === "delivered" && doc.staffId !== state?.delivery.courierId) {
+    const [s] = doc.staffId ? await tx.select({ role: schema.staff.role }).from(schema.staff).where(eq(schema.staff.id, doc.staffId)) : [];
+    if (s?.role !== "mudur") reasons.push("atanmamış kurye teslim etti");
+  }
+  if (ev.type === "courier" && ev.staffId) {
+    const [s] = await tx.select({ role: schema.staff.role }).from(schema.staff).where(eq(schema.staff.id, ev.staffId));
+    if (!s) return "Kurye bulunamadı.";
+  }
+  if (ev.type === "order") await upsertCustomer(tx, ctx.tenantId, ev);
   const sentVoid = ev.type === "void" && Boolean(state?.lines.find((l) => l.lineId === ev.lineId)?.sent);
   const guarded = NEEDS_MANAGER.has(ev.type) || sentVoid;
   if (guarded) {
@@ -212,7 +231,7 @@ async function applyRefund(tx: Tx, ctx: DeviceCtx, doc: RefundDoc): Promise<stri
   else {
     const left = refundable(sold.lines, sold.refunded);
     const want = new Map<string, number>();
-    for (const l of c.lines) want.set(l.productId, (want.get(l.productId) ?? 0) + l.qtyMilli);
+    for (const l of c.lines) if (l.productId) want.set(l.productId, (want.get(l.productId) ?? 0) + l.qtyMilli); // serbest satır: precheck review
     for (const [pid, q] of want) if (q > left.filter((l) => l.productId === pid).reduce((a, l) => a + l.qtyMilli, 0)) c.reasons.push(`satılandan fazla iade: ${c.lines.find((l) => l.productId === pid)!.name}`);
   }
   if (doc.payments[0].amount !== totals(c.lines).total) c.reasons.push("iade ödemesi toplamla eşleşmiyor");
@@ -232,4 +251,17 @@ export async function soldLines(tx: Tx, saleId: string) {
     lines: lines.flatMap((l): RefLine[] => (l.productId ? [{ ...l, productId: l.productId, vatRate: l.vatRate as RefLine["vatRate"] }] : [])),
     refunded: refunded.flatMap((l) => (l.productId ? [{ productId: l.productId, qtyMilli: l.qtyMilli }] : [])),
   };
+}
+
+/** M6: sipariş olayından müşteri defteri (telefonla bul/oluştur, yeni adresi ekle). Telefon biçim dışıysa atlanır. */
+export async function upsertCustomer(tx: Tx, tenantId: string, o: Extract<TabEv, { type: "order" }>) {
+  const phone = normalizePhone(o.phone);
+  if (!phone) return;
+  const C = schema.customers, A = schema.customerAddresses;
+  const [c] = await tx.insert(C).values({ tenantId, phone, name: o.name, lastOrderAt: new Date() })
+    .onConflictDoUpdate({ target: [C.tenantId, C.phone], set: { name: o.name, lastOrderAt: new Date() } }).returning({ id: C.id });
+  const addr = o.address.trim();
+  const [had] = await tx.select({ id: A.id }).from(A).where(and(eq(A.customerId, c.id), eq(A.address, addr), eq(A.deleted, false)));
+  if (had) await tx.update(A).set({ lastUsedAt: new Date(), directions: o.directions, ...(o.zoneId ? { zoneId: o.zoneId } : {}) }).where(eq(A.id, had.id));
+  else await tx.insert(A).values({ tenantId, customerId: c.id, address: addr, directions: o.directions, zoneId: o.zoneId });
 }

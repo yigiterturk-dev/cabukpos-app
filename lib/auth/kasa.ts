@@ -7,7 +7,7 @@ import { sha256 } from "./tokens";
 export const DEVICE_COOKIE = "cz_device";
 const secure = process.env.NODE_ENV === "production";
 
-export type Device = { id: string; tenantId: string; storeId: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role: "kasa" | "garson" | "mutfak"; stations: string[] };
+export type Device = { id: string; tenantId: string; storeId: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role: "kasa" | "garson" | "mutfak" | "kurye"; stations: string[] };
 
 export async function getDevice(): Promise<Device | null> {
   const token = (await cookies()).get(DEVICE_COOKIE)?.value;

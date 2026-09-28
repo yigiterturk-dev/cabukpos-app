@@ -7,7 +7,7 @@ import { Button, Field, Input } from "@/components/ui";
 
 const Err = ({ s, f }: { s: { error?: string; field?: string }; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-sm text-red-700">{s.error}</p> : null);
 
-export function StaffForm({ initial }: { initial?: { id: string; name: string; role: "kasiyer" | "mudur" | "garson" } }) {
+export function StaffForm({ initial }: { initial?: { id: string; name: string; role: "kasiyer" | "mudur" | "garson" | "kurye" } }) {
   const { state, pending, onSubmit } = useFormAction(saveStaff.bind(null, initial?.id ?? null), {} as StaffState);
   const [role, setRole] = useState<string>(initial?.role ?? "kasiyer");
   return (
@@ -18,7 +18,7 @@ export function StaffForm({ initial }: { initial?: { id: string; name: string; r
           <div className="mb-1.5 text-sm font-medium">Rol</div>
           <input type="hidden" name="role" value={role} />
           <div className="flex gap-1" role="group" aria-label="Rol">
-            {[["kasiyer", "Kasiyer"], ["garson", "Garson"], ["mudur", "Müdür"]].map(([v, l]) => (
+            {[["kasiyer", "Kasiyer"], ["garson", "Garson"], ["kurye", "Kurye"], ["mudur", "Müdür"]].map(([v, l]) => (
               <button key={v} type="button" aria-pressed={role === v} onClick={() => setRole(v)} className={`rounded-lg border px-3 py-2 text-sm ${role === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{l}</button>
             ))}
           </div>

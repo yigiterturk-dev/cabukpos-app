@@ -11,7 +11,7 @@ grant usage, select on all sequences in schema public to cabukpos_app; -- M5: ta
 alter default privileges in schema public grant usage, select on sequences to cabukpos_app;
 
 do $$ declare t text; begin
-  foreach t in array array['stores','staff','categories','products','shifts','sales','sale_lines','payments','stock_movements','audit_log','areas','tables','option_groups','options','product_option_groups','stations','tab_events'] loop
+  foreach t in array array['stores','staff','categories','products','shifts','sales','sale_lines','payments','stock_movements','audit_log','areas','tables','option_groups','options','product_option_groups','stations','tab_events','delivery_zones','customers','customer_addresses','product_platform_codes'] loop
     execute format('alter table %I enable row level security', t);
     execute format('alter table %I force row level security', t);
     execute format('drop policy if exists tenant_isolation on %I', t);

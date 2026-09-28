@@ -1,12 +1,12 @@
 // lib/core/split.ts — Masa hesabını parçalara bölme. Her parça ayrı satış (kendi fişi) olur.
 // İndirim satırlara dağıtılır: ikram = satırın tamamı; adisyon indirimi ikram dışı satırlara brüt oranında (artık son satıra).
 // Satırın ödenen kısmı kadar indirim de "kullanılmış" sayılır → son parça kalan indirimi tam alır, toplam kuruşu kuruşuna tutar.
-import type { CartLine } from "./cart";
+import type { AnyLine } from "./cart";
 import type { Kurus } from "./money";
 import type { LineOption } from "./options";
 import { lineGross, type PaidLine, type TabState } from "./tab";
 
-export type PayLine = CartLine & { lineId: string; options: LineOption[]; note: string | null; discount: Kurus };
+export type PayLine = AnyLine & { lineId: string; options: LineOption[]; note: string | null; discount: Kurus };
 
 /** Satır kimliği → tam satır için indirim (kuruş). */
 export function lineDiscounts(tab: TabState): Map<string, Kurus> {

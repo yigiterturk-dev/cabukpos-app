@@ -79,7 +79,7 @@ export function OptionGroupForm({ initial }: { initial?: GroupInitial }) {
   );
 }
 
-const ROLES = [["kasa", "Kasa"], ["garson", "Garson tableti"], ["mutfak", "Mutfak ekranı"]] as const;
+const ROLES = [["kasa", "Kasa"], ["garson", "Garson tableti"], ["mutfak", "Mutfak ekranı"], ["kurye", "Kurye telefonu"]] as const;
 
 export function DeviceRoleForm({ deviceId, role: initialRole, stations: initialStations, stationOptions }: { deviceId: string; role: string; stations: string[]; stationOptions: Option[] }) {
   const { state, pending, onSubmit } = useFormAction(setDeviceRole.bind(null, deviceId), {} as SalonState);

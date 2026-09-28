@@ -4,8 +4,13 @@ import { formatTL, type Kurus } from "./money";
 export const PAY_METHODS = [
   { value: "nakit", label: "Nakit" },
   { value: "kart", label: "Kart" },
-  { value: "yemek_karti", label: "Yemek kartı" },
+  { value: "yemek_karti", label: "Yemek kartı", rare: true },
+  // M6: platformda/online ödenmiş paket; kasada seçilemez, raporda yalnız varsa görünür
+  { value: "online", label: "Online", rare: true, internal: true },
 ] as const;
+/** Raporda gösterilecek yöntemler: sık olanlar her zaman, seyrekler yalnız tutar varsa. */
+export const shownMethods = (byMethod: Record<PayMethod, Kurus>) => PAY_METHODS.filter((m) => !("rare" in m) || byMethod[m.value] !== 0);
+export const SELECTABLE_METHODS = PAY_METHODS.filter((m) => !("internal" in m));
 export type PayMethod = (typeof PAY_METHODS)[number]["value"];
 export type Payment = { method: PayMethod; amount: Kurus };
 export type Settlement = { ok: true; payments: Payment[]; paid: Kurus; change: Kurus } | { ok: false; error: string };

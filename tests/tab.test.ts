@@ -1,7 +1,7 @@
 // tests/tab.test.ts — adisyon katlama, seçenekler, bölme, mutfak fişi. Saf.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foldTabs, openTabsByTable, tableStatus, type TabEv, type TabEvent } from "@/lib/core/tab";
+import { deliveryStatus, foldTabs, openDeliveries, openTabsByTable, tabLabel, tableStatus, type TabEv, type TabEvent } from "@/lib/core/tab";
 import { validateOptions } from "@/lib/core/options";
 import { equalPart, paidLinesOf, payableLines, pickPart } from "@/lib/core/split";
 import { pendingPrints, renderKitchenTicket } from "@/lib/core/kitchen";
@@ -148,4 +148,51 @@ test("tamamı ikram: kendiliğinden kapanmaz, 'close' ile kapanır", () => {
   assert.equal(one(evs).closed, false);
   assert.equal(one([...evs, ev({ type: "close", reason: "" })]).closed, true);
   assert.equal(one([ev(add("b", 1000)), ev({ type: "close", reason: "" })]).closed, false);
+});
+
+// M6: paket / platform
+const pk = (e: TabEv, tabId = "p1") => ev(e, { tabId, tableId: null });
+const order = (source: boolean): TabEv => ({ type: "order", customerId: null, name: "Ayşe", phone: "905321234567", address: "Adres", directions: null, zoneId: null, note: null, payIntent: source ? "online" : "nakit", promisedAt: null, source: source ? { platform: "mock", externalId: "X-1234", deadline: null } : null });
+
+test("paket durum zinciri: hazırlanıyor → hazır → yolda → teslim + ödeme → kapalı", () => {
+  const evs = [pk({ type: "open", guests: 0, kind: "paket" }), pk(order(false)), pk(add("a", 6000)), pk({ type: "send", ticketId: "k", lineIds: ["a"], stationId: null })];
+  const st = () => foldTabs(evs).get("p1")!;
+  assert.equal(st().kind, "paket");
+  assert.equal(st().tableId, null);
+  assert.equal(deliveryStatus(st()), "hazirlaniyor");
+  evs.push(pk({ type: "kitchen", ticketId: "k", status: "hazir" }));
+  assert.equal(deliveryStatus(st()), "hazir");
+  evs.push(pk({ type: "courier", staffId: "k1" }), pk({ type: "out" }));
+  assert.equal(deliveryStatus(st()), "yolda");
+  assert.equal(st().delivery.courierId, "k1");
+  evs.push(pk({ type: "delivered", method: "nakit" }), pk({ type: "paid", saleId: "s", lines: [{ lineId: "a", qtyMilli: 1000, discount: 0 }], amount: 6000 }));
+  assert.equal(deliveryStatus(st()), "teslim");
+  assert.equal(st().closed, true);
+  assert.equal(openTabsByTable(foldTabs(evs)).size, 0);
+  assert.equal(tabLabel(st(), []), "Paket · Ayşe");
+});
+
+test("platform: onay bekliyor → kabul; red ve iptal ödemesiz kapatır", () => {
+  const evs = [pk({ type: "open", guests: 0, kind: "platform" }, "x"), pk(order(true), "x"), pk(add("a", 6000), "x")];
+  assert.equal(deliveryStatus(foldTabs(evs).get("x")!), "onay_bekliyor");
+  assert.equal(tabLabel(foldTabs(evs).get("x")!, [], { mock: "Deneme" }), "Deneme · #1234");
+  evs.push(pk({ type: "accept", prepMin: 20 }, "x"));
+  assert.equal(deliveryStatus(foldTabs(evs).get("x")!), "hazirlaniyor");
+  evs.push(pk({ type: "handover" }, "x"));
+  const h = foldTabs(evs).get("x")!;
+  assert.deepEqual([deliveryStatus(h), h.delivery.method, h.closed], ["teslim", "online", false]);
+
+  const r = foldTabs([pk({ type: "open", guests: 0, kind: "platform" }, "r"), pk(add("a", 100), "r"), pk({ type: "reject", reason: "kapalıyız" }, "r")]).get("r")!;
+  assert.deepEqual([deliveryStatus(r), r.closed], ["reddedildi", true]);
+  const c = foldTabs([pk({ type: "open", guests: 0, kind: "paket" }, "c"), pk(add("a", 100), "c"), pk({ type: "cancel", reason: "müşteri vazgeçti" }, "c")]).get("c")!;
+  assert.deepEqual([deliveryStatus(c), c.closed], ["iptal", true]);
+});
+
+test("paket panosu: masa adisyonu yok, eski kapananlar düşer", () => {
+  const evs = [ev({ type: "open", guests: 1 }, { tabId: "m" }), pk({ type: "open", guests: 0, kind: "paket" }, "a"), pk(add("x", 100), "a")];
+  const tabs = foldTabs(evs);
+  const now = Date.parse(tabs.get("a")!.openedAt);
+  assert.deepEqual(openDeliveries(tabs, now).map((t) => t.id), ["a"]);
+  const closed = foldTabs([...evs, pk({ type: "cancel", reason: "x" }, "a")]);
+  assert.deepEqual(openDeliveries(closed, now + 13 * 3600_000).map((t) => t.id), []);
 });
