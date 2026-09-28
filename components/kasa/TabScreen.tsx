@@ -16,7 +16,7 @@ import { minutesSince } from "./useTabs";
 type Add = (list: NewTabEvent[]) => Promise<unknown>;
 export type Waiter = { id: string; name: string; role: KasaStaff["role"] };
 
-function Modal({ label, children, onClose }: { label: string; children: React.ReactNode; onClose: () => void }) {
+export function Modal({ label, children, onClose }: { label: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <div role="dialog" aria-modal="true" aria-label={label} className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4" onKeyDown={(e) => e.key === "Escape" && onClose()}>
       <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
@@ -237,7 +237,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             <div className="grid grid-cols-3 gap-2">
               {table && <button type="button" onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>}
               <button type="button" onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by)] })} className={btn}>İndirim</button>
-              {!canPay && <button type="button" disabled={tab.billRequested} onClick={() => void run([ev({ type: "bill" })])} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
+              {!canPay && table && <button type="button" disabled={tab.billRequested} onClick={() => void run([ev({ type: "bill" })])} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
               {canPay && <button type="button" disabled={tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli)} onClick={() => onBill(tab.id)} className={`${btn} font-medium`}>Hesap</button>}
             </div>
           </div>

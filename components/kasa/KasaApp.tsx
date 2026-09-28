@@ -7,9 +7,10 @@ import { formatTL, parseTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { summarizeShift } from "@/lib/core/shift";
 import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordSaleLocal, shiftSales } from "@/lib/offline/db";
-import { agentStatus, openDrawer, printKitchen, printSale, printShift, readScale, retryPrint, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
+import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
 import { pendingPrints } from "@/lib/core/kitchen";
-import { paidLinesOf, type PayLine } from "@/lib/core/split";
+import { paidLinesOf, payableLines, type PayLine } from "@/lib/core/split";
+import { totals } from "@/lib/core/cart";
 import { openTabsByTable, type TabState, tabLabel } from "@/lib/core/tab";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
 import type { Payment } from "@/lib/core/payment";
@@ -26,8 +27,12 @@ import { TabScreen } from "./TabScreen";
 import { BillScreen } from "./BillScreen";
 import { KitchenScreen } from "./KitchenScreen";
 import { useNow, useTabs } from "./useTabs";
+import { DeliveryBoard } from "./DeliveryBoard";
+import { NewDelivery } from "./NewDelivery";
+import { beep } from "./beep";
 
-type View = { name: "home" } | { name: "sale" } | { name: "tab"; tableId: string } | { name: "bill"; tabId: string } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" };
+type View = { name: "home" } | { name: "sale" } | { name: "tab"; tableId: string } | { name: "bill"; tabId: string } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" }
+  | { name: "paket" } | { name: "yeni-paket" } | { name: "ptab"; tabId: string }; // M6
 type PrintState = PrintView & { jobId?: string | null };
 
 function Center({ title, sub, children }: { title: string; sub?: string; children?: React.ReactNode }) {
@@ -298,6 +303,47 @@ export function KasaApp() {
     return afterSale(r.sale);
   }, [cashier, afterSale, tabsApi, meta]);
 
+  // M6 platform: "Kuryeye verildi" → handover + kalan tutar online satış (ödeme platformda alındı).
+  const onHandover = useCallback(async (tab: TabState) => {
+    if (!cashier) return;
+    await tabsApi.add([{ tabId: tab.id, tableId: null, staffId: cashier.id, ev: { type: "handover" } }]);
+    const part = payableLines(tab);
+    if (!part.length) return;
+    const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
+    const r = await recordSaleLocal(cashier, part, [{ method: "online", amount: totals(part).total }], crypto.randomUUID(), { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part) });
+    await tabsApi.reload();
+    if (r.ok) void afterSale(r.sale);
+  }, [cashier, tabsApi, meta, afterSale]);
+
+  // M6 paket fişi: paket ilk kez mutfağa gidince / platform siparişi kabul edilince kasa yazıcısından bir kez.
+  // Basılanlar localStorage'da (bu cihaz); hata → 60 sn sonra yeniden.
+  const slipRef = useRef(new Map<string, number>());
+  useEffect(() => {
+    if (!meta?.agent || !restoran || role !== "kasa") return;
+    let done: string[] = [];
+    try { done = JSON.parse(localStorage.getItem("cabukpos-slips") ?? "[]"); } catch { /* yok */ }
+    const since = Date.now() - 12 * 3600_000;
+    for (const t of tabsApi.tabs.values()) {
+      if (t.kind === "masa" || t.closed || !t.order || Date.parse(t.openedAt) < since || done.includes(t.id)) continue;
+      if (t.kind === "paket" ? t.tickets.length === 0 : !t.delivery.acceptedAt) continue;
+      if ((slipRef.current.get(t.id) ?? 0) > Date.now()) continue;
+      slipRef.current.set(t.id, Date.now() + 60_000);
+      const zone = meta.catalog.deliveryZones?.find((z) => z.id === t.order!.zoneId);
+      const job = printDeliverySlip(meta, {
+        title: tabLabel(t, meta.catalog.tables ?? [], PLATFORM_NAMES), at: new Date().toISOString(), order: t.order, zoneName: zone?.name ?? null, total: t.total,
+        lines: t.lines.filter((l) => !l.voided && !l.comped).map((l) => ({ qtyMilli: l.qtyMilli, name: l.name, unitPrice: l.unitPrice, note: l.note, options: l.options })),
+      });
+      if (!job) return;
+      void job.then((r) => {
+        if (!r.ok) return refreshAgent();
+        try {
+          const cur: string[] = JSON.parse(localStorage.getItem("cabukpos-slips") ?? "[]");
+          localStorage.setItem("cabukpos-slips", JSON.stringify([...cur, t.id].slice(-300)));
+        } catch { /* yok */ }
+      });
+    }
+  }, [tabsApi.tabs, meta, restoran, role, refreshAgent]);
+
   const retry = useCallback((saleId: string) => {
     const job = prints[saleId]?.jobId;
     if (meta?.agent && job) void trackPrint(saleId, retryPrint(meta.agent, job));
@@ -314,7 +360,7 @@ export function KasaApp() {
   }
 
   const d = meta.device;
-  const atHome = view.name === "home" || view.name === "sale";
+  const atHome = view.name === "home" || view.name === "sale" || view.name === "paket";
   const drawerBy = async (approvedBy: string | null) => {
     if (!cashier || !meta.agent) return;
     await recordAuditLocal(cashier.id, approvedBy, "cekmece");
@@ -392,14 +438,36 @@ export function KasaApp() {
     }
     return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
   };
-  // Masa tanımlı değilse restoran kasası da doğrudan hızlı satışta açılır.
+  // Masa tanımlı değilse restoran kasası da doğrudan hızlı satışta açılır. Paket sekmesi restoran kasasında hep var (M6).
   const hasSalon = restoran && tables.length > 0;
-  const salonTabs = hasSalon && role === "kasa" && (
+  const hasPaket = restoran && role === "kasa";
+  const billTab = view.name === "bill" ? tabsApi.tabs.get(view.tabId) : undefined;
+  const inPaket = view.name === "paket" || view.name === "yeni-paket" || view.name === "ptab" || Boolean(billTab && billTab.kind !== "masa");
+  const section = inPaket ? "paket" : view.name === "sale" || !hasSalon ? "sale" : "salon";
+  const tabBtn = (on: boolean) => `rounded-lg px-4 py-1.5 text-sm ${on ? "bg-ink text-white" : "border border-line"}`;
+  const salonTabs = (hasSalon || hasPaket) && role === "kasa" && (
     <nav className="flex gap-1 border-b border-line px-4 py-2 print:hidden" aria-label="Kasa bölümü">
-      <button type="button" aria-pressed={view.name !== "sale"} onClick={() => setView({ name: "home" })} className={`rounded-lg px-4 py-1.5 text-sm ${view.name !== "sale" ? "bg-ink text-white" : "border border-line"}`}>Salon</button>
-      <button type="button" aria-pressed={view.name === "sale"} onClick={() => setView({ name: "sale" })} className={`rounded-lg px-4 py-1.5 text-sm ${view.name === "sale" ? "bg-ink text-white" : "border border-line"}`}>Hızlı satış</button>
+      {hasSalon && <button type="button" aria-pressed={section === "salon"} onClick={() => setView({ name: "home" })} className={tabBtn(section === "salon")}>Salon</button>}
+      {hasPaket && <button type="button" aria-pressed={section === "paket"} onClick={() => setView({ name: "paket" })} className={tabBtn(section === "paket")}>Paket</button>}
+      <button type="button" aria-pressed={section === "sale"} onClick={() => setView({ name: "sale" })} className={tabBtn(section === "sale")}>Hızlı satış</button>
     </nav>
   );
+  const paketView = () => {
+    if (view.name === "yeni-paket") return <NewDelivery meta={meta} staffId={cashier.id} add={tabsApi.add} onCreated={(tabId) => setView({ name: "ptab", tabId })} onBack={() => setView({ name: "paket" })} />;
+    if (view.name === "ptab") {
+      const tab = tabsApi.tabs.get(view.tabId);
+      if (!tab || tab.closed) return null;
+      return <TabScreen key={tab.id} meta={meta} onMeta={setMeta} table={null} title={tabLabel(tab, tables, PLATFORM_NAMES)} tabs={[tab]} allTabs={tabsApi.tabs} waiter={waiter} canPay={tab.kind === "paket" && !tab.delivery.courierId} add={tabsApi.add} now={now}
+        onBill={(tabId) => setView({ name: "bill", tabId })} onBack={() => setView({ name: "paket" })} />;
+    }
+    if (view.name === "bill") {
+      const tab = tabsApi.tabs.get(view.tabId);
+      if (!tab) return null;
+      return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} onPay={(part, id, p) => onTabPay(tab, part, id, p)}
+        onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed ? { name: "paket" } : { name: "ptab", tabId: tab.id })} />;
+    }
+    return null;
+  };
   if (restoran && role === "garson") return <>{header}{salonView() ?? <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />}</>;
   if (!meta.shift) {
     return (
@@ -432,6 +500,16 @@ export function KasaApp() {
       </>
     );
   }
+  if (inPaket) {
+    return (
+      <>
+        {header}
+        {salonTabs}
+        {paketView() ?? <DeliveryBoard meta={meta} onMeta={setMeta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} waiter={waiter}
+          onNew={() => setView({ name: "yeni-paket" })} onOpen={(tabId) => setView({ name: "ptab", tabId })} onBill={(tabId) => setView({ name: "bill", tabId })} onHandover={onHandover} />}
+      </>
+    );
+  }
   if (hasSalon && view.name !== "sale") return <>{header}{salonTabs}{salonView()}</>;
   return (
     <>
@@ -449,21 +527,4 @@ export function KasaApp() {
       />
     </>
   );
-}
-
-/** Hazır bildirimi: kısa iki ton (ses izni yoksa sessiz geçer). */
-function beep() {
-  try {
-    const ctx = new AudioContext();
-    [0, 0.18].forEach((t, i) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.value = i ? 1320 : 880;
-      g.gain.setValueAtTime(0.15, ctx.currentTime + t);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.15);
-      o.connect(g).connect(ctx.destination);
-      o.start(ctx.currentTime + t);
-      o.stop(ctx.currentTime + t + 0.16);
-    });
-    setTimeout(() => void ctx.close(), 600);
-  } catch { /* ses yok */ }
 }
