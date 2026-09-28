@@ -16,7 +16,7 @@ export function parseProduct(f: Record<string, string>): Out {
   const sellable = f.sellable === undefined || f.sellable === "" || on(f.sellable);
   const price = !sellable && !(f.price ?? "").trim() ? 0 : parseTL(f.price ?? "");
   if (price === null || (sellable && price <= 0) || price < 0 || price > 10_000_000) return { ok: false, error: "Fiyat geçersiz (ör. 25,00).", field: "price" };
-  const vat = Number(f.vatRate);
+  const vat = !sellable && !f.vatRate ? 1 : Number(f.vatRate); // hammaddede KDV kullanılmaz
   if (!isVatRate(vat)) return { ok: false, error: "KDV oranı %1, %10 ya da %20 olmalı.", field: "vatRate" };
   const categoryId = (f.categoryId ?? "").trim() || null;
   if (categoryId && !UUID.test(categoryId)) return { ok: false, error: "Kategori geçersiz.", field: "categoryId" };

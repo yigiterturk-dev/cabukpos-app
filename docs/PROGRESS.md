@@ -87,7 +87,15 @@ Prod sırası (M5 ile birlikte): şema push → db-rls → relrowsecurity (yeni 
 
 ## M7 — Stok, reçete, alış, tedarikçi, kârlılık (dal `m7-stok`, m6-online üstünde)
 Spec: docs/superpowers/specs/2026-09-28-cabukpos-m7-stok-design.md · Plan: docs/superpowers/plans/2026-09-28-cabukpos-m7-stok.md
-- [ ] Görev 1-7 (plan)
+- [x] Görev 1 çekirdek: `recipe.ts` (consumption, lineCost, batchCost, productionMoves, isCritical, recipeError derinlik 1), `purchase.ts`, `profit.ts`; `stock.ts` birim adet|kg|lt + `stockUnitOf` (satılanda türden, satılmazda products.unit → veri göçü yok)
+- [x] Görev 2 şema: stock_unit, products (sellable, unit, cost, cost_at, min_stock, yield_milli), stock_kind recete/uretim, stock_movements purchase_id/production_id, recipe_items (check tam biri dolu), suppliers, purchases, purchase_lines, supplier_payments, productions, sale_lines.cost; hepsi RLS listesinde
+- [x] Görev 3 eşitleme: reçeteli satırda ürün değil hammaddeler düşer (`recete`, iade ters), seçenek reçeteleri eklenir; `sale_lines.cost` eşitlemede donar; katalog satılmazları göndermez
+- [x] Görev 4 yönetim: ürün formu (Kasada satılır, birim, maliyet, kritik sınır, parti), liste Satılan | Hammadde; /yonetim/receteler (ürün, ara ürün, seçenek; anlık maliyet + KDV hariç marj), /yonetim/uretim
+- [x] Görev 5: /yonetim/alislar (çok kalemli, iptal = ters hareket, maliyet gün bazında: eski tarihli fiş ezmez), /yonetim/tedarikciler (bakiye, döküm, ödeme); stok sayfası maliyet/değer/kritik rozeti/"Yalnız kritikler"; stok formunda alış kalktı (sayım + fire)
+- [x] Görev 6: raporlarda kritik stok kartı + Kârlılık sekmesi (tarih aralığı, maliyeti eksik sütunu)
+- [x] Görev 7: `e2e/m7.mjs` → M7 OK; regresyon E2E M3 (alış artık Alışlar'dan) + M6 OK; 88/88 test
+M7 KODDA BİTTİ (dal `m7-stok`). Notlar: seçenek reçetesi yalnız adisyonda işler (hızlı satış ekranında seçenek yok — E2E masa M1 üzerinden); hammadde formunda KDV gizli → 1; ara ürün reçetesi parti miktarı olmadan kaydedilmez; seçenek adı değişirse (salon-actions ada göre eşler) reçetesi silinir.
+Prod sırası (M5+M6+M7 birlikte): şema push → db-rls → relrowsecurity (M7'nin 6 yeni tablosu) → main.
 
 ## Çalıştırma
 - DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).

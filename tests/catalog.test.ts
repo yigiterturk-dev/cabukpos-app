@@ -24,7 +24,7 @@ test("ürün doğrulama: TL fiyat, KDV oranı, barkod listesi", () => {
   // M7: hammadde / ara ürün
   const raw = parseProduct({ name: "Kıyma", price: "", vatRate: "1", categoryId: "", barcodes: "", sellable: "false", unit: "kg", cost: "400,00", minStock: "1,5", yieldMilli: "", kind: "tartili", plu: "12345", quick: "on" });
   assert.deepEqual(raw.ok && raw.value, { name: "Kıyma", price: 0, vatRate: 1, categoryId: null, barcodes: [], kind: "adet", plu: null, trackStock: true, quick: false, sellable: false, unit: "kg", cost: 40000, minStock: 1500, yieldMilli: null });
-  const harc = parseProduct({ name: "Harç", price: "", vatRate: "1", categoryId: "", barcodes: "", sellable: "false", unit: "kg", yieldMilli: "1" });
+  const harc = parseProduct({ name: "Harç", price: "", categoryId: "", barcodes: "", sellable: "false", unit: "kg", yieldMilli: "1" });
   assert.equal(harc.ok && harc.value.yieldMilli, 1000);
   bad({ sellable: "false", unit: "ton" }, "unit");
   bad({ cost: "x" }, "cost");
