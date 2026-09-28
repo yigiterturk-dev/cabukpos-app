@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { formatTL, parseTL, splitVat } from "@/lib/core/money";
-import { addProduct, lineTotal, setQty, totals } from "@/lib/core/cart";
+import { addProduct, lineTotal, removedLines, setQty, totals } from "@/lib/core/cart";
 
 const doner = { id: "d", name: "Döner", price: 18000, vatRate: 10 as const };
 const ayran = { id: "a", name: "Ayran", price: 2500, vatRate: 10 as const };
@@ -44,4 +44,13 @@ test("sepet: ekle birleştirir, miktar 0 siler, toplam ve oran bazında KDV", ()
   c = setQty(c, "s", 0);
   assert.equal(c.length, 2);
   assert.equal(lineTotal({ ...c[1], qtyMilli: 1500 }), 3750); // M3 tartılı için kesirli miktar
+});
+
+test("M9a: removedLines — silme, azaltma, artış yok sayılır, boşaltma", () => {
+  const c = addProduct(addProduct([], doner, 3000), ayran);
+  assert.deepEqual(removedLines(c, setQty(c, "d", 1000)), [{ productId: "d", name: "Döner", qtyMilli: 2000, total: 36000 }]);
+  assert.deepEqual(removedLines(c, setQty(c, "a", 0)), [{ productId: "a", name: "Ayran", qtyMilli: 1000, total: 2500 }]);
+  assert.deepEqual(removedLines(c, addProduct(c, su)), []);
+  assert.deepEqual(removedLines(c, setQty(c, "d", 4000)), []);
+  assert.equal(removedLines(c, []).reduce((s, l) => s + l.total, 0), 56500);
 });

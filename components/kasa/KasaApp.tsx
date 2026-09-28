@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { summarizeShift } from "@/lib/core/shift";
-import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordSaleLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
+import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
 import type { Buyer } from "@/lib/core/fiscal";
 import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, withTestFlag, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
 import { fiscalNotes } from "@/lib/core/receipt";
@@ -615,6 +615,7 @@ export function KasaApp() {
         prints={prints}
         onRetryPrint={retry}
         scale={meta.agent?.scale ? () => readScale(meta.agent!) : undefined}
+        onRemove={(type, lines) => { if (cashier && meta.shift) void recordRegisterEventLocal(meta.shift.id, cashier.id, type, lines).then(kick); }}
       />
     </>
   );

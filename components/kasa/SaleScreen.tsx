@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { addProduct, lineTotal, setQty, totals, type CartLine } from "@/lib/core/cart";
+import { addProduct, lineTotal, removedLines, setQty, totals, type CartLine, type RemovedLine } from "@/lib/core/cart";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { settle, type Payment } from "@/lib/core/payment";
 import { buildIndex, parseKg, resolveScan } from "@/lib/core/scan";
@@ -122,7 +122,7 @@ function WeighDialog({ product, onOk, onClose, scale }: { product: KasaProduct; 
 const MAX_SHOWN = 60;
 const kg = (g: number) => `${(g / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;
 
-export function SaleScreen({ categories, products, market, onPay, onReceipt, prints = {}, onRetryPrint, scale }: { categories: { id: string; name: string }[]; products: KasaProduct[]; market: boolean; onPay: OnSale; onReceipt: (saleId: string) => void; prints?: Record<string, PrintView>; onRetryPrint?: (saleId: string) => void; scale?: ReadScale }) {
+export function SaleScreen({ categories, products, market, onPay, onReceipt, prints = {}, onRetryPrint, scale, onRemove }: { categories: { id: string; name: string }[]; products: KasaProduct[]; market: boolean; onPay: OnSale; onReceipt: (saleId: string) => void; prints?: Record<string, PrintView>; onRetryPrint?: (saleId: string) => void; scale?: ReadScale; onRemove?: (type: "line_removed" | "cart_cleared", lines: RemovedLine[]) => void }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cat, setCat] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -132,6 +132,16 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
   const [last, setLast] = useState<{ saleId: string; receiptNo: string; change: number } | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const t = totals(cart);
+  // M9a: silme/azaltma kaydı. Güncelleyici fonksiyon değil düz değer: StrictMode'da iki kez çağrılıp çift olay yazmasın.
+  const shrink = (next: CartLine[]) => {
+    const out = removedLines(cart, next);
+    setCart(next);
+    if (out.length) onRemove?.("line_removed", out);
+  };
+  const clear = () => {
+    if (cart.length) onRemove?.("cart_cleared", removedLines(cart, []));
+    setCart([]);
+  };
   const index = useMemo(() => buildIndex(products), [products]);
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const shown = useMemo(() => {
@@ -182,10 +192,10 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
               <div key={l.productId} className="flex items-center gap-2 p-3" data-testid="cart-line">
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{l.name}</div><div className="tabular text-xs text-muted">{weighed ? `${kg(l.qtyMilli)} × ${formatTL(l.unitPrice)}/kg` : formatTL(l.unitPrice)}</div></div>
                 {weighed ? (
-                  <button type="button" aria-label={`${l.name} sil`} onClick={() => setCart((c) => setQty(c, l.productId, 0))} className="rounded-lg border border-line px-2 py-1 text-xs">Sil</button>
+                  <button type="button" aria-label={`${l.name} sil`} onClick={() => shrink(setQty(cart, l.productId, 0))} className="rounded-lg border border-line px-2 py-1 text-xs">Sil</button>
                 ) : (
                   <>
-                    <button type="button" aria-label={`${l.name} azalt`} onClick={() => setCart((c) => setQty(c, l.productId, l.qtyMilli - 1000))} className="size-8 rounded-lg border border-line">−</button>
+                    <button type="button" aria-label={`${l.name} azalt`} onClick={() => shrink(setQty(cart, l.productId, l.qtyMilli - 1000))} className="size-8 rounded-lg border border-line">−</button>
                     <span className="tabular w-8 text-center" data-testid="cart-qty">{l.qtyMilli / 1000}</span>
                     <button type="button" aria-label={`${l.name} artır`} onClick={() => setCart((c) => setQty(c, l.productId, l.qtyMilli + 1000))} className="size-8 rounded-lg border border-line">+</button>
                   </>
@@ -217,7 +227,7 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
             </div>
           )}
           <div className="mt-3 grid grid-cols-3 gap-2">
-            <button type="button" onClick={() => setCart([])} disabled={!cart.length} className="rounded-xl border border-line py-4 text-sm disabled:opacity-40">Temizle</button>
+            <button type="button" onClick={clear} disabled={!cart.length} className="rounded-xl border border-line py-4 text-sm disabled:opacity-40">Temizle</button>
             <button type="button" onClick={() => setPaying(true)} disabled={!cart.length} className="col-span-2 rounded-xl bg-brand py-4 text-lg font-semibold text-white disabled:opacity-40">Öde</button>
           </div>
         </div>

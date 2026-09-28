@@ -1,7 +1,7 @@
 // lib/offline/db.ts — Kasa IndexedDB'si (Dexie). Yalnız tarayıcıda.
 // Satış, vardiya açma ve gün sonu tek işlemde hem yerel kayda hem giden kutusuna yazılır.
 import Dexie, { type Table } from "dexie";
-import { totals, type AnyLine } from "@/lib/core/cart";
+import { totals, type AnyLine, type RemovedLine } from "@/lib/core/cart";
 import { settle, type Payment } from "@/lib/core/payment";
 import { refundable, type RefLine } from "@/lib/core/refund";
 import { summarizeShift } from "@/lib/core/shift";
@@ -153,6 +153,12 @@ export async function closeShiftLocal(staffId: string, countedCash: number): Pro
 /** Yetkili işlem kaydı (elle çekmece açma) → giden kutusu → audit_log. */
 export async function recordAuditLocal(staffId: string, approvedBy: string | null, action: "cekmece") {
   await enqueue({ kind: "audit", id: crypto.randomUUID(), staffId, approvedBy, at: new Date().toISOString(), action });
+}
+
+/** M9a: sepetten silme / sepeti boşaltma → giden kutusu → register_events. */
+export async function recordRegisterEventLocal(shiftId: string, staffId: string, type: "line_removed" | "cart_cleared", lines: RemovedLine[]) {
+  if (!lines.length) return;
+  await enqueue({ kind: "register_event", id: crypto.randomUUID(), shiftId, staffId, at: new Date().toISOString(), type, lines });
 }
 
 /** M8: bulut e-Arşivi kesti → yerel satışa numara/ETTN (fiş yeniden basılırsa görünür). */
