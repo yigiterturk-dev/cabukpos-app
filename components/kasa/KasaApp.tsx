@@ -11,7 +11,7 @@ import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, pr
 import { pendingPrints } from "@/lib/core/kitchen";
 import { paidLinesOf, payableLines, type PayLine } from "@/lib/core/split";
 import { totals } from "@/lib/core/cart";
-import { openTabsByTable, type TabState, tabLabel } from "@/lib/core/tab";
+import { openTabsByTable, type PayIntent, type TabState, tabLabel } from "@/lib/core/tab";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
 import type { Payment } from "@/lib/core/payment";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
@@ -29,10 +29,11 @@ import { KitchenScreen } from "./KitchenScreen";
 import { useNow, useTabs } from "./useTabs";
 import { DeliveryBoard } from "./DeliveryBoard";
 import { NewDelivery } from "./NewDelivery";
+import { CourierScreen } from "./CourierScreen";
 import { beep } from "./beep";
 
 type View = { name: "home" } | { name: "sale" } | { name: "tab"; tableId: string } | { name: "bill"; tabId: string } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" }
-  | { name: "paket" } | { name: "yeni-paket" } | { name: "ptab"; tabId: string }; // M6
+  | { name: "paket" } | { name: "yeni-paket" } | { name: "ptab"; tabId: string } | { name: "kurye-kapat" } | { name: "kurye-gun-sonu"; by: string }; // M6
 type PrintState = PrintView & { jobId?: string | null };
 
 function Center({ title, sub, children }: { title: string; sub?: string; children?: React.ReactNode }) {
@@ -264,6 +265,7 @@ export function KasaApp() {
       printingRef.current.set(j.ticket.id, Date.now() + 30_000);
       const job = printKitchen(a, j.printer, {
         tableName: tabLabel(j.tab, meta.catalog.tables ?? [], PLATFORM_NAMES),
+        packed: j.tab.kind !== "masa",
         stationName: stations.find((s) => s.id === j.ticket.stationId)?.name ?? null,
         staffName: meta.catalog.staff.find((s) => s.id === j.ticket.staffId)?.name ?? null,
         at: j.ticket.at,
@@ -314,6 +316,25 @@ export function KasaApp() {
     await tabsApi.reload();
     if (r.ok) void afterSale(r.sale);
   }, [cashier, tabsApi, meta, afterSale]);
+
+  // M6 kurye: "Teslim ettim" → delivered + kalan tutar seçilen yöntemle satış (kuryenin vardiyasına).
+  const onDeliver = useCallback(async (tab: TabState, method: PayIntent) => {
+    if (!cashier) return;
+    await tabsApi.add([{ tabId: tab.id, tableId: null, staffId: cashier.id, ev: { type: "delivered", method } }]);
+    const part = payableLines(tab);
+    if (part.length) {
+      const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
+      await recordSaleLocal(cashier, part, [{ method, amount: totals(part).total }], crypto.randomUUID(), { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part) });
+    }
+    await tabsApi.reload();
+    void sync.current?.kick();
+  }, [cashier, tabsApi, meta]);
+
+  // Kurye telefonunda vardiya yoksa açılış nakdi 0 ile kendiliğinden açılır.
+  useEffect(() => {
+    if (role !== "kurye" || !cashier || !meta || meta.shift) return;
+    void openShiftLocal(cashier.id, 0).then((m) => { setMeta(m); void sync.current?.kick(); });
+  }, [role, cashier, meta]);
 
   // M6 paket fişi: paket ilk kez mutfağa gidince / platform siparişi kabul edilince kasa yazıcısından bir kez.
   // Basılanlar localStorage'da (bu cihaz); hata → 60 sn sonra yeniden.
@@ -406,7 +427,32 @@ export function KasaApp() {
     return <>{header}<GunSonu meta={meta} closed onClose={async () => {}} onBack={() => setView({ name: "home" })} /></>;
   }
   if (!cashier) {
-    return <>{header}<Center title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} /></Center></>;
+    return <>{header}<Center title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} /></Center></>;
+  }
+  if (restoran && role === "kurye") {
+    const kHeader = (
+      <header className="flex items-center gap-3 border-b border-line px-4 py-2 text-sm">
+        <span className="font-semibold">{d.tenantName}</span><span className="font-medium">{cashier.name}</span>
+        <SyncBadge s={status} />
+        {!tabsApi.live && <span className="text-xs font-medium text-amber-700">Canlı bağlantı yok</span>}
+        {view.name === "home" && <button type="button" onClick={() => setCashier(null)} className="ml-auto text-muted underline">Çıkış</button>}
+      </header>
+    );
+    if (view.name === "kurye-kapat") {
+      return <>{kHeader}<Center title="Hesap kapat" sub="Kasiyer ya da müdür PIN'i"><PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "kasiyer" || x.role === "mudur"} onOk={(c) => setView({ name: "kurye-gun-sonu", by: c.id })} />
+        <button type="button" onClick={() => setView({ name: "home" })} className="mt-4 text-sm underline">Vazgeç</button></Center></>;
+    }
+    if (view.name === "kurye-gun-sonu" && meta.shift) {
+      const by = view.by;
+      return <>{kHeader}<GunSonu meta={meta} closed={false} onBack={() => setView({ name: "home" })} onClose={async (counted) => {
+        setMeta(await closeShiftLocal(by, counted));
+        setCashier(null);
+        setView({ name: "closed" });
+        void sync.current?.kick();
+      }} /></>;
+    }
+    if (!meta.shift) return <>{kHeader}<Center title="Vardiya açılıyor…" /></>;
+    return <>{kHeader}<CourierScreen meta={meta} courier={cashier} tabs={tabsApi.tabs} now={now} add={tabsApi.add} onDeliver={onDeliver} onCloseShift={() => setView({ name: "kurye-kapat" })} /></>;
   }
   if (view.name === "receipt") return <Receipt meta={meta} sale={view.sale} onBack={() => setView({ name: "home" })} onPrinted={(r) => { setPrints((p) => ({ ...p, [view.sale.id]: { state: r.ok ? "ok" : "fail", error: r.error, jobId: r.jobId } })); refreshAgent(); }} />;
   if (view.name === "cekmece") {

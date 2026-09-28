@@ -125,6 +125,9 @@ test("mutfak fişi baytları ve bekleyen baskılar", () => {
   assert.deepEqual([...b.slice(-4)], [0x1d, 0x56, 0x42, 0x03]);
   const txt = Buffer.from(b).toString("latin1");
   for (const s of ["M1", "2 x Kofte", "+ Az pismis", "! sogansiz"]) assert.ok(txt.includes(s), s);
+  assert.ok(!txt.includes("PAKET"));
+  const pk = Buffer.from(renderKitchenTicket({ tableName: "Paket · Ayse", packed: true, stationName: null, staffName: null, at: "2026-09-28T12:00:00Z", lines: [] }, { width: 58, codepage: "ascii" })).toString("latin1");
+  assert.ok(pk.indexOf("PAKET") < pk.indexOf("Paket"), "PAKET başlığı etiketten önce");
   const tabs = foldTabs([ev(add("a", 1000)), ev({ type: "send", ticketId: "k1", lineIds: ["a"], stationId: "izgara" }),
     ev(add("b", 1000, 1000, "bar")), ev({ type: "send", ticketId: "k2", lineIds: ["b"], stationId: "bar" }), ev(add("c", 1000)), ev({ type: "send", ticketId: "k3", lineIds: ["c"], stationId: "izgara" }), ev({ type: "printed", ticketId: "k3" })]);
   const printerOf = (s: string | null) => (s === "izgara" ? "mutfak1" : null);
