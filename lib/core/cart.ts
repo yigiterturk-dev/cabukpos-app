@@ -2,10 +2,11 @@
 import { splitVat, type Kurus, type VatRate } from "./money";
 
 export type CartProduct = { id: string; name: string; price: Kurus; vatRate: VatRate };
-export type CartLine = { productId: string; name: string; unitPrice: Kurus; vatRate: VatRate; qtyMilli: number };
+export type CartLine = { productId: string; name: string; unitPrice: Kurus; vatRate: VatRate; qtyMilli: number; discount?: Kurus };
 export type VatLine = { rate: VatRate; gross: Kurus; net: Kurus; vat: Kurus };
 
-export const lineTotal = (l: CartLine): Kurus => Math.round((l.unitPrice * l.qtyMilli) / 1000);
+/** Satır tutarı; indirim (ikram, adisyon indirimi) düşülür, 0'ın altına inmez. */
+export const lineTotal = (l: CartLine): Kurus => Math.max(0, Math.round((l.unitPrice * l.qtyMilli) / 1000) - (l.discount ?? 0));
 
 export function addProduct(cart: CartLine[], p: CartProduct, qtyMilli = 1000): CartLine[] {
   const i = cart.findIndex((l) => l.productId === p.id);
