@@ -144,7 +144,7 @@ export async function deleteCode(id: string) {
 }
 
 /** Deneme siparişi: eşlenmiş ilk kod (yoksa ilk ürün, eşlenmemiş) ile sahte platform siparişi — kasada onay kartı düşer. */
-export async function sendTestOrder(connectionId: string, _: DeliveryState): Promise<DeliveryState> {
+export async function sendTestOrder(connectionId: string): Promise<DeliveryState> {
   const a = await requireAdmin();
   const conn = await ownConnection(a.tenantId, connectionId);
   if (!conn || conn.platform !== "mock") return { error: "Deneme siparişi yalnız Deneme platformunda." };

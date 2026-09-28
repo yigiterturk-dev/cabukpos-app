@@ -10,7 +10,8 @@ import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, re
 import { agentStatus, openDrawer, printKitchen, printSale, printShift, readScale, retryPrint, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
 import { pendingPrints } from "@/lib/core/kitchen";
 import { paidLinesOf, type PayLine } from "@/lib/core/split";
-import { openTabsByTable, type TabState } from "@/lib/core/tab";
+import { openTabsByTable, type TabState, tabLabel } from "@/lib/core/tab";
+import { PLATFORM_NAMES } from "@/lib/core/platform";
 import type { Payment } from "@/lib/core/payment";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
 import type { LocalSale, Meta } from "@/lib/offline/state";
@@ -257,7 +258,7 @@ export function KasaApp() {
     for (const j of jobs) {
       printingRef.current.set(j.ticket.id, Date.now() + 30_000);
       const job = printKitchen(a, j.printer, {
-        tableName: meta.catalog.tables?.find((t) => t.id === j.tab.tableId)?.name ?? "?",
+        tableName: tabLabel(j.tab, meta.catalog.tables ?? [], PLATFORM_NAMES),
         stationName: stations.find((s) => s.id === j.ticket.stationId)?.name ?? null,
         staffName: meta.catalog.staff.find((s) => s.id === j.ticket.staffId)?.name ?? null,
         at: j.ticket.at,
@@ -290,7 +291,7 @@ export function KasaApp() {
   }, [cashier, afterSale]);
 
   const onTabPay = useCallback(async (tab: TabState, part: PayLine[], saleId: string, payments: Payment[]) => {
-    const tableName = meta?.catalog.tables?.find((t) => t.id === tab.tableId)?.name ?? "";
+    const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
     const r = await recordSaleLocal(cashier!, part, payments, saleId, { tabId: tab.id, tableId: tab.tableId, tableName, paidLines: paidLinesOf(part) });
     if (!r.ok) return r;
     await tabsApi.reload();
@@ -380,14 +381,14 @@ export function KasaApp() {
     if (view.name === "tab") {
       const table = tables.find((t) => t.id === view.tableId);
       if (!table) return null;
-      return <TabScreen key={table.id} meta={meta} onMeta={setMeta} table={table} tabs={openTabsByTable(tabsApi.tabs).get(table.id) ?? []} allTabs={tabsApi.tabs} waiter={waiter} canPay={role === "kasa" && Boolean(meta.shift)} add={tabsApi.add} now={now}
+      return <TabScreen key={table.id} meta={meta} onMeta={setMeta} table={table} title={table.name} tabs={openTabsByTable(tabsApi.tabs).get(table.id) ?? []} allTabs={tabsApi.tabs} waiter={waiter} canPay={role === "kasa" && Boolean(meta.shift)} add={tabsApi.add} now={now}
         onBill={(tabId) => setView({ name: "bill", tabId })} onBack={() => setView({ name: "home" })} />;
     }
     if (view.name === "bill") {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
       return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} onPay={(part, id, p) => onTabPay(tab, part, id, p)}
-        onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed ? { name: "home" } : { name: "tab", tableId: tab.tableId })} />;
+        onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed || !tab.tableId ? { name: "home" } : { name: "tab", tableId: tab.tableId })} />;
     }
     return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
   };

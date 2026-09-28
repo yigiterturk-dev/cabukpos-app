@@ -6,6 +6,8 @@ import { formatTL, parseTL } from "@/lib/core/money";
 import { optionsText, validateOptions, type OptionGroup } from "@/lib/core/options";
 import { qtyText } from "@/lib/core/receipt";
 import { lineGross, openTabsByTable, type TabLine, type TabState } from "@/lib/core/tab";
+import { sendByStation } from "@/lib/core/platform";
+import { FEE_NAME, formatPhone, intentLabel, zoneCheck } from "@/lib/core/delivery";
 import type { NewTabEvent } from "@/lib/offline/tabs";
 import type { KasaProduct, KasaStaff, Meta, Table } from "@/lib/offline/state";
 import { PinPad } from "./PinPad";
@@ -120,9 +122,10 @@ type Dialog =
   | { k: "note"; line: TabLine }
   | { k: "move" };
 
-export function TabScreen({ meta, onMeta, table, tabs, allTabs, waiter, canPay, add, now, onBill, onBack }: {
-  meta: Meta; onMeta: (m: Meta) => void; table: Table; tabs: TabState[]; allTabs: Map<string, TabState>; waiter: Waiter; canPay: boolean; add: Add; now: number;
-  onBill: (tabId: string) => void; onBack: () => void;
+/** table null → paket/platform adisyonu (M6): taşı/hesap iste yok, sipariş bilgisi üstte, ilk gönderimde paket fişi (onFirstSend). */
+export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, canPay, add, now, onBill, onBack, onFirstSend }: {
+  meta: Meta; onMeta: (m: Meta) => void; table: Table | null; title: string; tabs: TabState[]; allTabs: Map<string, TabState>; waiter: Waiter; canPay: boolean; add: Add; now: number;
+  onBill: (tabId: string) => void; onBack: () => void; onFirstSend?: (tab: TabState) => void;
 }) {
   const [newTabId] = useState(() => crypto.randomUUID());
   const [pick, setPick] = useState<string | null>(null);
@@ -135,7 +138,7 @@ export function TabScreen({ meta, onMeta, table, tabs, allTabs, waiter, canPay, 
   const groups = meta.catalog.optionGroups ?? [];
   const tables = meta.catalog.tables ?? [];
   const products = meta.catalog.products.filter((p) => p.kind === "adet" && (cat === null || p.categoryId === cat));
-  const ev = (e: NewTabEvent["ev"], approvedBy: string | null = null): NewTabEvent => ({ tabId, tableId: table.id, staffId: waiter.id, approvedBy, ev: e });
+  const ev = (e: NewTabEvent["ev"], approvedBy: string | null = null): NewTabEvent => ({ tabId, tableId: table?.id ?? null, staffId: waiter.id, approvedBy, ev: e });
   const run = async (list: NewTabEvent[]) => { setBusy(true); try { await add(list); } finally { setBusy(false); setDialog(null); } };
 
   const addLine = (p: KasaProduct, unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number) =>
@@ -147,12 +150,17 @@ export function TabScreen({ meta, onMeta, table, tabs, allTabs, waiter, canPay, 
   };
 
   const live = tab?.lines.filter((l) => !l.voided) ?? [];
-  const unsent = live.filter((l) => !l.sent);
+  const unsent = live.filter((l) => !l.sent && l.productId !== null);
   const send = () => {
-    const byStation = new Map<string | null, string[]>();
-    for (const l of unsent) byStation.set(l.stationId, [...(byStation.get(l.stationId) ?? []), l.lineId]);
-    void run([...byStation].map(([stationId, lineIds]) => ev({ type: "send", ticketId: crypto.randomUUID(), lineIds, stationId })));
+    const first = tab && tab.tickets.length === 0;
+    // Serbest satır (paket ücreti) mutfağa gitmez
+    const lines = unsent.filter((l) => l.productId !== null);
+    void run(sendByStation(lines, () => crypto.randomUUID()).map((s) => ev(s))).then(() => { if (first && tab) onFirstSend?.(tab); });
   };
+  const order = tab?.order ?? null;
+  const zone = order?.zoneId ? meta.catalog.deliveryZones?.find((z) => z.id === order.zoneId) ?? null : null;
+  const subtotal = live.filter((l) => !l.comped && l.name !== FEE_NAME).reduce((a, l) => a + lineGross(l), 0);
+  const belowMin = !table && zoneCheck(zone, subtotal).belowMin;
   const ready = tab?.tickets.filter((k) => k.status === "hazir") ?? [];
   const occupied = openTabsByTable(allTabs);
 
@@ -175,8 +183,8 @@ export function TabScreen({ meta, onMeta, table, tabs, allTabs, waiter, canPay, 
 
       <aside className="flex flex-col border-l border-line bg-stone-50/50">
         <div className="flex items-center gap-2 border-b border-line p-3">
-          <button type="button" onClick={onBack} className="text-sm underline">← Salon</button>
-          <h2 className="ml-2 text-xl font-semibold">{table.name}</h2>
+          <button type="button" onClick={onBack} className="text-sm underline">← {table ? "Salon" : "Paket"}</button>
+          <h2 className="ml-2 text-xl font-semibold">{title}</h2>
           {tab && <span className="text-sm text-muted">{minutesSince(tab.openedAt, now)} dk</span>}
           {tabs.length > 1 && (
             <div className="ml-auto flex gap-1">
@@ -184,6 +192,14 @@ export function TabScreen({ meta, onMeta, table, tabs, allTabs, waiter, canPay, 
             </div>
           )}
         </div>
+        {order && (
+          <div className="border-b border-line px-3 py-2 text-sm" data-testid="order-info">
+            <div className="font-medium">{order.name} · <span className="tabular">{formatPhone(order.phone)}</span></div>
+            <div className="text-stone-700">{order.address}{order.directions ? ` · ${order.directions}` : ""}</div>
+            <div className="text-xs text-muted">{[zone?.name, intentLabel(order.payIntent), order.note].filter(Boolean).join(" · ")}</div>
+            {belowMin && zone && <div className="mt-1 text-xs font-medium text-amber-700">Asgari tutar {formatTL(zone.minOrder)} altında</div>}
+          </div>
+        )}
         <ul className="flex-1 divide-y divide-line overflow-y-auto" aria-label="Adisyon">
           {!tab && <li className="p-6 text-center text-sm text-muted">Boş masa. Ürüne dokunarak sipariş açın.</li>}
           {tab?.lines.map((l) => {
@@ -197,7 +213,7 @@ export function TabScreen({ meta, onMeta, table, tabs, allTabs, waiter, canPay, 
                     {l.options.length > 0 && <span className="block text-xs text-muted">{optionsText(l.options)}</span>}
                     {l.note && <span className="block text-xs text-amber-700">! {l.note}</span>}
                     <span className="mt-0.5 flex gap-1 text-[11px]">
-                      {!l.sent && !l.voided && <span className="rounded bg-amber-100 px-1.5 text-amber-800">gönderilmedi</span>}
+                      {!l.sent && !l.voided && l.productId !== null && <span className="rounded bg-amber-100 px-1.5 text-amber-800">gönderilmedi</span>}
                       {k && <span className={`rounded px-1.5 ${k.status === "hazir" ? "bg-emerald-600 text-white" : "bg-stone-200"}`}>{{ yeni: "mutfakta", hazirlaniyor: "hazırlanıyor", hazir: "hazır", teslim: "teslim" }[k.status]}</span>}
                       {l.comped && <span className="rounded bg-sky-100 px-1.5 text-sky-800">ikram</span>}
                       {l.paidMilli > 0 && <span className="rounded bg-stone-200 px-1.5">ödendi {qtyText(l.paidMilli)}</span>}
@@ -219,7 +235,7 @@ export function TabScreen({ meta, onMeta, table, tabs, allTabs, waiter, canPay, 
             )}
             {ready.length > 0 && <button type="button" onClick={() => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })))} className="w-full rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white">Hazır — teslim edildi</button>}
             <div className="grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>
+              {table && <button type="button" onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>}
               <button type="button" onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by)] })} className={btn}>İndirim</button>
               {!canPay && <button type="button" disabled={tab.billRequested} onClick={() => void run([ev({ type: "bill" })])} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
               {canPay && <button type="button" disabled={tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli)} onClick={() => onBill(tab.id)} className={`${btn} font-medium`}>Hesap</button>}
@@ -260,7 +276,7 @@ export function TabScreen({ meta, onMeta, table, tabs, allTabs, waiter, canPay, 
       {dialog?.k === "approve" && (
         <ApprovalDialog meta={meta} onMeta={onMeta} waiter={waiter} title={dialog.title} discount={dialog.discount} onClose={() => setDialog(null)} onOk={(by, reason, d) => void run(dialog.run(by, reason, d))} />
       )}
-      {dialog?.k === "move" && (
+      {dialog?.k === "move" && table && (
         <Modal label={`${table.name} → taşı`} onClose={() => setDialog(null)}>
           <div className="grid grid-cols-4 gap-2">
             {tables.filter((t) => t.id !== table.id && !occupied.has(t.id)).map((t) => (

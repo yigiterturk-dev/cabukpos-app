@@ -1,6 +1,7 @@
 // lib/offline/agent.ts — Kasa → yerel ajan (tarayıcı). Ajan yoksa/ulaşılamazsa çağrılar null ya da hata döner;
 // satış hiçbir zaman bunu beklemez (yazıcı hatası satışı durdurmaz).
 import type { KasaAgent } from "@/lib/agent/config";
+import { renderDeliverySlip, type SlipData } from "@/lib/core/delivery";
 import { renderKitchenTicket, type KitchenTicketData } from "@/lib/core/kitchen";
 import { toBase64 } from "@/lib/core/escpos";
 import { renderReceipt, renderShiftReport, type ReceiptSale, type ShiftPrint } from "@/lib/core/receipt";
@@ -60,6 +61,14 @@ export function printKitchen(a: KasaAgent, printerId: string, data: KitchenTicke
   const p = a.printers.find((x) => x.id === printerId);
   if (!p) return null;
   return send(a, p.id, renderKitchenTicket(data, { width: p.width, codepage: p.codepage }), false);
+}
+
+/** M6: paket fişi kasa yazıcısından (kuryenin çantasına). */
+export function printDeliverySlip(meta: Meta, s: SlipData): Promise<PrintResult> | null {
+  const a = meta.agent;
+  const p = a && receiptPrinter(a);
+  if (!a || !p) return null;
+  return send(a, p.id, renderDeliverySlip(s, { width: p.width, codepage: p.codepage }), false);
 }
 
 export function printShift(meta: Meta, s: ShiftPrint): Promise<PrintResult> | null {

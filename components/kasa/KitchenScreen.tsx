@@ -1,4 +1,6 @@
 "use client";
+import { tabLabel } from "@/lib/core/tab";
+import { PLATFORM_NAMES } from "@/lib/core/platform";
 // Mutfak ekranı: istasyon filtreli biletler. Dokun → hazırlanıyor → hazır. Hazırlar 10 dk ayrı sütunda.
 import { useState } from "react";
 import { optionsText } from "@/lib/core/options";
@@ -34,7 +36,7 @@ export function KitchenScreen({ meta, tabs, now, add }: { meta: Meta; tabs: Map<
       <button key={t.id} type="button" disabled={busy === t.id || t.status === "hazir"} onClick={() => void next(tab, t)} data-ticket={t.id} data-status={t.status}
         className={`flex flex-col rounded-xl border-2 p-3 text-left ${t.status === "hazir" ? "border-emerald-600 bg-emerald-50" : t.status === "hazirlaniyor" ? "border-amber-500 bg-amber-50" : mins >= 15 ? "border-red-600 bg-white" : "border-line bg-white"}`}>
         <span className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold">{tables.find((x) => x.id === tab.tableId)?.name ?? "?"}</span>
+          <span className="text-2xl font-bold">{tabLabel(tab, tables, PLATFORM_NAMES)}</span>
           <span className="text-sm text-muted">{stations.find((s) => s.id === t.stationId)?.name ?? ""}</span>
           <span className={`tabular ml-auto text-sm ${mins >= 15 && t.status !== "hazir" ? "font-bold text-red-700" : "text-muted"}`}>{mins} dk</span>
         </span>
