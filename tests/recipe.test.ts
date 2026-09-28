@@ -76,3 +76,17 @@ test("reçete miktarı: kg/lt gram-ml tam sayı, adet ondalıklı", async () => 
   assert.equal(parseRecipeQty("0,5", "adet"), 500);
   assert.equal(parseRecipeQty("0", "adet"), null);
 });
+
+test("kârlılık: KDV hariç ciro, iade düşer, maliyet eksik ayrı", async () => {
+  const { profitRows } = await import("@/lib/core/profit");
+  const rows = profitRows([
+    { key: "lah", name: "Lahmacun", qtyMilli: 2000, total: 22000, vatRate: 10, cost: 5560, refund: false },
+    { key: "lah", name: "Lahmacun", qtyMilli: 1000, total: 11000, vatRate: 10, cost: 3980, refund: false },
+    { key: "lah", name: "Lahmacun", qtyMilli: 1000, total: 11000, vatRate: 10, cost: 3980, refund: true },
+    { key: "ayr", name: "Ayran", qtyMilli: 1000, total: 3000, vatRate: 10, cost: null, refund: false },
+  ]);
+  assert.deepEqual(rows[0], { key: "lah", name: "Lahmacun", qtyMilli: 2000, net: 20000, cost: 5560, profit: 14440, margin: 72.2, missing: 0 });
+  assert.equal(rows[1].missing, 1);
+  assert.equal(rows[1].margin, null);
+  assert.equal(rows[1].net, 2727);
+});
