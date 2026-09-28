@@ -7,7 +7,7 @@ Onay: Yiğit, 2026-09-28. Ana spec: `restoran-zirve/docs/superpowers/specs/2026-
 - **Kurye**: personel rolü `kurye`, kendi telefonunda PWA (`/kurye`); konum takibi yok.
 - **Telefon siparişi**: müşteri defteri (telefonla bul, adresler, son siparişler, "tekrarla") + teslimat bölgeleri (ücret, asgari tutar). Arayan numara tanıma yok (ileride ajanla).
 - **Model**: paket ve platform siparişi **masasız adisyon** (`tab_events`); mutfak, istasyon, yazıcı, SSE, ikram/indirim, çevrimdışı eşitleme M5'ten aynen gelir.
-- **Kurye hesabı = kurye cihazının vardiyası**; yeni para hareketi tablosu yok.
+- **Kurye hesabı = kurye cihazının vardiyası**; kapanış kurye telefonunda, kasiyer/müdür PIN'iyle (mevcut gün sonu). Yeni para hareketi tablosu, yeni belge türü yok; çevrimdışı çalışır.
 - `packages/platforms` taşıması gerçek adaptörlere kaldı (ana spec §2'deki not buna göre okunur).
 
 ## 1. Veri modeli (hepsi kiracı + RLS)
@@ -17,7 +17,7 @@ Onay: Yiğit, 2026-09-28. Ana spec: `restoran-zirve/docs/superpowers/specs/2026-
   - `accept` {`prepMin`}, `reject` {`reason`} — yalnız platform siparişi.
   - `courier` {`staffId | null`} (ata / geri al), `out`, `delivered` {`method`}, `handover` (platform kuryesine verildi).
   - `cancel` {`reason`} — müdür PIN'i (`approvedBy`) + denetim kaydı; ödemesi olan adisyonda review.
-- Paket ücreti: şube başına otomatik açılan sistem ürünü "Paket servis ücreti" satırı (`add`), tutarı bölgeden; kasiyer silebilir/değiştirebilir.
+- **Serbest satır**: `add.productId` ve satış satırında `productId` boş olabilir (ad + fiyat + KDV satırda). Yalnız paket/platform adisyonunda kabul; masa adisyonunda review. Paket ücreti = serbest satır "Paket servis ücreti" (KDV %10), tutarı bölgeden; kasiyer silebilir. Eşlenmeyen platform ürünü de serbest satır.
 - Platform idempotensi: kısmi benzersiz indeks `(store_id, (payload->'source'->>'externalId')) where type = 'order' and payload ? 'source'`.
 - Yeni tablolar:
   - `customers` (tenant, `phone` normalize E.164 benzeri, kiracıda benzersiz; ad; not; son sipariş zamanı)
@@ -36,11 +36,11 @@ Onay: Yiğit, 2026-09-28. Ana spec: `restoran-zirve/docs/superpowers/specs/2026-
 - Kurye özeti: cihaz vardiyasındaki satışlardan yönteme göre toplam (mevcut gün sonu hesabı).
 
 ## 3. Akışlar
-- **Telefon siparişi (kasa)**: Kasa sekmeleri Salon | Paket | Hızlı satış. "Yeni paket": telefon → müşteri + adresler + son 5 sipariş ("tekrarla" = aynı satırlar) ya da yeni müşteri → adres → bölge/ücret → ürün ekle (adisyon ekranı) → "Mutfağa gönder" = `send` + paket fişi (ajan yazıcısı). Müşteri/adres kaydı çevrimiçi API ile; çevrimdışıyken sipariş yine açılır, müşteri kaydı adisyondaki `order` bilgisinden sonra oluşturulur.
+- **Telefon siparişi (kasa)**: Kasa sekmeleri Salon | Paket | Hızlı satış. "Yeni paket": telefon → müşteri + adresler + son 5 sipariş ("tekrarla" = aynı satırlar) ya da yeni müşteri → adres → bölge/ücret → ürün ekle (adisyon ekranı) → "Mutfağa gönder" = `send` + paket fişi (ajan yazıcısı). Müşteri arama çevrimiçi (`GET /api/musteri?tel=`); kayıt/güncelleme ayrı API değil: bulut `order` olayını yazarken müşteriyi telefonla bulur/oluşturur, yeni adres metnini ekler (çevrimdışı sipariş de eşitlenince kaydolur).
 - **Paket panosu**: sütunlar Onay bekleyen · Hazırlanıyor · Hazır · Yolda · Bugün teslim; kart: saat, müşteri, bölge, tutar, ödeme niyeti, kurye, geçen süre. Kuryeye ata (açık vardiyası olan kuryeler), "Kuryeye verildi" (platform kuryesi), iptal.
 - **Platform siparişi**: webhook → bulut adisyon olaylarını yazar (SSE ile kasaya düşer). Kasa: tekrarlayan ses + geri sayım, Kabul (hazırlık süresi 10/15/20/30/45) ya da Red (sebep listesi). `auto_accept` açıksa bulut `accept` + `send` yazar. Kabul/red platforma `OrderSource` ile bildirilir; hata → olay yine yazılır, `review` + yeniden deneme (kasa ekranında uyarı).
 - **Kurye (`/kurye`, cihaz rolü kurye)**: PIN → cihazda vardiya açılır. Liste: yalnız kendisine atanan açık siparişler; adres, Google Maps bağlantısı, `tel:`, tahsil edilecek tutar, ödeme niyeti, not. Toplu "Yola çıktım" (`out`). "Teslim ettim" → yöntem seç (niyet önseçili) → kurye cihazında satış (`channel = paket`, `tabId`) + `paid` + `delivered`. Online ödemeli siparişte yöntem `online`, tahsilat yok.
-- **Kurye hesabı (kasa)**: kurye listesi → cihaz vardiyasının özeti (sipariş sayısı, yönteme göre toplam, beklenen nakit) → sayılan nakit → vardiya kapanır (mevcut Z, fark kaydı). Yetki: kasiyer ya da müdür.
+- **Kurye hesabı (kurye telefonunda)**: "Hesap kapat" → vardiya özeti (sipariş sayısı, yönteme göre toplam, beklenen nakit) → kasiyer/müdür PIN'i + sayılan nakit → mevcut `shift_close` (Z, fark). Kasa panosunda kurye adı + üzerindeki nakit (teslim olaylarından) görünür.
 - **Platform kuryesi**: kasada "Kuryeye verildi" → kasa cihazında satış (`channel = platform`, yöntem `online`) + `handover`.
 - **Satış kanalı**: paket → `paket`, platform → `platform`; raporlar mevcut satış modelinden.
 
