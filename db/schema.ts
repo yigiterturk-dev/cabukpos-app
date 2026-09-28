@@ -2,6 +2,7 @@
 import { sql } from "drizzle-orm";
 import type { Buyer, ChannelModes } from "../lib/core/fiscal";
 import { DEFAULT_MODES } from "../lib/core/fiscal";
+import type { RemovedLine } from "../lib/core/cart";
 import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index, bigserial, check, date } from "drizzle-orm/pg-core";
 
 export const vertical = pgEnum("vertical", ["restoran", "market"]);
@@ -179,7 +180,7 @@ export const sales = pgTable("sales", {
   review: text("review"), // eşitlemede kabul edildi ama incelenmeli (fiyat farkı, silinmiş ürün, fiş no çakışması…)
   createdAt: ts("created_at").notNull().defaultNow(), // satış anı (cihaz saati)
   syncedAt: ts("synced_at").notNull().defaultNow(),
-}, (t) => [uniqueIndex("sales_receipt_uq").on(t.deviceId, t.receiptNo), index("sales_shift_idx").on(t.shiftId)]);
+}, (t) => [uniqueIndex("sales_receipt_uq").on(t.deviceId, t.receiptNo), index("sales_shift_idx").on(t.shiftId), index("sales_at_idx").on(t.tenantId, t.storeId, t.createdAt)]);
 
 export const saleLines = pgTable("sale_lines", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -468,3 +469,18 @@ export const fiscalDocuments = pgTable("fiscal_documents", {
   createdAt: ts("created_at").notNull().defaultNow(),
   issuedAt: ts("issued_at"),
 }, (t) => [index("fiscal_documents_status_idx").on(t.tenantId, t.status)]);
+
+// — M9a: kasa olayı (sepetten silme / sepeti boşaltma). Değişmez; kimlik istemcide. —
+export const registerEvents = pgTable("register_events", {
+  id: uuid("id").primaryKey(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  deviceId: uuid("device_id").notNull().references(() => devices.id),
+  shiftId: uuid("shift_id").notNull().references(() => shifts.id),
+  staffId: uuid("staff_id").notNull().references(() => staff.id),
+  at: ts("at").notNull(),
+  type: text("type").notNull(), // line_removed | cart_cleared
+  lines: jsonb("lines").notNull().$type<RemovedLine[]>(),
+  total: integer("total").notNull(),
+  syncedAt: ts("synced_at").notNull().defaultNow(),
+}, (t) => [index("register_events_at_idx").on(t.tenantId, t.storeId, t.at)]);

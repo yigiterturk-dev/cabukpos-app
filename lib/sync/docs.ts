@@ -91,6 +91,12 @@ export const syncDoc = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("shift_close"), id: uuid, staffId: uuid, at, countedCash: kurus }),
   // Yetkili işlem kaydı (M4: elle çekmece açma). Kimlik audit_log.id olur → tekrar gelirse ikinci kayıt yok.
   z.object({ kind: z.literal("audit"), id: uuid, staffId: uuid, approvedBy: uuid.nullable(), at, action: z.enum(["cekmece"]) }),
+  // M9a: sepetten silme / sepeti boşaltma (müdür onayı yok, yalnız kayıt). Kimlik register_events.id.
+  z.object({
+    kind: z.literal("register_event"), id: uuid, shiftId: uuid, staffId: uuid, at,
+    type: z.enum(["line_removed", "cart_cleared"]),
+    lines: z.array(z.object({ productId: uuid.nullable(), name: z.string().min(1).max(120), qtyMilli: z.number().int().min(1).max(1_000_000), total: kurus })).min(1).max(500),
+  }),
 ]);
 
 export type SyncDoc = z.infer<typeof syncDoc>;

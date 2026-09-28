@@ -66,3 +66,9 @@ language sql stable security definer set search_path = public as $f$
 $f$;
 revoke all on function fiscal_pending_tenants() from public;
 grant execute on function fiscal_pending_tenants() to cabukpos_app;
+
+-- M9a: kasa olayı
+alter table register_events enable row level security;
+alter table register_events force row level security;
+drop policy if exists tenant_isolation on register_events;
+create policy tenant_isolation on register_events using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);

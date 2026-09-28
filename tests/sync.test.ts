@@ -192,3 +192,22 @@ test("çekmece denetim kaydı idempotent", async () => {
   assert.equal(rows[0].action, "kasa.cekmece");
   assert.equal((await applyDoc(ctx, { ...doc, id: crypto.randomUUID(), action: "kasa_sil" })).ok, false);
 });
+
+test("M9a: register_event idempotent, vardiyasız reddedilir, RLS", async () => {
+  await applyDoc(ctx, { kind: "shift_open", id: shiftId, staffId: setup.st.id, at: now(), openingCash: 0 }); // zaten açıksa no-op
+  const ev = {
+    kind: "register_event", id: crypto.randomUUID(), shiftId, staffId: setup.st.id, at: now(), type: "cart_cleared",
+    lines: [{ productId: setup.doner.id, name: "Döner", qtyMilli: 2000, total: 36000 }, { productId: null, name: "Serbest", qtyMilli: 1000, total: 500 }],
+  };
+  assert.deepEqual(await applyDoc(ctx, ev), { id: ev.id, ok: true });
+  assert.deepEqual(await applyDoc(ctx, ev), { id: ev.id, ok: true });
+  const rows = await withTenant(t.id, (tx) => tx.select().from(schema.registerEvents).where(eq(schema.registerEvents.id, ev.id)));
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].total, 36500);
+  assert.equal(rows[0].type, "cart_cleared");
+  const bad = await applyDoc(ctx, { ...ev, id: crypto.randomUUID(), shiftId: crypto.randomUUID() });
+  assert.equal(bad.ok, false);
+  assert.equal((await applyDoc(ctx, { ...ev, id: crypto.randomUUID(), type: "baska" })).ok, false);
+  const leak = await withTenant(t2.id, (tx) => tx.select().from(schema.registerEvents));
+  assert.equal(leak.length, 0);
+});

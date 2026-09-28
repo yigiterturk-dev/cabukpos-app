@@ -79,6 +79,16 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
     return null;
   }
 
+  if (doc.kind === "register_event") {
+    const [shift] = await tx.select({ id: sh.id }).from(sh).where(and(eq(sh.id, doc.shiftId), eq(sh.deviceId, ctx.deviceId)));
+    if (!shift) return "Vardiya bulunamadı.";
+    if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
+    await tx.insert(schema.registerEvents)
+      .values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, at: clampAt(doc.at), type: doc.type, lines: doc.lines, total: doc.lines.reduce((s, l) => s + l.total, 0) })
+      .onConflictDoNothing();
+    return null;
+  }
+
   if (doc.kind === "tab") return applyTab(tx, ctx, doc);
   return doc.kind === "refund" ? applyRefund(tx, ctx, doc) : applySale(tx, ctx, doc);
 }

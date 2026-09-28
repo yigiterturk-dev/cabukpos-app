@@ -20,6 +20,18 @@ export function setQty(cart: CartLine[], productId: string, qtyMilli: number): C
   return qtyMilli <= 0 ? cart.filter((l) => l.productId !== productId) : cart.map((l) => (l.productId === productId ? { ...l, qtyMilli } : l));
 }
 
+/** M9a: kasadan silinen içerik (register_events.lines). total KDV dahil, indirimsiz. */
+export type RemovedLine = { productId: string | null; name: string; qtyMilli: number; total: Kurus };
+
+/** Sepet değişiminde çıkan miktar (silinen satır / azaltılan adet). Artış ve yeni satır yok sayılır. */
+export function removedLines(before: CartLine[], after: CartLine[]): RemovedLine[] {
+  const now = new Map(after.map((l) => [l.productId, l.qtyMilli]));
+  return before.flatMap((l) => {
+    const gone = l.qtyMilli - (now.get(l.productId) ?? 0);
+    return gone > 0 ? [{ productId: l.productId, name: l.name, qtyMilli: gone, total: lineTotal({ ...l, qtyMilli: gone, discount: 0 }) }] : [];
+  });
+}
+
 export function totals(cart: AnyLine[]): { total: Kurus; count: number; vat: VatLine[] } {
   const byRate = new Map<VatRate, Kurus>();
   let total = 0;
