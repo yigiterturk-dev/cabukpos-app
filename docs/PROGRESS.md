@@ -85,6 +85,10 @@ Spec: docs/superpowers/specs/2026-09-28-cabukpos-m6-online-design.md · Plan: do
 M6 KODDA BİTTİ (dal `m6-online`). Açık: E2E ajan/paket fişi baskısını sınamıyor (M4/M5 ajan testleri kapsıyor); `courierCash` kapanmış adisyonları useTabs'in tuttuğu sürece sayar.
 Prod sırası (M5 ile birlikte): şema push → db-rls → relrowsecurity (yeni 4 tablo) → main.
 
+## M7 — Stok, reçete, alış, tedarikçi, kârlılık (dal `m7-stok`, m6-online üstünde)
+Spec: docs/superpowers/specs/2026-09-28-cabukpos-m7-stok-design.md · Plan: docs/superpowers/plans/2026-09-28-cabukpos-m7-stok.md
+- [ ] Görev 1-7 (plan)
+
 ## Çalıştırma
 - DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).
 - E2E: `npm run build` → `node --env-file=.env.local node_modules/.bin/next start -p 3800` → `node --env-file=.env.local e2e/m1.mjs`. Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt); aşılırsa yerel DB'de `delete from login_attempts where key like 'signup:%'`.
