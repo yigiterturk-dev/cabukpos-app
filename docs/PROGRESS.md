@@ -97,6 +97,18 @@ Spec: docs/superpowers/specs/2026-09-28-cabukpos-m7-stok-design.md · Plan: docs
 M7 KODDA BİTTİ (dal `m7-stok`). Notlar: seçenek reçetesi yalnız adisyonda işler (hızlı satış ekranında seçenek yok — E2E masa M1 üzerinden); hammadde formunda KDV gizli → 1; ara ürün reçetesi parti miktarı olmadan kaydedilmez; seçenek adı değişirse (salon-actions ada göre eşler) reçetesi silinir.
 Prod sırası (M5+M6+M7 birlikte): şema push → db-rls → relrowsecurity (M7'nin 6 yeni tablosu) → main.
 
+## M8 — Mali belge: bilgi fişi + sahte e-Arşiv (dal `m8-mali`, main üstünde)
+Spec: docs/superpowers/specs/2026-09-28-cabukpos-m8-mali-design.md · Plan: docs/superpowers/plans/2026-09-28-cabukpos-m8-mali.md
+- [x] Görev 1 çekirdek: `lib/core/fiscal.ts` (VKN/TCKN algoritmaları, `docModeFor`, `formatNumber`, `nextRetryDue`, `buyerSchema`, `newFiscalToken`), `lib/fiscal/provider.ts` + `fake.ts`
+- [x] Görev 2 şema: tenants tax_id/tax_office/address, `fiscal_settings`, `fiscal_documents` (+ plandan farklı: `last_try_at`, `cancel_pending`), RLS; `fiscal_doc_by_token` + `fiscal_pending_tenants` SECURITY DEFINER. FORCE RLS sahibi de bağladığı için sahibine `definer_read` (yalnız SELECT) politikası
+- [x] Görev 3 sunucu: `lib/fiscal/issue.ts` (issueOne satır kilidi bekler → eşzamanlı ikinci çağrı numara yakmaz; hata → sayaç geri; retryable:false → attempts 5), iade → tam: iptal kuyruğu / kısmi: cancel_rejected / kesilmeden tam: cancelled; push sonrası `after(processDue)` (taze belge 15 sn kasaya bırakılır), `/api/fiscal/issue`, `/api/cron/fiscal` + vercel.json (günlük 03:00 UTC), Resend (anahtarsız atlar)
+- [x] Görev 4 kasa: ödeme diyaloğunda "Fatura" (InvoiceForm), token satış anında istemcide, 3 sn bekle (eşitle + kes) → `setSaleFiscal`; fişte e-ARŞİV FATURA/no/ETTN/QR (`EscPos.qr`) ya da "e-postayla"/bağlantı; e-Arşivde çekmece fişi beklemez
+- [x] Görev 5 yönetim: /yonetim/mali Ayarlar (vergi bilgisi, seri, kanal başına bölümlü düğme, hata simülasyonu) + Belgeler (süzgeç, sayaçlar, Yeniden dene, E-postayı gönder); gün sonunda "Kesilemeyen e-Arşiv" (kasada `/api/fiscal/shift`, yönetim raporunda sunucudan)
+- [x] Görev 6: `/f/<token>` (noindex, IP başına dakikada 30, TEST/İPTAL bantları, yazdır; loading.tsx yok)
+- [x] Görev 7: `e2e/m8.mjs` → M8 OK; regresyon M1 + M6 OK; 101/101 test. E2E'de kasa kanalı kullanıldı (paket kanalı modu DB testinde).
+M8 KODDA BİTTİ. Açık: gerçek entegratör sürücüsü (anahtar gelince `lib/fiscal/<ad>.ts` + getProvider), iade faturası üretimi, ÖKC.
+Prod sırası: şema push → db-rls → relrowsecurity + prosecdef kontrolü → Vercel env (`CRON_SECRET`, `APP_URL=https://cabukpos-app.vercel.app`, isteğe bağlı `RESEND_API_KEY`/`MAIL_FROM`) → main → canlı E2E M8 (`scripts/prod-push.sh 1..5`).
+
 ## Çalıştırma
 - DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).
 - E2E: `npm run build` → `node --env-file=.env.local node_modules/.bin/next start -p 3800` → `node --env-file=.env.local e2e/m1.mjs`. Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt); aşılırsa yerel DB'de `delete from login_attempts where key like 'signup:%'`.

@@ -85,6 +85,8 @@ test("kesim: paket kanalı, fatura isteği, info kanal, idempotent, sıralı num
   assert.equal((await applyDoc(f.ctx, { kind: "tab", id: randomUUID(), tabId, tableId: null, at: new Date().toISOString(), staffId: f.kasiyer.id, approvedBy: null, ev: { type: "open", guests: 0, kind: "paket" } })).ok, true);
   const paket = await sync(f, { tab: { tabId, tableId: null, paidLines: [{ lineId: randomUUID(), qtyMilli: 1000, discount: 0 }] } });
   assert.equal((await docOf(f, paket)).status, "pending");
+  await processDue(f.t.id); // taze belge kasanın doğrudan isteğine bırakılır
+  assert.equal((await docOf(f, paket)).status, "pending");
   const r1 = await issueOne(f.t.id, paket);
   assert.equal(r1?.status, "issued");
   assert.equal(r1?.number, `CBP${year}000000001`);

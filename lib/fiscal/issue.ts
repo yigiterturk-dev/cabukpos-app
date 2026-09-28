@@ -97,12 +97,18 @@ export async function cancelOne(tenantId: string, docId: string): Promise<IssueO
   });
 }
 
+const FRESH_GRACE_MS = 15_000;
+
 /** Vadesi gelmiş kesimler, bekleyen iptaller, gönderilmemiş e-postalar. */
 export async function processDue(tenantId: string, limit = 5, now = new Date()) {
   const { due, cancels, mails } = await withTenant(tenantId, async (tx) => {
     const open = await tx.select({ saleId: D.saleId, attempts: D.attempts, lastTryAt: D.lastTryAt, createdAt: D.createdAt }).from(D)
       .where(and(inArray(D.status, ["pending", "error"]), lt(D.attempts, MAX_ATTEMPTS))).orderBy(D.createdAt).limit(200);
-    const due = open.filter((d) => { const t = nextRetryDue(d.attempts, d.lastTryAt ?? d.createdAt); return t !== null && t <= now; }).slice(0, limit);
+    // Taze belge (hiç denenmemiş) önce kasanın doğrudan isteğine bırakılır; yoksa ikisi aynı belgeyi art arda dener.
+    const due = open.filter((d) => {
+      const t = d.attempts === 0 ? new Date(d.createdAt.getTime() + FRESH_GRACE_MS) : nextRetryDue(d.attempts, d.lastTryAt ?? d.createdAt);
+      return t !== null && t <= now;
+    }).slice(0, limit);
     const cancels = await tx.select({ id: D.id }).from(D).where(and(eq(D.status, "issued"), eq(D.cancelPending, true))).limit(limit);
     const mails = mailConfigured()
       ? await tx.select({ saleId: D.saleId }).from(D).where(and(eq(D.status, "issued"), isNull(D.emailSentAt), isNotNull(sql`${D.buyer}->>'email'`))).limit(limit)
