@@ -48,5 +48,5 @@ export function createQueue(send: Send, opts: { delays?: number[]; maxFailed?: n
     return enqueue(job.printer, job.data, job.id);
   }
 
-  return { enqueue, retry, failed: () => failed.map(({ data: _d, ...j }) => j), dropFailed: (id: string) => { const i = failed.findIndex((j) => j.id === id); if (i >= 0) failed.splice(i, 1); } };
+  return { enqueue, retry, failed: () => failed.map((j) => ({ id: j.id, printer: j.printer, tries: j.tries, error: j.error, at: j.at })), dropFailed: (id: string) => { const i = failed.findIndex((j) => j.id === id); if (i >= 0) failed.splice(i, 1); } };
 }

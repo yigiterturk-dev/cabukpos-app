@@ -6,17 +6,19 @@ import { useRouter } from "next/navigation";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { summarizeShift } from "@/lib/core/shift";
-import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordSaleLocal, shiftSales } from "@/lib/offline/db";
+import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordSaleLocal, shiftSales } from "@/lib/offline/db";
+import { agentStatus, openDrawer, printSale, printShift, readScale, retryPrint, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
 import type { LocalSale, Meta } from "@/lib/offline/state";
 import { Button, Field, Input } from "@/components/ui";
 import { ShiftReport, type ShiftReportData } from "@/components/ShiftReport";
 import { PinPad, type Cashier } from "./PinPad";
 import { RefundScreen } from "./RefundScreen";
-import { SaleScreen, type OnSale } from "./SaleScreen";
+import { SaleScreen, type OnSale, type PrintView } from "./SaleScreen";
 import { registerKasaSw } from "./sw-register";
 
-type View = { name: "sale" } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" };
+type View = { name: "sale" } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" };
+type PrintState = PrintView & { jobId?: string | null };
 
 function Center({ title, sub, children }: { title: string; sub?: string; children?: React.ReactNode }) {
   return (
@@ -37,6 +39,18 @@ function SyncBadge({ s }: { s: SyncStatus }) {
       <span className={`size-2 rounded-full ${online ? "bg-emerald-600" : "bg-amber-500"}`} />
       {online ? "Çevrimiçi" : "Çevrimdışı"}
       {s.pending > 0 && <span data-testid="sync-pending"> · {s.pending} bekleyen</span>}
+    </span>
+  );
+}
+
+function AgentBadge({ s }: { s: AgentStatus | null }) {
+  if (!s) return null;
+  const bad = !s.reachable || s.printers.some((p) => p.ok === false) || s.failed.length > 0;
+  const text = !s.reachable ? "Ajan kapalı" : s.printers.length === 0 ? "Yazıcı tanımlı değil" : bad ? `Yazıcı hatası${s.failed.length ? ` · ${s.failed.length} fiş bekliyor` : ""}` : "Yazıcı hazır";
+  return (
+    <span data-testid="agent-status" title={s.printers.find((p) => p.error)?.error ?? undefined} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${bad ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-800"}`}>
+      <span className={`size-2 rounded-full ${bad ? "bg-red-600" : "bg-emerald-600"}`} />
+      {text}
     </span>
   );
 }
@@ -66,17 +80,28 @@ function MoneyForm({ label, hint, submit, onSubmit, defaultValue = "" }: { label
 const qty = (m: number, weighed = false) => (weighed ? `${(m / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg` : m % 1000 === 0 ? String(m / 1000) : (m / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 3 }));
 const payLabel = (m: string) => PAY_METHODS.find((p) => p.value === m)?.label ?? m;
 
-function Receipt({ meta, sale, onBack }: { meta: Meta; sale: LocalSale; onBack: () => void }) {
+function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSale; onBack: () => void; onPrinted: (r: PrintResult) => void }) {
   const d = meta.device!;
+  const [msg, setMsg] = useState<string | null>(null);
+  const print = async () => {
+    const job = printSale(meta, sale);
+    if (!job) return window.print();
+    setMsg("Yazdırılıyor…");
+    const r = await job;
+    onPrinted(r);
+    setMsg(r.ok ? "Yazıcıya gönderildi." : `Yazdırılamadı (${r.error}). Tarayıcıdan yazdırabilirsiniz.`);
+  };
   const at = new Date(sale.at);
   const weighed = (id: string) => meta.catalog.products.find((p) => p.id === id)?.kind === "tartili";
   return (
     <>
       <style>{`@page { size: 80mm auto; margin: 0 } @media print { body { background: #fff } }`}</style>
       <div className="flex justify-center gap-3 border-b border-line p-3 print:hidden">
-        <Button variant="ghost" onClick={() => window.print()}>Yazdır</Button>
+        <Button variant="ghost" onClick={() => void print()}>Yazdır</Button>
+        {meta.agent && <button type="button" onClick={() => window.print()} className="inline-flex items-center px-3 text-sm underline">Tarayıcıdan yazdır</button>}
         <button type="button" onClick={onBack} className="inline-flex items-center px-3 text-sm underline">Kasaya dön</button>
       </div>
+      {msg && <p className="p-2 text-center text-sm print:hidden" role="status">{msg}</p>}
       <article className="mx-auto my-4 w-[72mm] font-mono text-[12px] leading-snug print:my-0 print:p-[4mm]">
         <header className="text-center">
           <div className="text-[14px] font-bold">{d.tenantName}</div>
@@ -137,6 +162,12 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
     <main className="mx-auto w-full max-w-lg px-4 py-6">
       <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
         <button type="button" onClick={onBack} className="text-sm underline">← Kasa</button>
+        {closed && data && meta.agent && (
+          <Button variant="ghost" onClick={() => {
+            const sh = meta.lastClosed!;
+            void printShift(meta, { deviceName: meta.device!.name, openedByName: data.openedByName, closedByName: data.closedByName, openingCash: sh.openingCash, openedAt: new Date(sh.openedAt), closedAt: new Date(sh.closedAt), countedCash: sh.countedCash, expectedCash: sh.expectedCash, summary: data.summary });
+          }}>Fiş yazıcısına</Button>
+        )}
         {closed && <Button variant="ghost" onClick={() => window.print()}>Yazdır / PDF</Button>}
       </div>
       <h1 className="text-xl font-semibold tracking-tight">{closed ? "Vardiya kapandı" : "Gün sonu"}</h1>
@@ -156,7 +187,29 @@ export function KasaApp() {
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [signedIn, setCashier] = useState<Cashier | null>(null);
   const [view, setView] = useState<View>({ name: "sale" });
+  const [prints, setPrints] = useState<Record<string, PrintState>>({});
+  const [agent, setAgent] = useState<AgentStatus | null>(null);
   const sync = useRef<ReturnType<typeof createSync> | null>(null);
+  const agentCfg = meta?.agent ?? null;
+
+  // Ajan durumu: tanımlıysa 30 sn'de bir (ve yazdırmadan sonra) sorulur.
+  const refreshAgent = useCallback(() => { if (agentCfg) void agentStatus(agentCfg).then(setAgent); }, [agentCfg]);
+  useEffect(() => {
+    if (!agentCfg) return;
+    let live = true;
+    const tick = () => void agentStatus(agentCfg).then((s) => { if (live) setAgent(s); });
+    tick();
+    const t = setInterval(tick, 30_000);
+    return () => { live = false; clearInterval(t); };
+  }, [agentCfg]);
+
+  const trackPrint = useCallback(async (saleId: string, job: Promise<PrintResult> | null) => {
+    if (!job) return;
+    setPrints((p) => ({ ...p, [saleId]: { state: "printing" } }));
+    const r = await job;
+    setPrints((p) => ({ ...p, [saleId]: { state: r.ok ? "ok" : "fail", error: r.error, jobId: r.jobId } }));
+    refreshAgent();
+  }, [refreshAgent]);
   const router = useRouter();
 
   useEffect(() => {
@@ -179,10 +232,21 @@ export function KasaApp() {
   const onSale: OnSale = useCallback(async (saleId, payments, cart) => {
     const r = await recordSaleLocal(cashier!, cart, payments, saleId);
     if (!r.ok) return r;
-    setMeta(await loadMeta());
+    const m = await loadMeta();
+    setMeta(m);
     void sync.current?.kick();
+    // Donanım satışı beklemez: fiş (+ nakitte çekmece) arka planda.
+    const cash = r.sale.payments.some((p) => p.method === "nakit");
+    if (m.agent?.autoPrint) void trackPrint(saleId, printSale(m, r.sale, cash));
+    else if (cash && m.agent?.drawer) void openDrawer(m.agent);
     return { ok: true, saleId, receiptNo: r.sale.receiptNo, change: r.sale.change };
-  }, [cashier]);
+  }, [cashier, trackPrint]);
+
+  const retry = useCallback((saleId: string) => {
+    const job = prints[saleId]?.jobId;
+    if (meta?.agent && job) void trackPrint(saleId, retryPrint(meta.agent, job));
+    else void kasaDb().sales.get(saleId).then((s) => { if (s && meta) void trackPrint(saleId, printSale(meta, s)); });
+  }, [prints, meta, trackPrint]);
 
   if (!meta || !status) return <Center title="Kasa açılıyor…" />;
   if (!meta.device) {
@@ -194,14 +258,28 @@ export function KasaApp() {
   }
 
   const d = meta.device;
+  const drawerBy = async (approvedBy: string | null) => {
+    if (!cashier || !meta.agent) return;
+    await recordAuditLocal(cashier.id, approvedBy, "cekmece");
+    void sync.current?.kick();
+    setView({ name: "sale" });
+    if (!(await openDrawer(meta.agent))) refreshAgent();
+  };
   const header = (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-2 text-sm print:hidden">
       <span className="font-semibold">{d.tenantName}</span>
       <span className="text-muted">{d.name}</span>
       {cashier && <span className="font-medium">{cashier.name}</span>}
       <SyncBadge s={status} />
+      <AgentBadge s={agentCfg ? agent : null} />
       {status.rejected > 0 && <span className="text-xs font-medium text-red-700">{status.rejected} belge reddedildi</span>}
       <div className="ml-auto flex items-center gap-4">
+        {cashier && meta.agent?.drawer && view.name === "sale" && (
+          <button type="button" className="underline" onClick={() => {
+            if (meta.catalog.staff.find((x) => x.id === cashier.id)?.role === "mudur") void drawerBy(null);
+            else setView({ name: "cekmece" });
+          }}>Çekmece</button>
+        )}
         {cashier && meta.shift && view.name === "sale" && <button type="button" onClick={() => setView({ name: "iade" })} className="underline">İade</button>}
         {cashier && meta.shift && view.name === "sale" && <button type="button" onClick={() => setView({ name: "gun-sonu" })} className="underline">Gün sonu</button>}
         {cashier && <button type="button" onClick={() => { setCashier(null); setView({ name: "sale" }); }} className="text-muted underline">Kasiyer değiştir</button>}
@@ -215,7 +293,18 @@ export function KasaApp() {
   if (!cashier) {
     return <>{header}<Center title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} /></Center></>;
   }
-  if (view.name === "receipt") return <Receipt meta={meta} sale={view.sale} onBack={() => setView({ name: "sale" })} />;
+  if (view.name === "receipt") return <Receipt meta={meta} sale={view.sale} onBack={() => setView({ name: "sale" })} onPrinted={(r) => { setPrints((p) => ({ ...p, [view.sale.id]: { state: r.ok ? "ok" : "fail", error: r.error, jobId: r.jobId } })); refreshAgent(); }} />;
+  if (view.name === "cekmece") {
+    return (
+      <>
+        {header}
+        <Center title="Müdür onayı" sub="Çekmeceyi açmak için müdür PIN'i girsin.">
+          <PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "mudur"} onOk={(m) => void drawerBy(m.id)} />
+          <button type="button" onClick={() => setView({ name: "sale" })} className="mt-6 w-full text-center text-sm underline">Vazgeç</button>
+        </Center>
+      </>
+    );
+  }
   if (!meta.shift) {
     return (
       <>
@@ -256,6 +345,9 @@ export function KasaApp() {
         market={d.vertical === "market"}
         onPay={onSale}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }}
+        prints={prints}
+        onRetryPrint={retry}
+        scale={meta.agent?.scale ? () => readScale(meta.agent!) : undefined}
       />
     </>
   );

@@ -10,11 +10,12 @@ import { Badge, Card, Empty, PageHeader } from "@/components/ui";
 export const dynamic = "force-dynamic";
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 const ONLINE_MS = 3 * 60_000;
+const within = (d: Date | null, ms: number) => !!d && Date.now() - d.getTime() < ms;
+const future = (d: Date | null) => !!d && d.getTime() > Date.now();
 
 export default async function Donanim() {
   const u = await requireAdmin();
   const rows = await getDb().select().from(schema.agents).where(eq(schema.agents.tenantId, u.tenantId)).orderBy(asc(schema.agents.createdAt));
-  const now = Date.now();
   return (
     <>
       <PageHeader title="Donanım" desc="Kasadaki bilgisayarda çalışan ÇabukPOS ajanı fiş yazıcısını, para çekmecesini ve teraziyi yönetir." />
@@ -34,7 +35,7 @@ export default async function Donanim() {
       {rows.length === 0 ? <Empty>Henüz ajan yok. Yazıcı ya da terazi kullanmıyorsanız gerekmez; fiş tarayıcıdan da yazdırılır.</Empty> : (
         <div className="space-y-6">
           {rows.map((r) => {
-            const online = r.lastSeenAt && now - r.lastSeenAt.getTime() < ONLINE_MS;
+            const online = within(r.lastSeenAt, ONLINE_MS);
             const parsed = agentConfig.safeParse(r.config);
             const cfg = parsed.success ? parsed.data : emptyAgentConfig();
             return (
@@ -58,7 +59,7 @@ export default async function Donanim() {
                   </ul>
                 )}
                 <p className="mt-2 text-xs text-muted">
-                  {r.certExpiresAt && r.certExpiresAt.getTime() > now ? <>Tablet ve diğer kasalar ağdan bağlanabilir: {agentHost(r.id)}</> : <>Yalnız bu bilgisayardaki kasa bağlanır (ağ sertifikası yok).</>}
+                  {future(r.certExpiresAt) ? <>Tablet ve diğer kasalar ağdan bağlanabilir: {agentHost(r.id)}</> : <>Yalnız bu bilgisayardaki kasa bağlanır (ağ sertifikası yok).</>}
                 </p>
                 {!r.revokedAt && <div className="mt-5 border-t border-line pt-5"><AgentConfigForm agentId={r.id} initial={cfg} /></div>}
               </Card>

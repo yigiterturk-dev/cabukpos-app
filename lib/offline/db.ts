@@ -131,3 +131,8 @@ export async function closeShiftLocal(staffId: string, countedCash: number): Pro
     return next;
   });
 }
+
+/** Yetkili işlem kaydı (elle çekmece açma) → giden kutusu → audit_log. */
+export async function recordAuditLocal(staffId: string, approvedBy: string | null, action: "cekmece") {
+  await enqueue({ kind: "audit", id: crypto.randomUUID(), staffId, approvedBy, at: new Date().toISOString(), action });
+}
