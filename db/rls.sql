@@ -9,7 +9,7 @@ grant select, insert, update, delete on all tables in schema public to cabukpos_
 alter default privileges in schema public grant select, insert, update, delete on tables to cabukpos_app;
 
 do $$ declare t text; begin
-  foreach t in array array['stores','staff','categories','products','shifts','sales','sale_lines','payments','audit_log'] loop
+  foreach t in array array['stores','staff','categories','products','shifts','sales','sale_lines','payments','stock_movements','audit_log'] loop
     execute format('alter table %I enable row level security', t);
     execute format('alter table %I force row level security', t);
     execute format('drop policy if exists tenant_isolation on %I', t);

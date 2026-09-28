@@ -9,14 +9,26 @@ import { Button, Field, Input, Textarea } from "@/components/ui";
 
 const Err = ({ s, f }: { s: CatalogState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-sm text-red-700">{s.error}</p> : null);
 
-export type ProductInitial = { id: string; name: string; price: number; vatRate: number; categoryId: string | null; barcodes: string[] };
+export type ProductInitial = { id: string; name: string; price: number; vatRate: number; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; trackStock: boolean; quick: boolean };
+const FIELDS = ["name", "price", "vatRate", "categoryId", "barcodes", "kind", "plu"];
 
 function Fields({ s, initial, categories }: { s: CatalogState; initial?: ProductInitial; categories: Option[] }) {
   const [vat, setVat] = useState(String(initial?.vatRate ?? 10));
+  const [kind, setKind] = useState(initial?.kind ?? "adet");
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div><Field label="Ürün adı"><Input name="name" defaultValue={initial?.name} required /></Field><Err s={s} f="name" /></div>
-      <div><Field label="Fiyat (KDV dahil)" hint="ör. 25,00"><Input name="price" inputMode="decimal" defaultValue={initial ? formatTL(initial.price).replace(" ₺", "") : ""} required /></Field><Err s={s} f="price" /></div>
+      <div>
+        <div className="mb-1.5 text-sm font-medium">Tür</div>
+        <input type="hidden" name="kind" value={kind} />
+        <div className="flex gap-1" role="group" aria-label="Ürün türü">
+          {([["adet", "Adet"], ["tartili", "Tartılı (kg)"]] as const).map(([v, l]) => (
+            <button key={v} type="button" aria-pressed={kind === v} onClick={() => setKind(v)} className={`rounded-lg border px-3 py-2 text-sm ${kind === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{l}</button>
+          ))}
+        </div>
+        <Err s={s} f="kind" />
+      </div>
+      <div><Field label={kind === "tartili" ? "Kg fiyatı (KDV dahil)" : "Fiyat (KDV dahil)"} hint="ör. 25,00"><Input name="price" inputMode="decimal" defaultValue={initial ? formatTL(initial.price).replace(" ₺", "") : ""} required /></Field><Err s={s} f="price" /></div>
       <div>
         <div className="mb-1.5 text-sm font-medium">KDV</div>
         <input type="hidden" name="vatRate" value={vat} />
@@ -28,6 +40,11 @@ function Fields({ s, initial, categories }: { s: CatalogState; initial?: Product
         <Err s={s} f="vatRate" />
       </div>
       <div><div className="mb-1.5 text-sm font-medium">Kategori</div><Select name="categoryId" options={[{ value: "", label: "Kategorisiz" }, ...categories]} defaultValue={initial?.categoryId ?? ""} placeholder="Kategorisiz" /><Err s={s} f="categoryId" /></div>
+      {kind === "tartili" ? <div><Field label="PLU" hint="Terazideki 5 haneli ürün kodu; etiketsiz tartımda boş"><Input name="plu" inputMode="numeric" maxLength={5} defaultValue={initial?.plu ?? ""} /></Field><Err s={s} f="plu" /></div> : <div />}
+      <div className="flex flex-col justify-end gap-2 text-sm">
+        <label className="flex items-center gap-2"><input type="checkbox" name="trackStock" defaultChecked={initial?.trackStock} className="size-4 accent-[var(--color-brand)]" />Stok takibi</label>
+        <label className="flex items-center gap-2"><input type="checkbox" name="quick" defaultChecked={initial?.quick} className="size-4 accent-[var(--color-brand)]" />Kasada hızlı tuş</label>
+      </div>
       <div className="sm:col-span-2"><Field label="Barkodlar" hint="Virgül ya da satırla ayırın; boş olabilir"><Textarea name="barcodes" rows={2} defaultValue={initial?.barcodes.join("\n")} /></Field><Err s={s} f="barcodes" /></div>
     </div>
   );
@@ -38,7 +55,7 @@ export function ProductForm({ initial, categories }: { initial?: ProductInitial;
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <Fields key={initial ? initial.id : state.savedAt ?? 0} s={state} initial={initial} categories={categories} />
-      {state.error && !["name", "price", "vatRate", "categoryId", "barcodes"].includes(state.field ?? "") && <p className="text-sm text-red-700">{state.error}</p>}
+      {state.error && !FIELDS.includes(state.field ?? "") && <p className="text-sm text-red-700">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Ürünü kaydet"}</Button>
         {initial && <Link href="/yonetim/urunler" className="text-sm text-muted underline">Vazgeç</Link>}

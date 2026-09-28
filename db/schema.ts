@@ -6,7 +6,9 @@ export const userRole = pgEnum("user_role", ["sahip", "mudur"]);
 export const staffRole = pgEnum("staff_role", ["kasiyer", "mudur"]);
 export const payMethod = pgEnum("pay_method", ["nakit", "kart", "yemek_karti"]);
 export const saleChannel = pgEnum("sale_channel", ["kasa", "masa", "paket", "platform"]);
-export const saleStatus = pgEnum("sale_status", ["kapandi", "iptal"]);
+export const saleStatus = pgEnum("sale_status", ["kapandi", "iptal", "iade"]);
+export const productKind = pgEnum("product_kind", ["adet", "tartili"]);
+export const stockKind = pgEnum("stock_kind", ["satis", "iade", "alis", "sayim", "fire"]);
 
 const ts = (n: string) => timestamp(n, { withTimezone: true });
 const tenantRef = () => uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" });
@@ -85,13 +87,19 @@ export const products = pgTable("products", {
   tenantId: tenantRef(),
   categoryId: uuid("category_id").references(() => categories.id, { onDelete: "set null" }),
   name: text("name").notNull(),
-  price: integer("price").notNull(),
+  price: integer("price").notNull(), // tartılıda kg fiyatı
   vatRate: integer("vat_rate").notNull(),
   barcodes: text("barcodes").array().notNull().default([]),
+  kind: productKind("kind").notNull().default("adet"),
+  plu: text("plu"), // terazi etiketi ürün kodu (5 hane), yalnız tartılı
+  trackStock: boolean("track_stock").notNull().default(false),
+  quick: boolean("quick").notNull().default(false), // market kasası hızlı tuşu
   active: boolean("active").notNull().default(true),
   sort: integer("sort").notNull().default(0),
+  priceChangedAt: ts("price_changed_at").notNull().defaultNow(),
+  labelPrintedAt: ts("label_printed_at"),
   createdAt: ts("created_at").notNull().defaultNow(),
-}, (t) => [index("products_tenant_idx").on(t.tenantId)]);
+}, (t) => [index("products_tenant_idx").on(t.tenantId), uniqueIndex("products_plu_uq").on(t.tenantId, t.plu)]);
 
 export const shifts = pgTable("shifts", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -120,6 +128,8 @@ export const sales = pgTable("sales", {
   total: integer("total").notNull(),
   change: integer("change").notNull().default(0),
   vat: jsonb("vat").notNull().$type<{ rate: number; gross: number; net: number; vat: number }[]>(),
+  refundOf: uuid("refund_of"), // iade: asıl satış (FK yok; asıl satış henüz eşitlenmemiş olabilir)
+  approvedBy: uuid("approved_by").references(() => staff.id), // iadeyi onaylayan müdür
   review: text("review"), // eşitlemede kabul edildi ama incelenmeli (fiyat farkı, silinmiş ürün, fiş no çakışması…)
   createdAt: ts("created_at").notNull().defaultNow(), // satış anı (cihaz saati)
   syncedAt: ts("synced_at").notNull().defaultNow(),
@@ -144,6 +154,20 @@ export const payments = pgTable("payments", {
   method: payMethod("method").notNull(),
   amount: integer("amount").notNull(),
 });
+
+/** Stok = son sayım (mutlak qty) + sonraki hareketler (işaretli qty). lib/core/stock.ts */
+export const stockMovements = pgTable("stock_movements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  kind: stockKind("kind").notNull(),
+  qtyMilli: integer("qty_milli").notNull(),
+  at: ts("at").notNull().defaultNow(),
+  saleId: uuid("sale_id").references(() => sales.id, { onDelete: "cascade" }),
+  actor: text("actor").notNull(),
+  note: text("note"),
+}, (t) => [index("stock_product_idx").on(t.productId, t.at)]);
 
 export const auditLog = pgTable("audit_log", {
   id: uuid("id").primaryKey().defaultRandom(),

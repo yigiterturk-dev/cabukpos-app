@@ -37,7 +37,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
       </Card>
       <Card className="mb-6 p-5">
         <h2 className="mb-4 font-semibold">{editing ? `Düzenle: ${editing.name}` : "Ürün ekle"}</h2>
-        <ProductForm key={editing?.id ?? "yeni"} categories={options} initial={editing && { id: editing.id, name: editing.name, price: editing.price, vatRate: editing.vatRate, categoryId: editing.categoryId, barcodes: editing.barcodes }} />
+        <ProductForm key={editing?.id ?? "yeni"} categories={options} initial={editing && { id: editing.id, name: editing.name, price: editing.price, vatRate: editing.vatRate, categoryId: editing.categoryId, barcodes: editing.barcodes, kind: editing.kind, plu: editing.plu, trackStock: editing.trackStock, quick: editing.quick }} />
       </Card>
       {prods.length === 0 ? (
         <Empty>Henüz ürün yok.</Empty>
@@ -50,9 +50,9 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
             <tbody className="divide-y divide-line">
               {prods.map((p) => (
                 <tr key={p.id} className={p.active ? "" : "opacity-60"}>
-                  <td className="p-3 font-medium">{p.name}</td>
+                  <td className="p-3 font-medium">{p.name}{p.kind === "tartili" && <span className="ml-2 text-xs text-muted">kg{p.plu ? ` · PLU ${p.plu}` : ""}</span>}{p.quick && <span className="ml-2 text-xs text-brand">hızlı tuş</span>}</td>
                   <td className="p-3 text-muted">{p.categoryId ? catName.get(p.categoryId) : "—"}</td>
-                  <td className="tabular p-3 text-right">{formatTL(p.price)}</td>
+                  <td className="tabular p-3 text-right">{formatTL(p.price)}{p.kind === "tartili" && "/kg"}</td>
                   <td className="p-3">%{p.vatRate}</td>
                   <td className="p-3 text-muted">{p.barcodes.length || "—"}</td>
                   <td className="p-3">{p.active ? <Badge tone="ok">Satışta</Badge> : <Badge>Kapalı</Badge>}</td>
