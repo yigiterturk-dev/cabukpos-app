@@ -16,6 +16,8 @@ export const saleLineDoc = z.object({
   qtyMilli: z.number().int().min(1).max(1_000_000),
 });
 
+const payMethod = z.enum(PAY_METHODS.map((m) => m.value) as ["nakit", "kart", "yemek_karti"]);
+
 export const syncDoc = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("sale"),
@@ -25,7 +27,20 @@ export const syncDoc = z.discriminatedUnion("kind", [
     receiptSeq: z.number().int().min(1).max(99_999_999),
     at,
     lines: z.array(saleLineDoc).min(1).max(500),
-    payments: z.array(z.object({ method: z.enum(PAY_METHODS.map((m) => m.value) as ["nakit", "kart", "yemek_karti"]), amount: kurus.min(1) })).min(1).max(10),
+    payments: z.array(z.object({ method: payMethod, amount: kurus.min(1) })).min(1).max(10),
+  }),
+  // İade: fiş no ile, müdür onaylı, tek yöntemle geri ödeme. Aynı fiş sayacından numara alır.
+  z.object({
+    kind: z.literal("refund"),
+    id: uuid,
+    shiftId: uuid,
+    staffId: uuid,
+    approvedBy: uuid,
+    refundOf: uuid,
+    receiptSeq: z.number().int().min(1).max(99_999_999),
+    at,
+    lines: z.array(saleLineDoc).min(1).max(500),
+    payments: z.array(z.object({ method: payMethod, amount: kurus.min(1) })).length(1),
   }),
   z.object({ kind: z.literal("shift_open"), id: uuid, staffId: uuid, at, openingCash: kurus }),
   z.object({ kind: z.literal("shift_close"), id: uuid, staffId: uuid, at, countedCash: kurus }),
@@ -33,6 +48,7 @@ export const syncDoc = z.discriminatedUnion("kind", [
 
 export type SyncDoc = z.infer<typeof syncDoc>;
 export type SaleDoc = Extract<SyncDoc, { kind: "sale" }>;
+export type RefundDoc = Extract<SyncDoc, { kind: "refund" }>;
 export type DocResult = { id: string; ok: true } | { id: string; ok: false; error: string };
 
 /** Cihaz öneki + sıra → "K1-000042". Kasada ve bulutta aynı. */

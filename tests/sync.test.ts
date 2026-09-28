@@ -6,6 +6,7 @@ process.env.MIGRATE_DATABASE_URL = "postgres://yigiterturk@localhost:5432/cabukp
 const { getDb, withTenant, closeDb, schema } = await import("@/db");
 const { applyDoc } = await import("@/lib/sync/apply");
 const { backoffMs, formatReceipt } = await import("@/lib/sync/docs");
+const { lookupSale } = await import("@/lib/sync/lookup");
 const { eq } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "SYNC-T", vertical: "restoran" }).returning();
@@ -15,7 +16,9 @@ const setup = await withTenant(t.id, async (tx) => {
   const [st] = await tx.insert(schema.staff).values({ tenantId: t.id, name: "Ali", pinHash: "x" }).returning();
   const [doner] = await tx.insert(schema.products).values({ tenantId: t.id, name: "Döner", price: 18000, vatRate: 10 }).returning();
   const [ayran] = await tx.insert(schema.products).values({ tenantId: t.id, name: "Ayran", price: 2500, vatRate: 10, active: false }).returning();
-  return { store, st, doner, ayran };
+  const [mudur] = await tx.insert(schema.staff).values({ tenantId: t.id, name: "Müdür", role: "mudur", pinHash: "x" }).returning();
+  const [un] = await tx.insert(schema.products).values({ tenantId: t.id, name: "Un", price: 4000, vatRate: 1, trackStock: true }).returning();
+  return { store, st, doner, ayran, mudur, un };
 });
 const other = await withTenant(t2.id, async (tx) => {
   const [st] = await tx.insert(schema.staff).values({ tenantId: t2.id, name: "Yabancı", pinHash: "x" }).returning();
@@ -106,3 +109,73 @@ test("gün sonu: beklenen kasa buluttaki satışlardan; ikinci kapama değiştir
   assert.match((await saleRow(late.id)).review!, /kapanmış vardiya/);
   assert.equal((await applyDoc(ctx, sale(10, { shiftId: crypto.randomUUID() }))).ok, false);
 });
+
+// — M3: stok hareketleri ve iade (ayrı vardiya) —
+const shift2 = crypto.randomUUID();
+const moves = (productId: string) => withTenant(t.id, (tx) => tx.select().from(schema.stockMovements).where(eq(schema.stockMovements.productId, productId)));
+const refund = (seq: number, refundOf: string, over: Record<string, unknown> = {}) => ({
+  kind: "refund", id: crypto.randomUUID(), shiftId: shift2, staffId: setup.st.id, approvedBy: setup.mudur.id, refundOf, receiptSeq: seq, at: now(),
+  lines: [{ productId: setup.un.id, name: "Un", unitPrice: 4000, vatRate: 1, qtyMilli: 1000 }],
+  payments: [{ method: "nakit", amount: 4000 }], ...over,
+});
+let unSale = "";
+
+test("satış yalnız stok takipli ürüne hareket yazar", async () => {
+  assert.equal((await applyDoc(ctx, { kind: "shift_open", id: shift2, staffId: setup.st.id, at: now(), openingCash: 10000 })).ok, true);
+  const d = sale(20, { shiftId: shift2, lines: [{ productId: setup.un.id, name: "Un", unitPrice: 4000, vatRate: 1, qtyMilli: 3000 }, { productId: setup.doner.id, name: "Döner", unitPrice: 18000, vatRate: 10, qtyMilli: 1000 }], payments: [{ method: "nakit", amount: 30000 }] });
+  unSale = d.id;
+  assert.equal((await applyDoc(ctx, d)).ok, true);
+  assert.equal((await applyDoc(ctx, d)).ok, true);
+  const m = await moves(setup.un.id);
+  assert.equal(m.length, 1);
+  assert.equal(m[0].kind, "satis");
+  assert.equal(m[0].qtyMilli, -3000);
+  assert.equal(m[0].saleId, d.id);
+  assert.equal((await moves(setup.doner.id)).length, 0);
+});
+
+test("fiş sorgusu: iade edilebilir miktar; başka kiracı göremez", async () => {
+  const s = await lookupSale(t.id, "K1-000020");
+  assert.ok(s);
+  assert.equal(s.id, unSale);
+  assert.deepEqual(s.lines.map((l) => [l.name, l.qtyMilli]), [["Un", 3000], ["Döner", 1000]]);
+  assert.equal(await lookupSale(t2.id, "K1-000020"), null);
+  assert.equal(await lookupSale(t.id, "K1-999999"), null);
+});
+
+test("iade: idempotent, stok geri girer, fiş sayacından numara, sorguda düşer", async () => {
+  const r = refund(21, unSale);
+  assert.deepEqual(await applyDoc(ctx, r), { id: r.id, ok: true });
+  assert.deepEqual(await applyDoc(ctx, r), { id: r.id, ok: true });
+  const row = await saleRow(r.id);
+  assert.equal(row.status, "iade");
+  assert.equal(row.refundOf, unSale);
+  assert.equal(row.receiptNo, "K1-000021");
+  assert.equal(row.total, 4000);
+  assert.equal(row.review, null);
+  const m = await moves(setup.un.id);
+  assert.deepEqual(m.map((x) => [x.kind, x.qtyMilli]).sort(), [["iade", 1000], ["satis", -3000]]);
+  const s = await lookupSale(t.id, "K1-000020");
+  assert.deepEqual(s!.lines.map((l) => [l.name, l.qtyMilli]), [["Un", 2000], ["Döner", 1000]]);
+});
+
+test("iade reddedilmez: fazla iade, bilinmeyen asıl satış, ödeme farkı, müdür olmayan onay → review", async () => {
+  const over = refund(22, unSale, { lines: [{ productId: setup.un.id, name: "Un", unitPrice: 4000, vatRate: 1, qtyMilli: 5000 }], payments: [{ method: "nakit", amount: 20000 }] });
+  assert.equal((await applyDoc(ctx, over)).ok, true);
+  assert.match((await saleRow(over.id)).review!, /satılandan fazla iade: Un/);
+  const ghost = refund(23, crypto.randomUUID(), { payments: [{ method: "kart", amount: 3000 }], approvedBy: setup.st.id });
+  assert.equal((await applyDoc(ctx, ghost)).ok, true);
+  const g = await saleRow(ghost.id);
+  assert.match(g.review!, /asıl satış bulunamadı/);
+  assert.match(g.review!, /iade ödemesi toplamla eşleşmiyor/);
+  assert.match(g.review!, /onaylayan müdür değil/);
+  assert.equal((await applyDoc(ctx, refund(24, unSale, { approvedBy: other.st.id }))).ok, false);
+});
+
+test("gün sonu iadeleri düşer", async () => {
+  assert.equal((await applyDoc(ctx, { kind: "shift_close", id: shift2, staffId: setup.st.id, at: now(), countedCash: 0 })).ok, true);
+  const [s] = await withTenant(t.id, (tx) => tx.select().from(schema.shifts).where(eq(schema.shifts.id, shift2)));
+  // açılış 100 + satış nakit 300 (Un 120 + Döner 180) − nakit iadeler 40 + 200; kartla iade (30) kasayı etkilemez
+  assert.equal(s.expectedCash, 10000 + 30000 - 4000 - 20000);
+});
+
