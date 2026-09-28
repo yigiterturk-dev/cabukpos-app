@@ -1,8 +1,8 @@
 "use server";
 // Ürün ve kategori yönetimi. Her yazma requireAdmin + withTenant (RLS) + denetim kaydı.
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { schema, withTenant } from "@/db";
+import { schema, withTenant, type Tx } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { parseProduct } from "./catalog";
@@ -40,7 +40,16 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
   const p = parseProduct(f);
   if (!p.ok) return { error: p.error, field: p.field };
   const P = schema.products;
+  const salon = form.has("stationId"); // yalnız restoran formunda gelir
+  const stationId = String(form.get("stationId") ?? "").trim() || null;
+  const groupIds = [...new Set(form.getAll("optionGroups").map(String))];
+  if ((stationId && !UUID.test(stationId)) || groupIds.some((g) => !UUID.test(g))) return { error: "İstasyon/seçenek geçersiz.", field: "" };
   const err = await withTenant(a.tenantId, async (tx): Promise<{ error: string; field: string } | null> => {
+    if (stationId) {
+      const [st] = await tx.select({ id: schema.stations.id }).from(schema.stations).where(eq(schema.stations.id, stationId));
+      if (!st) return { error: "İstasyon bulunamadı.", field: "" };
+    }
+    if (groupIds.length && (await tx.select({ id: schema.optionGroups.id }).from(schema.optionGroups).where(inArray(schema.optionGroups.id, groupIds))).length !== groupIds.length) return { error: "Seçenek grubu bulunamadı.", field: "" };
     if (p.value.categoryId) {
       const [c] = await tx.select({ id: schema.categories.id }).from(schema.categories).where(eq(schema.categories.id, p.value.categoryId));
       if (!c) return { error: "Kategori bulunamadı.", field: "categoryId" };
@@ -51,10 +60,12 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
     }
     if (id) {
       // Fiyat değişince raf etiketi kuyruğuna girer.
-      const [row] = await tx.update(P).set({ ...p.value, priceChangedAt: sql`case when ${P.price} <> ${p.value.price} then now() else ${P.priceChangedAt} end` }).where(eq(P.id, id)).returning({ id: P.id });
+      const [row] = await tx.update(P).set({ ...p.value, ...(salon ? { stationId } : {}), priceChangedAt: sql`case when ${P.price} <> ${p.value.price} then now() else ${P.priceChangedAt} end` }).where(eq(P.id, id)).returning({ id: P.id });
       if (!row) return { error: "Ürün bulunamadı.", field: "" };
+      if (salon) await linkGroups(tx, a.tenantId, id, groupIds);
     } else {
-      await tx.insert(schema.products).values({ tenantId: a.tenantId, ...p.value });
+      const [row] = await tx.insert(schema.products).values({ tenantId: a.tenantId, ...p.value, ...(salon ? { stationId } : {}) }).returning({ id: P.id });
+      if (salon) await linkGroups(tx, a.tenantId, row.id, groupIds);
     }
     await audit(tx, a.tenantId, `user:${a.id}`, id ? "product.update" : "product.create", { id, name: p.value.name, price: p.value.price });
     return null;
@@ -72,4 +83,10 @@ export async function setProductActive(id: string, active: boolean) {
     await audit(tx, a.tenantId, `user:${a.id}`, "product.active", { id, active });
   });
   revalidatePath("/yonetim/urunler");
+}
+
+/** Ürünün seçenek grupları (formdaki sırayla). */
+async function linkGroups(tx: Tx, tenantId: string, productId: string, groupIds: string[]) {
+  await tx.delete(schema.productOptionGroups).where(eq(schema.productOptionGroups.productId, productId));
+  if (groupIds.length) await tx.insert(schema.productOptionGroups).values(groupIds.map((groupId, sort) => ({ tenantId, productId, groupId, sort })));
 }

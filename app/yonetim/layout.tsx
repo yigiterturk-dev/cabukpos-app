@@ -9,7 +9,7 @@ export default async function YonetimLayout({ children }: { children: React.Reac
       <aside className="border-b border-line p-4 print:hidden md:sticky md:top-0 md:h-dvh md:border-b-0 md:border-r">
         <div className="mb-1 hidden px-3 text-sm font-semibold uppercase tracking-widest text-brand md:block">ÇabukPOS</div>
         <div className="mb-6 hidden px-3 text-sm text-muted md:block">{a.tenantName} · {a.vertical === "restoran" ? "Restoran" : "Market"}</div>
-        <Nav />
+        <Nav vertical={a.vertical} />
         <div className="mt-3 flex items-center gap-3 border-t border-line px-3 pt-3 text-sm md:mt-6 md:block md:pt-4">
           <div className="font-medium">{a.name}</div>
           <form action={logout} className="ml-auto md:ml-0">

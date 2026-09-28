@@ -9,10 +9,12 @@ import { Button, Field, Input, Textarea } from "@/components/ui";
 
 const Err = ({ s, f }: { s: CatalogState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-sm text-red-700">{s.error}</p> : null);
 
-export type ProductInitial = { id: string; name: string; price: number; vatRate: number; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; trackStock: boolean; quick: boolean };
+export type ProductInitial = { id: string; name: string; price: number; vatRate: number; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; trackStock: boolean; quick: boolean; stationId?: string | null; optionGroupIds?: string[] };
+/** Restoran: ürüne bağlanabilecek istasyonlar ve seçenek grupları. */
+export type SalonChoices = { stations: Option[]; groups: Option[] };
 const FIELDS = ["name", "price", "vatRate", "categoryId", "barcodes", "kind", "plu"];
 
-function Fields({ s, initial, categories }: { s: CatalogState; initial?: ProductInitial; categories: Option[] }) {
+function Fields({ s, initial, categories, salon }: { s: CatalogState; initial?: ProductInitial; categories: Option[]; salon?: SalonChoices }) {
   const [vat, setVat] = useState(String(initial?.vatRate ?? 10));
   const [kind, setKind] = useState(initial?.kind ?? "adet");
   return (
@@ -45,16 +47,29 @@ function Fields({ s, initial, categories }: { s: CatalogState; initial?: Product
         <label className="flex items-center gap-2"><input type="checkbox" name="trackStock" defaultChecked={initial?.trackStock} className="size-4 accent-[var(--color-brand)]" />Stok takibi</label>
         <label className="flex items-center gap-2"><input type="checkbox" name="quick" defaultChecked={initial?.quick} className="size-4 accent-[var(--color-brand)]" />Kasada hızlı tuş</label>
       </div>
+      {salon && (
+        <>
+          <div><div className="mb-1.5 text-sm font-medium">Mutfak istasyonu</div><Select name="stationId" options={[{ value: "", label: "Kategoriden" }, ...salon.stations]} defaultValue={initial?.stationId ?? ""} placeholder="Kategoriden" /></div>
+          <div>
+            <div className="mb-1.5 text-sm font-medium">Seçenek grupları</div>
+            {salon.groups.length === 0 ? <p className="text-sm text-muted">Seçenekler sayfasından grup ekleyin.</p> : (
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                {salon.groups.map((g) => <label key={g.value} className="flex items-center gap-2"><input type="checkbox" name="optionGroups" value={g.value} defaultChecked={initial?.optionGroupIds?.includes(g.value)} className="size-4 accent-[var(--color-brand)]" />{g.label}</label>)}
+              </div>
+            )}
+          </div>
+        </>
+      )}
       <div className="sm:col-span-2"><Field label="Barkodlar" hint="Virgül ya da satırla ayırın; boş olabilir"><Textarea name="barcodes" rows={2} defaultValue={initial?.barcodes.join("\n")} /></Field><Err s={s} f="barcodes" /></div>
     </div>
   );
 }
 
-export function ProductForm({ initial, categories }: { initial?: ProductInitial; categories: Option[] }) {
+export function ProductForm({ initial, categories, salon }: { initial?: ProductInitial; categories: Option[]; salon?: SalonChoices }) {
   const { state, pending, onSubmit } = useFormAction(saveProduct.bind(null, initial?.id ?? null), {} as CatalogState);
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <Fields key={initial ? initial.id : state.savedAt ?? 0} s={state} initial={initial} categories={categories} />
+      <Fields key={initial ? initial.id : state.savedAt ?? 0} s={state} initial={initial} categories={categories} salon={salon} />
       {state.error && !FIELDS.includes(state.field ?? "") && <p className="text-sm text-red-700">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Ürünü kaydet"}</Button>

@@ -12,12 +12,17 @@ export const dynamic = "force-dynamic";
 export default async function Urunler({ searchParams }: { searchParams: Promise<{ duzenle?: string }> }) {
   const a = await requireAdmin();
   const { duzenle } = await searchParams;
-  const [cats, prods] = await withTenant(a.tenantId, (tx) =>
+  const restoran = a.vertical === "restoran";
+  const [cats, prods, stations, groups, links] = await withTenant(a.tenantId, (tx) =>
     Promise.all([
       tx.select().from(schema.categories).orderBy(asc(schema.categories.sort), asc(schema.categories.name)),
       tx.select().from(schema.products).orderBy(asc(schema.products.name)),
+      restoran ? tx.select({ value: schema.stations.id, label: schema.stations.name }).from(schema.stations).orderBy(asc(schema.stations.sort)) : [],
+      restoran ? tx.select({ value: schema.optionGroups.id, label: schema.optionGroups.name }).from(schema.optionGroups).orderBy(asc(schema.optionGroups.sort), asc(schema.optionGroups.name)) : [],
+      restoran ? tx.select().from(schema.productOptionGroups).orderBy(asc(schema.productOptionGroups.sort)) : [],
     ]),
   );
+  const salon = restoran ? { stations, groups } : undefined;
   const catName = new Map(cats.map((c) => [c.id, c.name]));
   const editing = prods.find((p) => p.id === duzenle);
   const options = cats.map((c) => ({ value: c.id, label: c.name }));
@@ -37,7 +42,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
       </Card>
       <Card className="mb-6 p-5">
         <h2 className="mb-4 font-semibold">{editing ? `Düzenle: ${editing.name}` : "Ürün ekle"}</h2>
-        <ProductForm key={editing?.id ?? "yeni"} categories={options} initial={editing && { id: editing.id, name: editing.name, price: editing.price, vatRate: editing.vatRate, categoryId: editing.categoryId, barcodes: editing.barcodes, kind: editing.kind, plu: editing.plu, trackStock: editing.trackStock, quick: editing.quick }} />
+        <ProductForm key={editing?.id ?? "yeni"} categories={options} salon={salon} initial={editing && { stationId: editing.stationId, optionGroupIds: links.filter((l) => l.productId === editing.id).map((l) => l.groupId), id: editing.id, name: editing.name, price: editing.price, vatRate: editing.vatRate, categoryId: editing.categoryId, barcodes: editing.barcodes, kind: editing.kind, plu: editing.plu, trackStock: editing.trackStock, quick: editing.quick }} />
       </Card>
       {prods.length === 0 ? (
         <Empty>Henüz ürün yok.</Empty>

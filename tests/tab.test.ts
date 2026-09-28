@@ -131,3 +131,14 @@ test("mutfak fişi baytları ve bekleyen baskılar", () => {
   assert.deepEqual(pendingPrints(tabs.values(), printerOf, T0 + 60_000).map((p) => [p.ticket.id, p.printer]), [["k1", "mutfak1"]]);
   assert.equal(pendingPrints(tabs.values(), printerOf, T0 + 31 * 60_000).length, 0);
 });
+
+test("yönetim: masa adı aralığı, seçenek satırları", async () => {
+  const { expandTableNames, parseOptionLines } = await import("@/lib/admin/salon");
+  assert.deepEqual(expandTableNames("M1-M3"), ["M1", "M2", "M3"]);
+  assert.deepEqual(expandTableNames("Bahçe 1-2, Bar"), ["Bahçe 1", "Bahçe 2", "Bar"]);
+  assert.equal(expandTableNames("M5-M1"), null);
+  assert.equal(expandTableNames(""), null);
+  assert.deepEqual(parseOptionLines("Az pişmiş\nPeynir +15\nYarım - 90,50 TL"), [{ name: "Az pişmiş", delta: 0 }, { name: "Peynir", delta: 1500 }, { name: "Yarım", delta: -9050 }]);
+  assert.equal(typeof parseOptionLines("A\nA"), "string");
+  assert.equal(typeof parseOptionLines(""), "string");
+});
