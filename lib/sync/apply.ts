@@ -1,6 +1,7 @@
 // lib/sync/apply.ts — Kasadan gelen belgeyi bulutta uygular. İdempotent: aynı kimlik ikinci kez yazılmaz.
 // Tamamlanmış satış/iade reddedilmez: fiyat farkı, silinmiş/pasif ürün, fiş no çakışması, fazla iade → kaydedilir + sales.review.
-// Stok takipli ürünlerde satış (−) ve iade (+) hareketi satış anıyla yazılır.
+// Stok takipli ürünlerde satış (−) ve iade (+) hareketi satış anıyla yazılır. M7: reçeteli satırda ürün değil hammaddeler düşer (recete);
+// satır maliyeti (sale_lines.cost) eşitleme anındaki son alış maliyetlerinden donar.
 // Reddedilen yalnız biçimi bozuk ya da bu cihaza/kiracıya ait olmayan kimlik taşıyan belgedir.
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { schema, withTenant, type Tx } from "@/db";
@@ -11,6 +12,7 @@ import type { VatLine } from "@/lib/core/cart";
 import type { PayMethod } from "@/lib/core/payment";
 import { audit } from "@/lib/audit";
 import { refundable, type RefLine } from "@/lib/core/refund";
+import { consumption, lineCost, type RecipeItem, type Recipes } from "@/lib/core/recipe";
 import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
 import { normalizePhone } from "@/lib/core/delivery";
 import { notifyPlatform } from "@/lib/platform/notify";
@@ -127,16 +129,44 @@ async function freeReceiptNo(tx: Tx, ctx: DeviceCtx, seq: number, reasons: strin
   }
 }
 
+/** Satıştaki bilinen ürünlerin ve seçeneklerin reçeteleri + ilgili maliyetler. RLS kiracıyı ayırır. */
+async function recipeData(tx: Tx, lines: Checked["lines"]): Promise<{ byProduct: Recipes; byOption: Recipes; costOf: (id: string) => number | null | undefined }> {
+  const R = schema.recipeItems;
+  const pids = [...new Set(lines.flatMap((l) => (l.known && l.productId ? [l.productId] : [])))];
+  const oids = [...new Set(lines.flatMap((l) => (l.options ?? []).map((o) => o.id)))];
+  const byProduct: Recipes = new Map();
+  const byOption: Recipes = new Map();
+  if (!pids.length) return { byProduct, byOption, costOf: () => null };
+  const cond = oids.length ? sql`(${inArray(R.productId, pids)} or ${inArray(R.optionId, oids)})` : inArray(R.productId, pids);
+  const items: RecipeItem[] = await tx.select({ productId: R.productId, optionId: R.optionId, ingredientId: R.ingredientId, qtyMilli: R.qtyMilli }).from(R).where(cond);
+  for (const it of items) {
+    const [m, k] = it.productId ? [byProduct, it.productId] : [byOption, it.optionId!];
+    m.set(k, [...(m.get(k) ?? []), it]);
+  }
+  const ids = [...new Set([...pids, ...items.map((i) => i.ingredientId)])];
+  const costs = new Map((await tx.select({ id: schema.products.id, cost: schema.products.cost }).from(schema.products).where(inArray(schema.products.id, ids))).map((p) => [p.id, p.cost]));
+  return { byProduct, byOption, costOf: (id) => costs.get(id) };
+}
+
 async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checked, payments: { method: PayMethod; amount: number }[], change: number, extra: { status: "kapandi" | "iade"; refundOf?: string; approvedBy?: string; tabId?: string; tableId?: string | null; channel?: "masa" | "paket" | "platform" }) {
   const t = totals(c.lines);
   const receiptNo = await freeReceiptNo(tx, ctx, doc.receiptSeq, c.reasons);
   const at = clampAt(doc.at, c.reasons);
   await tx.insert(schema.sales).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, receiptNo, total: t.total, change, vat: t.vat, createdAt: at, review: c.reasons.length ? c.reasons.join("; ") : null, ...extra });
-  await tx.insert(schema.saleLines).values(c.lines.map((l) => ({ tenantId: ctx.tenantId, saleId: doc.id, productId: l.known ? l.productId : null, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli, total: lineTotal(l), options: l.options ?? null, note: l.note ?? null, discount: l.discount ?? 0 })));
+  const r = await recipeData(tx, c.lines);
+  const recLines = c.lines.map((l) => ({ productId: l.known ? l.productId : null, qtyMilli: l.qtyMilli, options: l.options }));
+  await tx.insert(schema.saleLines).values(c.lines.map((l, i) => ({ tenantId: ctx.tenantId, saleId: doc.id, productId: l.known ? l.productId : null, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli, total: lineTotal(l), options: l.options ?? null, note: l.note ?? null, discount: l.discount ?? 0, cost: lineCost(recLines[i], r.byProduct, r.byOption, r.costOf) })));
   await tx.insert(schema.payments).values(payments.map((p) => ({ tenantId: ctx.tenantId, saleId: doc.id, method: p.method, amount: p.amount })));
   const sign = extra.status === "iade" ? 1 : -1;
-  const stock = c.lines.filter((l) => l.known && l.trackStock);
-  if (stock.length) await tx.insert(schema.stockMovements).values(stock.map((l) => ({ tenantId: ctx.tenantId, storeId: ctx.storeId, productId: l.productId!, kind: extra.status === "iade" ? ("iade" as const) : ("satis" as const), qtyMilli: sign * l.qtyMilli, at, saleId: doc.id, actor: `staff:${doc.staffId}` })));
+  const actor = `staff:${doc.staffId}`;
+  const moves: (typeof schema.stockMovements.$inferInsert)[] = [];
+  const used = new Map<string, number>();
+  c.lines.forEach((l, i) => {
+    if (l.known && l.trackStock && !r.byProduct.has(l.productId!)) moves.push({ tenantId: ctx.tenantId, storeId: ctx.storeId, productId: l.productId!, kind: extra.status === "iade" ? "iade" : "satis", qtyMilli: sign * l.qtyMilli, at, saleId: doc.id, actor });
+    for (const [id, q] of consumption(recLines[i], r.byProduct, r.byOption)) used.set(id, (used.get(id) ?? 0) + q);
+  });
+  for (const [id, q] of used) if (q) moves.push({ tenantId: ctx.tenantId, storeId: ctx.storeId, productId: id, kind: "recete", qtyMilli: sign * q, at, saleId: doc.id, actor });
+  if (moves.length) await tx.insert(schema.stockMovements).values(moves);
   await tx.update(schema.devices).set({ nextReceiptNo: sql`greatest(${schema.devices.nextReceiptNo}, ${doc.receiptSeq + 1})` }).where(and(eq(schema.devices.id, ctx.deviceId), eq(schema.devices.tenantId, ctx.tenantId)));
 }
 
