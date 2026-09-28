@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { summarizeShift } from "@/lib/core/shift";
-import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordSaleLocal, shiftSales } from "@/lib/offline/db";
-import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
+import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordSaleLocal, setSaleFiscal, shiftSales } from "@/lib/offline/db";
+import type { Buyer } from "@/lib/core/fiscal";
+import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, withTestFlag, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
+import { fiscalNotes } from "@/lib/core/receipt";
 import { pendingPrints } from "@/lib/core/kitchen";
 import { paidLinesOf, payableLines, type PayLine } from "@/lib/core/split";
 import { totals } from "@/lib/core/cart";
@@ -96,6 +98,24 @@ function MoneyForm({ label, hint, submit, onSubmit, defaultValue = "" }: { label
 const qty = (m: number, weighed = false) => (weighed ? `${(m / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg` : m % 1000 === 0 ? String(m / 1000) : (m / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 3 }));
 const payLabel = (m: string) => PAY_METHODS.find((p) => p.value === m)?.label ?? m;
 
+const FISCAL_WAIT_MS = 3000;
+/** Satış eşitlenir, bulut keser; toplam en çok 3 sn. Kesildiyse yerel satışa numara/ETTN yazılır. */
+async function issueFiscal(sale: LocalSale, pushed: Promise<void> | undefined): Promise<LocalSale> {
+  if (!navigator.onLine) return sale;
+  const deadline = Date.now() + FISCAL_WAIT_MS;
+  const timeout = (ms: number) => new Promise<"timeout">((r) => setTimeout(() => r("timeout"), Math.max(0, ms)));
+  try {
+    if ((await Promise.race([pushed ?? Promise.resolve(), timeout(deadline - Date.now())])) === "timeout") return sale;
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), Math.max(0, deadline - Date.now()));
+    const res = await fetch("/api/fiscal/issue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ saleId: sale.id }), signal: ctl.signal }).finally(() => clearTimeout(t));
+    if (!res.ok) return sale;
+    const j = (await res.json()) as { status: string; number: string | null; ettn: string | null };
+    if (j.status !== "issued" || !j.number || !j.ettn) return sale;
+    return (await setSaleFiscal(sale.id, j.number, j.ettn)) ?? sale;
+  } catch { return sale; }
+}
+
 function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSale; onBack: () => void; onPrinted: (r: PrintResult) => void }) {
   const d = meta.device!;
   const [msg, setMsg] = useState<string | null>(null);
@@ -109,6 +129,8 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
   };
   const at = new Date(sale.at);
   const weighed = (id: string) => meta.catalog.products.find((p) => p.id === id)?.kind === "tartili";
+  const f = withTestFlag(meta, sale).fiscal;
+  const fiscal = f ? fiscalNotes(f, location.origin) : null;
   return (
     <>
       <style>{`@page { size: 80mm auto; margin: 0 } @media print { body { background: #fff } }`}</style>
@@ -151,7 +173,15 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
           {sale.payments.map((p) => <div key={p.method} className="flex justify-between"><span>{sale.refund ? `İade (${payLabel(p.method)})` : payLabel(p.method)}</span><span>{formatTL(p.amount)}</span></div>)}
           {sale.change > 0 && <div className="flex justify-between"><span>Para üstü</span><span>{formatTL(sale.change)}</span></div>}
         </div>
-        <p className="mt-3 border-t border-dashed border-ink pt-2 text-center">Bilgi fişidir, mali değeri yoktur.</p>
+        {fiscal && (
+          <div className="mt-2 border-t border-dashed border-ink pt-1" data-testid="receipt-fiscal">
+            {fiscal.title && <div className="text-center font-bold">{fiscal.title}</div>}
+            {fiscal.rows.map(([k, v]) => <div key={k} className="flex justify-between gap-2"><span>{k}</span><span className="text-right">{v}</span></div>)}
+            {fiscal.notes.map((n) => <div key={n} className="break-all">{n}</div>)}
+            {!fiscal.notes.some((n) => n.includes(fiscal.url)) && <a href={fiscal.url} className="block break-all underline print:no-underline">{fiscal.url}</a>}
+          </div>
+        )}
+        {!fiscal?.title && <p className="mt-3 border-t border-dashed border-ink pt-2 text-center">Bilgi fişidir, mali değeri yoktur.</p>}
       </article>
     </>
   );
@@ -282,24 +312,28 @@ export function KasaApp() {
   }, [readyCount, restoran, role]);
 
   // Donanım satışı beklemez: fiş (+ nakitte çekmece) arka planda.
+  // M8: e-Arşiv satışında fiş en çok 3 sn bekler (eşitle + kes) → numara/ETTN basılır; olmazsa bağlantı/e-posta notu.
   const afterSale = useCallback(async (sale: LocalSale) => {
     const m = await loadMeta();
     setMeta(m);
-    void sync.current?.kick();
+    const pushed = sync.current?.kick();
     const cash = sale.payments.some((p) => p.method === "nakit");
-    if (m.agent?.autoPrint) void trackPrint(sale.id, printSale(m, sale, cash));
-    else if (cash && m.agent?.drawer) void openDrawer(m.agent);
+    // e-Arşivde çekmece fişi beklemez (hemen açılır), fiş kesimden sonra basılır.
+    if (cash && m.agent?.drawer && (sale.fiscal || !m.agent.autoPrint)) void openDrawer(m.agent);
+    const print = (s: LocalSale) => { if (m.agent?.autoPrint) void trackPrint(s.id, printSale(m, s, cash && !s.fiscal)); };
+    if (sale.fiscal) void issueFiscal(sale, pushed).then(print);
+    else print(sale);
     return { ok: true as const, saleId: sale.id, receiptNo: sale.receiptNo, change: sale.change };
   }, [trackPrint]);
 
-  const onSale: OnSale = useCallback(async (saleId, payments, cart) => {
-    const r = await recordSaleLocal(cashier!, cart, payments, saleId);
+  const onSale: OnSale = useCallback(async (saleId, payments, cart, buyer) => {
+    const r = await recordSaleLocal(cashier!, cart, payments, saleId, undefined, buyer);
     return r.ok ? afterSale(r.sale) : r;
   }, [cashier, afterSale]);
 
-  const onTabPay = useCallback(async (tab: TabState, part: PayLine[], saleId: string, payments: Payment[]) => {
+  const onTabPay = useCallback(async (tab: TabState, part: PayLine[], saleId: string, payments: Payment[], buyer: Buyer | null) => {
     const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
-    const r = await recordSaleLocal(cashier!, part, payments, saleId, { tabId: tab.id, tableId: tab.tableId, tableName, paidLines: paidLinesOf(part) });
+    const r = await recordSaleLocal(cashier!, part, payments, saleId, { tabId: tab.id, tableId: tab.tableId, tableName, paidLines: paidLinesOf(part), kind: tab.kind }, buyer);
     if (!r.ok) return r;
     await tabsApi.reload();
     return afterSale(r.sale);
@@ -312,7 +346,7 @@ export function KasaApp() {
     const part = payableLines(tab);
     if (!part.length) return;
     const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
-    const r = await recordSaleLocal(cashier, part, [{ method: "online", amount: totals(part).total }], crypto.randomUUID(), { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part) });
+    const r = await recordSaleLocal(cashier, part, [{ method: "online", amount: totals(part).total }], crypto.randomUUID(), { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part), kind: tab.kind });
     await tabsApi.reload();
     if (r.ok) void afterSale(r.sale);
   }, [cashier, tabsApi, meta, afterSale]);
@@ -324,7 +358,7 @@ export function KasaApp() {
     const part = payableLines(tab);
     if (part.length) {
       const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
-      await recordSaleLocal(cashier, part, [{ method, amount: totals(part).total }], crypto.randomUUID(), { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part) });
+      await recordSaleLocal(cashier, part, [{ method, amount: totals(part).total }], crypto.randomUUID(), { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part), kind: tab.kind });
     }
     await tabsApi.reload();
     void sync.current?.kick();
@@ -479,7 +513,7 @@ export function KasaApp() {
     if (view.name === "bill") {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
-      return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} onPay={(part, id, p) => onTabPay(tab, part, id, p)}
+      return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} onPay={(part, id, p, b) => onTabPay(tab, part, id, p, b)}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed || !tab.tableId ? { name: "home" } : { name: "tab", tableId: tab.tableId })} />;
     }
     return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
@@ -509,7 +543,7 @@ export function KasaApp() {
     if (view.name === "bill") {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
-      return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} onPay={(part, id, p) => onTabPay(tab, part, id, p)}
+      return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} onPay={(part, id, p, b) => onTabPay(tab, part, id, p, b)}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed ? { name: "paket" } : { name: "ptab", tabId: tab.id })} />;
     }
     return null;

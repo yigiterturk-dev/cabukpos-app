@@ -5,6 +5,7 @@ import type { Payment } from "@/lib/core/payment";
 import type { SyncDoc } from "@/lib/sync/docs";
 import type { KasaAgent } from "@/lib/agent/config";
 import type { LineOption, OptionGroup } from "@/lib/core/options";
+import type { Buyer, ChannelModes } from "@/lib/core/fiscal";
 
 export type DeviceRole = "kasa" | "garson" | "mutfak" | "kurye";
 export type DeviceInfo = { id: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role?: DeviceRole; stations?: string[]; storeName: string; storeAddress: string | null; nextReceiptNo: number };
@@ -15,7 +16,7 @@ export type Table = { id: string; areaId: string; name: string };
 export type Station = { id: string; name: string; printer: string | null };
 export type DeliveryZone = { id: string; name: string; fee: number; minOrder: number };
 // M5: restoran salonu (market kataloğunda yok)
-export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[] };
+export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; fiscal?: { modes: ChannelModes; provider: string } };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
 export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number };
 
@@ -38,6 +39,7 @@ export type LocalSale = {
   payments: Payment[]; total: number; change: number; vat: VatLine[];
   tabId?: string; tableName?: string; // M5: masadan parça ödeme (M6: paket/platform başlığı)
   refund?: boolean; refundOf?: string; refundOfNo?: string; approvedBy?: string; // iade fişi
+  fiscal?: { token: string; buyer: Buyer | null; number: string | null; ettn: string | null }; // M8 e-Arşiv
 };
 export type OutboxRow = { n?: number; id: string; doc: SyncDoc };
 export type RejectedRow = { id: string; doc: SyncDoc; error: string; at: string };

@@ -48,12 +48,16 @@ async function send(a: KasaAgent, printer: string, data: Uint8Array, drawer: boo
 }
 
 /** Fişi ajanın fiş yazıcısına basar. Fiş yazıcısı yoksa null (tarayıcı yazdırma). */
+/** Sahte sağlayıcıda fişe "TEST" notu. */
+export const withTestFlag = (meta: Meta, sale: ReceiptSale): ReceiptSale =>
+  sale.fiscal ? { ...sale, fiscal: { ...sale.fiscal, test: (meta.catalog.fiscal?.provider ?? "fake-earsiv") === "fake-earsiv" } } : sale;
+
 export function printSale(meta: Meta, sale: ReceiptSale, drawer = false): Promise<PrintResult> | null {
   const a = meta.agent, d = meta.device;
   const p = a && receiptPrinter(a);
   if (!a || !p || !d) return null;
   const weighed = (id: string) => meta.catalog.products.find((x) => x.id === id)?.kind === "tartili";
-  return send(a, p.id, renderReceipt(sale, d, { width: p.width, codepage: p.codepage }, weighed), drawer && a.drawer);
+  return send(a, p.id, renderReceipt(withTestFlag(meta, sale), d, { width: p.width, codepage: p.codepage, appUrl: location.origin }, weighed), drawer && a.drawer);
 }
 
 /** Mutfak fişi: istasyonun ajan yazıcısına. Yazıcı ajanda tanımlı değilse null. */

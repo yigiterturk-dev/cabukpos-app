@@ -8,6 +8,7 @@ import { summarizeShift } from "@/lib/core/shift";
 import { formatReceipt, type SyncDoc } from "@/lib/sync/docs";
 import type { PaidLine, TabEvent } from "@/lib/core/tab";
 import type { LineOption } from "@/lib/core/options";
+import { docModeFor, newFiscalToken, type Buyer, type Channel } from "@/lib/core/fiscal";
 import type { LookedUpSale } from "@/lib/sync/lookup";
 import { emptyMeta, type ClosedShift, type LocalSale, type Meta, type OutboxRow, type RejectedRow } from "./state";
 
@@ -62,9 +63,9 @@ export async function openShiftLocal(staffId: string, openingCash: number): Prom
 
 export type SaleCartLine = AnyLine & { options?: LineOption[]; note?: string | null };
 /** Masadan parça ödeme: satış belgesi tab alanı taşır, yerelde "paid" olayı aynı işlemde yazılır. */
-export type SaleTab = { tabId: string; tableId: string | null; tableName: string; paidLines: PaidLine[] };
+export type SaleTab = { tabId: string; tableId: string | null; tableName: string; paidLines: PaidLine[]; kind?: Channel };
 
-export async function recordSaleLocal(staff: { id: string; name: string }, cart: SaleCartLine[], payments: Payment[], saleId: string, tab?: SaleTab): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
+export async function recordSaleLocal(staff: { id: string; name: string }, cart: SaleCartLine[], payments: Payment[], saleId: string, tab?: SaleTab, buyer: Buyer | null = null): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
   const d = kasaDb();
   return d.transaction("rw", [d.meta, d.sales, d.outbox, d.tabEvents], async () => {
     const done = await d.sales.get(saleId);
@@ -81,10 +82,13 @@ export async function recordSaleLocal(staff: { id: string; name: string }, cart:
       productId: l.productId, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli,
       ...(tab ? { options: l.options ?? [], note: l.note ?? null, discount: l.discount ?? 0 } : {}),
     }));
-    const sale: LocalSale = { id: saleId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines, payments: s.payments, total: t.total, change: s.change, vat: t.vat, ...(tab ? { tabId: tab.tabId, tableName: tab.tableName } : {}) };
+    // M8: kanal e-Arşiv ya da "Fatura" istendiyse token şimdi üretilir → çevrimdışı fişe de bağlantı basılır.
+    const earsiv = docModeFor(tab ? (tab.kind ?? "masa") : "kasa", m.catalog.fiscal?.modes, !!buyer) === "earsiv";
+    const fiscal = earsiv ? { token: newFiscalToken(), buyer } : null;
+    const sale: LocalSale = { id: saleId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines, payments: s.payments, total: t.total, change: s.change, vat: t.vat, ...(tab ? { tabId: tab.tabId, tableName: tab.tableName } : {}), ...(fiscal ? { fiscal: { ...fiscal, number: null, ettn: null } } : {}) };
     await d.sales.add(sale);
     const tabField = tab ? { tab: { tabId: tab.tabId, tableId: tab.tableId, paidLines: tab.paidLines } } : {};
-    await enqueue({ kind: "sale", id: saleId, shiftId: m.shift.id, staffId: staff.id, receiptSeq: seq, at, lines, payments: s.payments, ...tabField });
+    await enqueue({ kind: "sale", id: saleId, shiftId: m.shift.id, staffId: staff.id, receiptSeq: seq, at, lines, payments: s.payments, ...tabField, ...(fiscal ? { fiscal } : {}) });
     if (tab) await d.tabEvents.put({ id: saleId, tabId: tab.tabId, tableId: tab.tableId, at, staffId: staff.id, approvedBy: null, seq: null, ev: { type: "paid", saleId, lines: tab.paidLines, amount: t.total } });
     await d.meta.put({ ...m, nextSeq: seq + 1 });
     return { ok: true as const, sale };
@@ -149,4 +153,16 @@ export async function closeShiftLocal(staffId: string, countedCash: number): Pro
 /** Yetkili işlem kaydı (elle çekmece açma) → giden kutusu → audit_log. */
 export async function recordAuditLocal(staffId: string, approvedBy: string | null, action: "cekmece") {
   await enqueue({ kind: "audit", id: crypto.randomUUID(), staffId, approvedBy, at: new Date().toISOString(), action });
+}
+
+/** M8: bulut e-Arşivi kesti → yerel satışa numara/ETTN (fiş yeniden basılırsa görünür). */
+export async function setSaleFiscal(saleId: string, number: string, ettn: string): Promise<LocalSale | null> {
+  const d = kasaDb();
+  return d.transaction("rw", d.sales, async () => {
+    const s = await d.sales.get(saleId);
+    if (!s?.fiscal) return s ?? null;
+    const next = { ...s, fiscal: { ...s.fiscal, number, ettn } };
+    await d.sales.put(next);
+    return next;
+  });
 }

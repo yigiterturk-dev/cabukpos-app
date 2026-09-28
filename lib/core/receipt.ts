@@ -6,12 +6,27 @@ import type { VatLine } from "./cart";
 import type { summarizeShift } from "./shift";
 import { EscPos, type Codepage, type PaperWidth } from "./escpos";
 
-export type PrintOpts = { width: PaperWidth; codepage: Codepage; drawer?: boolean };
+export type PrintOpts = { width: PaperWidth; codepage: Codepage; drawer?: boolean; appUrl?: string };
+/** M8: e-Arşiv. number yoksa henüz kesilmedi (çevrimdışı/gecikme) → bağlantı ya da e-posta notu. */
+export type ReceiptFiscal = { token: string; number: string | null; ettn: string | null; buyer: { name: string; email?: string } | null; test?: boolean };
+export const fiscalLink = (appUrl: string, token: string) => `${appUrl.replace(/\/$/, "")}/f/${token}`;
+/** Ekrandaki ve basılı fişte aynı metin. */
+export function fiscalNotes(f: ReceiptFiscal, appUrl: string): { title: string | null; rows: [string, string][]; notes: string[]; url: string } {
+  const url = fiscalLink(appUrl, f.token);
+  const rows: [string, string][] = [];
+  if (f.buyer && f.buyer.name !== "Nihai Tüketici") rows.push(["Alıcı", f.buyer.name]);
+  if (f.number) {
+    rows.push(["e-Arşiv No", f.number]);
+    return { title: "e-ARŞİV FATURA", rows, notes: [`ETTN: ${f.ettn ?? ""}`, ...(f.test ? ["TEST — mali değeri yoktur"] : [])], url };
+  }
+  return { title: null, rows, notes: [f.buyer?.email ? "Faturanız e-postayla gönderilecek." : `Faturanız: ${url}`], url };
+}
 export type ReceiptSale = {
   receiptNo: string; at: string; staffName: string;
   lines: { productId: string | null; name: string; unitPrice: number; qtyMilli: number; options?: { name: string }[]; note?: string | null; discount?: number }[];
   payments: Payment[]; total: number; change: number; vat: VatLine[];
   refund?: boolean; refundOfNo?: string; tableName?: string;
+  fiscal?: ReceiptFiscal;
 };
 export type ReceiptHeader = { tenantName: string; storeName: string; storeAddress: string | null };
 
@@ -52,7 +67,16 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
   p.rule().bold(true).size(2).cols2(sale.refund ? "İADE" : "TOPLAM", formatTL(sale.total)).size(1).bold(false);
   for (const x of sale.payments) p.cols2(sale.refund ? `İade (${payLabel(x.method)})` : payLabel(x.method), formatTL(x.amount));
   if (sale.change > 0) p.cols2("Para üstü", formatTL(sale.change));
-  p.rule().align("center").lines("Bilgi fişidir, mali değeri yoktur.").align("left").feed(3).cut();
+  const f = sale.fiscal && o.appUrl ? fiscalNotes(sale.fiscal, o.appUrl) : null;
+  if (f) {
+    p.rule();
+    if (f.title) p.align("center").bold(true).line(f.title).bold(false).align("left");
+    for (const [k, v] of f.rows) p.cols2(k, v);
+    for (const n of f.notes) p.lines(n);
+    p.align("center").qr(f.url).align("left");
+  }
+  if (!f?.title) p.rule().align("center").lines("Bilgi fişidir, mali değeri yoktur.").align("left");
+  p.feed(3).cut();
   return p.bytes();
 }
 

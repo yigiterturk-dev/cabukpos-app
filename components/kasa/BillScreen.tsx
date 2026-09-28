@@ -8,10 +8,11 @@ import { qtyText } from "@/lib/core/receipt";
 import { equalPart, payableLines, pickPart, type PayLine } from "@/lib/core/split";
 import type { TabState } from "@/lib/core/tab";
 import { PayDialog, type PayResult } from "./SaleScreen";
+import type { Buyer } from "@/lib/core/fiscal";
 import type { Payment } from "@/lib/core/payment";
 
 type Mode = "tumu" | "esit" | "sec";
-export type OnTabPay = (part: PayLine[], saleId: string, payments: Payment[]) => Promise<PayResult>;
+export type OnTabPay = (part: PayLine[], saleId: string, payments: Payment[], buyer: Buyer | null) => Promise<PayResult>;
 
 export function BillScreen({ tab, tableName, onPay, onReceipt, onBack }: { tab: TabState; tableName: string; onPay: OnTabPay; onReceipt: (saleId: string) => void; onBack: () => void }) {
   const [mode, setMode] = useState<Mode>("tumu");
@@ -76,7 +77,7 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack }: { tab: 
       <button type="button" disabled={t.total <= 0} onClick={() => setPaying(true)} className="w-full rounded-lg bg-brand py-4 text-lg font-medium text-white disabled:opacity-40">Öde {formatTL(t.total)}</button>
       {paid.length > 0 && <p className="mt-3 text-center text-sm text-muted">Ödenen: {paid.map((p) => p.receiptNo).join(", ")}</p>}
       {paying && (
-        <PayDialog total={t.total} onPay={(id, p) => onPay(part, id, p)} onClose={() => setPaying(false)}
+        <PayDialog total={t.total} onPay={(id, p, b) => onPay(part, id, p, b)} onClose={() => setPaying(false)}
           onDone={(r) => { setPaying(false); setPaid((x) => [...x, r]); setPicks({}); if (mode === "esit") setDone((n) => n + 1); }} />
       )}
     </div>

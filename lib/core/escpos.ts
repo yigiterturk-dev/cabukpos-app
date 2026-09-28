@@ -76,6 +76,17 @@ export class EscPos {
   feed(n = 1) { this.b.push(0x1b, 0x64, n); return this; }
   cut() { this.b.push(0x1d, 0x56, 0x42, 0x03); return this; } // GS V 66 3: besle + kısmi kes
   drawer() { this.b.push(...DRAWER_PULSE); return this; }
+  /** QR (GS ( k): model 2, modül boyutu, hata düzeltme M; sakla + bas. Veri ASCII (URL). */
+  qr(data: string, size = 6) {
+    const d = [...data].map((c) => c.charCodeAt(0) & 0x7f);
+    const n = d.length + 3;
+    this.b.push(0x1d, 0x28, 0x6b, 4, 0, 49, 65, 50, 0);
+    this.b.push(0x1d, 0x28, 0x6b, 3, 0, 49, 67, size);
+    this.b.push(0x1d, 0x28, 0x6b, 3, 0, 49, 69, 49);
+    this.b.push(0x1d, 0x28, 0x6b, n & 0xff, n >> 8, 49, 80, 48, ...d);
+    this.b.push(0x1d, 0x28, 0x6b, 3, 0, 49, 81, 48);
+    return this;
+  }
   raw(...n: number[]) { this.b.push(...n); return this; }
   bytes() { return Uint8Array.from(this.b); }
 }

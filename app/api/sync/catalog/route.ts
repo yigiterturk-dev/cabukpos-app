@@ -6,6 +6,7 @@ import { getDevice } from "@/lib/auth/kasa";
 import { sha256 } from "@/lib/auth/tokens";
 import { isVatRate } from "@/lib/core/money";
 import { kasaAgentFor } from "@/lib/agent/registry";
+import { DEFAULT_MODES } from "@/lib/core/fiscal";
 
 export const dynamic = "force-dynamic";
 const noStore = { "Cache-Control": "no-store" };
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
   const device = await getDevice();
   if (!device) return Response.json({ error: "cihaz" }, { status: 401, headers: noStore });
   const d = schema.devices, sh = schema.shifts;
-  const [[dv], [store, cats, prods, staff, [shift]], salon, agent] = await Promise.all([
+  const [[dv], [store, cats, prods, staff, [shift], [fs]], salon, agent] = await Promise.all([
     getDb().select({ next: d.nextReceiptNo }).from(d).where(eq(d.id, device.id)),
     withTenant(device.tenantId, (tx) =>
       Promise.all([
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
           .from(schema.products).where(and(eq(schema.products.active, true), eq(schema.products.sellable, true))).orderBy(asc(schema.products.sort), asc(schema.products.name)),
         tx.select({ id: schema.staff.id, name: schema.staff.name, role: schema.staff.role, pinHash: schema.staff.pinHash }).from(schema.staff).where(eq(schema.staff.active, true)).orderBy(asc(schema.staff.id)),
         tx.select({ id: sh.id, openedBy: sh.openedBy, openedAt: sh.openedAt, openingCash: sh.openingCash }).from(sh).where(and(eq(sh.deviceId, device.id), isNull(sh.closedAt))).orderBy(desc(sh.openedAt)).limit(1),
+        tx.select({ modes: schema.fiscalSettings.channelModes, provider: schema.fiscalSettings.provider }).from(schema.fiscalSettings),
       ]),
     ),
     device.vertical === "restoran" ? salonCatalog(device) : null,
@@ -37,6 +39,7 @@ export async function GET(req: Request) {
   }));
   const catalog = {
     categories: cats.map(({ id, name }) => ({ id, name })), products, staff,
+    fiscal: { modes: { ...DEFAULT_MODES, ...fs?.modes }, provider: fs?.provider ?? "fake-earsiv" }, // M8
     ...(salon ? { areas: salon.areas, tables: salon.tables, stations: salon.stations, optionGroups: salon.optionGroups, deliveryZones: salon.deliveryZones } : {}),
   };
   const v = await sha256(JSON.stringify(catalog));

@@ -60,3 +60,31 @@ test("fiş: iade ve gün sonu", () => {
   const z = ascii(renderShiftReport({ deviceName: "Kasa 1", openedByName: "Ayşe", closedByName: "Ayşe", openingCash: 10000, openedAt: new Date(), closedAt: new Date(), countedCash: 10000 + t.total, expectedCash: null, summary }, head, { width: 58, codepage: "ascii" }));
   assert.ok(z.includes("GUN SONU") && z.includes("Beklenen kasa") && z.includes("Fark"));
 });
+
+test("escpos: QR (GS ( k model 2, boyut, hata M, sakla, bas)", () => {
+  const b = [...new EscPos("ascii").qr("AB", 5).bytes().slice(2)];
+  assert.deepEqual(b, [
+    0x1d, 0x28, 0x6b, 4, 0, 49, 65, 50, 0,
+    0x1d, 0x28, 0x6b, 3, 0, 49, 67, 5,
+    0x1d, 0x28, 0x6b, 3, 0, 49, 69, 49,
+    0x1d, 0x28, 0x6b, 5, 0, 49, 80, 48, 65, 66,
+    0x1d, 0x28, 0x6b, 3, 0, 49, 81, 48,
+  ]);
+  const long = new EscPos("ascii").qr("x".repeat(300)).bytes();
+  assert.ok(ascii(long).includes("\x1d(k" + String.fromCharCode(303 & 0xff, 303 >> 8) + "1P0"));
+});
+
+test("fiş: e-Arşiv kesildi / kesilmedi / uygulama adresi yok", () => {
+  const f = { token: "t".repeat(24), number: "CBP2026000000001", ettn: "0b8e7f2a-1111-4222-8333-944455556666", buyer: { name: "Acme Ltd", email: "a@b.co" }, test: true };
+  const o = { width: 80 as const, codepage: "ascii" as const, appUrl: "https://app.cabukpos.com/" };
+  const issued = ascii(renderReceipt({ ...sale, fiscal: f }, head, o));
+  for (const s of ["e-ARSIV FATURA", "CBP2026000000001", f.ettn, "Acme Ltd", "TEST", "https://app.cabukpos.com/f/" + f.token]) assert.ok(issued.includes(s), s);
+  assert.ok(!issued.includes("Bilgi fisidir"));
+  const late = ascii(renderReceipt({ ...sale, fiscal: { ...f, number: null, ettn: null } }, head, o));
+  assert.ok(late.includes("e-postayla gonderilecek"));
+  assert.ok(late.includes("Bilgi fisidir"));
+  const noMail = ascii(renderReceipt({ ...sale, fiscal: { ...f, number: null, ettn: null, buyer: null } }, head, o));
+  assert.ok(noMail.includes("Faturaniz:"));
+  const plain = ascii(renderReceipt({ ...sale, fiscal: f }, head, { width: 80, codepage: "ascii" }));
+  assert.ok(!plain.includes("CBP2026") && plain.includes("Bilgi fisidir"));
+});

@@ -5,10 +5,12 @@ import { formatTL, parseTL } from "@/lib/core/money";
 import { settle, type Payment } from "@/lib/core/payment";
 import { buildIndex, parseKg, resolveScan } from "@/lib/core/scan";
 import type { KasaProduct } from "@/lib/offline/state";
+import type { Buyer } from "@/lib/core/fiscal";
+import { InvoiceForm } from "./InvoiceForm";
 
 export type PayResult = { ok: true; saleId: string; receiptNo: string; change: number } | { ok: false; error: string };
-export type OnPay = (saleId: string, payments: Payment[]) => Promise<PayResult>;
-export type OnSale = (saleId: string, payments: Payment[], cart: CartLine[]) => Promise<PayResult>;
+export type OnPay = (saleId: string, payments: Payment[], buyer: Buyer | null) => Promise<PayResult>;
+export type OnSale = (saleId: string, payments: Payment[], cart: CartLine[], buyer: Buyer | null) => Promise<PayResult>;
 export type PrintView = { state: "printing" | "ok" | "fail"; error?: string | null };
 export type ReadScale = () => Promise<{ grams: number; stable: boolean }>;
 
@@ -19,6 +21,8 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
   const [meal, setMeal] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [buyer, setBuyer] = useState<Buyer | null>(null);
+  const [invoicing, setInvoicing] = useState(false);
 
   const payments: Payment[] = [];
   const add = (method: Payment["method"], v: string | null) => { const k = v === null ? null : parseTL(v); if (k) payments.push({ method, amount: k }); };
@@ -28,7 +32,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
   const submit = () => start(async () => {
     setError(null);
     try {
-      const r = await onPay(saleId, payments);
+      const r = await onPay(saleId, payments, buyer);
       if (r.ok) onDone(r); else setError(r.error);
     } catch {
       setError("Satış kaydedilemedi. Tekrar deneyin; satış iki kez kaydedilmez.");
@@ -37,7 +41,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Ödeme" className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-baseline justify-between"><h2 className="text-lg font-semibold">Ödeme</h2><span className="tabular text-2xl font-bold">{formatTL(total)}</span></div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
           <button type="button" onClick={() => all("nakit")} className="rounded-lg border border-line px-2 py-2 hover:bg-stone-50">Tamamı nakit</button>
@@ -53,13 +57,21 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
             {meal === null && <button type="button" onClick={() => setMeal("")} className="text-brand underline">Yemek kartı ekle</button>}
           </div>
         </div>
+        {invoicing ? (
+          <InvoiceForm initial={buyer} onSave={(b) => { setBuyer(b); setInvoicing(false); }} onCancel={() => { setBuyer(null); setInvoicing(false); }} />
+        ) : (
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            <button type="button" onClick={() => setInvoicing(true)} className="rounded-lg border border-line px-3 py-1.5 hover:bg-stone-50">Fatura</button>
+            {buyer && <span className="rounded-full bg-brand/10 px-2 py-0.5 text-brand" data-testid="buyer-badge">{buyer.name}</span>}
+          </div>
+        )}
         <div className="mt-4 min-h-6 text-sm font-medium" aria-live="polite">
           {s.ok ? <span className="text-emerald-700">Para üstü {formatTL(s.change)}</span> : payments.length > 0 && <span className="text-red-700">{s.error}</span>}
         </div>
         {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
         <div className="mt-5 flex gap-2">
           <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-line py-3 text-sm">Vazgeç</button>
-          <button type="button" disabled={!s.ok || pending} onClick={submit} className="flex-[2] rounded-lg bg-brand py-3 font-medium text-white disabled:opacity-40">{pending ? "Kaydediliyor…" : "Satışı tamamla"}</button>
+          <button type="button" disabled={!s.ok || pending || invoicing} onClick={submit} className="flex-[2] rounded-lg bg-brand py-3 font-medium text-white disabled:opacity-40">{pending ? "Kaydediliyor…" : "Satışı tamamla"}</button>
         </div>
       </div>
     </div>
@@ -211,7 +223,7 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
         </div>
       </aside>
       {weigh && <WeighDialog product={weigh} scale={scale} onClose={() => { setWeigh(null); refocus(); }} onOk={(g) => { add(weigh, g); setWeigh(null); refocus(); }} />}
-      {paying && <PayDialog total={t.total} onPay={(id, p) => onPay(id, p, cart)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setCart([]); setLast(r); refocus(); }} />}
+      {paying && <PayDialog total={t.total} onPay={(id, p, b) => onPay(id, p, cart, b)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setCart([]); setLast(r); refocus(); }} />}
     </div>
   );
 }
