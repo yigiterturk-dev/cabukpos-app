@@ -50,3 +50,15 @@ test("gün sonu iadeyi düşer", () => {
   assert.equal(s.expectedCash, 17000);
   assert.deepEqual(s.vat, [{ rate: 10, gross: 7000, net: 6364, vat: 636 }]);
 });
+
+test("stok miktarı ayrıştırma", async () => {
+  const { parseQty, formatQty } = await import("@/lib/core/stock");
+  assert.equal(parseQty("5", "adet"), 5000);
+  assert.equal(parseQty("1,5", "adet"), null);
+  assert.equal(parseQty("0", "adet"), null);
+  assert.equal(parseQty("0", "adet", true), 0);
+  assert.equal(parseQty("2,250", "tartili"), 2250);
+  assert.equal(parseQty("0", "tartili", true), 0);
+  assert.equal(formatQty(-3000, "adet"), "−3");
+  assert.equal(formatQty(2250, "tartili"), "2,250 kg");
+});

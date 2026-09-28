@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation";
 
 const items = [
   { href: "/yonetim/urunler", label: "Ürünler" },
+  { href: "/yonetim/stok", label: "Stok" },
+  { href: "/yonetim/etiketler", label: "Raf etiketi" },
   { href: "/yonetim/personel", label: "Personel" },
   { href: "/yonetim/cihazlar", label: "Cihazlar" },
   { href: "/yonetim/raporlar", label: "Raporlar" },
