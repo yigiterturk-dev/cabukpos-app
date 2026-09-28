@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { summarizeShift } from "@/lib/core/shift";
-import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordSaleLocal, setSaleFiscal, shiftSales } from "@/lib/offline/db";
+import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordSaleLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
 import type { Buyer } from "@/lib/core/fiscal";
 import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, withTestFlag, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
 import { fiscalNotes } from "@/lib/core/receipt";
@@ -106,7 +106,8 @@ async function issueFiscal(sale: LocalSale, pushed: Promise<void> | undefined): 
   const timeout = (ms: number) => new Promise<"timeout">((r) => setTimeout(() => r("timeout"), Math.max(0, ms)));
   // Bütçe aşılsa da iş arka planda sürer: yerel satışa numara yazılır (fiş yeniden basılınca görünür).
   const work = (async () => {
-    await pushed;
+    // Tüm eşitleme turunu (push + katalog) değil, yalnız bu satışın buluta yazılmasını bekle.
+    if (!(await waitPushed(sale.id, 60_000))) await pushed;
     const res = await fetch("/api/fiscal/issue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ saleId: sale.id }) });
     if (!res.ok) return sale;
     const j = (await res.json()) as { status: string; number: string | null; ettn: string | null };

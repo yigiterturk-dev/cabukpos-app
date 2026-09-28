@@ -100,7 +100,13 @@ try {
   const d1 = await waitDoc("K1-000001", (d) => d.status === "issued", "1. satış kesildi");
   expect(d1.number, `CBP${year}000000001`, "1. numara");
   expect(d1.buyer.taxId, "11111111111", "nihai tüketici");
-  await new Promise((r) => setTimeout(r, 1000)); // kasa yanıtı yerel satışa yazsın
+  // Kasa numarayı yerel satışa yazınca fiş e-Arşiv olur (yavaş ağda kesimden biraz sonra)
+  const localNumber = () => kasa.evaluate(() => new Promise((res) => {
+    const r = indexedDB.open("cabukpos-kasa");
+    r.onsuccess = () => { const g = r.result.transaction("sales").objectStore("sales").getAll(); g.onsuccess = () => res(g.result.find((x) => x.receiptNo === "K1-000001")?.fiscal?.number ?? null); };
+    r.onerror = () => res(null);
+  }));
+  for (let i = 0; !(await localNumber()); i++) { if (i > 40) throw new Error("kasa yerel satışına e-Arşiv no yazılmadı"); await new Promise((r) => setTimeout(r, 250)); }
   await kasa.getByRole("button", { name: "Fişi yazdır" }).click();
   const rf = kasa.getByTestId("receipt-fiscal");
   for (const t of ["e-ARŞİV FATURA", d1.number, d1.ettn, "TEST — mali değeri yoktur"]) await rf.getByText(t, { exact: false }).first().waitFor();

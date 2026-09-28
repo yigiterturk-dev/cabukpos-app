@@ -166,3 +166,13 @@ export async function setSaleFiscal(saleId: string, number: string, ettn: string
     return next;
   });
 }
+
+/** Belge giden kutusundan çıkana (buluta yazılana) kadar bekler; süre dolarsa false. */
+export async function waitPushed(id: string, ms: number): Promise<boolean> {
+  const end = Date.now() + ms;
+  for (;;) {
+    if (!(await kasaDb().outbox.where("id").equals(id).count())) return true;
+    if (Date.now() >= end) return false;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+}
