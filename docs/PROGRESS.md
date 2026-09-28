@@ -73,6 +73,17 @@ Prod sırası: şema push → `db-rls.mjs` (yeni tablolar + **sequence izinleri*
 v1 sınırları: tahsilat yalnız kasa rolünde; kişi sayısı girişi yok; paket/kurye M6; ajan LAN aktarımı CF DNS'e bağlı (tablet mutfak yazıcısına kasa üzerinden basar).
 E2E notu: aynı saatte çok koşu → yerel `delete from login_attempts` (signup/pair sınırı).
 
+## M6 — Paket, kurye, online sipariş (dal `m6-online`, m5-salon üstünde)
+Spec: docs/superpowers/specs/2026-09-28-cabukpos-m6-online-design.md · Plan: docs/superpowers/plans/2026-09-28-cabukpos-m6-online.md
+- [x] Görev 1 çekirdek: `tab.ts` (masasız adisyon, kind, order/accept/reject/courier/out/delivered/handover/cancel, deliveryStatus, openDeliveries, tabLabel), `delivery.ts`, `platform.ts`, `online` ödeme (`SELECTABLE_METHODS`, `shownMethods`), `AnyLine` (serbest satır)
+- [x] Görev 2 şema + eşitleme: enumlar, tab_events table_id/device_id null + platform kısmi benzersiz indeks, delivery_zones/customers/customer_addresses/platform_connections (RLS dışı)/product_platform_codes; applyTab/applySale M6 kuralları, `upsertCustomer`
+- [x] Görev 3: `lib/platform` (types, mock HMAC, index, notify, ingest), webhook ucu, `GET /api/musteri`, katalog `deliveryZones`; `tests/delivery-db.test.ts`
+- [x] Görev 4 yönetim: /yonetim/bolgeler, /musteriler, /platformlar (deneme siparişi), kurye personel/cihaz rolü
+- [~] Görev 5 kasa: TabScreen masasız kip + paket fişi (`printDeliverySlip`) HAZIR; KALAN: `DeliveryBoard.tsx` (sütunlar, kurye ata, kabul/red + ses, Kuryeye verildi → online satış + handover, iptal müdür PIN), `NewDelivery.tsx` (telefon → /api/musteri → adres/bölge → open{kind:paket}+order+feeLine → TabScreen, onFirstSend=paket fişi), KasaApp sekmesi Salon | Paket | Hızlı satış + View `{name:"paket"}`, `{name:"ptab", tabId}`
+- [ ] Görev 6: `CourierScreen.tsx` (kurye rolü: PIN yalnız kurye → açılış 0 ile otomatik vardiya; atananlar, Maps/tel, toplu Yola çıktım, Teslim ettim → recordSaleLocal(tab) + delivered; Hesap kapat → kasiyer/müdür PinPad → GunSonu)
+- [ ] Görev 7: `e2e/m6.mjs` + bu bölümün kapanışı
+Prod sırası (M5 ile birlikte): şema push → db-rls → relrowsecurity (yeni 4 tablo) → main.
+
 ## Çalıştırma
 - DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).
 - E2E: `npm run build` → `node --env-file=.env.local node_modules/.bin/next start -p 3800` → `node --env-file=.env.local e2e/m1.mjs`. Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt); aşılırsa yerel DB'de `delete from login_attempts where key like 'signup:%'`.
