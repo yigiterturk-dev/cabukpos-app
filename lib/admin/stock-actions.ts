@@ -1,5 +1,5 @@
 "use server";
-// Stok hareketleri (yönetim): alış (+), fire (−, not zorunlu), sayım (mutlak). Yönetim ilk şubeyi kullanır (M1 tek şube).
+// Stok hareketleri (yönetim): fire (−, not zorunlu), sayım (mutlak). Alış M7'den beri alış fişiyle (purchase-actions). Yönetim ilk şubeyi kullanır (M1 tek şube).
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
@@ -15,7 +15,7 @@ export async function addStockMove(productId: string, _: StockState, form: FormD
   const a = await requireAdmin();
   if (!UUID.test(productId)) return { error: "Ürün bulunamadı." };
   const kind = String(form.get("kind") ?? "");
-  if (kind !== "alis" && kind !== "fire" && kind !== "sayim") return { error: "Hareket türü geçersiz.", field: "kind" };
+  if (kind !== "fire" && kind !== "sayim") return { error: "Hareket türü geçersiz.", field: "kind" };
   const note = String(form.get("note") ?? "").trim().slice(0, 200) || null;
   if (kind === "fire" && !note) return { error: "Fire için neden yazın.", field: "note" };
   const err = await withTenant(a.tenantId, async (tx) => {

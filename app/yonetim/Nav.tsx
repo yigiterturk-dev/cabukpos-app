@@ -7,6 +7,8 @@ const items: { href: string; label: string; only?: "restoran" | "market" }[] = [
   { href: "/yonetim/stok", label: "Stok" },
   { href: "/yonetim/receteler", label: "Reçeteler", only: "restoran" },
   { href: "/yonetim/uretim", label: "Üretim", only: "restoran" },
+  { href: "/yonetim/alislar", label: "Alışlar" },
+  { href: "/yonetim/tedarikciler", label: "Tedarikçiler" },
   { href: "/yonetim/salon", label: "Salon", only: "restoran" },
   { href: "/yonetim/secenekler", label: "Seçenekler", only: "restoran" },
   { href: "/yonetim/istasyonlar", label: "İstasyonlar", only: "restoran" },

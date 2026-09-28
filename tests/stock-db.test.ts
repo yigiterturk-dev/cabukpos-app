@@ -96,3 +96,30 @@ test("reçeteli satış hammaddeyi düşer, sale_lines.cost donar; iade ters; RL
   const own = await withTenant(r.id, (tx) => tx.select().from(schema.products).where(and(eq(schema.products.tenantId, r.id), eq(schema.products.sellable, false))));
   assert.equal(own.length, 3);
 });
+
+test("alış: +hareket, maliyet (eski tarih ezmez), iptal ters hareket; bakiye; RLS", async () => {
+  const { recordPurchase, cancelPurchase, suppliersWithBalance, supplierStatement } = await import("@/lib/admin/purchase");
+  const res = await withTenant(r.id, async (tx) => {
+    const [store] = await tx.select().from(schema.stores).limit(1);
+    const [un] = await tx.insert(schema.products).values({ tenantId: r.id, name: "Un2", price: 0, vatRate: 1, sellable: false, trackStock: true, unit: "kg" }).returning();
+    const [sup] = await tx.insert(schema.suppliers).values({ tenantId: r.id, name: "Toptancı" }).returning();
+    const a = await recordPurchase(tx, r.id, null, { storeId: store.id, supplierId: sup.id, docNo: "A1", date: "2026-09-28", note: null, lines: [{ productId: un.id, qtyMilli: 10000, unitCost: 2000 }] });
+    const b = await recordPurchase(tx, r.id, null, { storeId: store.id, supplierId: sup.id, docNo: "A0", date: "2026-09-20", note: null, lines: [{ productId: un.id, qtyMilli: 5000, unitCost: 1500 }] });
+    assert.ok("id" in a && "id" in b);
+    const cost1 = (await tx.select({ cost: schema.products.cost }).from(schema.products).where(eq(schema.products.id, un.id)))[0].cost;
+    assert.equal(await cancelPurchase(tx, null, b.id), null);
+    assert.match((await cancelPurchase(tx, null, b.id))!, /iptal/);
+    await tx.insert(schema.supplierPayments).values({ tenantId: r.id, supplierId: sup.id, amount: 5000, method: "nakit", date: "2026-09-28" });
+    const moves = (await tx.select({ q: schema.stockMovements.qtyMilli }).from(schema.stockMovements).where(eq(schema.stockMovements.productId, un.id))).map((m) => m.q).sort((x, y) => x - y);
+    const bad = await recordPurchase(tx, r.id, null, { storeId: store.id, supplierId: null, docNo: null, date: "2026-09-28", note: null, lines: [{ productId: crypto.randomUUID(), qtyMilli: 1000, unitCost: 1 }] });
+    return { cost1, moves, bal: (await suppliersWithBalance(tx)).find((s) => s.id === sup.id)!.balance, st: await supplierStatement(tx, sup.id), bad, supId: sup.id };
+  });
+  assert.equal(res.cost1, 2000); // 20.09 fişi 28.09 fiyatını ezmedi
+  assert.deepEqual(res.moves, [-5000, 5000, 10000]);
+  assert.equal(res.bal, 20000 - 5000); // iptal sayılmaz
+  assert.equal(res.st.balance, 15000);
+  assert.deepEqual(res.st.rows.map((x) => [x.kind, x.amount, x.cancelled]), [["alis", 20000, false], ["odeme", -5000, false], ["alis", 7500, true]]);
+  assert.ok("error" in res.bad);
+  const seen = await withTenant(t.id, (tx) => tx.select().from(schema.purchases).where(eq(schema.purchases.supplierId, res.supId)));
+  assert.equal(seen.length, 0);
+});

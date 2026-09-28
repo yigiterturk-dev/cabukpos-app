@@ -64,11 +64,13 @@ await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
 await admin.getByRole("cell", { name: /^Domates/ }).waitFor();
 step("ürünler: Süt (barkod, stok, hızlı tuş), Domates (tartılı, PLU 12345)");
 
-await admin.goto(`${BASE}/yonetim/stok`);
-await admin.getByTestId("stok-Süt").getByRole("link", { name: "Hareket" }).click();
-await admin.fill("input[name=qty]", "10");
-await admin.getByRole("button", { name: "Kaydet" }).click();
-await admin.getByText("Kaydedildi.").waitFor();
+await admin.goto(`${BASE}/yonetim/alislar`); // M7: alış fişiyle
+await admin.getByTestId("purchase-row").getByRole("combobox").click();
+await admin.getByRole("option", { name: "Süt" }).click();
+await admin.getByLabel("Miktar").fill("10");
+await admin.getByLabel("Birim fiyat").fill("25");
+await admin.getByRole("button", { name: "Alışı kaydet" }).click();
+await admin.getByTestId("purchase").first().waitFor();
 expect(await stock(admin, "Süt"), "10", "alış sonrası stok");
 step("alış 10 → stok 10");
 
