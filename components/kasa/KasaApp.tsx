@@ -391,7 +391,9 @@ export function KasaApp() {
     }
     return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
   };
-  const salonTabs = restoran && role === "kasa" && (
+  // Masa tanımlı değilse restoran kasası da doğrudan hızlı satışta açılır.
+  const hasSalon = restoran && tables.length > 0;
+  const salonTabs = hasSalon && role === "kasa" && (
     <nav className="flex gap-1 border-b border-line px-4 py-2 print:hidden" aria-label="Kasa bölümü">
       <button type="button" aria-pressed={view.name !== "sale"} onClick={() => setView({ name: "home" })} className={`rounded-lg px-4 py-1.5 text-sm ${view.name !== "sale" ? "bg-ink text-white" : "border border-line"}`}>Salon</button>
       <button type="button" aria-pressed={view.name === "sale"} onClick={() => setView({ name: "sale" })} className={`rounded-lg px-4 py-1.5 text-sm ${view.name === "sale" ? "bg-ink text-white" : "border border-line"}`}>Hızlı satış</button>
@@ -429,7 +431,7 @@ export function KasaApp() {
       </>
     );
   }
-  if (restoran && view.name !== "sale") return <>{header}{salonTabs}{salonView()}</>;
+  if (hasSalon && view.name !== "sale") return <>{header}{salonTabs}{salonView()}</>;
   return (
     <>
       {header}

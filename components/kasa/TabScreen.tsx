@@ -214,6 +214,9 @@ export function TabScreen({ meta, onMeta, table, tabs, allTabs, waiter, canPay, 
             {tab.discountAmount > 0 && <div className="flex justify-between text-sm"><span>İndirim</span><span className="tabular">−{formatTL(tab.discountAmount)}</span></div>}
             {tab.paid > 0 && <div className="flex justify-between text-sm"><span>Ödenen</span><span className="tabular">−{formatTL(tab.paid)}</span></div>}
             <div className="flex justify-between text-lg font-semibold"><span>Kalan</span><span className="tabular" data-testid="tab-remaining">{formatTL(tab.remaining)}</span></div>
+            {tab.remaining === 0 && live.length > 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli) && (
+              <button type="button" onClick={() => void run([ev({ type: "close", reason: "ödenecek tutar yok" })]).then(onBack)} className="w-full rounded-lg bg-ink py-2 text-sm font-medium text-white">Masayı kapat</button>
+            )}
             {ready.length > 0 && <button type="button" onClick={() => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })))} className="w-full rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white">Hazır — teslim edildi</button>}
             <div className="grid grid-cols-3 gap-2">
               <button type="button" onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>

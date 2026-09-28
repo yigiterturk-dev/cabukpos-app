@@ -59,6 +59,20 @@ Prod sırası: şema push (`agents` yeni tablo; RLS dışı ama `db-rls.mjs` GRA
 Yiğit işleri: gerçek yazıcı/terazi denemesi (XPrinter dükkânda), cabukpos.com DNS'i Cloudflare'e + `CF_API_TOKEN`/`CF_ZONE_ID` (tablet/ikinci kasa için; tek PC'de gerekmez).
 v1 sınırları: şube başına tek ajan; LAN WebSocket yayını M5'te (masa/mutfak); fiyat kodlu terazi etiketi gerçek teraziyle; termal etiket yazıcısı (`etiket` rolü tanımlanabilir, baskı akışı yok).
 
+## M5 — Restoran salon (dal `m5-salon`, main üstünde)
+Spec: docs/superpowers/specs/2026-09-28-cabukpos-m5-salon-design.md · Plan: docs/superpowers/plans/2026-09-28-cabukpos-m5-salon.md
+- [x] Saf çekirdek: `lib/core/tab.ts` (adisyon olaylarını katlar, masa durumu), `options.ts`, `split.ts` (tümü/eşit/seç, indirim dağıtımı), `kitchen.ts` (mutfak fişi, bekleyen baskılar)
+- [x] Şema: `areas`, `tables`, `option_groups`, `options`, `product_option_groups`, `stations`, `tab_events` (seq bigserial), `devices.role/stations`, `staff_role += garson`, `sales.tab_id/table_id`, `sale_lines.options/note/discount`; RLS + sequence izinleri
+- [x] Eşitleme: `tab` belgesi (ikram/indirim/gönderilmiş iptal müdürsüzse review + audit), masadan satış → `paid` olayı (çift ödeme review), seçenekli fiyat kontrolü; SSE `/api/tabs/stream`
+- [x] Yönetim: Salon, Seçenekler, İstasyonlar (kategori → istasyon), ürüne seçenek + istasyon, cihaz rolü, garson personeli
+- [x] Kasa: Salon | Hızlı satış (masa yoksa doğrudan hızlı satış), adisyon, seçenek penceresi, taşı, ikram/indirim/iptal (müdür PIN), hesap bölme, "Masayı kapat" (tamamı ikram); garson tableti (vardiyasız, "Hesap iste"); mutfak ekranı (PIN'siz); mutfak yazıcısı kasadan (ajan), hazır sesi
+- [x] E2E `e2e/m5.mjs` → "M5 OK"
+
+**M5 BİTTİ (2026-09-28)** yerelde: npm test 62/62, eslint + tsc temiz, build, E2E M1–M5 OK (M2 bir koşuda PIN ekranı zaman aşımı, tekrarında OK).
+Prod sırası: şema push → `db-rls.mjs` (yeni tablolar + **sequence izinleri**; yoksa tab_events yazılamaz) → `relrowsecurity` kontrolü (tab_events dahil) → main.
+v1 sınırları: tahsilat yalnız kasa rolünde; kişi sayısı girişi yok; paket/kurye M6; ajan LAN aktarımı CF DNS'e bağlı (tablet mutfak yazıcısına kasa üzerinden basar).
+E2E notu: aynı saatte çok koşu → yerel `delete from login_attempts` (signup/pair sınırı).
+
 ## Çalıştırma
 - DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).
 - E2E: `npm run build` → `node --env-file=.env.local node_modules/.bin/next start -p 3800` → `node --env-file=.env.local e2e/m1.mjs`. Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt); aşılırsa yerel DB'de `delete from login_attempts where key like 'signup:%'`.

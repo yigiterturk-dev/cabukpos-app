@@ -18,6 +18,7 @@ export type TabEv =
   | { type: "bill" }
   | { type: "kitchen"; ticketId: string; status: Exclude<KitchenStatus, "yeni"> }
   | { type: "printed"; ticketId: string }
+  | { type: "close"; reason: string } // kalan 0 iken elle kapatma (tamamı ikram)
   | { type: "paid"; saleId: string; lines: PaidLine[]; amount: Kurus };
 
 export type TabEvent = { id: string; tabId: string; tableId: string; at: string; staffId: string | null; approvedBy: string | null; seq: number | null; ev: TabEv };
@@ -27,7 +28,7 @@ export type Ticket = { id: string; stationId: string | null; lineIds: string[]; 
 export type TabState = {
   id: string; tableId: string; openedAt: string; lastAt: string; guests: number; staffId: string | null;
   lines: TabLine[]; tickets: Ticket[]; discount: { percent: number | null; amount: Kurus | null } | null;
-  billRequested: boolean; gross: Kurus; discountAmount: Kurus; total: Kurus; paid: Kurus; remaining: Kurus; closed: boolean; closedAt: string | null;
+  billRequested: boolean; closeRequested: boolean; gross: Kurus; discountAmount: Kurus; total: Kurus; paid: Kurus; remaining: Kurus; closed: boolean; closedAt: string | null;
 };
 
 const ORDER = (a: TabEvent, b: TabEvent) =>
@@ -47,7 +48,7 @@ export function foldTabs(events: TabEvent[]): Map<string, TabState> {
   for (const e of sortEvents(events)) {
     let t = tabs.get(e.tabId);
     if (!t) {
-      t = { id: e.tabId, tableId: e.tableId, openedAt: e.at, lastAt: e.at, guests: 0, staffId: e.staffId, lines: [], tickets: [], discount: null, billRequested: false, gross: 0, discountAmount: 0, total: 0, paid: 0, remaining: 0, closed: false, closedAt: null };
+      t = { id: e.tabId, tableId: e.tableId, openedAt: e.at, lastAt: e.at, guests: 0, staffId: e.staffId, lines: [], tickets: [], discount: null, billRequested: false, closeRequested: false, gross: 0, discountAmount: 0, total: 0, paid: 0, remaining: 0, closed: false, closedAt: null };
       tabs.set(e.tabId, t);
     }
     if (e.at > t.lastAt) t.lastAt = e.at;
@@ -71,6 +72,7 @@ export function foldTabs(events: TabEvent[]): Map<string, TabState> {
       case "bill": t.billRequested = true; break;
       case "kitchen": if (ticket) { ticket.status = ev.status; if (ev.status === "hazir") ticket.readyAt = e.at; } break;
       case "printed": if (ticket) ticket.printed = true; break;
+      case "close": t.closeRequested = true; break;
       case "paid":
         t.paid += ev.amount;
         for (const p of ev.lines) {
@@ -85,8 +87,10 @@ export function foldTabs(events: TabEvent[]): Map<string, TabState> {
     t.total = t.gross - t.discountAmount;
     t.remaining = Math.max(0, t.total - t.paid);
     const wasClosed = t.closed;
-    // Kapalı: her canlı satır ödendi ya da ikram (ikram satırı hesaba 0 TL girer ama beklenmez). Tümü iptal → kapalı.
-    t.closed = t.lines.length > 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli);
+    // Kapalı: tümü iptal; ya da her canlı satır ödendi/ikram ve (en az bir ödeme var ya da kalan 0 iken elle kapatıldı).
+    // Tamamı ikram olan adisyon kendiliğinden kapanmaz: masada sipariş sürebilir.
+    const settled = live.every((l) => l.comped || l.paidMilli >= l.qtyMilli);
+    t.closed = t.lines.length > 0 && (live.length === 0 || (settled && (t.paid > 0 || live.some((l) => l.paidMilli > 0) || t.closeRequested)));
     t.closedAt = t.closed ? (wasClosed ? t.closedAt : e.at) : null;
   }
   return tabs;

@@ -142,3 +142,10 @@ test("yönetim: masa adı aralığı, seçenek satırları", async () => {
   assert.equal(typeof parseOptionLines("A\nA"), "string");
   assert.equal(typeof parseOptionLines(""), "string");
 });
+
+test("tamamı ikram: kendiliğinden kapanmaz, 'close' ile kapanır", () => {
+  const evs = [ev(add("a", 1000)), ev({ type: "comp", lineId: "a", reason: "" })];
+  assert.equal(one(evs).closed, false);
+  assert.equal(one([...evs, ev({ type: "close", reason: "" })]).closed, true);
+  assert.equal(one([ev(add("b", 1000)), ev({ type: "close", reason: "" })]).closed, false);
+});

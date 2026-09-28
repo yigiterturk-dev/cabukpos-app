@@ -36,6 +36,7 @@ export const tabEv = z.discriminatedUnion("type", [
   z.object({ type: z.literal("bill") }),
   z.object({ type: z.literal("kitchen"), ticketId: uuid, status: z.enum(["hazirlaniyor", "hazir", "teslim"]) }),
   z.object({ type: z.literal("printed"), ticketId: uuid }),
+  z.object({ type: z.literal("close"), reason }),
 ]);
 const paidLine = z.object({ lineId: uuid, qtyMilli: z.number().int().min(1).max(1_000_000), discount: kurus });
 
