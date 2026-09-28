@@ -46,6 +46,19 @@ v1 sınırları: terazi etiketi yalnız ağırlık kodlu (fiyat kodlu M4'te ger�
 Prod: M2 ile birlikte bekliyor. Sıra: `m2-cevrimdisi` → main, sonra `m3-market` → main. Her şema push'undan sonra `db-rls.mjs` + `relrowsecurity` kontrolü (yeni tablo `stock_movements` dahil).
 Açık kalan (M2'den): uygulama simgeleri (192/512 png), yönetimde reddedilen belgeler ve `sales.review` listeleri — iade review'ları da bu listeye düşecek.
 
+## M4 — Yerel ajan (dal `m4-ajan`, main üstünde)
+Plan: docs/superpowers/plans/2026-09-28-cabukpos-m4-ajan.md · Kurulum/güvenlik: docs/AGENT.md
+- [x] Saf çekirdek: `lib/core/escpos.ts` (PC857, sütun, kes, çekmece), `lib/core/receipt.ts` (fiş + gün sonu, 58/80 mm), `lib/agent/ticket.ts` (HMAC bilet), `agent/src/scale.ts`, `agent/src/queue.ts`
+- [x] Ajan `agent/src/*` (yalnız Node yerleşikleri + acme-client): yazıcı (ağ/paylaşım/CUPS/dosya), terazi (TCP/seri), HTTP API (bilet, CORS, PNA), heartbeat, `pair/run/install/test-print`; esbuild → `public/indir/cabukpos-agent.cjs` (build'e zincirli)
+- [x] Bulut: `agents` tablosu (RLS dışı kimlik), `/api/agent/{pair,heartbeat,dns}`, `/yonetim/donanim`, katalogda `agent {url, ticket}`, `audit` eşitleme belgesi (çekmece)
+- [x] Kasa: otomatik fiş, nakitte çekmece, "Yazdırılamadı → Yeniden dene", ajan rozeti, müdür onaylı "Çekmece", "Teraziden al", gün sonu fiş yazıcısına
+- [x] E2E `e2e/m4.mjs` → "M4 OK" (sahte TCP yazıcı + terazi, paketlenmiş ajan)
+
+**M4 BİTTİ (2026-09-28)** yerelde: npm test 46/46, eslint + tsc temiz, build, E2E M1 + M2 + M3 + M4 OK.
+Prod sırası: şema push (`agents` yeni tablo; RLS dışı ama `db-rls.mjs` GRANT'leri için yine şart) → `relrowsecurity` kontrolü → main.
+Yiğit işleri: gerçek yazıcı/terazi denemesi (XPrinter dükkânda), cabukpos.com DNS'i Cloudflare'e + `CF_API_TOKEN`/`CF_ZONE_ID` (tablet/ikinci kasa için; tek PC'de gerekmez).
+v1 sınırları: şube başına tek ajan; LAN WebSocket yayını M5'te (masa/mutfak); fiyat kodlu terazi etiketi gerçek teraziyle; termal etiket yazıcısı (`etiket` rolü tanımlanabilir, baskı akışı yok).
+
 ## Çalıştırma
 - DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).
 - E2E: `npm run build` → `node --env-file=.env.local node_modules/.bin/next start -p 3800` → `node --env-file=.env.local e2e/m1.mjs`. Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt); aşılırsa yerel DB'de `delete from login_attempts where key like 'signup:%'`.

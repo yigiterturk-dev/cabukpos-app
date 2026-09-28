@@ -25,7 +25,7 @@ export default async function Donanim() {
           <summary className="cursor-pointer font-medium">Kurulum adımları</summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>Kasadaki bilgisayara Node.js (LTS) kurun.</li>
-            <li><code>cabukpos-agent.cjs</code> dosyasını bir klasöre koyun (ör. <code>C:\CabukPOS</code>).</li>
+            <li><a href="/indir/cabukpos-agent.cjs" download className="font-medium text-brand underline">cabukpos-agent.cjs</a> dosyasını indirip bir klasöre koyun (ör. <code>C:\CabukPOS</code>).</li>
             <li>O klasörde komut satırı açıp <code>node cabukpos-agent.cjs pair KOD</code> yazın.</li>
             <li><code>node cabukpos-agent.cjs install</code> — bilgisayar açılınca ajan kendiliğinden başlar.</li>
             <li>Aşağıda yazıcıyı tanımlayın; <code>node cabukpos-agent.cjs test-print</code> ile deneme fişi basın.</li>

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run agent:build && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "node --import ./tests/ts-resolve.mjs --test \"tests/*.test.ts\"",
@@ -12,7 +12,7 @@
     "db:rls": "node --env-file=.env.local scripts/db-rls.mjs",
     "db:push:test": "DATABASE_URL=postgres://yigiterturk@localhost:5432/cabukpos_test node node_modules/drizzle-kit/bin.cjs push --force && npm run db:rls:test",
     "db:rls:test": "MIGRATE_DATABASE_URL=postgres://yigiterturk@localhost:5432/cabukpos_test node scripts/db-rls.mjs",
-    "agent:build": "esbuild agent/src/main.ts --bundle --platform=node --target=node20 --format=cjs --minify --legal-comments=none --outfile=agent/dist/cabukpos-agent.cjs --alias:@=.",
+    "agent:build": "esbuild agent/src/main.ts --bundle --platform=node --target=node20 --format=cjs --minify --legal-comments=none --outfile=public/indir/cabukpos-agent.cjs --alias:@=.",
     "agent:dev": "node --import ./tests/ts-resolve.mjs agent/src/main.ts"
   },
   "dependencies": {
