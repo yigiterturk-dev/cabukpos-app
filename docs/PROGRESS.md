@@ -113,3 +113,12 @@ Prod sırası: şema push → db-rls → relrowsecurity + prosecdef kontrolü �
 - DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).
 - E2E: `npm run build` → `node --env-file=.env.local node_modules/.bin/next start -p 3800` → `node --env-file=.env.local e2e/m1.mjs`. Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt); aşılırsa yerel DB'de `delete from login_attempts where key like 'signup:%'`.
 - Gün sonu kapanınca kasiyer oturumu düşer; cihazın son 15 dk içinde kapanan vardiyası /kasa/gun-sonu'da PIN'siz yazdırılabilir.
+
+## M9a — Raporlar (2026-09-29)
+
+Spec `docs/superpowers/specs/2026-09-29-cabukpos-m9a-rapor-design.md`, plan `docs/superpowers/plans/2026-09-29-cabukpos-m9a-rapor.md`. 115/115 test, E2E M9a + regresyon M1/M8 OK.
+- Sekmeler: Özet (varsayılan), Yoğunluk, Ürünler, Personel, Vardiyalar, Kârlılık; ortak tarih çubuğu + CSV (`/yonetim/raporlar/csv`, BOM + `;`). Oturumsuz CSV → proxy `/giris`'e yönlendirir (307).
+- Kasa: sepetten azaltma/silme ve Temizle → `register_event` → `register_events` (RLS). Satışla kapanan sepet olay değil. Adetli üründe "Sil" düğmesi yok; 1'den azaltmak satırı siler.
+- Rapor = istek anında SQL (`lib/admin/report.ts`) + saf hesap (`lib/core/report.ts`). İade olayı iade fişinin kendi numarasıyla görünür.
+- E2E art arda koşulursa kayıt sınırı (saatte 5/IP) dolar → yerelde `delete from login_attempts where key like 'signup:%'`.
+- Prod: `scripts/prod-push.sh 1` (şema: register_events + sales_at_idx) → `2` (rls) → `3` (relrowsecurity: register_events t) → main → canlı E2E m9a.
