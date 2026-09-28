@@ -1,5 +1,7 @@
 // db/schema.ts
 import { sql } from "drizzle-orm";
+import type { Buyer, ChannelModes } from "../lib/core/fiscal";
+import { DEFAULT_MODES } from "../lib/core/fiscal";
 import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index, bigserial, check, date } from "drizzle-orm/pg-core";
 
 export const vertical = pgEnum("vertical", ["restoran", "market"]);
@@ -13,6 +15,7 @@ export const productKind = pgEnum("product_kind", ["adet", "tartili"]);
 export const stockKind = pgEnum("stock_kind", ["satis", "iade", "alis", "sayim", "fire", "recete", "uretim"]);
 export const stockUnit = pgEnum("stock_unit", ["adet", "kg", "lt"]);
 export const purchaseStatus = pgEnum("purchase_status", ["kayitli", "iptal"]);
+export const fiscalDocStatus = pgEnum("fiscal_doc_status", ["pending", "issued", "error", "cancelled", "cancel_rejected"]);
 export const supplierPayMethod = pgEnum("supplier_pay_method", ["nakit", "havale", "kart"]);
 
 const ts = (n: string) => timestamp(n, { withTimezone: true });
@@ -23,6 +26,9 @@ export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   vertical: vertical("vertical").notNull(),
+  taxId: text("tax_id"), // M8: e-Arşiv satıcı bilgisi
+  taxOffice: text("tax_office"),
+  address: text("address"),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
 
@@ -431,3 +437,34 @@ export const productions = pgTable("productions", {
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [index("productions_tenant_idx").on(t.tenantId, t.createdAt)]);
+
+// — M8: mali belge —
+export const fiscalSettings = pgTable("fiscal_settings", {
+  tenantId: uuid("tenant_id").primaryKey().references(() => tenants.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("fake-earsiv"),
+  series: text("series").notNull().default("CBP"),
+  counter: integer("counter").notNull().default(0),
+  channelModes: jsonb("channel_modes").notNull().$type<ChannelModes>().default(DEFAULT_MODES),
+  fakeFail: boolean("fake_fail").notNull().default(false),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const fiscalDocuments = pgTable("fiscal_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  saleId: uuid("sale_id").notNull().unique().references(() => sales.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull().default("earsiv"),
+  status: fiscalDocStatus("status").notNull().default("pending"),
+  buyer: jsonb("buyer").notNull().$type<Buyer>(),
+  ettn: uuid("ettn"),
+  number: text("number"),
+  url: text("url"),
+  token: text("token").notNull().unique(),
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error"),
+  lastTryAt: ts("last_try_at"),
+  cancelPending: boolean("cancel_pending").notNull().default(false),
+  emailSentAt: ts("email_sent_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  issuedAt: ts("issued_at"),
+}, (t) => [index("fiscal_documents_status_idx").on(t.tenantId, t.status)]);
