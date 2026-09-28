@@ -7,14 +7,14 @@ import { sha256 } from "./tokens";
 export const DEVICE_COOKIE = "cz_device";
 const secure = process.env.NODE_ENV === "production";
 
-export type Device = { id: string; tenantId: string; storeId: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market" };
+export type Device = { id: string; tenantId: string; storeId: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role: "kasa" | "garson" | "mutfak"; stations: string[] };
 
 export async function getDevice(): Promise<Device | null> {
   const token = (await cookies()).get(DEVICE_COOKIE)?.value;
   if (!token) return null;
   const d = schema.devices, t = schema.tenants;
   const [row] = await getDb()
-    .select({ id: d.id, tenantId: d.tenantId, storeId: d.storeId, name: d.name, receiptPrefix: d.receiptPrefix, tenantName: t.name, vertical: t.vertical })
+    .select({ id: d.id, tenantId: d.tenantId, storeId: d.storeId, name: d.name, receiptPrefix: d.receiptPrefix, tenantName: t.name, vertical: t.vertical, role: d.role, stations: d.stations })
     .from(d).innerJoin(t, eq(t.id, d.tenantId))
     .where(and(eq(d.tokenHash, await sha256(token)), isNull(d.revokedAt)));
   if (!row) return null;

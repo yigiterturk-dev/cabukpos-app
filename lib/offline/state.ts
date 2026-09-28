@@ -4,11 +4,17 @@ import type { VatLine } from "@/lib/core/cart";
 import type { Payment } from "@/lib/core/payment";
 import type { SyncDoc } from "@/lib/sync/docs";
 import type { KasaAgent } from "@/lib/agent/config";
+import type { OptionGroup } from "@/lib/core/options";
 
-export type DeviceInfo = { id: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; storeName: string; storeAddress: string | null; nextReceiptNo: number };
-export type KasaProduct = { id: string; name: string; price: number; vatRate: VatRate; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; quick: boolean };
-export type KasaStaff = { id: string; name: string; role: "kasiyer" | "mudur"; pinHash: string };
-export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[] };
+export type DeviceRole = "kasa" | "garson" | "mutfak";
+export type DeviceInfo = { id: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role?: DeviceRole; stations?: string[]; storeName: string; storeAddress: string | null; nextReceiptNo: number };
+export type KasaProduct = { id: string; name: string; price: number; vatRate: VatRate; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; quick: boolean; stationId?: string | null; optionGroupIds?: string[] };
+export type KasaStaff = { id: string; name: string; role: "kasiyer" | "mudur" | "garson"; pinHash: string };
+export type Area = { id: string; name: string };
+export type Table = { id: string; areaId: string; name: string };
+export type Station = { id: string; name: string; printer: string | null };
+// M5: restoran salonu (market kataloğunda yok)
+export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[] };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
 export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number };
 

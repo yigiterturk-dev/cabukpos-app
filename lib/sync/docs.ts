@@ -14,7 +14,30 @@ export const saleLineDoc = z.object({
   unitPrice: kurus,
   vatRate: z.union(VAT_RATES.map((r) => z.literal(r)) as [z.ZodLiteral<1>, z.ZodLiteral<10>, z.ZodLiteral<20>]),
   qtyMilli: z.number().int().min(1).max(1_000_000),
+  // M5 masa: seçenekler (birim fiyata dahil), not, indirim payı (ikram + adisyon indirimi)
+  options: z.array(z.object({ id: uuid, name: z.string().min(1).max(80), delta: z.number().int().min(-100_000_000).max(100_000_000) })).max(20).optional(),
+  note: z.string().max(200).nullable().optional(),
+  discount: kurus.optional(),
 });
+
+const reason = z.string().max(200);
+const vatRate = saleLineDoc.shape.vatRate;
+export const tabEv = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("open"), guests: z.number().int().min(0).max(999) }),
+  z.object({
+    type: z.literal("add"), lineId: uuid, productId: uuid, name: z.string().min(1).max(120), unitPrice: kurus, vatRate,
+    qtyMilli: z.number().int().min(1).max(1_000_000), options: saleLineDoc.shape.options.unwrap(), note: z.string().max(200).nullable(), stationId: uuid.nullable(),
+  }),
+  z.object({ type: z.literal("void"), lineId: uuid, reason }),
+  z.object({ type: z.literal("send"), ticketId: uuid, lineIds: z.array(uuid).min(1).max(200), stationId: uuid.nullable() }),
+  z.object({ type: z.literal("move"), toTableId: uuid }),
+  z.object({ type: z.literal("comp"), lineId: uuid, reason }),
+  z.object({ type: z.literal("discount"), percent: z.number().int().min(1).max(100).nullable(), amount: kurus.nullable(), reason }),
+  z.object({ type: z.literal("bill") }),
+  z.object({ type: z.literal("kitchen"), ticketId: uuid, status: z.enum(["hazirlaniyor", "hazir", "teslim"]) }),
+  z.object({ type: z.literal("printed"), ticketId: uuid }),
+]);
+const paidLine = z.object({ lineId: uuid, qtyMilli: z.number().int().min(1).max(1_000_000), discount: kurus });
 
 const payMethod = z.enum(PAY_METHODS.map((m) => m.value) as ["nakit", "kart", "yemek_karti"]);
 
@@ -28,6 +51,8 @@ export const syncDoc = z.discriminatedUnion("kind", [
     at,
     lines: z.array(saleLineDoc).min(1).max(500),
     payments: z.array(z.object({ method: payMethod, amount: kurus.min(1) })).min(1).max(10),
+    // M5: masa adisyonundan parça ödeme
+    tab: z.object({ tabId: uuid, tableId: uuid, paidLines: z.array(paidLine).min(1).max(500) }).optional(),
   }),
   // İade: fiş no ile, müdür onaylı, tek yöntemle geri ödeme. Aynı fiş sayacından numara alır.
   z.object({
@@ -42,6 +67,8 @@ export const syncDoc = z.discriminatedUnion("kind", [
     lines: z.array(saleLineDoc).min(1).max(500),
     payments: z.array(z.object({ method: payMethod, amount: kurus.min(1) })).length(1),
   }),
+  // M5: adisyon olayı (garson/kasa/mutfak). Ödeme olayı ayrı belge değil: masadan satış (tab alanı) bulutta "paid" olayı üretir.
+  z.object({ kind: z.literal("tab"), id: uuid, tabId: uuid, tableId: uuid, at, staffId: uuid.nullable(), approvedBy: uuid.nullable(), ev: tabEv }),
   z.object({ kind: z.literal("shift_open"), id: uuid, staffId: uuid, at, openingCash: kurus }),
   z.object({ kind: z.literal("shift_close"), id: uuid, staffId: uuid, at, countedCash: kurus }),
   // Yetkili işlem kaydı (M4: elle çekmece açma). Kimlik audit_log.id olur → tekrar gelirse ikinci kayıt yok.
@@ -51,6 +78,7 @@ export const syncDoc = z.discriminatedUnion("kind", [
 export type SyncDoc = z.infer<typeof syncDoc>;
 export type SaleDoc = Extract<SyncDoc, { kind: "sale" }>;
 export type RefundDoc = Extract<SyncDoc, { kind: "refund" }>;
+export type TabDoc = Extract<SyncDoc, { kind: "tab" }>;
 export type DocResult = { id: string; ok: true } | { id: string; ok: false; error: string };
 
 /** Cihaz öneki + sıra → "K1-000042". Kasada ve bulutta aynı. */

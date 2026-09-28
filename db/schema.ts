@@ -1,9 +1,10 @@
 // db/schema.ts
-import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index, bigserial } from "drizzle-orm/pg-core";
 
 export const vertical = pgEnum("vertical", ["restoran", "market"]);
 export const userRole = pgEnum("user_role", ["sahip", "mudur"]);
-export const staffRole = pgEnum("staff_role", ["kasiyer", "mudur"]);
+export const staffRole = pgEnum("staff_role", ["kasiyer", "mudur", "garson"]);
+export const deviceRole = pgEnum("device_role", ["kasa", "garson", "mutfak"]);
 export const payMethod = pgEnum("pay_method", ["nakit", "kart", "yemek_karti"]);
 export const saleChannel = pgEnum("sale_channel", ["kasa", "masa", "paket", "platform"]);
 export const saleStatus = pgEnum("sale_status", ["kapandi", "iptal", "iade"]);
@@ -46,6 +47,8 @@ export const devices = pgTable("devices", {
   pairedAt: ts("paired_at"),
   revokedAt: ts("revoked_at"),
   lastSeenAt: ts("last_seen_at"),
+  role: deviceRole("role").notNull().default("kasa"), // M5: restoran salonunda garson tableti / mutfak ekranı
+  stations: uuid("stations").array().notNull().default([]), // mutfak ekranı filtresi; boş = tümü
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("devices_prefix_uq").on(t.tenantId, t.receiptPrefix)]);
 
@@ -103,6 +106,7 @@ export const categories = pgTable("categories", {
   tenantId: tenantRef(),
   name: text("name").notNull(),
   sort: integer("sort").notNull().default(0),
+  stationId: uuid("station_id").references(() => stations.id, { onDelete: "set null" }), // M5: mutfak istasyonu
 });
 
 export const products = pgTable("products", {
@@ -121,6 +125,7 @@ export const products = pgTable("products", {
   sort: integer("sort").notNull().default(0),
   priceChangedAt: ts("price_changed_at").notNull().defaultNow(),
   labelPrintedAt: ts("label_printed_at"),
+  stationId: uuid("station_id").references(() => stations.id, { onDelete: "set null" }), // kategoriyi ezer
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [index("products_tenant_idx").on(t.tenantId), uniqueIndex("products_plu_uq").on(t.tenantId, t.plu)]);
 
@@ -153,6 +158,8 @@ export const sales = pgTable("sales", {
   vat: jsonb("vat").notNull().$type<{ rate: number; gross: number; net: number; vat: number }[]>(),
   refundOf: uuid("refund_of"), // iade: asıl satış (FK yok; asıl satış henüz eşitlenmemiş olabilir)
   approvedBy: uuid("approved_by").references(() => staff.id), // iadeyi onaylayan müdür
+  tabId: uuid("tab_id"), // M5: masa adisyonundan ödenen parça
+  tableId: uuid("table_id"),
   review: text("review"), // eşitlemede kabul edildi ama incelenmeli (fiyat farkı, silinmiş ürün, fiş no çakışması…)
   createdAt: ts("created_at").notNull().defaultNow(), // satış anı (cihaz saati)
   syncedAt: ts("synced_at").notNull().defaultNow(),
@@ -168,6 +175,9 @@ export const saleLines = pgTable("sale_lines", {
   vatRate: integer("vat_rate").notNull(),
   qtyMilli: integer("qty_milli").notNull(),
   total: integer("total").notNull(),
+  options: jsonb("options").$type<{ id: string; name: string; delta: number }[]>(),
+  note: text("note"),
+  discount: integer("discount").notNull().default(0), // ikram + adisyon indirimi payı
 });
 
 export const payments = pgTable("payments", {
@@ -200,3 +210,74 @@ export const auditLog = pgTable("audit_log", {
   detail: jsonb("detail"),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
+
+// — M5 Restoran salon —
+export const areas = pgTable("areas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sort: integer("sort").notNull().default(0),
+});
+
+export const tables = pgTable("tables", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  areaId: uuid("area_id").notNull().references(() => areas.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sort: integer("sort").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+}, (t) => [index("tables_area_idx").on(t.areaId)]);
+
+export const optionGroups = pgTable("option_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  name: text("name").notNull(),
+  min: integer("min").notNull().default(0),
+  max: integer("max").notNull().default(1),
+  sort: integer("sort").notNull().default(0),
+});
+
+export const options = pgTable("options", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  groupId: uuid("group_id").notNull().references(() => optionGroups.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  delta: integer("delta").notNull().default(0), // kuruş, eksi olabilir
+  sort: integer("sort").notNull().default(0),
+}, (t) => [index("options_group_idx").on(t.groupId)]);
+
+export const productOptionGroups = pgTable("product_option_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  groupId: uuid("group_id").notNull().references(() => optionGroups.id, { onDelete: "cascade" }),
+  sort: integer("sort").notNull().default(0),
+}, (t) => [uniqueIndex("product_option_groups_uq").on(t.productId, t.groupId)]);
+
+export const stations = pgTable("stations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  printer: text("printer"), // ajandaki yazıcı kimliği; boş = yalnız mutfak ekranı
+  sort: integer("sort").notNull().default(0),
+});
+
+/** Adisyon olayları: tek kaynak, yalnız eklenir. lib/core/tab.ts katlar. seq = sunucu sırası (akış imleci). */
+export const tabEvents = pgTable("tab_events", {
+  id: uuid("id").primaryKey(), // istemci üretir (idempotent); ödeme olayında satış kimliği
+  seq: bigserial("seq", { mode: "number" }).notNull().unique(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  tabId: uuid("tab_id").notNull(),
+  tableId: uuid("table_id").notNull(),
+  deviceId: uuid("device_id").notNull().references(() => devices.id),
+  staffId: uuid("staff_id").references(() => staff.id),
+  approvedBy: uuid("approved_by").references(() => staff.id),
+  at: ts("at").notNull(),
+  type: text("type").notNull(),
+  payload: jsonb("payload").notNull(),
+  review: text("review"),
+  syncedAt: ts("synced_at").notNull().defaultNow(),
+}, (t) => [index("tab_events_store_seq_idx").on(t.storeId, t.seq), index("tab_events_tab_idx").on(t.tabId)]);
