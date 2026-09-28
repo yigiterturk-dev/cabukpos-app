@@ -7,12 +7,12 @@ import { buildIndex, parseKg, resolveScan } from "@/lib/core/scan";
 import type { KasaProduct } from "@/lib/offline/state";
 
 export type PayResult = { ok: true; saleId: string; receiptNo: string; change: number } | { ok: false; error: string };
-type OnPay = (saleId: string, payments: Payment[]) => Promise<PayResult>;
+export type OnPay = (saleId: string, payments: Payment[]) => Promise<PayResult>;
 export type OnSale = (saleId: string, payments: Payment[], cart: CartLine[]) => Promise<PayResult>;
 export type PrintView = { state: "printing" | "ok" | "fail"; error?: string | null };
 export type ReadScale = () => Promise<{ grams: number; stable: boolean }>;
 
-function PayDialog({ total, onPay, onClose, onDone }: { total: number; onPay: OnPay; onClose: () => void; onDone: (r: { saleId: string; receiptNo: string; change: number }) => void }) {
+export function PayDialog({ total, onPay, onClose, onDone }: { total: number; onPay: OnPay; onClose: () => void; onDone: (r: { saleId: string; receiptNo: string; change: number }) => void }) {
   const [saleId] = useState(() => crypto.randomUUID()); // diyalog başına bir kez → tekrar denemede aynı satış (idempotent)
   const [cash, setCash] = useState("");
   const [card, setCard] = useState<string | null>(null);

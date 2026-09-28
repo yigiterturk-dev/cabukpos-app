@@ -27,7 +27,7 @@ export async function GET(req: Request) {
       ]),
     ),
     device.vertical === "restoran" ? salonCatalog(device) : null,
-    kasaAgentFor(device),
+    device.role === "kasa" ? kasaAgentFor(device) : null, // tablet/mutfak ekranı ajana ulaşamaz (127.0.0.1); yazıcıyı kasa sürer
   ]);
   const products = prods.filter((p) => isVatRate(p.vatRate)).map(({ stationId, ...p }) => ({
     ...p,

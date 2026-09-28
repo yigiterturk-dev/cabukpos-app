@@ -4,7 +4,7 @@ import type { VatLine } from "@/lib/core/cart";
 import type { Payment } from "@/lib/core/payment";
 import type { SyncDoc } from "@/lib/sync/docs";
 import type { KasaAgent } from "@/lib/agent/config";
-import type { OptionGroup } from "@/lib/core/options";
+import type { LineOption, OptionGroup } from "@/lib/core/options";
 
 export type DeviceRole = "kasa" | "garson" | "mutfak";
 export type DeviceInfo = { id: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role?: DeviceRole; stations?: string[]; storeName: string; storeAddress: string | null; nextReceiptNo: number };
@@ -33,8 +33,9 @@ export type Meta = {
 
 export type LocalSale = {
   id: string; shiftId: string; staffId: string; staffName: string; seq: number; receiptNo: string; at: string;
-  lines: { productId: string; name: string; unitPrice: number; vatRate: VatRate; qtyMilli: number }[];
+  lines: { productId: string; name: string; unitPrice: number; vatRate: VatRate; qtyMilli: number; options?: LineOption[]; note?: string | null; discount?: number }[];
   payments: Payment[]; total: number; change: number; vat: VatLine[];
+  tabId?: string; tableName?: string; // M5: masadan parça ödeme
   refund?: boolean; refundOf?: string; refundOfNo?: string; approvedBy?: string; // iade fişi
 };
 export type OutboxRow = { n?: number; id: string; doc: SyncDoc };

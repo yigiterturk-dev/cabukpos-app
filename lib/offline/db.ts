@@ -6,6 +6,8 @@ import { settle, type Payment } from "@/lib/core/payment";
 import { refundable, type RefLine } from "@/lib/core/refund";
 import { summarizeShift } from "@/lib/core/shift";
 import { formatReceipt, type SyncDoc } from "@/lib/sync/docs";
+import type { PaidLine, TabEvent } from "@/lib/core/tab";
+import type { LineOption } from "@/lib/core/options";
 import type { LookedUpSale } from "@/lib/sync/lookup";
 import { emptyMeta, type ClosedShift, type LocalSale, type Meta, type OutboxRow, type RejectedRow } from "./state";
 
@@ -14,10 +16,12 @@ class KasaDb extends Dexie {
   sales!: Table<LocalSale, string>;
   outbox!: Table<OutboxRow, number>;
   rejected!: Table<RejectedRow, string>;
+  tabEvents!: Table<TabEvent, string>;
   constructor() {
     super("cabukpos-kasa");
     this.version(1).stores({ meta: "key", sales: "id, shiftId, at", outbox: "++n, id", rejected: "id" });
     this.version(2).stores({ sales: "id, shiftId, at, receiptNo, refundOf" }); // M3: iade için fiş no ile arama
+    this.version(3).stores({ tabEvents: "id, seq, tabId" }); // M5: adisyon olayları (sunucudan + yerel bekleyen, seq null)
   }
 }
 
@@ -31,11 +35,12 @@ export async function loadMeta(): Promise<Meta> {
 /** Tarayıcı başka cihaz olarak eşlendi: bekleyen belgeler "reddedildi"ye, geri kalan yerel veri silinir. */
 export async function resetForDevice(reason: string) {
   const d = kasaDb();
-  await d.transaction("rw", [d.meta, d.sales, d.outbox, d.rejected], async () => {
+  await d.transaction("rw", [d.meta, d.sales, d.outbox, d.rejected, d.tabEvents], async () => {
     const now = new Date().toISOString();
     for (const o of await d.outbox.toArray()) await d.rejected.put({ id: o.id, doc: o.doc, error: reason, at: now });
     await d.outbox.clear();
     await d.sales.clear();
+    await d.tabEvents.clear();
     await d.meta.put(emptyMeta());
   });
 }
@@ -55,9 +60,13 @@ export async function openShiftLocal(staffId: string, openingCash: number): Prom
   });
 }
 
-export async function recordSaleLocal(staff: { id: string; name: string }, cart: CartLine[], payments: Payment[], saleId: string): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
+export type SaleCartLine = CartLine & { options?: LineOption[]; note?: string | null };
+/** Masadan parça ödeme: satış belgesi tab alanı taşır, yerelde "paid" olayı aynı işlemde yazılır. */
+export type SaleTab = { tabId: string; tableId: string; tableName: string; paidLines: PaidLine[] };
+
+export async function recordSaleLocal(staff: { id: string; name: string }, cart: SaleCartLine[], payments: Payment[], saleId: string, tab?: SaleTab): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
   const d = kasaDb();
-  return d.transaction("rw", [d.meta, d.sales, d.outbox], async () => {
+  return d.transaction("rw", [d.meta, d.sales, d.outbox, d.tabEvents], async () => {
     const done = await d.sales.get(saleId);
     if (done) return { ok: true as const, sale: done };
     const m = await loadMeta();
@@ -68,10 +77,15 @@ export async function recordSaleLocal(staff: { id: string; name: string }, cart:
     if (!s.ok) return s;
     const seq = m.nextSeq;
     const at = new Date().toISOString();
-    const lines = cart.map((l) => ({ productId: l.productId, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli }));
-    const sale: LocalSale = { id: saleId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines, payments: s.payments, total: t.total, change: s.change, vat: t.vat };
+    const lines = cart.map((l) => ({
+      productId: l.productId, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli,
+      ...(tab ? { options: l.options ?? [], note: l.note ?? null, discount: l.discount ?? 0 } : {}),
+    }));
+    const sale: LocalSale = { id: saleId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines, payments: s.payments, total: t.total, change: s.change, vat: t.vat, ...(tab ? { tabId: tab.tabId, tableName: tab.tableName } : {}) };
     await d.sales.add(sale);
-    await enqueue({ kind: "sale", id: saleId, shiftId: m.shift.id, staffId: staff.id, receiptSeq: seq, at, lines, payments: s.payments });
+    const tabField = tab ? { tab: { tabId: tab.tabId, tableId: tab.tableId, paidLines: tab.paidLines } } : {};
+    await enqueue({ kind: "sale", id: saleId, shiftId: m.shift.id, staffId: staff.id, receiptSeq: seq, at, lines, payments: s.payments, ...tabField });
+    if (tab) await d.tabEvents.put({ id: saleId, tabId: tab.tabId, tableId: tab.tableId, at, staffId: staff.id, approvedBy: null, seq: null, ev: { type: "paid", saleId, lines: tab.paidLines, amount: t.total } });
     await d.meta.put({ ...m, nextSeq: seq + 1 });
     return { ok: true as const, sale };
   });

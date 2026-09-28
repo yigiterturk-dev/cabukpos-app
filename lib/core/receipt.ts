@@ -9,9 +9,9 @@ import { EscPos, type Codepage, type PaperWidth } from "./escpos";
 export type PrintOpts = { width: PaperWidth; codepage: Codepage; drawer?: boolean };
 export type ReceiptSale = {
   receiptNo: string; at: string; staffName: string;
-  lines: { productId: string; name: string; unitPrice: number; qtyMilli: number }[];
+  lines: { productId: string; name: string; unitPrice: number; qtyMilli: number; options?: { name: string }[]; note?: string | null; discount?: number }[];
   payments: Payment[]; total: number; change: number; vat: VatLine[];
-  refund?: boolean; refundOfNo?: string;
+  refund?: boolean; refundOfNo?: string; tableName?: string;
 };
 export type ReceiptHeader = { tenantName: string; storeName: string; storeAddress: string | null };
 
@@ -39,10 +39,13 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
   if (sale.refund) p.align("center").bold(true).line("İADE FİŞİ").bold(false).align("left");
   p.rule().cols2(date(at), time(at)).cols2("Fiş no", sale.receiptNo);
   if (sale.refund && sale.refundOfNo) p.cols2("Asıl fiş", sale.refundOfNo);
+  if (sale.tableName) p.cols2("Masa", sale.tableName);
   p.cols2("Kasiyer", sale.staffName).rule();
   for (const l of sale.lines) {
     p.lines(l.name);
+    for (const o of l.options ?? []) p.lines(`  + ${o.name}`);
     p.cols2(`  ${qtyText(l.qtyMilli, weighed(l.productId))} x ${formatTL(l.unitPrice)}`, formatTL(Math.round((l.unitPrice * l.qtyMilli) / 1000)));
+    if (l.discount) p.cols2("  İndirim", `-${formatTL(l.discount)}`);
   }
   p.rule();
   for (const v of sale.vat) p.cols2(`KDV %${v.rate}  matrah ${formatTL(v.net)}`, formatTL(v.vat));

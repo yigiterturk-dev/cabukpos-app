@@ -1,13 +1,17 @@
 "use client";
 // Kasa uygulaması (çevrimdışı çalışır). Veri IndexedDB'de; PIN cihazda doğrulanır; satış/vardiya giden kutusuna
 // yazılır ve arka planda /api/sync ile eşitlenir. Kasiyer oturumu yalnız bellekte (sayfa yenilenince PIN yeniden).
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { summarizeShift } from "@/lib/core/shift";
 import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordSaleLocal, shiftSales } from "@/lib/offline/db";
-import { agentStatus, openDrawer, printSale, printShift, readScale, retryPrint, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
+import { agentStatus, openDrawer, printKitchen, printSale, printShift, readScale, retryPrint, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
+import { pendingPrints } from "@/lib/core/kitchen";
+import { paidLinesOf, type PayLine } from "@/lib/core/split";
+import { openTabsByTable, type TabState } from "@/lib/core/tab";
+import type { Payment } from "@/lib/core/payment";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
 import type { LocalSale, Meta } from "@/lib/offline/state";
 import { Button, Field, Input } from "@/components/ui";
@@ -16,8 +20,13 @@ import { PinPad, type Cashier } from "./PinPad";
 import { RefundScreen } from "./RefundScreen";
 import { SaleScreen, type OnSale, type PrintView } from "./SaleScreen";
 import { registerKasaSw } from "./sw-register";
+import { SalonScreen } from "./SalonScreen";
+import { TabScreen } from "./TabScreen";
+import { BillScreen } from "./BillScreen";
+import { KitchenScreen } from "./KitchenScreen";
+import { useNow, useTabs } from "./useTabs";
 
-type View = { name: "sale" } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" };
+type View = { name: "home" } | { name: "sale" } | { name: "tab"; tableId: string } | { name: "bill"; tabId: string } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" };
 type PrintState = PrintView & { jobId?: string | null };
 
 function Center({ title, sub, children }: { title: string; sub?: string; children?: React.ReactNode }) {
@@ -113,13 +122,16 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
           <div className="flex justify-between"><span>{at.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span><span>{at.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })}</span></div>
           <div className="flex justify-between"><span>Fiş no</span><span>{sale.receiptNo}</span></div>
           {sale.refund && <div className="flex justify-between"><span>Asıl fiş</span><span>{sale.refundOfNo}</span></div>}
+          {sale.tableName && <div className="flex justify-between"><span>Masa</span><span>{sale.tableName}</span></div>}
           <div className="flex justify-between"><span>Kasiyer</span><span>{sale.staffName}</span></div>
         </div>
         <div className="mt-1 border-t border-dashed border-ink pt-1">
-          {sale.lines.map((l) => (
-            <div key={l.productId} className="py-0.5">
+          {sale.lines.map((l, i) => (
+            <div key={i} className="py-0.5">
               <div>{l.name}</div>
+              {l.options?.map((o) => <div key={o.id} className="pl-2">+ {o.name}</div>)}
               <div className="flex justify-between pl-2"><span>{qty(l.qtyMilli, weighed(l.productId))} × {formatTL(l.unitPrice)}</span><span>{formatTL(Math.round((l.unitPrice * l.qtyMilli) / 1000))}</span></div>
+              {l.discount ? <div className="flex justify-between pl-2"><span>İndirim</span><span>-{formatTL(l.discount)}</span></div> : null}
             </div>
           ))}
         </div>
@@ -186,7 +198,7 @@ export function KasaApp() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [signedIn, setCashier] = useState<Cashier | null>(null);
-  const [view, setView] = useState<View>({ name: "sale" });
+  const [view, setView] = useState<View>({ name: "home" });
   const [prints, setPrints] = useState<Record<string, PrintState>>({});
   const [agent, setAgent] = useState<AgentStatus | null>(null);
   const sync = useRef<ReturnType<typeof createSync> | null>(null);
@@ -229,18 +241,61 @@ export function KasaApp() {
   // Kasiyer yönetimden pasife alındıysa (katalogdan düştüyse) oturum geçersiz.
   const cashier = signedIn && meta?.catalog.staff.some((s) => s.id === signedIn.id) ? signedIn : null;
 
-  const onSale: OnSale = useCallback(async (saleId, payments, cart) => {
-    const r = await recordSaleLocal(cashier!, cart, payments, saleId);
-    if (!r.ok) return r;
+  // — M5 salon: adisyonlar, mutfak yazıcısı, hazır sesi —
+  const role = meta?.device?.role ?? "kasa";
+  const restoran = meta?.device?.vertical === "restoran";
+  const kick = useCallback(() => void sync.current?.kick(), []);
+  const tabsApi = useTabs(Boolean(restoran), kick);
+  const now = useNow();
+  const printingRef = useRef(new Map<string, number>()); // bilet → bir sonraki deneme zamanı
+  useEffect(() => {
+    const a = meta?.agent;
+    if (!a || !restoran || role !== "kasa" || !meta) return;
+    const stations = meta.catalog.stations ?? [];
+    const jobs = pendingPrints(tabsApi.tabs.values(), (sid) => stations.find((s) => s.id === sid)?.printer ?? null, Date.now())
+      .filter((j) => (printingRef.current.get(j.ticket.id) ?? 0) <= Date.now());
+    for (const j of jobs) {
+      printingRef.current.set(j.ticket.id, Date.now() + 30_000);
+      const job = printKitchen(a, j.printer, {
+        tableName: meta.catalog.tables?.find((t) => t.id === j.tab.tableId)?.name ?? "?",
+        stationName: stations.find((s) => s.id === j.ticket.stationId)?.name ?? null,
+        staffName: meta.catalog.staff.find((s) => s.id === j.ticket.staffId)?.name ?? null,
+        at: j.ticket.at,
+        lines: j.ticket.lineIds.flatMap((id) => j.tab.lines.filter((l) => l.lineId === id && !l.voided)),
+      });
+      void job?.then((r) => { if (r.ok) void tabsApi.add([{ tabId: j.tab.id, tableId: j.tab.tableId, staffId: null, ev: { type: "printed", ticketId: j.ticket.id } }]); });
+    }
+  }, [tabsApi, meta, restoran, role, now]);
+  const readyCount = useMemo(() => [...openTabsByTable(tabsApi.tabs).values()].flat().reduce((a, t) => a + t.tickets.filter((k) => k.status === "hazir").length, 0), [tabsApi.tabs]);
+  const lastReady = useRef(0);
+  useEffect(() => {
+    if (restoran && role !== "mutfak" && readyCount > lastReady.current) beep();
+    lastReady.current = readyCount;
+  }, [readyCount, restoran, role]);
+
+  // Donanım satışı beklemez: fiş (+ nakitte çekmece) arka planda.
+  const afterSale = useCallback(async (sale: LocalSale) => {
     const m = await loadMeta();
     setMeta(m);
     void sync.current?.kick();
-    // Donanım satışı beklemez: fiş (+ nakitte çekmece) arka planda.
-    const cash = r.sale.payments.some((p) => p.method === "nakit");
-    if (m.agent?.autoPrint) void trackPrint(saleId, printSale(m, r.sale, cash));
+    const cash = sale.payments.some((p) => p.method === "nakit");
+    if (m.agent?.autoPrint) void trackPrint(sale.id, printSale(m, sale, cash));
     else if (cash && m.agent?.drawer) void openDrawer(m.agent);
-    return { ok: true, saleId, receiptNo: r.sale.receiptNo, change: r.sale.change };
-  }, [cashier, trackPrint]);
+    return { ok: true as const, saleId: sale.id, receiptNo: sale.receiptNo, change: sale.change };
+  }, [trackPrint]);
+
+  const onSale: OnSale = useCallback(async (saleId, payments, cart) => {
+    const r = await recordSaleLocal(cashier!, cart, payments, saleId);
+    return r.ok ? afterSale(r.sale) : r;
+  }, [cashier, afterSale]);
+
+  const onTabPay = useCallback(async (tab: TabState, part: PayLine[], saleId: string, payments: Payment[]) => {
+    const tableName = meta?.catalog.tables?.find((t) => t.id === tab.tableId)?.name ?? "";
+    const r = await recordSaleLocal(cashier!, part, payments, saleId, { tabId: tab.id, tableId: tab.tableId, tableName, paidLines: paidLinesOf(part) });
+    if (!r.ok) return r;
+    await tabsApi.reload();
+    return afterSale(r.sale);
+  }, [cashier, afterSale, tabsApi, meta]);
 
   const retry = useCallback((saleId: string) => {
     const job = prints[saleId]?.jobId;
@@ -258,11 +313,12 @@ export function KasaApp() {
   }
 
   const d = meta.device;
+  const atHome = view.name === "home" || view.name === "sale";
   const drawerBy = async (approvedBy: string | null) => {
     if (!cashier || !meta.agent) return;
     await recordAuditLocal(cashier.id, approvedBy, "cekmece");
     void sync.current?.kick();
-    setView({ name: "sale" });
+    setView({ name: "home" });
     if (!(await openDrawer(meta.agent))) refreshAgent();
   };
   const header = (
@@ -274,37 +330,74 @@ export function KasaApp() {
       <AgentBadge s={agentCfg ? agent : null} />
       {status.rejected > 0 && <span className="text-xs font-medium text-red-700">{status.rejected} belge reddedildi</span>}
       <div className="ml-auto flex items-center gap-4">
-        {cashier && meta.agent?.drawer && view.name === "sale" && (
+        {cashier && meta.agent?.drawer && atHome && (
           <button type="button" className="underline" onClick={() => {
             if (meta.catalog.staff.find((x) => x.id === cashier.id)?.role === "mudur") void drawerBy(null);
             else setView({ name: "cekmece" });
           }}>Çekmece</button>
         )}
-        {cashier && meta.shift && view.name === "sale" && <button type="button" onClick={() => setView({ name: "iade" })} className="underline">İade</button>}
-        {cashier && meta.shift && view.name === "sale" && <button type="button" onClick={() => setView({ name: "gun-sonu" })} className="underline">Gün sonu</button>}
-        {cashier && <button type="button" onClick={() => { setCashier(null); setView({ name: "sale" }); }} className="text-muted underline">Kasiyer değiştir</button>}
+        {cashier && meta.shift && atHome && <button type="button" onClick={() => setView({ name: "iade" })} className="underline">İade</button>}
+        {cashier && meta.shift && atHome && <button type="button" onClick={() => setView({ name: "gun-sonu" })} className="underline">Gün sonu</button>}
+        {cashier && <button type="button" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="text-muted underline">Kasiyer değiştir</button>}
       </div>
     </header>
   );
 
+  if (restoran && role === "mutfak") {
+    return (
+      <>
+        <header className="flex items-center gap-4 border-b border-line px-4 py-2 text-sm">
+          <span className="font-semibold">{d.tenantName}</span><span className="text-muted">{d.name} · Mutfak</span>
+          <SyncBadge s={status} />
+          {!tabsApi.live && <span className="text-xs font-medium text-amber-700">Canlı bağlantı yok</span>}
+        </header>
+        <KitchenScreen meta={meta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} />
+      </>
+    );
+  }
   if (view.name === "closed") {
-    return <>{header}<GunSonu meta={meta} closed onClose={async () => {}} onBack={() => setView({ name: "sale" })} /></>;
+    return <>{header}<GunSonu meta={meta} closed onClose={async () => {}} onBack={() => setView({ name: "home" })} /></>;
   }
   if (!cashier) {
     return <>{header}<Center title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} /></Center></>;
   }
-  if (view.name === "receipt") return <Receipt meta={meta} sale={view.sale} onBack={() => setView({ name: "sale" })} onPrinted={(r) => { setPrints((p) => ({ ...p, [view.sale.id]: { state: r.ok ? "ok" : "fail", error: r.error, jobId: r.jobId } })); refreshAgent(); }} />;
+  if (view.name === "receipt") return <Receipt meta={meta} sale={view.sale} onBack={() => setView({ name: "home" })} onPrinted={(r) => { setPrints((p) => ({ ...p, [view.sale.id]: { state: r.ok ? "ok" : "fail", error: r.error, jobId: r.jobId } })); refreshAgent(); }} />;
   if (view.name === "cekmece") {
     return (
       <>
         {header}
         <Center title="Müdür onayı" sub="Çekmeceyi açmak için müdür PIN'i girsin.">
           <PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "mudur"} onOk={(m) => void drawerBy(m.id)} />
-          <button type="button" onClick={() => setView({ name: "sale" })} className="mt-6 w-full text-center text-sm underline">Vazgeç</button>
+          <button type="button" onClick={() => setView({ name: "home" })} className="mt-6 w-full text-center text-sm underline">Vazgeç</button>
         </Center>
       </>
     );
   }
+  const staffRole = meta.catalog.staff.find((x) => x.id === cashier.id)?.role ?? "kasiyer";
+  const waiter = { ...cashier, role: staffRole };
+  const tables = meta.catalog.tables ?? [];
+  const salonView = () => {
+    if (view.name === "tab") {
+      const table = tables.find((t) => t.id === view.tableId);
+      if (!table) return null;
+      return <TabScreen key={table.id} meta={meta} onMeta={setMeta} table={table} tabs={openTabsByTable(tabsApi.tabs).get(table.id) ?? []} allTabs={tabsApi.tabs} waiter={waiter} canPay={role === "kasa" && Boolean(meta.shift)} add={tabsApi.add} now={now}
+        onBill={(tabId) => setView({ name: "bill", tabId })} onBack={() => setView({ name: "home" })} />;
+    }
+    if (view.name === "bill") {
+      const tab = tabsApi.tabs.get(view.tabId);
+      if (!tab) return null;
+      return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} onPay={(part, id, p) => onTabPay(tab, part, id, p)}
+        onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed ? { name: "home" } : { name: "tab", tableId: tab.tableId })} />;
+    }
+    return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
+  };
+  const salonTabs = restoran && role === "kasa" && (
+    <nav className="flex gap-1 border-b border-line px-4 py-2 print:hidden" aria-label="Kasa bölümü">
+      <button type="button" aria-pressed={view.name !== "sale"} onClick={() => setView({ name: "home" })} className={`rounded-lg px-4 py-1.5 text-sm ${view.name !== "sale" ? "bg-ink text-white" : "border border-line"}`}>Salon</button>
+      <button type="button" aria-pressed={view.name === "sale"} onClick={() => setView({ name: "sale" })} className={`rounded-lg px-4 py-1.5 text-sm ${view.name === "sale" ? "bg-ink text-white" : "border border-line"}`}>Hızlı satış</button>
+    </nav>
+  );
+  if (restoran && role === "garson") return <>{header}{salonView() ?? <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />}</>;
   if (!meta.shift) {
     return (
       <>
@@ -316,7 +409,7 @@ export function KasaApp() {
     );
   }
   if (view.name === "iade") {
-    return <>{header}<RefundScreen meta={meta} cashier={cashier} online={status.online} onMeta={setMeta} onBack={() => setView({ name: "sale" })} onDone={async (sale) => { setMeta(await loadMeta()); void sync.current?.kick(); setView({ name: "receipt", sale }); }} /></>;
+    return <>{header}<RefundScreen meta={meta} cashier={cashier} online={status.online} onMeta={setMeta} onBack={() => setView({ name: "home" })} onDone={async (sale) => { setMeta(await loadMeta()); void sync.current?.kick(); setView({ name: "receipt", sale }); }} /></>;
   }
   if (view.name === "gun-sonu") {
     return (
@@ -325,7 +418,7 @@ export function KasaApp() {
         <GunSonu
           meta={meta}
           closed={false}
-          onBack={() => setView({ name: "sale" })}
+          onBack={() => setView({ name: "home" })}
           onClose={async (counted) => {
             setMeta(await closeShiftLocal(cashier.id, counted));
             setCashier(null);
@@ -336,9 +429,11 @@ export function KasaApp() {
       </>
     );
   }
+  if (restoran && view.name !== "sale") return <>{header}{salonTabs}{salonView()}</>;
   return (
     <>
       {header}
+      {salonTabs}
       <SaleScreen
         categories={meta.catalog.categories}
         products={meta.catalog.products}
@@ -351,4 +446,21 @@ export function KasaApp() {
       />
     </>
   );
+}
+
+/** Hazır bildirimi: kısa iki ton (ses izni yoksa sessiz geçer). */
+function beep() {
+  try {
+    const ctx = new AudioContext();
+    [0, 0.18].forEach((t, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = i ? 1320 : 880;
+      g.gain.setValueAtTime(0.15, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.15);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + t);
+      o.stop(ctx.currentTime + t + 0.16);
+    });
+    setTimeout(() => void ctx.close(), 600);
+  } catch { /* ses yok */ }
 }
