@@ -5,7 +5,7 @@ import type { Payment } from "@/lib/core/payment";
 import type { SyncDoc } from "@/lib/sync/docs";
 
 export type DeviceInfo = { id: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; storeName: string; storeAddress: string | null; nextReceiptNo: number };
-export type KasaProduct = { id: string; name: string; price: number; vatRate: VatRate; categoryId: string | null; barcodes: string[] };
+export type KasaProduct = { id: string; name: string; price: number; vatRate: VatRate; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; quick: boolean };
 export type KasaStaff = { id: string; name: string; role: "kasiyer" | "mudur"; pinHash: string };
 export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[] };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
