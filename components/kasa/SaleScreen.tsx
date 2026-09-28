@@ -1,14 +1,15 @@
 "use client";
-import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { addProduct, lineTotal, setQty, totals, type CartLine } from "@/lib/core/cart";
-import { formatTL, parseTL, type VatRate } from "@/lib/core/money";
+import { formatTL, parseTL } from "@/lib/core/money";
 import { settle, type Payment } from "@/lib/core/payment";
-import { completeSale } from "@/lib/kasa/actions";
+import type { KasaProduct } from "@/lib/offline/state";
 
-export type KasaProduct = { id: string; name: string; price: number; vatRate: VatRate; categoryId: string | null; barcodes: string[] };
+export type PayResult = { ok: true; saleId: string; receiptNo: string; change: number } | { ok: false; error: string };
+type OnPay = (saleId: string, payments: Payment[]) => Promise<PayResult>;
+export type OnSale = (saleId: string, payments: Payment[], cart: CartLine[]) => Promise<PayResult>;
 
-function PayDialog({ cart, total, onClose, onDone }: { cart: CartLine[]; total: number; onClose: () => void; onDone: (r: { saleId: string; receiptNo: string; change: number }) => void }) {
+function PayDialog({ total, onPay, onClose, onDone }: { total: number; onPay: OnPay; onClose: () => void; onDone: (r: { saleId: string; receiptNo: string; change: number }) => void }) {
   const [saleId] = useState(() => crypto.randomUUID()); // diyalog başına bir kez → tekrar denemede aynı satış (idempotent)
   const [cash, setCash] = useState("");
   const [card, setCard] = useState<string | null>(null);
@@ -24,10 +25,10 @@ function PayDialog({ cart, total, onClose, onDone }: { cart: CartLine[]; total: 
   const submit = () => start(async () => {
     setError(null);
     try {
-      const r = await completeSale({ id: saleId, lines: cart.map((l) => ({ productId: l.productId, qtyMilli: l.qtyMilli })), payments });
+      const r = await onPay(saleId, payments);
       if (r.ok) onDone(r); else setError(r.error);
     } catch {
-      setError("Bağlantı hatası. Tekrar deneyin; satış iki kez kaydedilmez.");
+      setError("Satış kaydedilemedi. Tekrar deneyin; satış iki kez kaydedilmez.");
     }
   });
 
@@ -62,7 +63,7 @@ function PayDialog({ cart, total, onClose, onDone }: { cart: CartLine[]; total: 
   );
 }
 
-export function SaleScreen({ categories, products }: { categories: { id: string; name: string }[]; products: KasaProduct[] }) {
+export function SaleScreen({ categories, products, onPay, onReceipt }: { categories: { id: string; name: string }[]; products: KasaProduct[]; onPay: OnSale; onReceipt: (saleId: string) => void }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cat, setCat] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -117,7 +118,7 @@ export function SaleScreen({ categories, products }: { categories: { id: string;
           {last && (
             <div className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
               Fiş {last.receiptNo} · Para üstü {formatTL(last.change)}
-              <Link href={`/kasa/fis/${last.saleId}`} target="_blank" className="ml-2 font-medium underline">Fişi yazdır</Link>
+              <button type="button" onClick={() => onReceipt(last.saleId)} className="ml-2 font-medium underline">Fişi yazdır</button>
             </div>
           )}
           <div className="mt-3 grid grid-cols-3 gap-2">
@@ -126,7 +127,7 @@ export function SaleScreen({ categories, products }: { categories: { id: string;
           </div>
         </div>
       </aside>
-      {paying && <PayDialog cart={cart} total={t.total} onClose={() => setPaying(false)} onDone={(r) => { setPaying(false); setCart([]); setLast(r); }} />}
+      {paying && <PayDialog total={t.total} onPay={(id, p) => onPay(id, p, cart)} onClose={() => setPaying(false)} onDone={(r) => { setPaying(false); setCart([]); setLast(r); }} />}
     </div>
   );
 }

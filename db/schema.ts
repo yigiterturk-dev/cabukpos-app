@@ -120,7 +120,9 @@ export const sales = pgTable("sales", {
   total: integer("total").notNull(),
   change: integer("change").notNull().default(0),
   vat: jsonb("vat").notNull().$type<{ rate: number; gross: number; net: number; vat: number }[]>(),
-  createdAt: ts("created_at").notNull().defaultNow(),
+  review: text("review"), // eşitlemede kabul edildi ama incelenmeli (fiyat farkı, silinmiş ürün, fiş no çakışması…)
+  createdAt: ts("created_at").notNull().defaultNow(), // satış anı (cihaz saati)
+  syncedAt: ts("synced_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("sales_receipt_uq").on(t.deviceId, t.receiptNo), index("sales_shift_idx").on(t.shiftId)]);
 
 export const saleLines = pgTable("sale_lines", {

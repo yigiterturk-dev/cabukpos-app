@@ -1,4 +1,5 @@
 // e2e/m1.mjs — Kayıt → ürün/personel/cihaz → eşleme → PIN → vardiya → karma ödemeli satış → fiş → ikinci satış
+// (M2: kasa cihazda çalışır, eşitleme arka planda; gün sonundan sonra bekleyen 0 olunca yönetime bakılır)
 // → gün sonu (beklenen/fark) → yönetim raporu; ikinci işletme ilk işletmenin ürününü görmez.
 // Kullanım: node --env-file=.env.local e2e/m1.mjs (sunucu :3800: npm run build && PORT=3800 npm start)
 // Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt): gerekirse yerel DB'de delete from login_attempts where key like 'signup:%'
@@ -73,7 +74,7 @@ await kasa.getByRole("button", { name: "Gir" }).click();
 await kasa.getByText("PIN hatalı.").waitFor();
 for (const d of "4826") await kasa.getByRole("button", { name: d, exact: true }).click();
 await kasa.getByRole("button", { name: "Gir" }).click();
-await kasa.fill("input[name=openingCash]", "500");
+await kasa.fill("input[name=amount]", "500");
 await kasa.getByRole("button", { name: "Vardiyayı aç" }).click();
 await kasa.getByText("Ali Kasiyer").waitFor();
 step("kasa: yanlış kod/PIN reddedildi; eşlendi, PIN ile girildi, vardiya açıldı (500 TL)");
@@ -91,11 +92,9 @@ await kasa.fill("input[name=amount-nakit]", "200");
 await kasa.getByText("Para üstü 15,00 ₺").waitFor();
 await kasa.getByRole("button", { name: "Satışı tamamla" }).click();
 await kasa.getByText(/Fiş K1-000001 · Para üstü 15,00 ₺/).waitFor();
-const receiptHref = await kasa.getByRole("link", { name: "Fişi yazdır" }).getAttribute("href");
-const fis = await kasa.context().newPage();
-await fis.goto(`${BASE}${receiptHref}?yazdir=0`);
-for (const t of ["E2E Dönerci", "K1-000001", "Ali Kasiyer", "385,00 ₺", "Kart", "Nakit", "15,00 ₺", "Bilgi fişidir, mali değeri yoktur."]) await fis.getByText(t).first().waitFor();
-await fis.close();
+await kasa.getByRole("button", { name: "Fişi yazdır" }).click();
+for (const t of ["E2E Dönerci", "K1-000001", "Ali Kasiyer", "385,00 ₺", "Kart", "Nakit", "15,00 ₺", "Bilgi fişidir, mali değeri yoktur."]) await kasa.getByText(t).first().waitFor();
+await kasa.getByRole("button", { name: "Kasaya dön" }).click();
 step("karma ödemeli satış (kart 200 + nakit 200, üstü 15) + bilgi fişi");
 
 await kasa.getByRole("button", { name: /^Su \d/ }).click();
@@ -105,13 +104,14 @@ await kasa.getByRole("button", { name: "Satışı tamamla" }).click();
 await kasa.getByText(/Fiş K1-000002/).waitFor();
 step("ikinci satış: K1-000002");
 
-await kasa.goto(`${BASE}/kasa/gun-sonu`);
+await kasa.getByRole("button", { name: "Gün sonu" }).click();
 for (const t of ["2 satış", "395,00 ₺", "Beklenen kasa", "695,00 ₺"]) await kasa.getByText(t).first().waitFor();
-await kasa.fill("input[name=countedCash]", "690");
+await kasa.fill("input[name=amount]", "690");
 await kasa.getByRole("button", { name: "Gün sonunu kapat" }).click();
 await kasa.getByText("-5,00 ₺").waitFor();
-await kasa.goto(`${BASE}/kasa`);
+await kasa.getByRole("button", { name: "← Kasa" }).click();
 await kasa.getByRole("button", { name: "Gir" }).waitFor();
+await kasa.getByTestId("sync-pending").waitFor({ state: "detached" });
 step("gün sonu: beklenen 695, sayılan 690, fark -5; kasiyer oturumu kapandı");
 
 await admin.goto(`${BASE}/yonetim/raporlar`);

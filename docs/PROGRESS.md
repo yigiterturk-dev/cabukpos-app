@@ -1,6 +1,6 @@
 # İlerleme — ÇabukPOS
 
-Spec: docs/superpowers/specs/2026-09-28-cabukpos-pos-design.md · Plan: docs/superpowers/plans/2026-09-28-cabukpos-m1-cekirdek-kasa.md
+Spec: docs/superpowers/specs/2026-09-28-cabukpos-pos-design.md · Planlar: docs/superpowers/plans/2026-09-28-cabukpos-m1-cekirdek-kasa.md, …-m2-cevrimdisi.md
 Eski (YanındaPOS tabanlı) kod: git etiketi `yanindapos-tabanli-v0`. Bu dal (`pos-cekirdek`) main'e, production kurulumu (Neon rolü + env) kararlaştırılınca birleşir.
 
 ## M1 — Çekirdek + kasa
@@ -20,6 +20,18 @@ Eski (YanındaPOS tabanlı) kod: git etiketi `yanindapos-tabanli-v0`. Bu dal (`p
 PRODUCTION (2026-09-28): Neon projesi `cabukpos` (orange-moon-25841597, org agen, eu-central-1); `cabukpos_app` rolü SQL ile açıldı (neonctl ile açılan rol neon_superuser → BYPASSRLS, kullanma). Vercel env: DATABASE_URL (app rolü) + AUTH_SECRET yenilendi. main'e birleşti, canlı E2E (`BASE=https://cabukpos-app.vercel.app node e2e/m1.mjs`) M1 OK. Şema değişikliğinde sahip URL'si: `npx neonctl connection-string --project-id=orange-moon-25841597`. Sıradaki: M2 (çevrimdışı).
 
 Not: sunucu `node --env-file=.env.local node_modules/.bin/next start -p 3800`; plan kodu `python3 scripts/plan-extract.py <yol>` ile çıkarılır.
+
+## M2 — Çevrimdışı kasa
+- [x] Şema `sales.review`, `sales.synced_at`; `lib/sync` (belge şemaları + bulutta uygulama), testli
+- [x] `/api/sync/catalog` (içerik özetli katalog + cihaz + açık vardiya), `/api/sync/push` (FIFO, idempotent, 409 eşleme değişti)
+- [x] İstemci: Dexie (`lib/offline`), eşitleme motoru (artan bekleme), `KasaApp` (PIN cihazda, vardiya/satış/fiş/gün sonu yerel)
+- [x] Service worker `public/sw.js` + ilk yüklemede statik ısıtma; manifest
+- [x] E2E `e2e/m2.mjs` → "M2 OK"; `e2e/m1.mjs` yeni akışa uyarlandı → "M1 OK"
+
+**M2 BİTTİ (2026-09-28)** yerelde: npm test 17/17, eslint + tsc temiz, E2E M1 OK + M2 OK.
+Kaldırılan: kasiyer çerezi, `/kasa/fis/[id]`, `/kasa/gun-sonu`, `lib/kasa/sale.ts` (hepsi KasaApp + lib/sync'e taşındı).
+⚠️ `drizzle-kit push` RLS'yi KAPATIYOR (şemada tanımlı değil) → `db:push`/`db:push:test` artık ardından RLS'yi uyguluyor. Prod'da şema değişikliğinden sonra MUTLAKA `MIGRATE_DATABASE_URL=<sahip> node scripts/db-rls.mjs` + `relrowsecurity` kontrolü.
+Sonra (M4+): uygulama simgeleri (kurulabilir PWA için 192/512 png), reddedilen belgeler için yönetim ekranı, `sales.review` listesi.
 
 ## Çalıştırma
 - DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).

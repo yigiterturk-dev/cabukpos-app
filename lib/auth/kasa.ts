@@ -1,13 +1,10 @@
-// Kasa kimliği: cihaz (cz_device, eşlemede verilen jeton; DB'de yalnız sha256'sı) + kasiyer (cz_cashier JWT, 12 saat).
+// Kasa kimliği: cihaz (cz_device, eşlemede verilen jeton; DB'de yalnız sha256'sı). Kasiyer PIN'i cihazda doğrulanır (M2).
 import { cookies } from "next/headers";
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
-import { getDb, schema, withTenant } from "@/db";
+import { getDb, schema } from "@/db";
 import { sha256 } from "./tokens";
-import { signJwt, verifyJwt } from "./jwt";
 
 export const DEVICE_COOKIE = "cz_device";
-export const CASHIER_COOKIE = "cz_cashier";
-const CASHIER_SECONDS = 12 * 3600;
 const secure = process.env.NODE_ENV === "production";
 
 export type Device = { id: string; tenantId: string; storeId: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market" };
@@ -27,21 +24,4 @@ export async function getDevice(): Promise<Device | null> {
 
 export async function setDeviceCookie(token: string) {
   (await cookies()).set(DEVICE_COOKIE, token, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 400 * 86_400 });
-}
-
-export async function setCashier(staffId: string, device: Device) {
-  (await cookies()).set(CASHIER_COOKIE, await signJwt("cashier", { staffId, deviceId: device.id, tenantId: device.tenantId }, CASHIER_SECONDS), { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: CASHIER_SECONDS });
-}
-
-export async function clearCashier() {
-  (await cookies()).delete(CASHIER_COOKIE);
-}
-
-/** Bu cihazda PIN ile girmiş, hâlâ aktif kasiyer. */
-export async function getCashier(device: Device): Promise<{ staffId: string; name: string; role: "kasiyer" | "mudur" } | null> {
-  const p = await verifyJwt("cashier", (await cookies()).get(CASHIER_COOKIE)?.value);
-  if (!p || p.deviceId !== device.id || p.tenantId !== device.tenantId || typeof p.staffId !== "string") return null;
-  const staffId = p.staffId;
-  const [s] = await withTenant(device.tenantId, (tx) => tx.select({ name: schema.staff.name, role: schema.staff.role, active: schema.staff.active }).from(schema.staff).where(eq(schema.staff.id, staffId)));
-  return s?.active ? { staffId, name: s.name, role: s.role } : null;
 }

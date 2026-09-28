@@ -1,9 +1,16 @@
 // Vardiya (gün sonu) raporu — kasa gün sonu ve yönetim raporlarında aynı görünüm.
 import { formatTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
-import type { loadShiftSummary } from "@/lib/kasa/shift-report";
+import type { summarizeShift } from "@/lib/core/shift";
 
-export type ShiftReportData = NonNullable<Awaited<ReturnType<typeof loadShiftSummary>>>;
+/** Bulutta (yönetim) loadShiftSummary, kasada yerel satışlardan üretilir. */
+export type ShiftReportData = {
+  shift: { openingCash: number; openedAt: Date; closedAt: Date | null; countedCash: number | null; expectedCash: number | null };
+  summary: ReturnType<typeof summarizeShift>;
+  openedByName: string;
+  closedByName: string;
+  sales: { id: string; receiptNo: string; createdAt: Date; total: number }[];
+};
 
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 const tm = (d: Date) => d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
