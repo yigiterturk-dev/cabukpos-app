@@ -89,7 +89,7 @@ async function expectedCashOf(tx: Tx, shiftId: string, openingCash: number) {
 type Checked = { lines: (AnyLine & { known: boolean; trackStock: boolean; options?: { id: string; name: string; delta: number }[]; note?: string | null })[]; reasons: string[] };
 
 /** Ortak ön kontrol: idempotentlik, vardiya, personel, ürün anlık görüntüsü. string → reddet; null → zaten yazılmış. */
-async function precheck(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, freeOk = false): Promise<string | null | Checked> {
+async function precheck(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, tabKind: "masa" | "paket" | "platform" | null = null): Promise<string | null | Checked> {
   const [done] = await tx.select({ deviceId: schema.sales.deviceId }).from(schema.sales).where(eq(schema.sales.id, doc.id));
   if (done) return done.deviceId === ctx.deviceId ? null : "Satış başka cihazda.";
   const [shift] = await tx.select({ closedAt: schema.shifts.closedAt }).from(schema.shifts).where(and(eq(schema.shifts.id, doc.shiftId), eq(schema.shifts.deviceId, ctx.deviceId)));
@@ -104,12 +104,13 @@ async function precheck(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, freeOk
   const opts = optIds.length ? await tx.select({ id: schema.options.id, delta: schema.options.delta }).from(schema.options).where(inArray(schema.options.id, optIds)) : [];
   const lines = doc.lines.map((l) => {
     const p = l.productId ? prods.find((x) => x.id === l.productId) : undefined;
-    if (!l.productId) { if (!freeOk) reasons.push(`serbest satır: ${l.name}`); }
+    if (!l.productId) { if (!tabKind || tabKind === "masa") reasons.push(`serbest satır: ${l.name}`); }
     else if (doc.kind === "sale") {
       const expected = p ? p.price + (l.options ?? []).reduce((a, o) => a + (opts.find((x) => x.id === o.id)?.delta ?? NaN), 0) : NaN;
       if (!p) reasons.push(`silinmiş ürün: ${l.name}`);
       else if (!p.active) reasons.push(`satıştan kalkmış ürün: ${l.name}`);
-      else if (Math.max(0, expected) !== l.unitPrice || p.vatRate !== l.vatRate) reasons.push(`fiyat/KDV farkı: ${l.name}`);
+      // Platform siparişinde fiyatı platform belirler (eşlenen ürün katalog fiyatından farklı olabilir).
+      else if (tabKind !== "platform" && (Math.max(0, expected) !== l.unitPrice || p.vatRate !== l.vatRate)) reasons.push(`fiyat/KDV farkı: ${l.name}`);
     }
     return { productId: l.productId, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli, discount: l.discount, options: l.options, note: l.note, known: Boolean(p), trackStock: Boolean(p?.trackStock) };
   });
@@ -142,7 +143,7 @@ async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checke
 async function applySale(tx: Tx, ctx: DeviceCtx, doc: SaleDoc): Promise<string | null> {
   const tab = doc.tab;
   const state = tab ? foldTabs(await tabEventsOf(tx, tab.tabId)).get(tab.tabId) : undefined;
-  const c = await precheck(tx, ctx, doc, Boolean(state && state.kind !== "masa"));
+  const c = await precheck(tx, ctx, doc, state?.kind ?? null);
   if (c === null || typeof c === "string") return c;
   const total = totals(c.lines).total;
   const s = settle(total, doc.payments);

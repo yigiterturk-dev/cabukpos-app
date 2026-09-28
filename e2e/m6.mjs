@@ -1,0 +1,219 @@
+// e2e/m6.mjs — Paket, kurye, platform siparişi: üç cihaz (kasa + mutfak ekranı + kurye telefonu), sahte platform webhook'u.
+// Yönetim: bölge Merkez (15 TL, asgari 100), Lahmacun 60 TL (platform kodu LAH), kasiyer + kurye, Deneme platformu (otomatik kabul kapalı) →
+// kasa yeni paket (0532…, Merkez, 2× Lahmacun = 135) → mutfak hazır → kurye ata → kurye yola çıktım, nakit teslim → hesap kapat (kasiyer PIN'i, sayılan 135) →
+// /api/musteri aynı müşteri → imzalı webhook iki kez (LAH + bilinmeyen kod) → tek onay bekleyen kart → Kabul → audit platform.accept →
+// mutfak hazır → "Kuryeye verildi" → online satış (kanal platform).
+// Kullanım: npm run build && node --env-file=.env.local e2e/m6.mjs (sunucu :3800, bkz. m1.mjs)
+import { chromium } from "playwright-core";
+import { createHmac } from "node:crypto";
+import postgres from "postgres";
+
+const BASE = process.env.BASE ?? "http://localhost:3800";
+const stamp = Date.now();
+const tenant = `E2E Pideci ${stamp}`;
+const step = (m) => console.log("•", m);
+
+const browser = await chromium.launch({ channel: "chrome", headless: true });
+const sql = postgres(process.env.MIGRATE_DATABASE_URL ?? process.env.DATABASE_URL, { max: 1 });
+const errors = [];
+const page = async (viewport = { width: 1280, height: 900 }) => {
+  const p = await (await browser.newContext({ viewport })).newPage();
+  p.on("pageerror", (e) => errors.push(e.message));
+  return p;
+};
+const pin = async (p, digits) => {
+  for (const d of digits) await p.getByRole("button", { name: d, exact: true }).click();
+  await p.getByRole("button", { name: "Gir" }).click();
+};
+const choose = async (p, combo, option) => { await combo.click(); await p.getByRole("option", { name: option }).click(); };
+const ready = async (mutfak, text) => {
+  const card = mutfak.locator("[data-ticket]:not([data-status=hazir])", { hasText: text });
+  await card.waitFor({ timeout: 10000 });
+  await card.click();
+  await mutfak.locator("[data-ticket][data-status=hazirlaniyor]", { hasText: text }).click();
+  await mutfak.locator("[data-ticket][data-status=hazir]", { hasText: text }).first().waitFor();
+};
+
+try {
+  // — Yönetim —
+  const admin = await page();
+  await admin.goto(`${BASE}/kayit`);
+  await admin.fill("input[name=businessName]", tenant);
+  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.fill("input[name=name]", "Yiğit Test");
+  await admin.fill("input[name=email]", `m6-${stamp}@ornek.com`);
+  await admin.fill("input[name=password]", "Cabukpos2026x");
+  await admin.getByRole("button", { name: "Hesap oluştur" }).click();
+  await admin.waitForURL(`${BASE}/yonetim**`);
+
+  await admin.goto(`${BASE}/yonetim/bolgeler`);
+  await admin.fill("input[name=name]", "Merkez");
+  await admin.fill("input[name=fee]", "15");
+  await admin.fill("input[name=minOrder]", "100");
+  await admin.getByRole("button", { name: "Bölge ekle" }).click();
+  await admin.getByRole("button", { name: "Kaydet" }).first().waitFor();
+  step("bölge Merkez: ücret 15, asgari 100");
+
+  await admin.goto(`${BASE}/yonetim/urunler`);
+  await admin.fill("input[name=name]", "Lahmacun");
+  await admin.fill("input[name=price]", "60");
+  await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
+  await admin.getByRole("cell", { name: /^Lahmacun/ }).waitFor();
+
+  await admin.goto(`${BASE}/yonetim/personel`);
+  for (const [name, role, p] of [["Ali Kasiyer", null, "4613"], ["Kemal Kurye", "Kurye", "6284"]]) {
+    await admin.fill("input[name=name]", name);
+    if (role) await admin.getByRole("button", { name: role, exact: true }).click();
+    await admin.fill("input[name=pin]", p);
+    await admin.getByRole("button", { name: "Personeli kaydet" }).click();
+    await admin.getByRole("cell", { name }).waitFor();
+  }
+  step("ürün Lahmacun 60 TL; personel: kasiyer, kurye");
+
+  await admin.goto(`${BASE}/yonetim/platformlar`);
+  await admin.getByRole("button", { name: "Bağla" }).click();
+  const secretEl = admin.getByTestId("webhook-secret");
+  await secretEl.waitFor();
+  const secret = (await secretEl.innerText()).trim();
+  const hook = (await admin.locator("code", { hasText: "/webhook?c=" }).innerText()).trim().replace(/^https?:\/\/[^/]+/, BASE);
+  await admin.fill("input[name=code]", "LAH");
+  await choose(admin, admin.getByRole("combobox").first(), "Lahmacun");
+  await admin.getByRole("button", { name: "Eşle" }).click();
+  await admin.locator("li", { hasText: "LAH" }).getByText("Lahmacun").waitFor();
+  step("Deneme platformu bağlandı (otomatik kabul kapalı), LAH → Lahmacun");
+
+  // — Cihazlar: kasa, mutfak ekranı, kurye telefonu —
+  const pair = async (name, prefix, viewport) => {
+    await admin.goto(`${BASE}/yonetim/cihazlar`);
+    await admin.fill("input[name=name]", name);
+    await admin.fill("input[name=receiptPrefix]", prefix);
+    await admin.getByRole("button", { name: "Cihaz ekle" }).click();
+    const code = (await admin.getByTestId("pairing-code").innerText()).trim();
+    const p = await page(viewport);
+    await p.goto(`${BASE}/kasa/eslestir`);
+    await p.fill("input[name=code]", code);
+    await p.getByRole("button", { name: "Eşle" }).click();
+    await p.waitForURL(`${BASE}/kasa`);
+    return p;
+  };
+  const setRole = async (i, label) => {
+    await admin.goto(`${BASE}/yonetim/cihazlar`);
+    await admin.getByRole("group", { name: "Cihaz rolü" }).nth(i).getByRole("button", { name: label }).click();
+    await admin.getByRole("button", { name: "Rolü kaydet" }).nth(i).click();
+    await admin.getByText("Kaydedildi.").waitFor();
+  };
+  const kasa = await pair("Kasa 1", "K1");
+  await pin(kasa, "4613");
+  await kasa.fill("input[name=amount]", "0");
+  await kasa.getByRole("button", { name: "Vardiyayı aç" }).click();
+  await kasa.getByRole("button", { name: "Paket", exact: true }).click();
+  await kasa.getByRole("heading", { name: "Paket siparişleri" }).waitFor();
+  const mutfak = await pair("Mutfak", "MT");
+  await setRole(1, "Mutfak ekranı");
+  const kurye = await pair("Kurye tel", "KR", { width: 390, height: 844 });
+  await setRole(2, "Kurye telefonu");
+  await mutfak.reload();
+  await mutfak.getByText("Bekleyen sipariş yok.").waitFor();
+  await kurye.reload();
+  await pin(kurye, "4613");
+  await kurye.getByText("PIN hatalı", { exact: false }).waitFor();
+  await pin(kurye, "6284");
+  await kurye.getByText("Üzerinizde sipariş yok.").waitFor();
+  step("kasa Paket sekmesi; mutfak ekranı; kurye telefonu yalnız kurye PIN'iyle, vardiya kendiliğinden açık");
+
+  // — Kasa: yeni paket —
+  await kasa.getByRole("button", { name: "+ Yeni paket" }).click();
+  await kasa.fill("input[name=phone]", "0532 123 45 67");
+  await kasa.getByRole("button", { name: "Müşteriyi bul" }).click();
+  await kasa.getByTestId("customer-status").getByText("Yeni müşteri").waitFor();
+  await kasa.getByLabel("Ad soyad").fill("Ayşe Yılmaz");
+  await kasa.getByLabel("Adres", { exact: true }).fill("Atatürk Cad. No 12 D 3");
+  await kasa.getByRole("button", { name: /^Merkez/ }).click();
+  await kasa.getByRole("button", { name: "Siparişe geç" }).click();
+  await kasa.getByRole("button", { name: /^Lahmacun/ }).click();
+  await kasa.getByText("Asgari tutar 100,00 ₺ altında").waitFor();
+  await kasa.getByRole("button", { name: /^Lahmacun/ }).click();
+  await kasa.getByTestId("tab-remaining").getByText("135,00 ₺").waitFor();
+  await kasa.getByRole("button", { name: /^Mutfağa gönder/ }).click();
+  await kasa.getByText("mutfakta").first().waitFor();
+  await kasa.getByRole("button", { name: "← Paket" }).click();
+  step("kasa: paket Ayşe, Merkez, 2× Lahmacun + 15 paket ücreti = 135 (asgari uyarısı 1 adette), mutfağa");
+
+  await ready(mutfak, "Lahmacun");
+  const card = kasa.getByTestId("delivery-card").filter({ hasText: "Paket" });
+  await kasa.getByRole("region", { name: "Hazır" }).getByTestId("delivery-card").waitFor({ timeout: 10000 });
+  await card.getByRole("button", { name: "Kurye ata" }).click();
+  await kasa.getByRole("dialog", { name: "Kurye ata" }).getByRole("button", { name: "Kemal Kurye" }).click();
+  await card.getByText("Kurye: Kemal Kurye").waitFor();
+  step("mutfak hazır → kasa kurye atadı");
+
+  // — Kurye —
+  await kurye.getByTestId("courier-card").waitFor({ timeout: 10000 });
+  await kurye.getByRole("button", { name: "Yola çıktım (1)" }).click();
+  await kurye.getByRole("button", { name: "Teslim ettim" }).click();
+  await kurye.getByRole("dialog", { name: "Nasıl ödendi?" }).getByRole("button", { name: "Nakit" }).click();
+  await kurye.getByText("Üzerinizde sipariş yok.").waitFor();
+  await kurye.getByTestId("courier-cash").getByText("135,00 ₺").waitFor();
+  await kasa.getByRole("region", { name: "Bugün kapanan" }).getByTestId("delivery-card").waitFor({ timeout: 10000 });
+  step("kurye: yola çıktı, nakit teslim; üzerindeki nakit 135; kasada 'Bugün kapanan'");
+
+  await kurye.getByRole("button", { name: "Hesap kapat (kasiyer onayı)" }).click();
+  await pin(kurye, "6284");
+  await kurye.getByText("PIN hatalı", { exact: false }).waitFor();
+  await pin(kurye, "4613");
+  await kurye.fill("input[name=amount]", "135");
+  await kurye.getByRole("button", { name: "Gün sonunu kapat" }).click();
+  await kurye.getByRole("heading", { name: "Vardiya kapandı" }).waitFor();
+  step("kurye hesap kapattı: kurye PIN'i reddedildi, kasiyer PIN'i, sayılan 135");
+
+  const lookup = await kasa.evaluate(async () => (await fetch("/api/musteri?tel=905321234567")).json());
+  if (lookup.customer?.name !== "Ayşe Yılmaz" || lookup.addresses.length !== 1 || lookup.recent.length !== 1) throw new Error(`müşteri defteri: ${JSON.stringify(lookup).slice(0, 300)}`);
+  step("/api/musteri: Ayşe Yılmaz, 1 adres, 1 son sipariş");
+
+  // — Platform siparişi —
+  const ext = `E2E-${stamp}`;
+  const body = JSON.stringify({ orders: [{ externalId: ext, customer: { name: "Can Demir", phone: "05329876543" }, address: "Cumhuriyet Mah. 5", payIntent: "online",
+    lines: [{ code: "LAH", name: "Lahmacun (platform)", unitPrice: 6500, qtyMilli: 1000, note: null }, { code: "AYR-B", name: "Büyük Ayran", unitPrice: 4000, qtyMilli: 1000, note: null }] }] });
+  const sig = createHmac("sha256", secret).update(body).digest("hex");
+  for (const s of [sig, sig, "bozuk"]) {
+    const r = await fetch(hook, { method: "POST", headers: { "content-type": "application/json", "x-signature": s }, body });
+    if (r.status !== (s === "bozuk" ? 401 : 200)) throw new Error(`webhook ${r.status}`);
+  }
+  await kasa.getByTestId("waiting-count").getByText("1 onay bekliyor").waitFor({ timeout: 10000 });
+  const pcard = kasa.getByRole("region", { name: "Onay bekliyor" }).getByTestId("delivery-card");
+  if ((await pcard.count()) !== 1) throw new Error("onay bekleyen kart sayısı");
+  await pcard.getByText("105,00 ₺").waitFor();
+  step("webhook iki kez (+ bozuk imza 401) → tek onay bekleyen kart, 105 TL (LAH eşlendi, bilinmeyen kod serbest satır)");
+
+  await pcard.getByRole("button", { name: "Kabul" }).click();
+  await kasa.getByRole("dialog", { name: "Hazırlama süresi" }).getByRole("button", { name: "20 dk" }).click();
+  await kasa.getByTestId("waiting-count").waitFor({ state: "detached" });
+  let audit = 0;
+  for (let i = 0; i < 50 && !audit; i++) {
+    [{ n: audit }] = await sql`select count(*)::int n from audit_log where action = 'platform.accept' and detail->>'externalId' = ${ext}`;
+    if (!audit) await new Promise((r) => setTimeout(r, 200));
+  }
+  if (audit !== 1) throw new Error(`audit platform.accept: ${audit}`);
+  step("Kabul (20 dk) → audit platform.accept");
+
+  await ready(mutfak, "Büyük Ayran");
+  const hcard = kasa.getByRole("region", { name: "Hazır" }).getByTestId("delivery-card");
+  await hcard.getByRole("button", { name: "Kuryeye verildi" }).click();
+  await kasa.getByRole("region", { name: "Bugün kapanan" }).getByTestId("delivery-card").nth(1).waitFor({ timeout: 10000 });
+  step("mutfak hazır → Kuryeye verildi → kapandı");
+
+  let sales = [];
+  for (let i = 0; i < 50 && sales.length < 2; i++) {
+    sales = await sql`select s.channel, s.total, s.review, p.method from sales s join stores st on st.id = s.store_id join tenants t on t.id = st.tenant_id
+      join payments p on p.sale_id = s.id where t.name = ${tenant} order by s.created_at`;
+    if (sales.length < 2) await new Promise((r) => setTimeout(r, 300));
+  }
+  const got = sales.map((s) => `${s.channel}/${s.method}/${s.total}/${s.review ?? "-"}`).join(", ");
+  if (got !== "paket/nakit/13500/-, platform/online/10500/-") throw new Error(`satışlar: ${got}`);
+  step(`bulut satışları: ${got}`);
+} finally {
+  await browser.close();
+  await sql.end();
+}
+if (errors.length) throw new Error(`sayfa hataları: ${errors.join(" | ")}`);
+console.log("M6 OK");

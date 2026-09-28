@@ -79,9 +79,10 @@ Spec: docs/superpowers/specs/2026-09-28-cabukpos-m6-online-design.md · Plan: do
 - [x] Görev 2 şema + eşitleme: enumlar, tab_events table_id/device_id null + platform kısmi benzersiz indeks, delivery_zones/customers/customer_addresses/platform_connections (RLS dışı)/product_platform_codes; applyTab/applySale M6 kuralları, `upsertCustomer`
 - [x] Görev 3: `lib/platform` (types, mock HMAC, index, notify, ingest), webhook ucu, `GET /api/musteri`, katalog `deliveryZones`; `tests/delivery-db.test.ts`
 - [x] Görev 4 yönetim: /yonetim/bolgeler, /musteriler, /platformlar (deneme siparişi), kurye personel/cihaz rolü
-- [~] Görev 5 kasa: TabScreen masasız kip + paket fişi (`printDeliverySlip`) HAZIR; KALAN: `DeliveryBoard.tsx` (sütunlar, kurye ata, kabul/red + ses, Kuryeye verildi → online satış + handover, iptal müdür PIN), `NewDelivery.tsx` (telefon → /api/musteri → adres/bölge → open{kind:paket}+order+feeLine → TabScreen, onFirstSend=paket fişi), KasaApp sekmesi Salon | Paket | Hızlı satış + View `{name:"paket"}`, `{name:"ptab", tabId}`
-- [ ] Görev 6: `CourierScreen.tsx` (kurye rolü: PIN yalnız kurye → açılış 0 ile otomatik vardiya; atananlar, Maps/tel, toplu Yola çıktım, Teslim ettim → recordSaleLocal(tab) + delivered; Hesap kapat → kasiyer/müdür PinPad → GunSonu)
-- [ ] Görev 7: `e2e/m6.mjs` + bu bölümün kapanışı
+- [x] Görev 5 kasa: `DeliveryBoard` (sütunlar, kabul/red + tekrarlayan ses, kurye ata, Kuryeye verildi → `online` satış + handover, iptal müdür PIN), `NewDelivery` (telefon → /api/musteri → adres/bölge/niyet, tekrarla), KasaApp sekmeleri Salon | Paket | Hızlı satış, paket fişi kasa yazıcısından bir kez (localStorage), gel-al "Hesap"
+- [x] Görev 6: `CourierScreen` (kurye cihazı yalnız kurye PIN'i, vardiya 0 ile kendiliğinden; toplu Yola çıktım, Teslim ettim → delivered + satış, üzerindeki nakit; Hesap kapat → kasiyer/müdür PIN → GunSonu), mutfak fişinde "PAKET" başlığı
+- [x] Görev 7: `e2e/m6.mjs` → M6 OK (74/74 test; E2E M5 + M6 OK). Düzeltme: platform adisyonunun satışında fiyat/KDV kontrolü yok (fiyatı platform belirler), aksi halde eşlenen üründe review düşüyordu.
+M6 KODDA BİTTİ (dal `m6-online`). Açık: E2E ajan/paket fişi baskısını sınamıyor (M4/M5 ajan testleri kapsıyor); `courierCash` kapanmış adisyonları useTabs'in tuttuğu sürece sayar.
 Prod sırası (M5 ile birlikte): şema push → db-rls → relrowsecurity (yeni 4 tablo) → main.
 
 ## Çalıştırma
