@@ -1,8 +1,9 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { addProduct, lineTotal, setQty, totals, type CartLine } from "@/lib/core/cart";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { settle, type Payment } from "@/lib/core/payment";
+import { buildIndex, parseKg, resolveScan } from "@/lib/core/scan";
 import type { KasaProduct } from "@/lib/offline/state";
 
 export type PayResult = { ok: true; saleId: string; receiptNo: string; change: number } | { ok: false; error: string };
@@ -63,54 +64,101 @@ function PayDialog({ total, onPay, onClose, onDone }: { total: number; onPay: On
   );
 }
 
-export function SaleScreen({ categories, products, onPay, onReceipt }: { categories: { id: string; name: string }[]; products: KasaProduct[]; onPay: OnSale; onReceipt: (saleId: string) => void }) {
+function WeighDialog({ product, onOk, onClose }: { product: KasaProduct; onOk: (grams: number) => void; onClose: () => void }) {
+  const [v, setV] = useState("");
+  const g = parseKg(v);
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Tartım" className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
+      <form onSubmit={(e) => { e.preventDefault(); if (g) onOk(g); }} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="text-lg font-semibold">{product.name}</h2>
+        <p className="tabular text-sm text-muted">{formatTL(product.price)}/kg</p>
+        <label className="mt-4 block text-sm font-medium" htmlFor="weigh-kg">Ağırlık (kg)</label>
+        <input id="weigh-kg" name="kg" autoFocus inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} placeholder="ör. 0,750" className="tabular mt-1.5 w-full rounded-lg border border-line px-3 py-3 text-right text-xl" />
+        <div className="tabular mt-3 min-h-6 text-right font-medium">{g ? formatTL(Math.round((product.price * g) / 1000)) : v && <span className="text-sm text-red-700">Ağırlık geçersiz.</span>}</div>
+        <div className="mt-4 flex gap-2">
+          <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-line py-3 text-sm">Vazgeç</button>
+          <button type="submit" disabled={!g} className="flex-[2] rounded-lg bg-brand py-3 font-medium text-white disabled:opacity-40">Sepete ekle</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+const MAX_SHOWN = 60;
+const kg = (g: number) => `${(g / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;
+
+export function SaleScreen({ categories, products, market, onPay, onReceipt }: { categories: { id: string; name: string }[]; products: KasaProduct[]; market: boolean; onPay: OnSale; onReceipt: (saleId: string) => void }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cat, setCat] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [weigh, setWeigh] = useState<KasaProduct | null>(null);
   const [paying, setPaying] = useState(false);
   const [last, setLast] = useState<{ saleId: string; receiptNo: string; change: number } | null>(null);
+  const search = useRef<HTMLInputElement>(null);
   const t = totals(cart);
+  const index = useMemo(() => buildIndex(products), [products]);
+  const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const shown = useMemo(() => {
     const needle = q.trim().toLocaleLowerCase("tr");
-    return products.filter((p) => (cat ? p.categoryId === cat : true) && (!needle || p.name.toLocaleLowerCase("tr").includes(needle) || p.barcodes.includes(q.trim())));
-  }, [products, cat, q]);
+    // Markette ızgara yalnız hızlı tuşlar (binlerce ürün); arama her zaman tüm katalogda.
+    const base = needle ? products.filter((p) => p.name.toLocaleLowerCase("tr").includes(needle) || p.barcodes.includes(q.trim())) : market ? products.filter((p) => p.quick) : products;
+    return base.filter((p) => (cat ? p.categoryId === cat : true)).slice(0, MAX_SHOWN);
+  }, [products, cat, q, market]);
+  const add = (p: KasaProduct, qtyMilli = 1000) => { setCart((c) => addProduct(c, p, qtyMilli)); setLast(null); setScanError(null); };
+  const pick = (p: KasaProduct) => (p.kind === "tartili" ? setWeigh(p) : add(p));
+  const refocus = () => requestAnimationFrame(() => search.current?.focus());
   const onScan = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter") return;
-    const code = q.trim();
-    const hit = products.find((p) => p.barcodes.includes(code)) ?? (shown.length === 1 ? shown[0] : undefined);
-    if (hit) { setCart((c) => addProduct(c, hit)); setQ(""); setLast(null); }
+    if (e.key !== "Enter" || !q.trim()) return;
+    const r = resolveScan(q, index);
+    if ("product" in r) { add(r.product, r.qtyMilli); setQ(""); return; }
+    if ("weigh" in r) { setWeigh(r.weigh); setQ(""); return; }
+    // Barkod değilse ve aramada tek ürün kaldıysa onu ekle (elle arama + Enter).
+    if (shown.length === 1 && !/^\d+\*/.test(q.trim())) { pick(shown[0]); setQ(""); return; }
+    setScanError(r.error);
+    setQ("");
   };
 
   return (
     <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1fr_380px]">
       <section className="flex min-h-0 flex-col">
-        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onScan} placeholder="Ürün ara ya da barkod okut" aria-label="Ürün ara ya da barkod okut" autoFocus className="mb-3 rounded-xl border border-line px-4 py-3" />
+        <input ref={search} value={q} onChange={(e) => { setQ(e.target.value); setScanError(null); }} onKeyDown={onScan} placeholder="Ürün ara ya da barkod okut (5* = 5 adet)" aria-label="Ürün ara ya da barkod okut" autoFocus className="rounded-xl border border-line px-4 py-3" />
+        <p className="mb-3 mt-1 min-h-5 text-sm text-red-700" role="alert">{scanError}</p>
         <div className="mb-3 flex gap-2 overflow-x-auto">
-          <button type="button" onClick={() => setCat(null)} className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-sm ${cat === null ? "border-brand bg-brand-soft text-brand" : "border-line"}`}>Tümü</button>
+          <button type="button" onClick={() => setCat(null)} className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-sm ${cat === null ? "border-brand bg-brand-soft text-brand" : "border-line"}`}>{market && !q ? "Hızlı tuşlar" : "Tümü"}</button>
           {categories.map((c) => <button key={c.id} type="button" onClick={() => setCat(c.id)} className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-sm ${cat === c.id ? "border-brand bg-brand-soft text-brand" : "border-line"}`}>{c.name}</button>)}
         </div>
         <div className="grid grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 xl:grid-cols-4">
           {shown.map((p) => (
-            <button key={p.id} type="button" onClick={() => { setCart((c) => addProduct(c, p)); setLast(null); }} className="flex h-24 flex-col justify-between rounded-xl border border-line p-3 text-left hover:border-brand active:bg-brand-soft">
+            <button key={p.id} type="button" onClick={() => { pick(p); refocus(); }} className="flex h-24 flex-col justify-between rounded-xl border border-line p-3 text-left hover:border-brand active:bg-brand-soft">
               <span className="font-medium leading-tight">{p.name}</span>
-              <span className="tabular text-sm text-muted">{formatTL(p.price)}</span>
+              <span className="tabular text-sm text-muted">{formatTL(p.price)}{p.kind === "tartili" && "/kg"}</span>
             </button>
           ))}
-          {shown.length === 0 && <p className="col-span-full py-8 text-center text-sm text-muted">Ürün yok.</p>}
+          {shown.length === 0 && <p className="col-span-full py-8 text-center text-sm text-muted">{market && !q ? "Hızlı tuş yok. Barkod okutun ya da arayın." : "Ürün yok."}</p>}
         </div>
       </section>
       <aside className="flex min-h-0 flex-col rounded-2xl border border-line">
         <div className="flex-1 divide-y divide-line overflow-y-auto">
           {cart.length === 0 && <p className="p-6 text-center text-sm text-muted">Sepet boş</p>}
-          {cart.map((l) => (
-            <div key={l.productId} className="flex items-center gap-2 p-3">
-              <div className="min-w-0 flex-1"><div className="truncate font-medium">{l.name}</div><div className="tabular text-xs text-muted">{formatTL(l.unitPrice)}</div></div>
-              <button type="button" aria-label={`${l.name} azalt`} onClick={() => setCart((c) => setQty(c, l.productId, l.qtyMilli - 1000))} className="size-8 rounded-lg border border-line">−</button>
-              <span className="tabular w-8 text-center">{l.qtyMilli / 1000}</span>
-              <button type="button" aria-label={`${l.name} artır`} onClick={() => setCart((c) => setQty(c, l.productId, l.qtyMilli + 1000))} className="size-8 rounded-lg border border-line">+</button>
-              <span className="tabular w-24 text-right font-medium">{formatTL(lineTotal(l))}</span>
-            </div>
-          ))}
+          {cart.map((l) => {
+            const weighed = byId.get(l.productId)?.kind === "tartili";
+            return (
+              <div key={l.productId} className="flex items-center gap-2 p-3" data-testid="cart-line">
+                <div className="min-w-0 flex-1"><div className="truncate font-medium">{l.name}</div><div className="tabular text-xs text-muted">{weighed ? `${kg(l.qtyMilli)} × ${formatTL(l.unitPrice)}/kg` : formatTL(l.unitPrice)}</div></div>
+                {weighed ? (
+                  <button type="button" aria-label={`${l.name} sil`} onClick={() => setCart((c) => setQty(c, l.productId, 0))} className="rounded-lg border border-line px-2 py-1 text-xs">Sil</button>
+                ) : (
+                  <>
+                    <button type="button" aria-label={`${l.name} azalt`} onClick={() => setCart((c) => setQty(c, l.productId, l.qtyMilli - 1000))} className="size-8 rounded-lg border border-line">−</button>
+                    <span className="tabular w-8 text-center" data-testid="cart-qty">{l.qtyMilli / 1000}</span>
+                    <button type="button" aria-label={`${l.name} artır`} onClick={() => setCart((c) => setQty(c, l.productId, l.qtyMilli + 1000))} className="size-8 rounded-lg border border-line">+</button>
+                  </>
+                )}
+                <span className="tabular w-24 text-right font-medium">{formatTL(lineTotal(l))}</span>
+              </div>
+            );
+          })}
         </div>
         <div className="border-t border-line p-4">
           {t.vat.map((v) => <div key={v.rate} className="tabular flex justify-between text-xs text-muted"><span>KDV %{v.rate}</span><span>{formatTL(v.vat)}</span></div>)}
@@ -127,7 +175,8 @@ export function SaleScreen({ categories, products, onPay, onReceipt }: { categor
           </div>
         </div>
       </aside>
-      {paying && <PayDialog total={t.total} onPay={(id, p) => onPay(id, p, cart)} onClose={() => setPaying(false)} onDone={(r) => { setPaying(false); setCart([]); setLast(r); }} />}
+      {weigh && <WeighDialog product={weigh} onClose={() => { setWeigh(null); refocus(); }} onOk={(g) => { add(weigh, g); setWeigh(null); refocus(); }} />}
+      {paying && <PayDialog total={t.total} onPay={(id, p) => onPay(id, p, cart)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setCart([]); setLast(r); refocus(); }} />}
     </div>
   );
 }

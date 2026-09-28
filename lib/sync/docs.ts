@@ -54,6 +54,12 @@ export type DocResult = { id: string; ok: true } | { id: string; ok: false; erro
 /** Cihaz öneki + sıra → "K1-000042". Kasada ve bulutta aynı. */
 export const formatReceipt = (prefix: string, seq: number) => `${prefix}-${String(seq).padStart(6, "0")}`;
 
+/** Elle yazılan fiş no: "k1-42" → "K1-000042"; "K1-000042-2" korunur. Biçim dışıysa null. */
+export function normalizeReceiptNo(input: string): string | null {
+  const m = /^([A-Z0-9]{1,4})-(\d{1,6})(-\d{1,3})?$/.exec(input.trim().toUpperCase());
+  return m ? `${formatReceipt(m[1], Number(m[2]))}${m[3] ?? ""}` : null;
+}
+
 /** Eşitleme yeniden denemesi: 2 s, 4 s, 8 s … en çok 5 dk. */
 export const backoffMs = (failures: number) => Math.min(300_000, 2000 * 2 ** Math.max(0, failures - 1));
 

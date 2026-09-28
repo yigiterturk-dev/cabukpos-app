@@ -41,9 +41,10 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
         <h2 className="mb-1 font-semibold">Satışlar</h2>
         <div className="divide-y divide-line border-y border-line">
           <Row label="Satış sayısı" value={`${s.saleCount} satış`} />
-          <Row label="Ciro (KDV dahil)" value={formatTL(s.gross)} strong />
+          {s.refundCount > 0 && <Row label="İade" value={`${s.refundCount} iade · -${formatTL(s.refundTotal)}`} tone="bad" />}
+          <Row label={s.refundCount > 0 ? "Ciro (iadeler düşülmüş)" : "Ciro (KDV dahil)"} value={formatTL(s.gross)} strong />
           {PAY_METHODS.filter((m) => m.value !== "yemek_karti" || s.byMethod.yemek_karti !== 0).map((m) => (
-            <Row key={m.value} label={m.value === "nakit" ? "Nakit (para üstü düşülmüş)" : m.label} value={formatTL(s.byMethod[m.value])} />
+            <Row key={m.value} label={m.value === "nakit" ? (s.refundCount > 0 ? "Nakit (para üstü ve iade düşülmüş)" : "Nakit (para üstü düşülmüş)") : m.label} value={formatTL(s.byMethod[m.value])} />
           ))}
         </div>
       </section>

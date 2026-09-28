@@ -27,6 +27,7 @@ export type LocalSale = {
   id: string; shiftId: string; staffId: string; staffName: string; seq: number; receiptNo: string; at: string;
   lines: { productId: string; name: string; unitPrice: number; vatRate: VatRate; qtyMilli: number }[];
   payments: Payment[]; total: number; change: number; vat: VatLine[];
+  refund?: boolean; refundOf?: string; refundOfNo?: string; approvedBy?: string; // iade fişi
 };
 export type OutboxRow = { n?: number; id: string; doc: SyncDoc };
 export type RejectedRow = { id: string; doc: SyncDoc; error: string; at: string };

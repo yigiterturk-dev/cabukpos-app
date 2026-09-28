@@ -5,7 +5,7 @@ process.env.DATABASE_URL = "postgres://cabukpos_app:dev-app-pass@localhost:5432/
 process.env.MIGRATE_DATABASE_URL = "postgres://yigiterturk@localhost:5432/cabukpos_test";
 const { getDb, withTenant, closeDb, schema } = await import("@/db");
 const { applyDoc } = await import("@/lib/sync/apply");
-const { backoffMs, formatReceipt } = await import("@/lib/sync/docs");
+const { backoffMs, formatReceipt, normalizeReceiptNo } = await import("@/lib/sync/docs");
 const { lookupSale } = await import("@/lib/sync/lookup");
 const { eq } = await import("drizzle-orm");
 
@@ -44,6 +44,9 @@ after(async () => {
 test("saf: fiş no biçimi, artan bekleme", () => {
   assert.equal(formatReceipt("K1", 42), "K1-000042");
   assert.deepEqual([1, 2, 3, 20].map(backoffMs), [2000, 4000, 8000, 300000]);
+  assert.equal(normalizeReceiptNo(" k1-42 "), "K1-000042");
+  assert.equal(normalizeReceiptNo("K1-000042-2"), "K1-000042-2");
+  assert.equal(normalizeReceiptNo("42"), null);
 });
 
 test("vardiya açma idempotent; başka kiracının personeli reddedilir", async () => {

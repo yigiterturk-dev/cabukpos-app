@@ -3,8 +3,10 @@
 import Dexie, { type Table } from "dexie";
 import { totals, type CartLine } from "@/lib/core/cart";
 import { settle, type Payment } from "@/lib/core/payment";
+import { refundable, type RefLine } from "@/lib/core/refund";
 import { summarizeShift } from "@/lib/core/shift";
 import { formatReceipt, type SyncDoc } from "@/lib/sync/docs";
+import type { LookedUpSale } from "@/lib/sync/lookup";
 import { emptyMeta, type ClosedShift, type LocalSale, type Meta, type OutboxRow, type RejectedRow } from "./state";
 
 class KasaDb extends Dexie {
@@ -15,6 +17,7 @@ class KasaDb extends Dexie {
   constructor() {
     super("cabukpos-kasa");
     this.version(1).stores({ meta: "key", sales: "id, shiftId, at", outbox: "++n, id", rejected: "id" });
+    this.version(2).stores({ sales: "id, shiftId, at, receiptNo, refundOf" }); // M3: iade için fiş no ile arama
   }
 }
 
@@ -69,6 +72,37 @@ export async function recordSaleLocal(staff: { id: string; name: string }, cart:
     const sale: LocalSale = { id: saleId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines, payments: s.payments, total: t.total, change: s.change, vat: t.vat };
     await d.sales.add(sale);
     await enqueue({ kind: "sale", id: saleId, shiftId: m.shift.id, staffId: staff.id, receiptSeq: seq, at, lines, payments: s.payments });
+    await d.meta.put({ ...m, nextSeq: seq + 1 });
+    return { ok: true as const, sale };
+  });
+}
+
+/** Bu cihazda kayıtlı satış + yerel iadeler düşülmüş satırlar. Yoksa null (bulutta aranır). */
+export async function findLocalSale(receiptNo: string): Promise<LookedUpSale | null> {
+  const d = kasaDb();
+  const sale = (await d.sales.where("receiptNo").equals(receiptNo).toArray()).find((s) => !s.refund);
+  if (!sale) return null;
+  const refunds = await d.sales.where("refundOf").equals(sale.id).toArray();
+  return { id: sale.id, receiptNo: sale.receiptNo, at: sale.at, lines: refundable(sale.lines, refunds.flatMap((r) => r.lines)) };
+}
+
+/** İade: yerel kayıt + giden kutusu, aynı fiş sayacı. Geri ödeme tek yöntemle, tutar = iade toplamı. */
+export async function recordRefundLocal(staff: { id: string; name: string }, approvedBy: string, of: { id: string; receiptNo: string }, lines: RefLine[], method: Payment["method"], refundId: string): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
+  const d = kasaDb();
+  return d.transaction("rw", [d.meta, d.sales, d.outbox], async () => {
+    const done = await d.sales.get(refundId);
+    if (done) return { ok: true as const, sale: done };
+    const m = await loadMeta();
+    if (!m.device || !m.shift) return { ok: false as const, error: "Açık vardiya yok." };
+    const picked = lines.filter((l) => l.qtyMilli > 0);
+    if (!picked.length) return { ok: false as const, error: "İade edilecek ürün seçin." };
+    const t = totals(picked);
+    const payments = [{ method, amount: t.total }];
+    const seq = m.nextSeq;
+    const at = new Date().toISOString();
+    const sale: LocalSale = { id: refundId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines: picked, payments, total: t.total, change: 0, vat: t.vat, refund: true, refundOf: of.id, refundOfNo: of.receiptNo, approvedBy };
+    await d.sales.add(sale);
+    await enqueue({ kind: "refund", id: refundId, shiftId: m.shift.id, staffId: staff.id, approvedBy, refundOf: of.id, receiptSeq: seq, at, lines: picked, payments });
     await d.meta.put({ ...m, nextSeq: seq + 1 });
     return { ok: true as const, sale };
   });
