@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { VAT_RATES } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
+import { buyerSchema } from "@/lib/core/fiscal";
 
 const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 const kurus = z.number().int().min(0).max(100_000_000);
@@ -68,6 +69,8 @@ export const syncDoc = z.discriminatedUnion("kind", [
     payments: z.array(z.object({ method: payMethod, amount: kurus.min(1) })).min(1).max(10),
     // M5: masa adisyonundan parça ödeme
     tab: z.object({ tabId: uuid, tableId: uuid.nullable(), paidLines: z.array(paidLine).min(1).max(500) }).optional(),
+    // M8: e-Arşiv — token satış anında istemcide üretilir (çevrimdışı fişe de basılır); buyer = kasada "Fatura" isteği
+    fiscal: z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{24}$/), buyer: buyerSchema.nullable() }).optional(),
   }),
   // İade: fiş no ile, müdür onaylı, tek yöntemle geri ödeme. Aynı fiş sayacından numara alır.
   z.object({

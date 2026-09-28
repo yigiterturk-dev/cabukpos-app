@@ -16,6 +16,7 @@ import { consumption, lineCost, type RecipeItem, type Recipes } from "@/lib/core
 import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
 import { normalizePhone } from "@/lib/core/delivery";
 import { notifyPlatform } from "@/lib/platform/notify";
+import { onRefund, openFiscalDoc } from "@/lib/fiscal/issue";
 import { formatReceipt, syncDoc, type DocResult, type RefundDoc, type SaleDoc, type SyncDoc, type TabDoc } from "./docs";
 
 export type DeviceCtx = { tenantId: string; storeId: string; deviceId: string; receiptPrefix: string };
@@ -187,6 +188,7 @@ async function applySale(tx: Tx, ctx: DeviceCtx, doc: SaleDoc): Promise<string |
     }
   }
   await write(tx, ctx, doc, c, s.ok ? s.payments : doc.payments, s.ok ? s.change : 0, { status: "kapandi", ...(tab ? { tabId: tab.tabId, tableId: tab.tableId, channel: state?.kind ?? ("masa" as const) } : {}) });
+  await openFiscalDoc(tx, ctx.tenantId, doc.id, tab ? (state?.kind ?? "masa") : "kasa", doc.fiscal);
   if (tab) {
     const ev: TabEv = { type: "paid", saleId: doc.id, lines: tab.paidLines, amount: total };
     await tx.insert(schema.tabEvents).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, tabId: tab.tabId, tableId: tab.tableId, deviceId: ctx.deviceId, staffId: doc.staffId, at: clampAt(doc.at), type: ev.type, payload: ev }).onConflictDoNothing();
@@ -267,6 +269,7 @@ async function applyRefund(tx: Tx, ctx: DeviceCtx, doc: RefundDoc): Promise<stri
   }
   if (doc.payments[0].amount !== totals(c.lines).total) c.reasons.push("iade ödemesi toplamla eşleşmiyor");
   await write(tx, ctx, doc, c, doc.payments, 0, { status: "iade", refundOf: doc.refundOf, approvedBy: doc.approvedBy });
+  await onRefund(tx, doc.refundOf);
   return null;
 }
 

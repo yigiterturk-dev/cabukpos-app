@@ -1,5 +1,7 @@
 // Giden kutusu yukarı: FIFO parti, belge başına sonuç. Aynı belge tekrar gelirse ikinci kayıt oluşmaz.
+import { after } from "next/server";
 import { getDevice } from "@/lib/auth/kasa";
+import { processDue } from "@/lib/fiscal/issue";
 import { applyDoc } from "@/lib/sync/apply";
 import { PUSH_BATCH, type DocResult } from "@/lib/sync/docs";
 
@@ -15,5 +17,7 @@ export async function POST(req: Request) {
   const ctx = { tenantId: device.tenantId, storeId: device.storeId, deviceId: device.id, receiptPrefix: device.receiptPrefix };
   const results: DocResult[] = [];
   for (const doc of body.docs) results.push(await applyDoc(ctx, doc));
+  // M8: vadesi gelmiş e-Arşiv kesimleri/iptalleri yanıttan sonra (satışı geciktirmez)
+  after(() => processDue(device.tenantId).catch(() => {}));
   return Response.json({ results }, { headers: { "Cache-Control": "no-store" } });
 }
