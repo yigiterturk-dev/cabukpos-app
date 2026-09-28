@@ -17,7 +17,7 @@ Eski (YanındaPOS tabanlı) kod: git etiketi `yanindapos-tabanli-v0`. Bu dal (`p
 - [x] T11 Bilgi fişi 80 mm (/kasa/fis/[id]), gün sonu (/kasa/gun-sonu), /yonetim/raporlar (+ayrıntı), E2E e2e/m1.mjs → "M1 OK"
 
 **M1 BİTTİ (2026-09-28).** Kapanış kapısı: npm test 12/12, eslint + tsc temiz, E2E M1 OK (yerel DB).
-Sıradaki: production kurulumu kararı (Neon `cabukpos_app` rolü + env) → main'e birleştirme; sonra M2 (çevrimdışı).
+PRODUCTION (2026-09-28): Neon projesi `cabukpos` (orange-moon-25841597, org agen, eu-central-1); `cabukpos_app` rolü SQL ile açıldı (neonctl ile açılan rol neon_superuser → BYPASSRLS, kullanma). Vercel env: DATABASE_URL (app rolü) + AUTH_SECRET yenilendi. main'e birleşti, canlı E2E (`BASE=https://cabukpos-app.vercel.app node e2e/m1.mjs`) M1 OK. Şema değişikliğinde sahip URL'si: `npx neonctl connection-string --project-id=orange-moon-25841597`. Sıradaki: M2 (çevrimdışı).
 
 Not: sunucu `node --env-file=.env.local node_modules/.bin/next start -p 3800`; plan kodu `python3 scripts/plan-extract.py <yol>` ile çıkarılır.
 
