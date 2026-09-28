@@ -5,6 +5,7 @@ import { getDb, schema, withTenant } from "@/db";
 import { getDevice } from "@/lib/auth/kasa";
 import { sha256 } from "@/lib/auth/tokens";
 import { isVatRate } from "@/lib/core/money";
+import { kasaAgentFor } from "@/lib/agent/registry";
 
 export const dynamic = "force-dynamic";
 const noStore = { "Cache-Control": "no-store" };
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
   const device = await getDevice();
   if (!device) return Response.json({ error: "cihaz" }, { status: 401, headers: noStore });
   const d = schema.devices, sh = schema.shifts;
-  const [[dv], [store, cats, prods, staff, [shift]]] = await Promise.all([
+  const [[dv], [store, cats, prods, staff, [shift]], agent] = await Promise.all([
     getDb().select({ next: d.nextReceiptNo }).from(d).where(eq(d.id, device.id)),
     withTenant(device.tenantId, (tx) =>
       Promise.all([
@@ -25,6 +26,7 @@ export async function GET(req: Request) {
         tx.select({ id: sh.id, openedBy: sh.openedBy, openedAt: sh.openedAt, openingCash: sh.openingCash }).from(sh).where(and(eq(sh.deviceId, device.id), isNull(sh.closedAt))).orderBy(desc(sh.openedAt)).limit(1),
       ]),
     ),
+    kasaAgentFor(device),
   ]);
   const catalog = { categories: cats, products: prods.filter((p) => isVatRate(p.vatRate)), staff };
   const v = await sha256(JSON.stringify(catalog));
@@ -35,6 +37,7 @@ export async function GET(req: Request) {
       device: { id: device.id, name: device.name, receiptPrefix: device.receiptPrefix, tenantName: device.tenantName, vertical: device.vertical, storeName: store?.name ?? "", storeAddress: store?.address ?? null, nextReceiptNo: dv?.next ?? 1 },
       openShift: shift ? { ...shift, openedAt: shift.openedAt.toISOString() } : null,
       catalog: since === v ? null : catalog,
+      agent, // her çekişte yeni bilet (30 gün geçerli)
     },
     { headers: noStore },
   );

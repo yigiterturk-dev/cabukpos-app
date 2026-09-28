@@ -1,0 +1,71 @@
+import { asc, eq } from "drizzle-orm";
+import { getDb, schema } from "@/db";
+import { requireAdmin } from "@/lib/auth/session";
+import { newAgentPairing, revokeAgent } from "@/lib/admin/agent-actions";
+import { agentConfig, emptyAgentConfig } from "@/lib/agent/config";
+import { agentHost } from "@/lib/agent/dns";
+import { AgentConfigForm, AgentCreateForm, AgentPairButton } from "@/components/admin/AgentForms";
+import { Badge, Card, Empty, PageHeader } from "@/components/ui";
+
+export const dynamic = "force-dynamic";
+const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
+const ONLINE_MS = 3 * 60_000;
+
+export default async function Donanim() {
+  const u = await requireAdmin();
+  const rows = await getDb().select().from(schema.agents).where(eq(schema.agents.tenantId, u.tenantId)).orderBy(asc(schema.agents.createdAt));
+  const now = Date.now();
+  return (
+    <>
+      <PageHeader title="Donanım" desc="Kasadaki bilgisayarda çalışan ÇabukPOS ajanı fiş yazıcısını, para çekmecesini ve teraziyi yönetir." />
+      <Card className="mb-6 p-5">
+        <AgentCreateForm />
+        <details className="mt-4 text-sm text-stone-700">
+          <summary className="cursor-pointer font-medium">Kurulum adımları</summary>
+          <ol className="mt-2 list-decimal space-y-1 pl-5">
+            <li>Kasadaki bilgisayara Node.js (LTS) kurun.</li>
+            <li><code>cabukpos-agent.cjs</code> dosyasını bir klasöre koyun (ör. <code>C:\CabukPOS</code>).</li>
+            <li>O klasörde komut satırı açıp <code>node cabukpos-agent.cjs pair KOD</code> yazın.</li>
+            <li><code>node cabukpos-agent.cjs install</code> — bilgisayar açılınca ajan kendiliğinden başlar.</li>
+            <li>Aşağıda yazıcıyı tanımlayın; <code>node cabukpos-agent.cjs test-print</code> ile deneme fişi basın.</li>
+          </ol>
+        </details>
+      </Card>
+      {rows.length === 0 ? <Empty>Henüz ajan yok. Yazıcı ya da terazi kullanmıyorsanız gerekmez; fiş tarayıcıdan da yazdırılır.</Empty> : (
+        <div className="space-y-6">
+          {rows.map((r) => {
+            const online = r.lastSeenAt && now - r.lastSeenAt.getTime() < ONLINE_MS;
+            const parsed = agentConfig.safeParse(r.config);
+            const cfg = parsed.success ? parsed.data : emptyAgentConfig();
+            return (
+              <Card key={r.id} className="p-5" data-testid={`agent-${r.id}`}>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="font-medium">{r.name}</div>
+                  {r.revokedAt ? <Badge tone="bad">İptal</Badge> : !r.pairedAt ? <Badge tone="warn">Eşlenmedi</Badge> : online ? <Badge tone="ok">Çevrimiçi</Badge> : <Badge tone="warn">Çevrimdışı</Badge>}
+                  {r.lastSeenAt && <span className="text-xs text-muted">Son görülme {dt(r.lastSeenAt)}{r.version ? ` · sürüm ${r.version}` : ""}{r.lanIp ? ` · ${r.lanIp}` : ""}</span>}
+                  <div className="ml-auto flex flex-wrap items-start gap-4 text-sm">
+                    <AgentPairButton action={newAgentPairing.bind(null, r.id)} />
+                    {!r.revokedAt && <form action={revokeAgent.bind(null, r.id)}><button className="text-red-700 underline">İptal et</button></form>}
+                  </div>
+                </div>
+                {r.status && (
+                  <ul className="mt-3 space-y-1 text-sm">
+                    {r.status.printers.map((p) => {
+                      const name = cfg.printers.find((x) => x.id === p.id)?.name ?? p.id;
+                      return <li key={p.id} data-testid={`printer-status-${p.id}`}>{name}: {p.ok === null ? <span className="text-muted">henüz yazdırılmadı</span> : p.ok ? <span className="text-emerald-700">hazır</span> : <span className="text-red-700">hata — {p.error}</span>}</li>;
+                    })}
+                    {r.status.failed > 0 && <li className="text-red-700">{r.status.failed} fiş yazdırılamadı (kasada “Yeniden dene”)</li>}
+                  </ul>
+                )}
+                <p className="mt-2 text-xs text-muted">
+                  {r.certExpiresAt && r.certExpiresAt.getTime() > now ? <>Tablet ve diğer kasalar ağdan bağlanabilir: {agentHost(r.id)}</> : <>Yalnız bu bilgisayardaki kasa bağlanır (ağ sertifikası yok).</>}
+                </p>
+                {!r.revokedAt && <div className="mt-5 border-t border-line pt-5"><AgentConfigForm agentId={r.id} initial={cfg} /></div>}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}

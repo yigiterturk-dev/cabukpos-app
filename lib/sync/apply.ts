@@ -62,6 +62,14 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
     return null;
   }
 
+  if (doc.kind === "audit") {
+    if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
+    await tx.insert(schema.auditLog)
+      .values({ id: doc.id, tenantId: ctx.tenantId, actor: `staff:${doc.staffId}`, action: `kasa.${doc.action}`, detail: { deviceId: ctx.deviceId, approvedBy: doc.approvedBy }, createdAt: clampAt(doc.at) })
+      .onConflictDoNothing();
+    return null;
+  }
+
   return doc.kind === "refund" ? applyRefund(tx, ctx, doc) : applySale(tx, ctx, doc);
 }
 

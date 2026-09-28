@@ -8,6 +8,7 @@ const items = [
   { href: "/yonetim/etiketler", label: "Raf etiketi" },
   { href: "/yonetim/personel", label: "Personel" },
   { href: "/yonetim/cihazlar", label: "Cihazlar" },
+  { href: "/yonetim/donanim", label: "Donanım" },
   { href: "/yonetim/raporlar", label: "Raporlar" },
 ];
 

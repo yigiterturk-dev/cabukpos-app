@@ -44,6 +44,8 @@ export const syncDoc = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("shift_open"), id: uuid, staffId: uuid, at, openingCash: kurus }),
   z.object({ kind: z.literal("shift_close"), id: uuid, staffId: uuid, at, countedCash: kurus }),
+  // Yetkili işlem kaydı (M4: elle çekmece açma). Kimlik audit_log.id olur → tekrar gelirse ikinci kayıt yok.
+  z.object({ kind: z.literal("audit"), id: uuid, staffId: uuid, approvedBy: uuid.nullable(), at, action: z.enum(["cekmece"]) }),
 ]);
 
 export type SyncDoc = z.infer<typeof syncDoc>;

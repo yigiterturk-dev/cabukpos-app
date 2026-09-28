@@ -49,6 +49,29 @@ export const devices = pgTable("devices", {
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("devices_prefix_uq").on(t.tenantId, t.receiptPrefix)]);
 
+/** Yerel ajan (kasadaki PC): yazıcı, çekmece, terazi. RLS dışı kimlik tablosu (devices gibi); her sorguda tenantId koşulu. */
+export const agents = pgTable("agents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  tokenHash: text("token_hash").unique(),
+  pairingCode: text("pairing_code").unique(),
+  pairingExpiresAt: ts("pairing_expires_at"),
+  pairedAt: ts("paired_at"),
+  revokedAt: ts("revoked_at"),
+  hubKeyEnc: text("hub_key_enc"), // kasa biletlerini imzalar; AUTH_SECRET'tan türetilen anahtarla AES-GCM
+  config: jsonb("config").notNull().$type<import("@/lib/agent/config").AgentConfig>(),
+  lanIp: text("lan_ip"),
+  port: integer("port"),
+  httpsPort: integer("https_port"),
+  certExpiresAt: ts("cert_expires_at"),
+  version: text("version"),
+  status: jsonb("status").$type<{ printers: { id: string; ok: boolean | null; error: string | null }[]; failed: number; scale: boolean }>(),
+  lastSeenAt: ts("last_seen_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("agents_store_idx").on(t.storeId)]);
+
 /** Deneme sayacı (e-posta, IP, cihaz başına kayan pencere); RLS dışı. */
 export const loginAttempts = pgTable("login_attempts", {
   key: text("key").primaryKey(),

@@ -182,3 +182,13 @@ test("gün sonu iadeleri düşer", async () => {
   assert.equal(s.expectedCash, 10000 + 30000 - 4000 - 20000);
 });
 
+
+test("çekmece denetim kaydı idempotent", async () => {
+  const doc = { kind: "audit", id: crypto.randomUUID(), staffId: setup.st.id, approvedBy: null, at: now(), action: "cekmece" };
+  assert.deepEqual(await applyDoc(ctx, doc), { id: doc.id, ok: true });
+  assert.deepEqual(await applyDoc(ctx, doc), { id: doc.id, ok: true });
+  const rows = await withTenant(t.id, (tx) => tx.select().from(schema.auditLog).where(eq(schema.auditLog.id, doc.id)));
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].action, "kasa.cekmece");
+  assert.equal((await applyDoc(ctx, { ...doc, id: crypto.randomUUID(), action: "kasa_sil" })).ok, false);
+});
