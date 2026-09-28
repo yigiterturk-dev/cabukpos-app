@@ -114,7 +114,7 @@ await kasa.getByRole("button", { name: "Gir" }).waitFor();
 await kasa.getByTestId("sync-pending").waitFor({ state: "detached" });
 step("gün sonu: beklenen 695, sayılan 690, fark -5; kasiyer oturumu kapandı");
 
-await admin.goto(`${BASE}/yonetim/raporlar`);
+await admin.goto(`${BASE}/yonetim/raporlar?sekme=vardiyalar`);
 await admin.getByText("395,00 ₺").first().waitFor();
 await admin.getByText("-5,00 ₺").first().waitFor();
 step("yönetim raporunda vardiya");
