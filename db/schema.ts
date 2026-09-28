@@ -1,6 +1,6 @@
 // db/schema.ts
 import { sql } from "drizzle-orm";
-import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index, bigserial } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index, bigserial, check, date } from "drizzle-orm/pg-core";
 
 export const vertical = pgEnum("vertical", ["restoran", "market"]);
 export const userRole = pgEnum("user_role", ["sahip", "mudur"]);
@@ -10,7 +10,10 @@ export const payMethod = pgEnum("pay_method", ["nakit", "kart", "yemek_karti", "
 export const saleChannel = pgEnum("sale_channel", ["kasa", "masa", "paket", "platform"]);
 export const saleStatus = pgEnum("sale_status", ["kapandi", "iptal", "iade"]);
 export const productKind = pgEnum("product_kind", ["adet", "tartili"]);
-export const stockKind = pgEnum("stock_kind", ["satis", "iade", "alis", "sayim", "fire"]);
+export const stockKind = pgEnum("stock_kind", ["satis", "iade", "alis", "sayim", "fire", "recete", "uretim"]);
+export const stockUnit = pgEnum("stock_unit", ["adet", "kg", "lt"]);
+export const purchaseStatus = pgEnum("purchase_status", ["kayitli", "iptal"]);
+export const supplierPayMethod = pgEnum("supplier_pay_method", ["nakit", "havale", "kart"]);
 
 const ts = (n: string) => timestamp(n, { withTimezone: true });
 const tenantRef = () => uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" });
@@ -127,6 +130,12 @@ export const products = pgTable("products", {
   priceChangedAt: ts("price_changed_at").notNull().defaultNow(),
   labelPrintedAt: ts("label_printed_at"),
   stationId: uuid("station_id").references(() => stations.id, { onDelete: "set null" }), // kategoriyi ezer
+  sellable: boolean("sellable").notNull().default(true), // M7: false = hammadde / ara ürün, kasa kataloğuna inmez
+  unit: stockUnit("unit").notNull().default("adet"), // stok birimi; satılan üründe kind'den türer (tartılı → kg)
+  cost: integer("cost"), // kuruş / 1 birim (son alış ya da üretim)
+  costAt: ts("cost_at"),
+  minStock: integer("min_stock"), // qtyMilli, kritik sınır
+  yieldMilli: integer("yield_milli"), // ara ürün: bir parti
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [index("products_tenant_idx").on(t.tenantId), uniqueIndex("products_plu_uq").on(t.tenantId, t.plu)]);
 
@@ -179,6 +188,7 @@ export const saleLines = pgTable("sale_lines", {
   options: jsonb("options").$type<{ id: string; name: string; delta: number }[]>(),
   note: text("note"),
   discount: integer("discount").notNull().default(0), // ikram + adisyon indirimi payı
+  cost: integer("cost"), // M7: eşitleme anında donan satır maliyeti (pozitif); null = maliyet eksik
 });
 
 export const payments = pgTable("payments", {
@@ -201,6 +211,8 @@ export const stockMovements = pgTable("stock_movements", {
   saleId: uuid("sale_id").references(() => sales.id, { onDelete: "cascade" }),
   actor: text("actor").notNull(),
   note: text("note"),
+  purchaseId: uuid("purchase_id").references(() => purchases.id, { onDelete: "cascade" }),
+  productionId: uuid("production_id").references(() => productions.id, { onDelete: "cascade" }),
 }, (t) => [index("stock_product_idx").on(t.productId, t.at)]);
 
 export const auditLog = pgTable("audit_log", {
@@ -343,3 +355,79 @@ export const productPlatformCodes = pgTable("product_platform_codes", {
   code: text("code").notNull(),
   productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
 }, (t) => [uniqueIndex("product_platform_codes_uq").on(t.storeId, t.platform, t.code)]);
+
+// ---- M7: reçete, tedarikçi, alış, üretim ----
+
+/** Kalem 1 birim ürün/seçenek için; ara üründe bir parti (products.yield_milli) için. lib/core/recipe.ts */
+export const recipeItems = pgTable("recipe_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  productId: uuid("product_id").references(() => products.id, { onDelete: "cascade" }),
+  optionId: uuid("option_id").references(() => options.id, { onDelete: "cascade" }),
+  ingredientId: uuid("ingredient_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  qtyMilli: integer("qty_milli").notNull(),
+}, (t) => [
+  index("recipe_items_product_idx").on(t.productId),
+  index("recipe_items_option_idx").on(t.optionId),
+  check("recipe_items_owner_ck", sql`(${t.productId} is null) <> (${t.optionId} is null)`),
+  check("recipe_items_qty_ck", sql`${t.qtyMilli} > 0`),
+]);
+
+export const suppliers = pgTable("suppliers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  taxNo: text("tax_no"),
+  note: text("note"),
+  active: boolean("active").notNull().default(true),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("suppliers_tenant_idx").on(t.tenantId)]);
+
+/** Tutarlar KDV dahil kuruş. İptal = ters alis hareketleri, maliyet geri alınmaz. */
+export const purchases = pgTable("purchases", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+  docNo: text("doc_no"),
+  date: date("date", { mode: "string" }).notNull(),
+  total: integer("total").notNull(),
+  note: text("note"),
+  status: purchaseStatus("status").notNull().default("kayitli"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("purchases_tenant_date_idx").on(t.tenantId, t.date), index("purchases_supplier_idx").on(t.supplierId)]);
+
+export const purchaseLines = pgTable("purchase_lines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  purchaseId: uuid("purchase_id").notNull().references(() => purchases.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  qtyMilli: integer("qty_milli").notNull(),
+  unitCost: integer("unit_cost").notNull(),
+  total: integer("total").notNull(),
+}, (t) => [index("purchase_lines_purchase_idx").on(t.purchaseId)]);
+
+export const supplierPayments = pgTable("supplier_payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  supplierId: uuid("supplier_id").notNull().references(() => suppliers.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
+  method: supplierPayMethod("method").notNull(),
+  date: date("date", { mode: "string" }).notNull(),
+  note: text("note"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("supplier_payments_supplier_idx").on(t.supplierId)]);
+
+export const productions = pgTable("productions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  batchesMilli: integer("batches_milli").notNull(),
+  note: text("note"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("productions_tenant_idx").on(t.tenantId, t.createdAt)]);

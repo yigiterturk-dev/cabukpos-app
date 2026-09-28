@@ -8,7 +8,7 @@ import { StockForm } from "@/components/admin/StockForm";
 import { Card, Empty, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
-const KIND_LABEL = { satis: "Satış", iade: "İade", alis: "Alış", sayim: "Sayım", fire: "Fire" } as const;
+const KIND_LABEL = { satis: "Satış", iade: "İade", alis: "Alış", sayim: "Sayım", fire: "Fire", recete: "Reçete", uretim: "Üretim" } as const;
 const dt = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 
 export default async function Stok({ searchParams }: { searchParams: Promise<{ urun?: string; q?: string }> }) {
