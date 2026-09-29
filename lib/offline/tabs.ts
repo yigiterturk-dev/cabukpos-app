@@ -1,7 +1,8 @@
 // lib/offline/tabs.ts — Adisyon olaylarının yerel deposu ve canlı akış (tarayıcı).
 // Yerel olay: tabEvents'e seq=null ile + giden kutusuna tek işlemde. Sunucu yankısı aynı kimlikle gelir, seq'li hâli kalır.
 import type { TabEv, TabEvent } from "@/lib/core/tab";
-import { foldTabs } from "@/lib/core/tab";
+import { foldTabs, lanMergePlan } from "@/lib/core/tab";
+import type { KasaAgent } from "@/lib/agent/config";
 import type { TabDoc } from "@/lib/sync/docs";
 import { kasaDb } from "./db";
 
@@ -70,4 +71,52 @@ export function createTabStream(onChange: () => void, onState?: (live: boolean) 
   return {
     stop() { stopped = true; es?.close(); if (timer) clearTimeout(timer); },
   };
+}
+
+// — LAN merkezi: ajan üzerinden aynı olaylar. Giden kutusuna girmez (başkasının olayını o cihaz buluta iter). —
+const LAN_BATCH = 200;
+
+export async function mergeLanEvents(evs: TabEvent[]): Promise<number> {
+  if (!evs.length) return 0;
+  const d = kasaDb();
+  return d.transaction("rw", d.tabEvents, async () => {
+    const have = new Set((await d.tabEvents.bulkGet(evs.map((e) => e.id))).flatMap((e) => (e ? [e.id] : [])));
+    const add = lanMergePlan(have, evs);
+    if (add.length) await d.tabEvents.bulkAdd(add);
+    return add.length;
+  });
+}
+
+/** En iyi çaba: ajan yoksa/erişilemezse sessizce vazgeçer (bulut yolu zaten var). */
+export async function pushLan(a: KasaAgent, events: TabEvent[]) {
+  for (let i = 0; i < events.length; i += LAN_BATCH) {
+    try {
+      await fetch(`${a.url}/tabs/events`, { method: "POST", headers: { Authorization: `Bearer ${a.ticket}`, "Content-Type": "application/json" }, body: JSON.stringify({ events: events.slice(i, i + LAN_BATCH) }) });
+    } catch { return; }
+  }
+}
+
+/** Ajana bağlanınca buluta henüz gitmemiş (seq null) tüm olaylar: kesintide açılan cihaz da eksiksiz olsun. */
+export async function resendPending(a: KasaAgent) {
+  await pushLan(a, (await allTabEvents()).filter((e) => e.seq === null));
+}
+
+export function createLanStream(a: KasaAgent, onChange: () => void, onState?: (live: boolean) => void) {
+  let es: EventSource | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
+  const open = () => {
+    if (stopped) return;
+    es = new EventSource(`${a.url}/tabs/stream?ticket=${encodeURIComponent(a.ticket)}`);
+    es.onopen = () => { onState?.(true); void resendPending(a); };
+    es.onmessage = (m) => {
+      try { void mergeLanEvents(JSON.parse(m.data) as TabEvent[]).then((n) => { if (n) onChange(); }); } catch { /* bozuk parti */ }
+    };
+    es.onerror = () => {
+      onState?.(false);
+      if (es?.readyState === EventSource.CLOSED) { es = null; timer = setTimeout(open, 10_000); }
+    };
+  };
+  open();
+  return { stop() { stopped = true; es?.close(); if (timer) clearTimeout(timer); } };
 }

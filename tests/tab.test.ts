@@ -1,7 +1,7 @@
 // tests/tab.test.ts — adisyon katlama, seçenekler, bölme, mutfak fişi. Saf.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { deliveryStatus, foldTabs, openDeliveries, openTabsByTable, tabLabel, tableStatus, type TabEv, type TabEvent } from "@/lib/core/tab";
+import { deliveryStatus, foldTabs, lanMergePlan, openDeliveries, openTabsByTable, tabLabel, tableStatus, type TabEv, type TabEvent } from "@/lib/core/tab";
 import { validateOptions } from "@/lib/core/options";
 import { equalPart, paidLinesOf, payableLines, pickPart } from "@/lib/core/split";
 import { pendingPrints, renderKitchenTicket } from "@/lib/core/kitchen";
@@ -198,4 +198,10 @@ test("paket panosu: masa adisyonu yok, eski kapananlar düşer", () => {
   assert.deepEqual(openDeliveries(tabs, now).map((t) => t.id), ["a"]);
   const closed = foldTabs([...evs, pk({ type: "cancel", reason: "x" }, "a")]);
   assert.deepEqual(openDeliveries(closed, now + 13 * 3600_000).map((t) => t.id), []);
+});
+
+test("lanMergePlan: yerelde olan (bulut seq'li dahil) ezilmez; yeni seq null; aynı partide tekrar tek", () => {
+  const mk = (id: string, seq: number | null): TabEvent => ({ id, tabId: "t", tableId: null, at: "2026-09-29T10:00:00.000Z", staffId: null, approvedBy: null, seq, ev: { type: "open" } as TabEvent["ev"] });
+  const out = lanMergePlan(new Set(["a"]), [mk("a", null), mk("b", 5), mk("b", null), mk("c", null)]);
+  assert.deepEqual(out.map((e) => [e.id, e.seq]), [["b", null], ["c", null]]);
 });

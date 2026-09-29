@@ -174,3 +174,10 @@ export function tabLabel(t: TabState, tables: { id: string; name: string }[], pl
   if (t.kind === "platform") return `${platformNames[t.order?.source?.platform ?? ""] ?? "Platform"} · #${(t.order?.source?.externalId ?? "").slice(-4)}`;
   return `Paket · ${t.order?.name ?? ""}`.trim();
 }
+
+/** LAN (ajan) olayları: yalnız yerelde olmayanlar, seq=null ile. Bulut seq'li kopyanın üzerine yazılmaz. */
+export function lanMergePlan(existing: Set<string>, incoming: TabEvent[]): TabEvent[] {
+  const seen = new Set(existing), out: TabEvent[] = [];
+  for (const e of incoming) if (!seen.has(e.id)) { seen.add(e.id); out.push({ ...e, seq: null }); }
+  return out;
+}

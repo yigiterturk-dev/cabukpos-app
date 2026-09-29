@@ -293,7 +293,7 @@ export function KasaApp() {
   const role = meta?.device?.role ?? "kasa";
   const restoran = meta?.device?.vertical === "restoran";
   const kick = useCallback(() => void sync.current?.kick(), []);
-  const tabsApi = useTabs(Boolean(restoran), kick);
+  const tabsApi = useTabs(Boolean(restoran), kick, meta?.agent);
   const now = useNow();
   const printingRef = useRef(new Map<string, number>()); // bilet → bir sonraki deneme zamanı
   useEffect(() => {
@@ -462,7 +462,7 @@ export function KasaApp() {
         <header className="flex items-center gap-4 border-b border-line px-4 py-2 text-sm">
           <span className="font-semibold">{d.tenantName}</span><span className="text-muted">{d.name} · Mutfak</span>
           <SyncBadge s={status} />
-          {!tabsApi.live && <span className="text-xs font-medium text-amber-700">Canlı bağlantı yok</span>}
+          {tabsApi.link === "yok" && <span className="text-xs font-medium text-amber-700">Canlı bağlantı yok</span>}{tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
         </header>
         <KitchenScreen meta={meta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} />
       </>
@@ -479,7 +479,7 @@ export function KasaApp() {
       <header className="flex items-center gap-3 border-b border-line px-4 py-2 text-sm">
         <span className="font-semibold">{d.tenantName}</span><span className="font-medium">{cashier.name}</span>
         <SyncBadge s={status} />
-        {!tabsApi.live && <span className="text-xs font-medium text-amber-700">Canlı bağlantı yok</span>}
+        {tabsApi.link === "yok" && <span className="text-xs font-medium text-amber-700">Canlı bağlantı yok</span>}{tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
         {view.name === "home" && <button type="button" onClick={() => setCashier(null)} className="ml-auto text-muted underline">Çıkış</button>}
       </header>
     );
