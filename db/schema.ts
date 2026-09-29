@@ -501,3 +501,15 @@ export const billingPayments = pgTable("billing_payments", {
   createdAt: ts("created_at").notNull().defaultNow(),
   paidAt: ts("paid_at"),
 }, (t) => [index("billing_payments_tenant_idx").on(t.tenantId, t.createdAt)]);
+
+// — M9c: ajans erişim anahtarları. RLS yok (anahtar kiracı bilinmeden hash ile aranır, devices gibi); yalnız lib/integrations/keys erişir, her sorguda tenantId. —
+export const integrationKeys = pgTable("integration_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  name: text("name").notNull(),
+  prefix: text("prefix").notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  lastUsedAt: ts("last_used_at"),
+  revokedAt: ts("revoked_at"),
+}, (t) => [index("integration_keys_tenant_idx").on(t.tenantId)]);

@@ -3,8 +3,8 @@ import { and, desc, eq, gte, inArray, lt, notInArray, sql, type SQL } from "driz
 import { alias, type PgColumn } from "drizzle-orm/pg-core";
 import { schema, type Tx } from "@/db";
 import {
-  byChannel, byMethod, categoryRows, csvQty, csvTL, EVENT_LABEL, heatmap, prevRange, productRows, rangeBounds, registerEventRow,
-  staffRows, summarize, tabEventRow, toCsv, WEEKDAYS, type PayRow, type Range, type SaleRow, type StaffEvent,
+  byChannel, byMethod, categoryRows, dailyStats, csvQty, csvTL, EVENT_LABEL, heatmap, prevRange, productRows, rangeBounds, registerEventRow,
+  staffRows, summarize, tabEventRow, toCsv, WEEKDAYS, type DailyStat, type PayRow, type Range, type SaleRow, type StaffEvent,
 } from "@/lib/core/report";
 import type { PayMethod } from "@/lib/core/payment";
 
@@ -110,4 +110,12 @@ export async function reportCsv(tx: Tx, sekme: string, r: Range, kisi: string | 
       events.map((e) => [dt(e.at), EVENT_LABEL[e.kind], e.text, e.amount === null ? null : csvTL(e.amount), e.approvedBy ? names.get(e.approvedBy) ?? "Bilinmeyen" : null, e.reason]));
   }
   return null;
+}
+
+/** M9c ajans API'si: iadenin kanalı asıl satışınkidir (iade satırı kendisi 'kasa' yazılır). */
+export async function dailyStatsData(tx: Tx, r: Range): Promise<DailyStat[]> {
+  const O = alias(S, "o");
+  const rows = await tx.select({ status: S.status, channel: sql<SaleRow["channel"]>`coalesce(${O.channel}, ${S.channel})`, total: S.total, tabId: S.tabId, at: S.createdAt })
+    .from(S).leftJoin(O, eq(O.id, S.refundOf)).where(and(closedOrRefund, inRange(S.createdAt, r)));
+  return dailyStats(rows.map((x) => ({ ...x, status: x.status as "kapandi" | "iade" })));
 }
