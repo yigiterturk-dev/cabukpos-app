@@ -37,7 +37,7 @@ Yeni tablo `fiscal_refunds` (RLS, `tenant_id`; M-dönemi RLS kalıbı + SEQUENCE
 1. **Kasa sorgusu:** `LookedUpSale`'e `fiscal: { number, ettn, buyerKind: "tckn" \| "vkn" } \| null` eklenir
    (bulut `lookupSale` fiscal_documents'tan `issued` belgeyi okur; yerel satışta kasadaki fiş bilgisinden).
    Belge `issued` değilse (bekliyor/hata) `null` — iade mevcut kuralla (belge iptali/tamamlanmadan iade) işler.
-2. **Kasa iade kaydı:** `fiscal` doluysa ve iade kısmiyse (ya da tam iade — iptal sonucu kasada bilinmez, bkz. 4):
+2. **Kasa iade kaydı:** `fiscal` doluysa ve iade kısmiyse (kasada kalan tüm satırlar iade edilmiyorsa):
    - `tckn` → iade fişinin ardından termal **İADE TUTANAĞI** (`lib/core/refundNote.ts`, saf): başlık, satıcı unvan/VKN,
      asıl fatura no + ETTN + tarih, iade fiş no = tutanak no, iade kalemleri (ad, miktar, birim fiyat, KDV, tutar),
      KDV kırılımı, toplam, iade yöntemi; "Müşteri ad soyad / TCKN / İmza" boş çizgileri; "Satıcı imza".
