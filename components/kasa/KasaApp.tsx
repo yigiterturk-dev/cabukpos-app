@@ -264,7 +264,7 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-6">
       <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
-        <Button variant="ghost" onClick={onBack}><ArrowLeft aria-hidden className="size-4" />Kasa</Button>
+        <Button variant="ghost" onClick={onBack}>← Kasa</Button>
         {closed && data && meta.agent && (
           <Button variant="secondary" onClick={() => {
             const sh = meta.lastClosed!;
