@@ -30,3 +30,12 @@ test("refundNote: tam iadede yok; TCKN → tutanak (no = iade fiş no, fatura bi
   const n = refundNote({ ...F, buyerKind: "vkn" }, "Kebapçı", "K1-000002");
   assert.deepEqual(n, { kind: "note", text: `Alıcı iade faturası düzenleyecektir. Fatura: ${F.number}` });
 });
+
+const { validateBuyerInvoice } = await import("@/lib/core/refundNote");
+test("validateBuyerInvoice: no gerekli, tarih biçimi, asıl satıştan önce olamaz", () => {
+  const sold = new Date("2026-09-20T10:00:00Z");
+  assert.equal(validateBuyerInvoice("", "2026-09-25", sold), "Fatura no gerekli.");
+  assert.equal(validateBuyerInvoice("ABC2026000000001", "25.09.2026", sold), "Tarih biçimi geçersiz.");
+  assert.equal(validateBuyerInvoice("ABC2026000000001", "2026-09-19", sold), "Tarih asıl satıştan önce olamaz.");
+  assert.equal(validateBuyerInvoice("ABC2026000000001", "2026-09-20", sold), null);
+});

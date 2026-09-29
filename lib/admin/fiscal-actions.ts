@@ -1,12 +1,13 @@
 "use server";
 // M8 mali ayarlar ve belge eylemleri (sahip/müdür). tenants RLS dışı → tenantId koşulu.
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { FISCAL_CHANNELS, validateTaxId, type ChannelModes } from "@/lib/core/fiscal";
 import { issueOne, sendMail } from "@/lib/fiscal/issue";
+import { validateBuyerInvoice } from "@/lib/core/refundNote";
 
 export type FiscalState = { error?: string; field?: string; savedAt?: number; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -64,4 +65,25 @@ export async function resendFiscalMail(id: string): Promise<FiscalState> {
   const ok = await sendMail(a.tenantId, d.saleId).catch(() => false);
   revalidatePath("/yonetim/mali");
   return ok ? { info: "E-posta gönderildi." } : { error: "E-posta gönderilemedi (RESEND_API_KEY/MAIL_FROM tanımlı mı?)." };
+}
+
+/** VKN'li alıcının düzenlediği iade faturasını kaydeder → kayıt kapanır. */
+export async function resolveBuyerInvoice(_: FiscalState, form: FormData): Promise<FiscalState> {
+  const a = await requireWriter();
+  const id = str(form, "id"), no = str(form, "no"), date = str(form, "date");
+  if (!UUID.test(id)) return { error: "Kayıt bulunamadı." };
+  return withTenant(a.tenantId, async (tx) => {
+    const R = schema.fiscalRefunds;
+    const [r] = await tx.select({ id: R.id, soldAt: schema.sales.createdAt }).from(R)
+      .innerJoin(schema.fiscalDocuments, eq(schema.fiscalDocuments.id, R.fiscalDocId)).innerJoin(schema.sales, eq(schema.sales.id, schema.fiscalDocuments.saleId))
+      .where(and(eq(R.id, id), eq(R.kind, "alici_faturasi"), isNull(R.resolvedAt)));
+    if (!r) return { error: "Kayıt bulunamadı ya da zaten kapandı." };
+    const err = validateBuyerInvoice(no, date, r.soldAt);
+    if (err) return { error: err, field: err.startsWith("Fatura") ? "no" : "date" };
+    await tx.update(R).set({ buyerInvoiceNo: no.trim(), buyerInvoiceDate: date, resolvedAt: new Date() }).where(eq(R.id, id));
+    await audit(tx, a.tenantId, `user:${a.id}`, "fiscal.buyer_invoice", { id, no, date });
+    revalidatePath("/yonetim/raporlar");
+    revalidatePath("/yonetim/mali");
+    return { savedAt: Date.now() };
+  });
 }

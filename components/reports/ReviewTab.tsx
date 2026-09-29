@@ -5,6 +5,7 @@ import { schema, withTenant } from "@/db";
 import { formatTL } from "@/lib/core/money";
 import { rangeBounds, type Range } from "@/lib/core/report";
 import { Card, Empty } from "@/components/ui";
+import { BuyerInvoices } from "./BuyerInvoices";
 
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 const TAB_TYPE: Record<string, string> = {
@@ -32,8 +33,11 @@ export async function ReviewTab({ tenantId, range }: { tenantId: string; range: 
       ...events.map((e) => ({ key: e.id, at: e.at, kind: `Adisyon · ${TAB_TYPE[e.type] ?? e.type}`, ref: "—", amount: null, staff: e.staff, review: e.review!, shiftId: null })),
     ].sort((a, b) => b.at.getTime() - a.at.getTime());
   });
-  if (rows.length === 0) return <Empty>Bu dönemde incelenecek kayıt yok.</Empty>;
+  const pending = <BuyerInvoices tenantId={tenantId} />;
+  if (rows.length === 0) return <>{pending}<Empty>Bu dönemde incelenecek kayıt yok.</Empty></>;
   return (
+    <>
+    {pending}
     <Card className="overflow-x-auto" data-testid="review-list">
       <table className="w-full text-sm">
         <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr>{["Tarih", "Tür", "Fiş", "Tutar", "Personel", "Neden"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
@@ -49,5 +53,6 @@ export async function ReviewTab({ tenantId, range }: { tenantId: string; range: 
         ))}</tbody>
       </table>
     </Card>
+    </>
   );
 }

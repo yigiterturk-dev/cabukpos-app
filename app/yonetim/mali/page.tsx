@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { DEFAULT_MODES, FISCAL_CHANNELS } from "@/lib/core/fiscal";
@@ -12,9 +12,9 @@ export const dynamic = "force-dynamic";
 
 const STATUS: Record<string, { label: string; tone: "neutral" | "ok" | "warn" | "bad" | "brand" }> = {
   pending: { label: "Bekliyor", tone: "neutral" }, issued: { label: "Kesildi", tone: "ok" }, error: { label: "Hata", tone: "bad" },
-  cancelled: { label: "İptal", tone: "neutral" }, cancel_rejected: { label: "İade faturası gerekli", tone: "warn" },
+  cancelled: { label: "İptal", tone: "neutral" }, cancel_rejected: { label: "İptal reddedildi", tone: "warn" },
 };
-const FILTERS = [["", "Tümü"], ["error", "Hata"], ["pending", "Bekliyor"], ["issued", "Kesildi"], ["cancel_rejected", "İade faturası gerekli"], ["cancelled", "İptal"]] as const;
+const FILTERS = [["", "Tümü"], ["error", "Hata"], ["pending", "Bekliyor"], ["issued", "Kesildi"], ["cancel_rejected", "İptal reddedildi"], ["cancelled", "İptal"]] as const;
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 const seg = (on: boolean) => `rounded-lg border px-3 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`;
 
@@ -35,18 +35,20 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
         : Promise.resolve([]),
     ])),
   ]);
+  const R = schema.fiscalRefunds;
+  const refunds = docs.length ? await withTenant(a.tenantId, (tx) => tx.select({ id: R.id, docId: R.fiscalDocId, kind: R.kind, resolvedAt: R.resolvedAt, no: R.buyerInvoiceNo }).from(R).where(inArray(R.fiscalDocId, docs.map((d) => d.id))).orderBy(R.createdAt)) : [];
   const n = (s: string) => counts.find((c) => c.status === s)?.n ?? 0;
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
   const fake = (fs?.provider ?? "fake-earsiv") === "fake-earsiv";
   return (
     <>
-      <PageHeader title="Mali belge" desc="Bilgi fişi ya da e-Arşiv fatura. Kesilemeyen belgeler otomatik yeniden denenir; iade edilen faturalar iptal edilir." />
+      <PageHeader title="Mali belge" desc="Bilgi fişi ya da e-Arşiv fatura. Kesilemeyen belgeler otomatik yeniden denenir; tam iade edilen faturalar iptal edilir, kısmi iadede iade tutanağı düzenlenir." />
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <Link href="/yonetim/mali" className={seg(tab === "ayarlar")}>Ayarlar</Link>
         <Link href="/yonetim/mali?sekme=belgeler" className={seg(tab === "belgeler")}>Belgeler</Link>
         {n("error") > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=error"><Badge tone="bad">{n("error")} hata</Badge></Link>}
-        {n("cancel_rejected") > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=cancel_rejected"><Badge tone="warn">{n("cancel_rejected")} iade faturası gerekli</Badge></Link>}
+        {n("cancel_rejected") > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=cancel_rejected"><Badge tone="warn">{n("cancel_rejected")} iptal reddedildi</Badge></Link>}
       </div>
       {tab === "ayarlar" ? (
         <Card className="p-5">
@@ -70,7 +72,12 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
                       <td className="py-3">{d.buyer.name}<div className="text-xs text-muted">{d.buyer.taxId}</div></td>
                       <td className="whitespace-nowrap py-3 text-right tabular-nums">{formatTL(d.total)}</td>
                       <td className="py-3 pl-3"><Badge tone={STATUS[d.status].tone}>{STATUS[d.status].label}</Badge>
-                        {d.lastError && <div className="mt-1 max-w-56 text-xs text-muted">{d.lastError}{d.status === "error" ? ` (${d.attempts}. deneme)` : ""}</div>}</td>
+                        {d.lastError && <div className="mt-1 max-w-56 text-xs text-muted">{d.lastError}{d.status === "error" ? ` (${d.attempts}. deneme)` : ""}</div>}
+                        {refunds.filter((r) => r.docId === d.id).map((r) => (
+                          <Link key={r.id} href={`/yonetim/mali/iade/${r.id}`} className="mt-1 block text-xs text-brand hover:underline">
+                            {r.kind === "tutanak" ? "İade tutanağı" : r.resolvedAt ? `Alıcı iade faturası ${r.no}` : "Alıcı iade faturası bekleniyor"}
+                          </Link>
+                        ))}</td>
                       <td className="py-3 font-mono text-xs">{d.number ?? "—"}
                         <div className="mt-2"><FiscalRowActions id={d.id} status={d.status} canMail={!!d.buyer.email} url={`${origin}/f/${d.token}`} /></div></td>
                       <td className="p-3 text-xs">{!d.buyer.email ? "—" : d.emailSentAt ? "Gönderildi" : "Gönderilmedi"}</td>
