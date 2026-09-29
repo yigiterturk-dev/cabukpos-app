@@ -61,12 +61,29 @@ function SyncBadge({ s }: { s: SyncStatus }) {
   );
 }
 
+// Chrome 142+: https sayfadan 127.0.0.1 ajanına istek "yerel ağ erişimi" izni ister; reddedilirse ajan kapalı görünür.
+function useLocalNetworkDenied(check: boolean) {
+  const [denied, setDenied] = useState(false);
+  useEffect(() => {
+    if (!check || !navigator.permissions) return;
+    let alive = true;
+    for (const name of ["local-network-access", "loopback-network"]) {
+      navigator.permissions.query({ name } as unknown as PermissionDescriptor).then((st) => {
+        if (alive && st.state === "denied") setDenied(true);
+      }, () => {});
+    }
+    return () => { alive = false; };
+  }, [check]);
+  return denied;
+}
+
 function AgentBadge({ s }: { s: AgentStatus | null }) {
+  const lnaDenied = useLocalNetworkDenied(!!s && !s.reachable);
   if (!s) return null;
   const bad = !s.reachable || s.printers.some((p) => p.ok === false) || s.failed.length > 0;
-  const text = !s.reachable ? "Ajan kapalı" : s.printers.length === 0 ? "Yazıcı tanımlı değil" : bad ? `Yazıcı hatası${s.failed.length ? ` · ${s.failed.length} fiş bekliyor` : ""}` : "Yazıcı hazır";
+  const text = !s.reachable ? (lnaDenied ? "Chrome yerel ağ izni kapalı" : "Ajan kapalı") : s.printers.length === 0 ? "Yazıcı tanımlı değil" : bad ? `Yazıcı hatası${s.failed.length ? ` · ${s.failed.length} fiş bekliyor` : ""}` : "Yazıcı hazır";
   return (
-    <span data-testid="agent-status" title={s.printers.find((p) => p.error)?.error ?? undefined} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${bad ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-800"}`}>
+    <span data-testid="agent-status" title={lnaDenied && !s.reachable ? "Adres çubuğundaki kilit simgesi → Site ayarları → Yerel ağ erişimi: İzin ver, sonra sayfayı yenileyin." : s.printers.find((p) => p.error)?.error ?? undefined} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${bad ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-800"}`}>
       <span className={`size-2 rounded-full ${bad ? "bg-red-600" : "bg-emerald-600"}`} />
       {text}
     </span>

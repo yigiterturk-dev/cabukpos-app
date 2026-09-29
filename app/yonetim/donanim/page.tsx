@@ -21,6 +21,7 @@ export default async function Donanim() {
       <PageHeader title="Donanım" desc="Kasadaki bilgisayarda çalışan ÇabukPOS ajanı fiş yazıcısını, para çekmecesini ve teraziyi yönetir." />
       <Card className="mb-6 p-5">
         <AgentCreateForm />
+        <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="lna-note">Kasa ekranında Chrome “yerel ağ erişimi” izni sorduğunda <strong>İzin ver</strong> deyin; aksi halde ajan “kapalı” görünür.</p>
         <details className="mt-4 text-sm text-stone-700">
           <summary className="cursor-pointer font-medium">Kurulum adımları</summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
@@ -29,6 +30,7 @@ export default async function Donanim() {
             <li>O klasörde komut satırı açıp <code>node cabukpos-agent.cjs pair KOD</code> yazın.</li>
             <li><code>node cabukpos-agent.cjs install</code> — bilgisayar açılınca ajan kendiliğinden başlar.</li>
             <li>Aşağıda yazıcıyı tanımlayın; <code>node cabukpos-agent.cjs test-print</code> ile deneme fişi basın.</li>
+            <li>Kasayı Chrome&apos;da açın. Chrome “yerel ağdaki cihazlara erişmek istiyor” diye sorarsa <strong>İzin ver</strong> deyin; yoksa yazıcı, çekmece ve terazi çalışmaz. Yanlışlıkla engellendiyse: adres çubuğundaki kilit simgesi → Site ayarları → Yerel ağ erişimi → İzin ver, sonra sayfayı yenileyin.</li>
           </ol>
         </details>
       </Card>
