@@ -6,7 +6,8 @@ import { deleteCategory, setProductActive } from "@/lib/admin/catalog-actions";
 import { formatTL } from "@/lib/core/money";
 import { stockUnitOf } from "@/lib/core/stock";
 import { CategoryForm, ProductForm } from "@/components/admin/ProductForm";
-import { Badge, Card, Empty, PageHeader } from "@/components/ui";
+import { Plus, X } from "lucide-react";
+import { Badge, buttonClass, Card, Empty, PageHeader, Panel, SplitView, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -29,27 +30,33 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
   const editing = prods.find((p) => p.id === duzenle);
   const shown = prods.filter((p) => p.sellable !== raw);
   const options = cats.map((c) => ({ value: c.id, label: c.name }));
+  const productInitial = editing && { stationId: editing.stationId, optionGroupIds: links.filter((l) => l.productId === editing.id).map((l) => l.groupId), id: editing.id, name: editing.name, price: editing.price, vatRate: editing.vatRate, categoryId: editing.categoryId, barcodes: editing.barcodes, kind: editing.kind, plu: editing.plu, trackStock: editing.trackStock, quick: editing.quick, sellable: editing.sellable, unit: editing.unit, cost: editing.cost, minStock: editing.minStock, yieldMilli: editing.yieldMilli };
   return (
     <>
-      <PageHeader title="Ürünler" desc="Fiyatlar KDV dahil. Kasada satıştaki ürünler görünür." />
-      <Card className="mb-6 p-4">
-        <div className="mb-3 flex flex-wrap gap-2">
-          {cats.map((c) => (
-            <form key={c.id} action={deleteCategory.bind(null, c.id)} className="flex items-center gap-1 rounded-full border border-line py-1 pl-3 pr-1 text-sm">
-              <span>{c.name}</span>
-              <button aria-label={`${c.name} kategorisini sil`} className="rounded-full px-2 text-muted hover:bg-stone-100">×</button>
-            </form>
-          ))}
+      <PageHeader title="Ürünler" desc="Fiyatlar KDV dahil. Kasada satıştaki ürünler görünür." actions={editing && <Link href="/yonetim/urunler" className={buttonClass("secondary")}><Plus aria-hidden className="size-4" />Yeni ürün</Link>} />
+      <SplitView wide panel={
+        <div className="space-y-4">
+          <Panel title={editing ? `Düzenle: ${editing.name}` : "Ürün ekle"} tone={editing ? "edit" : undefined}>
+            <ProductForm key={editing?.id ?? "yeni"} categories={options} salon={salon} initial={productInitial} />
+          </Panel>
+          <Panel title="Kategoriler" desc="Kasadaki sekmeler. Ürünü olan kategori silinince ürünler kategorisiz kalır.">
+            {cats.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {cats.map((c) => (
+                  <form key={c.id} action={deleteCategory.bind(null, c.id)} className="flex items-center gap-1 rounded-full border border-line bg-surface-2 py-1 pl-3 pr-1 text-sm">
+                    <span>{c.name}</span>
+                    <button aria-label={`${c.name} kategorisini sil`} className="grid size-6 place-items-center rounded-full text-muted hover:bg-bad-soft hover:text-bad"><X aria-hidden className="size-3.5" /></button>
+                  </form>
+                ))}
+              </div>
+            )}
+            <CategoryForm />
+          </Panel>
         </div>
-        <CategoryForm />
-      </Card>
-      <Card className="mb-6 p-5">
-        <h2 className="mb-4 font-semibold">{editing ? `Düzenle: ${editing.name}` : "Ürün ekle"}</h2>
-        <ProductForm key={editing?.id ?? "yeni"} categories={options} salon={salon} initial={editing && { stationId: editing.stationId, optionGroupIds: links.filter((l) => l.productId === editing.id).map((l) => l.groupId), id: editing.id, name: editing.name, price: editing.price, vatRate: editing.vatRate, categoryId: editing.categoryId, barcodes: editing.barcodes, kind: editing.kind, plu: editing.plu, trackStock: editing.trackStock, quick: editing.quick, sellable: editing.sellable, unit: editing.unit, cost: editing.cost, minStock: editing.minStock, yieldMilli: editing.yieldMilli }} />
-      </Card>
+      } list={<>
       <div className="mb-3 flex gap-1" role="tablist" aria-label="Ürün listesi">
         {([["", "Satılan"], ["hammadde", "Hammadde / ara ürün"]] as const).map(([v, l]) => (
-          <Link key={v} role="tab" aria-selected={(tur ?? "") === v} href={v ? `/yonetim/urunler?tur=${v}` : "/yonetim/urunler"} className={`rounded-lg border px-3 py-1.5 text-sm ${(tur ?? "") === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{l}</Link>
+          <Link key={v} role="tab" aria-selected={(tur ?? "") === v} href={v ? `/yonetim/urunler?tur=${v}` : "/yonetim/urunler"} className={`rounded-lg border px-3 py-1.5 text-sm ${(tur ?? "") === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>{l}</Link>
         ))}
       </div>
       {shown.length === 0 ? (
@@ -57,23 +64,23 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-line text-left text-muted">
-              <tr><th className="p-3 font-medium">Ürün</th><th className="p-3 font-medium">Kategori</th><th className="p-3 text-right font-medium">Fiyat</th><th className="p-3 text-right font-medium">Maliyet</th><th className="p-3 font-medium">KDV</th><th className="p-3 font-medium">Barkod</th><th className="p-3 font-medium">Durum</th><th className="p-3" /></tr>
+            <thead className={TABLE_HEAD}>
+              <tr><th className="px-4 py-2.5 font-medium">Ürün</th><th className="px-4 py-2.5 font-medium">Kategori</th><th className="px-4 py-2.5 text-right font-medium">Fiyat</th><th className="px-4 py-2.5 text-right font-medium">Maliyet</th><th className="px-4 py-2.5 font-medium">KDV</th><th className="px-4 py-2.5 font-medium">Barkod</th><th className="px-4 py-2.5 font-medium">Durum</th><th className="px-4 py-2.5" /></tr>
             </thead>
             <tbody className="divide-y divide-line">
               {shown.map((p) => (
                 <tr key={p.id} className={p.active ? "" : "opacity-60"}>
-                  <td className="p-3 font-medium">{p.name}{!p.sellable && <span className="ml-2 text-xs text-muted">{p.unit}{p.yieldMilli ? " · ara ürün" : ""}</span>}{p.kind === "tartili" && <span className="ml-2 text-xs text-muted">kg{p.plu ? ` · PLU ${p.plu}` : ""}</span>}{p.quick && <span className="ml-2 text-xs text-brand">hızlı tuş</span>}</td>
-                  <td className="p-3 text-muted">{p.categoryId ? catName.get(p.categoryId) : "—"}</td>
-                  <td className="tabular p-3 text-right">{p.sellable ? <>{formatTL(p.price)}{p.kind === "tartili" && "/kg"}</> : "—"}</td>
-                  <td className="tabular p-3 text-right text-muted">{p.cost == null ? "—" : `${formatTL(p.cost)}/${stockUnitOf(p)}`}</td>
-                  <td className="p-3">%{p.vatRate}</td>
-                  <td className="p-3 text-muted">{p.barcodes.length || "—"}</td>
-                  <td className="p-3">{p.active ? <Badge tone="ok">{p.sellable ? "Satışta" : "Aktif"}</Badge> : <Badge>Kapalı</Badge>}</td>
-                  <td className="whitespace-nowrap p-3 text-right">
-                    <Link href={`/yonetim/urunler?duzenle=${p.id}`} className="mr-3 text-brand underline">Düzenle</Link>
+                  <td className="px-4 py-2.5 font-medium">{p.name}{!p.sellable && <span className="ml-2 text-xs text-muted">{p.unit}{p.yieldMilli ? " · ara ürün" : ""}</span>}{p.kind === "tartili" && <span className="ml-2 text-xs text-muted">kg{p.plu ? ` · PLU ${p.plu}` : ""}</span>}{p.quick && <span className="ml-2 text-xs text-brand">hızlı tuş</span>}</td>
+                  <td className="px-4 py-2.5 text-muted">{p.categoryId ? catName.get(p.categoryId) : "—"}</td>
+                  <td className="tabular px-4 py-2.5 text-right">{p.sellable ? <>{formatTL(p.price)}{p.kind === "tartili" && "/kg"}</> : "—"}</td>
+                  <td className="tabular px-4 py-2.5 text-right text-muted">{p.cost == null ? "—" : `${formatTL(p.cost)}/${stockUnitOf(p)}`}</td>
+                  <td className="px-4 py-2.5">%{p.vatRate}</td>
+                  <td className="px-4 py-2.5 text-muted">{p.barcodes.length || "—"}</td>
+                  <td className="px-4 py-2.5">{p.active ? <Badge tone="ok">{p.sellable ? "Satışta" : "Aktif"}</Badge> : <Badge>Kapalı</Badge>}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                    <Link href={`/yonetim/urunler?duzenle=${p.id}`} className="mr-3 font-medium text-brand hover:underline">Düzenle</Link>
                     <form action={setProductActive.bind(null, p.id, !p.active)} className="inline">
-                      <button className="text-muted underline">{p.active ? "Satıştan kaldır" : "Satışa aç"}</button>
+                      <button className="text-muted hover:text-ink hover:underline">{p.active ? "Satıştan kaldır" : "Satışa aç"}</button>
                     </form>
                   </td>
                 </tr>
@@ -82,6 +89,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
           </table>
         </Card>
       )}
+      </>} />
     </>
   );
 }

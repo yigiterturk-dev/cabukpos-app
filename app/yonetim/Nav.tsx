@@ -1,37 +1,106 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  Armchair, Boxes, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Globe, Handshake, LayoutDashboard, MapPin, Menu,
+  MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, SlidersHorizontal, Tag, UserCog, X, type LucideIcon,
+} from "lucide-react";
 
-const items: { href: string; label: string; only?: "restoran" | "market" }[] = [
-  { href: "/yonetim/urunler", label: "Ürünler" },
-  { href: "/yonetim/stok", label: "Stok" },
-  { href: "/yonetim/receteler", label: "Reçeteler", only: "restoran" },
-  { href: "/yonetim/uretim", label: "Üretim", only: "restoran" },
-  { href: "/yonetim/alislar", label: "Alışlar" },
-  { href: "/yonetim/tedarikciler", label: "Tedarikçiler" },
-  { href: "/yonetim/salon", label: "Salon", only: "restoran" },
-  { href: "/yonetim/secenekler", label: "Seçenekler", only: "restoran" },
-  { href: "/yonetim/istasyonlar", label: "İstasyonlar", only: "restoran" },
-  { href: "/yonetim/bolgeler", label: "Bölgeler", only: "restoran" },
-  { href: "/yonetim/musteriler", label: "Müşteriler", only: "restoran" },
-  { href: "/yonetim/platformlar", label: "Platformlar", only: "restoran" },
-  { href: "/yonetim/etiketler", label: "Raf etiketi" },
-  { href: "/yonetim/personel", label: "Personel" },
-  { href: "/yonetim/cihazlar", label: "Cihazlar" },
-  { href: "/yonetim/donanim", label: "Donanım" },
-  { href: "/yonetim/mali", label: "Mali" },
-  { href: "/yonetim/raporlar", label: "Raporlar" },
-  { href: "/yonetim/abonelik", label: "Abonelik" },
-  { href: "/yonetim/entegrasyonlar", label: "Entegrasyonlar" },
+type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
+const groups: { title: string; items: Item[] }[] = [
+  { title: "Genel", items: [
+    { href: "/yonetim", label: "Bugün", icon: LayoutDashboard, exact: true },
+    { href: "/yonetim/raporlar", label: "Raporlar", icon: ChartColumn },
+  ] },
+  { title: "Menü", items: [
+    { href: "/yonetim/urunler", label: "Ürünler", icon: Package },
+    { href: "/yonetim/secenekler", label: "Seçenekler", icon: SlidersHorizontal, only: "restoran" },
+    { href: "/yonetim/receteler", label: "Reçeteler", icon: ChefHat, only: "restoran" },
+    { href: "/yonetim/uretim", label: "Üretim", icon: CookingPot, only: "restoran" },
+    { href: "/yonetim/etiketler", label: "Raf etiketi", icon: Tag },
+  ] },
+  { title: "Stok", items: [
+    { href: "/yonetim/stok", label: "Stok", icon: Boxes },
+    { href: "/yonetim/alislar", label: "Alışlar", icon: PackagePlus },
+    { href: "/yonetim/tedarikciler", label: "Tedarikçiler", icon: Handshake },
+  ] },
+  { title: "Satış kanalları", items: [
+    { href: "/yonetim/salon", label: "Salon", icon: Armchair, only: "restoran" },
+    { href: "/yonetim/istasyonlar", label: "İstasyonlar", icon: Flame, only: "restoran" },
+    { href: "/yonetim/bolgeler", label: "Bölgeler", icon: MapPin, only: "restoran" },
+    { href: "/yonetim/musteriler", label: "Müşteriler", icon: Contact, only: "restoran" },
+    { href: "/yonetim/platformlar", label: "Platformlar", icon: Globe, only: "restoran" },
+  ] },
+  { title: "İşletme", items: [
+    { href: "/yonetim/personel", label: "Personel", icon: UserCog },
+    { href: "/yonetim/cihazlar", label: "Cihazlar", icon: MonitorSmartphone },
+    { href: "/yonetim/donanim", label: "Donanım", icon: Printer },
+    { href: "/yonetim/mali", label: "Mali", icon: Receipt },
+    { href: "/yonetim/entegrasyonlar", label: "Entegrasyonlar", icon: Plug },
+    { href: "/yonetim/abonelik", label: "Abonelik", icon: CreditCard },
+  ] },
 ];
 
 export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
   const path = usePathname();
   return (
-    <nav className="flex gap-1 overflow-x-auto md:flex-col">
-      {items.filter((i) => !i.only || i.only === vertical).map((i) => (
-        <Link key={i.href} href={i.href} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm ${path.startsWith(i.href) ? "bg-brand-soft font-medium text-brand" : "text-stone-600 hover:bg-stone-50"}`}>{i.label}</Link>
-      ))}
+    <nav aria-label="Yönetim" className="space-y-5">
+      {groups.map((g) => {
+        const items = g.items.filter((i) => !i.only || i.only === vertical);
+        if (!items.length) return null;
+        return (
+          <div key={g.title}>
+            <div aria-hidden className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">{g.title}</div>
+            <ul className="space-y-0.5">
+              {items.map((i) => {
+                const on = i.exact ? path === i.href : path.startsWith(i.href);
+                const Icon = i.icon;
+                return (
+                  <li key={i.href}>
+                    <Link href={i.href} aria-current={on ? "page" : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition ${on ? "bg-brand-soft font-medium text-brand" : "text-ink-2 hover:bg-surface-3 hover:text-ink"}`}>
+                      <Icon aria-hidden className={`size-4 shrink-0 ${on ? "text-brand" : "text-muted"}`} />{i.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
     </nav>
+  );
+}
+
+/** Mobil: üst çubuktaki düğme + soldan çekmece. Rota değişince kapanır. */
+export function MobileNav({ children }: { children: React.ReactNode }) {
+  // Açıldığı rotayı tutar: rota değişince kendiliğinden kapalı sayılır (efektte setState yok).
+  const path = usePathname();
+  const [openAt, setOpenAt] = useState<string | null>(null);
+  const open = openAt === path;
+  const setOpen = (v: boolean) => setOpenAt(v ? path : null);
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpenAt(null);
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open]);
+  return (
+    <>
+      <button type="button" aria-label="Menüyü aç" aria-expanded={open} onClick={() => setOpen(true)} className="press grid size-10 place-items-center rounded-[10px] text-ink-2 hover:bg-surface-3 md:hidden">
+        <Menu aria-hidden className="size-5" />
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menü">
+          <div className="absolute inset-0 bg-stone-900/30" onClick={() => setOpen(false)} />
+          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-white p-4 shadow-pop">
+            <button type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-10 place-items-center rounded-[10px] text-ink-2 hover:bg-surface-3">
+              <X aria-hidden className="size-5" />
+            </button>
+            {children}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -1,27 +1,55 @@
 import Link from "next/link";
+import { LogOut, Monitor } from "lucide-react";
 import { requireAdmin } from "@/lib/auth/session";
 import { bannerText } from "@/lib/core/billing";
 import { logout } from "@/lib/auth/actions";
-import { Nav } from "./Nav";
+import { LogoMark } from "@/components/ui";
+import { MobileNav, Nav } from "./Nav";
 
 export default async function YonetimLayout({ children }: { children: React.ReactNode }) {
   const a = await requireAdmin();
+  const brand = (
+    <Link href="/yonetim" className="flex items-center gap-2.5 px-1">
+      <LogoMark size="sm" />
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold leading-tight">ÇabukPOS</span>
+        <span className="block truncate text-xs text-muted">{a.tenantName} · {a.vertical === "restoran" ? "Restoran" : "Market"}</span>
+      </span>
+    </Link>
+  );
+  const footer = (
+    <div className="space-y-1 border-t border-line pt-3">
+      <Link href="/kasa" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-ink-2 hover:bg-surface-3 hover:text-ink">
+        <Monitor aria-hidden className="size-4 text-muted" />Kasa ekranı
+      </Link>
+      <div className="flex items-center gap-2 px-3 pt-1">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.name}</span>
+        <form action={logout}>
+          <button className="press inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted hover:bg-surface-3 hover:text-ink">
+            <LogOut aria-hidden className="size-3.5" />Çıkış
+          </button>
+        </form>
+      </div>
+    </div>
+  );
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[220px_1fr] print:block">
-      <aside className="border-b border-line p-4 print:hidden md:sticky md:top-0 md:h-dvh md:border-b-0 md:border-r">
-        <div className="mb-1 hidden px-3 text-sm font-semibold uppercase tracking-widest text-brand md:block">ÇabukPOS</div>
-        <div className="mb-6 hidden px-3 text-sm text-muted md:block">{a.tenantName} · {a.vertical === "restoran" ? "Restoran" : "Market"}</div>
-        <Nav vertical={a.vertical} />
-        <div className="mt-3 flex items-center gap-3 border-t border-line px-3 pt-3 text-sm md:mt-6 md:block md:pt-4">
-          <div className="font-medium">{a.name}</div>
-          <form action={logout} className="ml-auto md:ml-0">
-            <button className="text-xs text-muted underline hover:text-ink md:mt-2">Çıkış</button>
-          </form>
-        </div>
+    <div className="min-h-dvh bg-surface-2 md:grid md:grid-cols-[232px_1fr] print:block print:bg-white">
+      <aside className="hidden border-r border-line bg-white print:hidden md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:gap-6 md:p-4">
+        {brand}
+        <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1"><Nav vertical={a.vertical} /></div>
+        {footer}
       </aside>
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">
+      <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-line bg-white/95 px-3 py-2 backdrop-blur print:hidden md:hidden">
+        <MobileNav>
+          <div className="mb-5">{brand}</div>
+          <div className="flex-1"><Nav vertical={a.vertical} /></div>
+          <div className="mt-5">{footer}</div>
+        </MobileNav>
+        {brand}
+      </header>
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">
         {a.billing.warn && (
-          <div data-testid="billing-banner" className={`mb-6 rounded-lg border p-3 text-sm print:hidden ${a.billing.locked ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+          <div data-testid="billing-banner" className={`mb-6 rounded-[14px] border p-3 text-sm print:hidden ${a.billing.locked ? "border-red-200 bg-bad-soft text-bad" : "border-amber-200 bg-warn-soft text-warn"}`}>
             {bannerText(a.billing)} <Link href="/yonetim/abonelik" className="font-medium underline">Abonelik</Link>
           </div>
         )}

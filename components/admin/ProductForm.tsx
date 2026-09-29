@@ -8,7 +8,7 @@ import { Select, type Option } from "@/components/Select";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 
-const Err = ({ s, f }: { s: CatalogState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-sm text-red-700">{s.error}</p> : null);
+const Err = ({ s, f }: { s: CatalogState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
 
 export type ProductInitial = { id: string; name: string; price: number; vatRate: number; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; trackStock: boolean; quick: boolean; stationId?: string | null; optionGroupIds?: string[];
   sellable: boolean; unit: StockUnit; cost: number | null; minStock: number | null; yieldMilli: number | null };
@@ -22,9 +22,9 @@ function Toggle<T extends string>({ name, value, set, items, label }: { name: st
   return (
     <>
       <input type="hidden" name={name} value={value} />
-      <div className="flex gap-1" role="group" aria-label={label}>
+      <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
         {items.map(([v, l]) => (
-          <button key={v} type="button" aria-pressed={value === v} onClick={() => set(v)} className={`rounded-lg border px-3 py-2 text-sm ${value === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{l}</button>
+          <button key={v} type="button" aria-pressed={value === v} onClick={() => set(v)} className={`rounded-lg border px-3 py-2 text-sm ${value === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>{l}</button>
         ))}
       </div>
     </>
@@ -39,7 +39,7 @@ function Fields({ s, initial, categories, salon }: { s: CatalogState; initial?: 
   const u: StockUnit = sellable ? (kind === "tartili" ? "kg" : "adet") : unit;
   const uLabel = u === "adet" ? "adet" : u;
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
       <div><Field label="Ürün adı"><Input name="name" defaultValue={initial?.name} required /></Field><Err s={s} f="name" /></div>
       <div>
         <div className="mb-1.5 text-sm font-medium">Kasada satılır</div>
@@ -57,9 +57,9 @@ function Fields({ s, initial, categories, salon }: { s: CatalogState; initial?: 
       <div>
         <div className="mb-1.5 text-sm font-medium">Tür</div>
         <input type="hidden" name="kind" value={kind} />
-        <div className="flex gap-1" role="group" aria-label="Ürün türü">
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Ürün türü">
           {([["adet", "Adet"], ["tartili", "Tartılı (kg)"]] as const).map(([v, l]) => (
-            <button key={v} type="button" aria-pressed={kind === v} onClick={() => setKind(v)} className={`rounded-lg border px-3 py-2 text-sm ${kind === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{l}</button>
+            <button key={v} type="button" aria-pressed={kind === v} onClick={() => setKind(v)} className={`rounded-lg border px-3 py-2 text-sm ${kind === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>{l}</button>
           ))}
         </div>
         <Err s={s} f="kind" />
@@ -68,9 +68,9 @@ function Fields({ s, initial, categories, salon }: { s: CatalogState; initial?: 
       <div>
         <div className="mb-1.5 text-sm font-medium">KDV</div>
         <input type="hidden" name="vatRate" value={vat} />
-        <div className="flex gap-1" role="group" aria-label="KDV oranı">
+        <div className="flex flex-wrap gap-1" role="group" aria-label="KDV oranı">
           {["1", "10", "20"].map((r) => (
-            <button key={r} type="button" aria-pressed={vat === r} onClick={() => setVat(r)} className={`rounded-lg border px-3 py-2 text-sm ${vat === r ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>%{r}</button>
+            <button key={r} type="button" aria-pressed={vat === r} onClick={() => setVat(r)} className={`rounded-lg border px-3 py-2 text-sm ${vat === r ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>%{r}</button>
           ))}
         </div>
         <Err s={s} f="vatRate" />
@@ -105,11 +105,11 @@ export function ProductForm({ initial, categories, salon }: { initial?: ProductI
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <Fields key={initial ? initial.id : state.savedAt ?? 0} s={state} initial={initial} categories={categories} salon={salon} />
-      {state.error && !FIELDS.includes(state.field ?? "") && <p className="text-sm text-red-700">{state.error}</p>}
+      {state.error && !FIELDS.includes(state.field ?? "") && <p className="text-sm text-bad">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Ürünü kaydet"}</Button>
         {initial && <Link href="/yonetim/urunler" className="text-sm text-muted underline">Vazgeç</Link>}
-        {state.savedAt && !initial && <span className="text-sm text-emerald-700">Kaydedildi.</span>}
+        {state.savedAt && !initial && <span className="text-sm text-ok">Kaydedildi.</span>}
       </div>
     </form>
   );

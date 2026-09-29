@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { newPairing, revokeDevice } from "@/lib/admin/device-actions";
 import { DeviceForm, NewPairingButton } from "@/components/admin/StaffDeviceForms";
 import { DeviceRoleForm } from "@/components/admin/SalonForms";
-import { Badge, Card, Empty, PageHeader } from "@/components/ui";
+import { Badge, Card, Empty, PageHeader, Panel, SplitView } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
@@ -17,7 +17,9 @@ export default async function Cihazlar() {
   return (
     <>
       <PageHeader title="Cihazlar" desc="Kasa, tablet ve mutfak ekranları. Her cihaz kendi fiş numarasını verir." />
-      <Card className="mb-6 p-5"><DeviceForm /></Card>
+      <SplitView
+        panel={<Panel title="Cihaz ekle" desc="Ekledikten sonra eşleme kodunu kasa cihazında /kasa adresine yazın."><DeviceForm /></Panel>}
+        list={<>
       {rows.length === 0 ? <Empty>Henüz cihaz yok.</Empty> : (
         <Card className="divide-y divide-line">
           {rows.map((d) => (
@@ -28,13 +30,15 @@ export default async function Cihazlar() {
               {d.lastSeenAt && <span className="text-xs text-muted">Son görülme {dt(d.lastSeenAt)}</span>}
               <div className="ml-auto flex flex-wrap items-start gap-4 text-sm">
                 <NewPairingButton action={newPairing.bind(null, d.id)} />
-                {!d.revokedAt && <form action={revokeDevice.bind(null, d.id)}><button className="text-red-700 underline">İptal et</button></form>}
+                {!d.revokedAt && <form action={revokeDevice.bind(null, d.id)}><button className="text-bad hover:underline">İptal et</button></form>}
               </div>
               {restoran && !d.revokedAt && <div className="w-full"><DeviceRoleForm deviceId={d.id} role={d.role} stations={d.stations} stationOptions={stationOptions} /></div>}
             </div>
           ))}
         </Card>
       )}
+        </>}
+      />
     </>
   );
 }

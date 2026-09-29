@@ -96,3 +96,32 @@ export function LogoMark({ size = "md", className = "" }: { size?: "sm" | "md" |
   const s = { sm: "size-7 rounded-lg text-sm", md: "size-9 rounded-[10px] text-base", lg: "size-14 rounded-2xl text-2xl" }[size];
   return <span aria-hidden className={`grid shrink-0 place-items-center bg-brand font-bold text-white shadow-card ${s} ${className}`}>Ç</span>;
 }
+
+/** Yönetim tablosu başlık satırı (thead) sınıfı: tüm listelerde aynı. */
+export const TABLE_HEAD = "border-b border-line bg-surface-2 text-left text-xs text-muted";
+
+/** Liste-önce düzen: solda liste, geniş ekranda sağa yapışık form paneli; dar ekranda panel üstte. */
+export function SplitView({ list, panel, wide = false }: { list: ReactNode; panel: ReactNode; wide?: boolean }) {
+  return (
+    <div className={`grid gap-6 lg:items-start ${wide ? "lg:grid-cols-[minmax(0,1fr)_440px]" : "lg:grid-cols-[minmax(0,1fr)_380px]"}`}>
+      <div className="order-2 min-w-0 lg:order-1">{list}</div>
+      <aside className="order-1 lg:sticky lg:top-8 lg:order-2 lg:max-h-[calc(100dvh-4rem)] lg:overflow-y-auto lg:rounded-[14px]">{panel}</aside>
+    </div>
+  );
+}
+
+/** Yan paneldeki form kartı: başlık şeridi + gövde. `tone="edit"` düzenlemede marka kenarı. */
+export function Panel({ title, desc, action, tone, children }: { title: string; desc?: ReactNode; action?: ReactNode; tone?: "edit"; children: ReactNode }) {
+  return (
+    <Card className={tone === "edit" ? "border-brand-ring" : ""}>
+      <div className={`flex items-start justify-between gap-3 border-b border-line px-5 py-3.5 ${tone === "edit" ? "bg-brand-soft/60" : ""}`}>
+        <div className="min-w-0">
+          <h2 className="font-semibold">{title}</h2>
+          {desc && <p className="mt-0.5 text-xs text-muted">{desc}</p>}
+        </div>
+        {action}
+      </div>
+      <div className="p-5">{children}</div>
+    </Card>
+  );
+}
