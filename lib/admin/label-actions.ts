@@ -3,13 +3,13 @@
 import { inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
 export async function markLabelsPrinted(ids: string[]) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const ok = Array.isArray(ids) ? ids.filter((i) => typeof i === "string" && UUID.test(i)).slice(0, 1000) : [];
   if (!ok.length) return;
   await withTenant(a.tenantId, async (tx) => {

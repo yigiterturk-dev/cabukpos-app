@@ -1,9 +1,9 @@
 "use server";
-// Ürün ve kategori yönetimi. Her yazma requireAdmin + withTenant (RLS) + denetim kaydı.
+// Ürün ve kategori yönetimi. Her yazma requireWriter + withTenant (RLS) + denetim kaydı.
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant, type Tx } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { parseProduct } from "./catalog";
 
@@ -11,7 +11,7 @@ export type CatalogState = { error?: string; field?: string; savedAt?: number };
 const UUID = /^[0-9a-f-]{36}$/i;
 
 export async function saveCategory(_: CatalogState, form: FormData): Promise<CatalogState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const name = String(form.get("categoryName") ?? "").trim();
   if (name.length < 2 || name.length > 40) return { error: "Kategori adı 2-40 karakter.", field: "categoryName" };
   await withTenant(a.tenantId, async (tx) => {
@@ -23,7 +23,7 @@ export async function saveCategory(_: CatalogState, form: FormData): Promise<Cat
 }
 
 export async function deleteCategory(id: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.delete(schema.categories).where(eq(schema.categories.id, id));
@@ -33,7 +33,7 @@ export async function deleteCategory(id: string) {
 }
 
 export async function saveProduct(id: string | null, _: CatalogState, form: FormData): Promise<CatalogState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (id && !UUID.test(id)) return { error: "Ürün bulunamadı." };
   const f: Record<string, string> = {};
   for (const k of ["name", "price", "vatRate", "categoryId", "barcodes", "kind", "plu", "trackStock", "quick", "sellable", "unit", "cost", "minStock", "yieldMilli"]) f[k] = String(form.get(k) ?? "");
@@ -76,7 +76,7 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
 }
 
 export async function setProductActive(id: string, active: boolean) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.update(schema.products).set({ active: active === true }).where(and(eq(schema.products.id, id)));

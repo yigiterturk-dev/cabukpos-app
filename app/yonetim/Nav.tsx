@@ -21,6 +21,7 @@ const items: { href: string; label: string; only?: "restoran" | "market" }[] = [
   { href: "/yonetim/donanim", label: "Donanım" },
   { href: "/yonetim/mali", label: "Mali" },
   { href: "/yonetim/raporlar", label: "Raporlar" },
+  { href: "/yonetim/abonelik", label: "Abonelik" },
 ];
 
 export function Nav({ vertical }: { vertical: "restoran" | "market" }) {

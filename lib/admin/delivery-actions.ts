@@ -4,7 +4,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { newDeviceToken } from "@/lib/auth/tokens";
 import { parseTL } from "@/lib/core/money";
@@ -26,7 +26,7 @@ const money = (v: string) => (v === "" ? 0 : parseTL(v));
 
 // — Teslimat bölgeleri —
 export async function saveZone(id: string | null, _: DeliveryState, form: FormData): Promise<DeliveryState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const name = str(form, "name");
   if (name.length < 1 || name.length > 60) return { error: "Bölge adı 1-60 karakter.", field: "name" };
   const fee = money(str(form, "fee"));
@@ -47,7 +47,7 @@ export async function saveZone(id: string | null, _: DeliveryState, form: FormDa
 
 /** Kayıtlı adresler bölgeye bağlı kalabilsin diye silinmez, pasiflenir. */
 export async function toggleZone(id: string, active: boolean) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.update(schema.deliveryZones).set({ active }).where(eq(schema.deliveryZones.id, id));
@@ -58,7 +58,7 @@ export async function toggleZone(id: string, active: boolean) {
 
 // — Müşteriler —
 export async function saveCustomer(id: string, _: DeliveryState, form: FormData): Promise<DeliveryState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return { error: "Müşteri bulunamadı." };
   const name = str(form, "name");
   if (name.length < 1 || name.length > 120) return { error: "Ad 1-120 karakter.", field: "name" };
@@ -72,7 +72,7 @@ export async function saveCustomer(id: string, _: DeliveryState, form: FormData)
 }
 
 export async function deleteAddress(id: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.update(schema.customerAddresses).set({ deleted: true }).where(eq(schema.customerAddresses.id, id));
@@ -85,7 +85,7 @@ export async function deleteAddress(id: string) {
 const P = schema.platformConnections;
 
 export async function createConnection(_: DeliveryState, form: FormData): Promise<DeliveryState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const platform = str(form, "platform");
   if (!SUPPORTED_PLATFORMS.includes(platform)) return { error: "Bu platform henüz desteklenmiyor.", field: "platform" };
   const storeId = await firstStore(a.tenantId);
@@ -98,7 +98,7 @@ export async function createConnection(_: DeliveryState, form: FormData): Promis
 }
 
 export async function setConnection(id: string, patch: { autoAccept?: boolean; active?: boolean }) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await getDb().update(P).set(patch).where(and(eq(P.id, id), eq(P.tenantId, a.tenantId)));
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.update", { id, ...patch }));
@@ -112,7 +112,7 @@ async function ownConnection(tenantId: string, id: string) {
 }
 
 export async function saveCode(connectionId: string, _: DeliveryState, form: FormData): Promise<DeliveryState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const conn = await ownConnection(a.tenantId, connectionId);
   if (!conn) return { error: "Bağlantı bulunamadı." };
   const code = str(form, "code");
@@ -134,7 +134,7 @@ export async function saveCode(connectionId: string, _: DeliveryState, form: For
 }
 
 export async function deleteCode(id: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.delete(schema.productPlatformCodes).where(eq(schema.productPlatformCodes.id, id));
@@ -145,7 +145,7 @@ export async function deleteCode(id: string) {
 
 /** Deneme siparişi: eşlenmiş ilk kod (yoksa ilk ürün, eşlenmemiş) ile sahte platform siparişi — kasada onay kartı düşer. */
 export async function sendTestOrder(connectionId: string): Promise<DeliveryState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const conn = await ownConnection(a.tenantId, connectionId);
   if (!conn || conn.platform !== "mock") return { error: "Deneme siparişi yalnız Deneme platformunda." };
   const pick = await withTenant(a.tenantId, async (tx) => {

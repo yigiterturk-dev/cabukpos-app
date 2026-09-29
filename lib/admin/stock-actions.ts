@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { parseQty, stockUnitOf } from "@/lib/core/stock";
 import { firstStoreId } from "./stock";
@@ -12,7 +12,7 @@ export type StockState = { error?: string; field?: string; savedAt?: number };
 const UUID = /^[0-9a-f-]{36}$/i;
 
 export async function addStockMove(productId: string, _: StockState, form: FormData): Promise<StockState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(productId)) return { error: "Ürün bulunamadı." };
   const kind = String(form.get("kind") ?? "");
   if (kind !== "fire" && kind !== "sayim") return { error: "Hareket türü geçersiz.", field: "kind" };

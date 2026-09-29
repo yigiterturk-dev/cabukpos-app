@@ -4,7 +4,7 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { expandTableNames, parseOptionLines } from "./salon";
 
@@ -19,7 +19,7 @@ async function firstStore(tenantId: string) {
 
 // — Bölge + masa —
 export async function saveArea(_: SalonState, form: FormData): Promise<SalonState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const name = str(form, "name");
   if (name.length < 1 || name.length > 40) return { error: "Bölge adı 1-40 karakter.", field: "name" };
   const storeId = await firstStore(a.tenantId);
@@ -33,7 +33,7 @@ export async function saveArea(_: SalonState, form: FormData): Promise<SalonStat
 }
 
 export async function deleteArea(id: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.delete(schema.areas).where(eq(schema.areas.id, id));
@@ -43,7 +43,7 @@ export async function deleteArea(id: string) {
 }
 
 export async function addTables(areaId: string, _: SalonState, form: FormData): Promise<SalonState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(areaId)) return { error: "Bölge bulunamadı." };
   const names = expandTableNames(str(form, "names"));
   if (!names) return { error: "Masa adları geçersiz (ör. M1-M12 ya da Bahçe 1, Bahçe 2).", field: "names" };
@@ -62,7 +62,7 @@ export async function addTables(areaId: string, _: SalonState, form: FormData): 
 }
 
 export async function deleteTable(id: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.delete(schema.tables).where(eq(schema.tables.id, id));
@@ -73,7 +73,7 @@ export async function deleteTable(id: string) {
 
 // — İstasyonlar —
 export async function saveStation(id: string | null, _: SalonState, form: FormData): Promise<SalonState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (id && !UUID.test(id)) return { error: "İstasyon bulunamadı." };
   const name = str(form, "name");
   const printer = str(form, "printer") || null;
@@ -90,7 +90,7 @@ export async function saveStation(id: string | null, _: SalonState, form: FormDa
 }
 
 export async function deleteStation(id: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.delete(schema.stations).where(eq(schema.stations.id, id));
@@ -100,7 +100,7 @@ export async function deleteStation(id: string) {
 }
 
 export async function setCategoryStation(categoryId: string, stationId: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(categoryId) || (stationId && !UUID.test(stationId))) return;
   await withTenant(a.tenantId, async (tx) => {
     if (stationId) {
@@ -115,7 +115,7 @@ export async function setCategoryStation(categoryId: string, stationId: string) 
 
 // — Seçenek grupları —
 export async function saveOptionGroup(id: string | null, _: SalonState, form: FormData): Promise<SalonState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (id && !UUID.test(id)) return { error: "Grup bulunamadı." };
   const name = str(form, "name");
   const min = Number(str(form, "min") || 0), max = Number(str(form, "max") || 1);
@@ -149,7 +149,7 @@ export async function saveOptionGroup(id: string | null, _: SalonState, form: Fo
 }
 
 export async function deleteOptionGroup(id: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.delete(schema.optionGroups).where(eq(schema.optionGroups.id, id));
@@ -160,7 +160,7 @@ export async function deleteOptionGroup(id: string) {
 
 // — Cihaz rolü (devices RLS dışı → tenantId koşulu) —
 export async function setDeviceRole(deviceId: string, _: SalonState, form: FormData): Promise<SalonState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(deviceId)) return { error: "Cihaz bulunamadı." };
   const role = str(form, "role");
   if (role !== "kasa" && role !== "garson" && role !== "mutfak" && role !== "kurye") return { error: "Rol geçersiz." };

@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { FISCAL_CHANNELS, validateTaxId, type ChannelModes } from "@/lib/core/fiscal";
 import { issueOne, sendMail } from "@/lib/fiscal/issue";
@@ -13,7 +13,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 export async function saveFiscalSettings(_: FiscalState, form: FormData): Promise<FiscalState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const taxId = str(form, "taxId"), taxOffice = str(form, "taxOffice"), address = str(form, "address");
   const series = str(form, "series").toUpperCase();
   const modes = Object.fromEntries(FISCAL_CHANNELS.map((c) => [c, str(form, `mode-${c}`) === "earsiv" ? "earsiv" : "info"])) as ChannelModes;
@@ -44,7 +44,7 @@ async function docById(tenantId: string, id: string) {
 }
 
 export async function retryFiscal(id: string): Promise<FiscalState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const d = await docById(a.tenantId, id);
   if (!d) return { error: "Belge bulunamadı." };
   const r = await issueOne(a.tenantId, d.saleId, { force: true });
@@ -56,7 +56,7 @@ export async function retryFiscal(id: string): Promise<FiscalState> {
 }
 
 export async function resendFiscalMail(id: string): Promise<FiscalState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const d = await docById(a.tenantId, id);
   if (!d) return { error: "Belge bulunamadı." };
   if (d.status !== "issued") return { error: "Yalnız kesilmiş belge gönderilir." };

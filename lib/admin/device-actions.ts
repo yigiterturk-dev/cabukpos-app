@@ -3,7 +3,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { newPairingCode } from "@/lib/auth/tokens";
 import { audit } from "@/lib/audit";
 
@@ -26,7 +26,7 @@ async function assignCode(tenantId: string, deviceId: string): Promise<{ code: s
 }
 
 export async function createDevice(_: DeviceState, form: FormData): Promise<DeviceState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const name = String(form.get("name") ?? "").trim();
   const prefix = String(form.get("receiptPrefix") ?? "").trim().toUpperCase();
   if (name.length < 2 || name.length > 40) return { error: "Cihaz adı 2-40 karakter.", field: "name" };
@@ -42,7 +42,7 @@ export async function createDevice(_: DeviceState, form: FormData): Promise<Devi
 }
 
 export async function newPairing(deviceId: string): Promise<DeviceState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(deviceId)) return { error: "Cihaz bulunamadı." };
   const [d] = await getDb().select({ name: schema.devices.name }).from(schema.devices).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId)));
   if (!d) return { error: "Cihaz bulunamadı." };
@@ -53,7 +53,7 @@ export async function newPairing(deviceId: string): Promise<DeviceState> {
 }
 
 export async function revokeDevice(deviceId: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(deviceId)) return;
   await getDb().update(schema.devices).set({ revokedAt: sql`now()`, tokenHash: null, pairingCode: null }).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId)));
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "device.revoke", { id: deviceId }));

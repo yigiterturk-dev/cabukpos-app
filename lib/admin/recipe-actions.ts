@@ -1,9 +1,9 @@
 "use server";
-// Reçete (ürün / seçenek / ara ürün) ve üretim. Kural lib/core/recipe.ts; her yazma requireAdmin + withTenant (RLS) + denetim kaydı.
+// Reçete (ürün / seçenek / ara ürün) ve üretim. Kural lib/core/recipe.ts; her yazma requireWriter + withTenant (RLS) + denetim kaydı.
 import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { batchCost, productionMoves, recipeError } from "@/lib/core/recipe";
 import { stockUnitOf } from "@/lib/core/stock";
@@ -15,7 +15,7 @@ const UUID = /^[0-9a-f-]{36}$/i;
 const R = schema.recipeItems, P = schema.products;
 
 export async function saveRecipe(target: { productId?: string; optionId?: string }, _: RecipeState, form: FormData): Promise<RecipeState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const tid = target.productId ?? target.optionId ?? "";
   if (!UUID.test(tid)) return { error: "Reçete sahibi bulunamadı." };
   const ings = form.getAll("ing").map(String), qtys = form.getAll("qty").map(String);
@@ -63,7 +63,7 @@ export async function saveRecipe(target: { productId?: string; optionId?: string
 
 /** Üretim: N parti ara ürün → ara ürün +, hammaddeler −; hammadde maliyetleri tamsa ara ürün maliyeti güncellenir. */
 export async function produce(_: RecipeState, form: FormData): Promise<RecipeState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const productId = String(form.get("productId") ?? "");
   if (!UUID.test(productId)) return { error: "Ara ürün seçin.", field: "productId" };
   const t = String(form.get("batches") ?? "").trim().replace(",", ".");

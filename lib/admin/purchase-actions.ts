@@ -1,9 +1,9 @@
 "use server";
-// Alış fişi, tedarikçi kartı, tedarikçi ödemesi. Kayıt mantığı lib/admin/purchase.ts; her yazma requireAdmin + withTenant (RLS) + denetim kaydı.
+// Alış fişi, tedarikçi kartı, tedarikçi ödemesi. Kayıt mantığı lib/admin/purchase.ts; her yazma requireWriter + withTenant (RLS) + denetim kaydı.
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { parseTL } from "@/lib/core/money";
 import { parseQty, stockUnitOf } from "@/lib/core/stock";
@@ -21,7 +21,7 @@ function parseDate(s: string): string | null {
 }
 
 export async function savePurchase(_: PurchaseState, form: FormData): Promise<PurchaseState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   const supplierId = str(form, "supplierId") || null;
   if (supplierId && !UUID.test(supplierId)) return { error: "Tedarikçi geçersiz.", field: "supplierId" };
   const date = parseDate(str(form, "date"));
@@ -60,7 +60,7 @@ export async function savePurchase(_: PurchaseState, form: FormData): Promise<Pu
 }
 
 export async function cancelPurchase(id: string) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     if (await cancelTx(tx, a.id, id)) return;
@@ -72,7 +72,7 @@ export async function cancelPurchase(id: string) {
 }
 
 export async function saveSupplier(id: string | null, _: PurchaseState, form: FormData): Promise<PurchaseState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (id && !UUID.test(id)) return { error: "Tedarikçi bulunamadı." };
   const name = str(form, "name");
   if (name.length < 2 || name.length > 80) return { error: "Ad 2-80 karakter.", field: "name" };
@@ -93,7 +93,7 @@ export async function saveSupplier(id: string | null, _: PurchaseState, form: Fo
 }
 
 export async function addSupplierPayment(supplierId: string, _: PurchaseState, form: FormData): Promise<PurchaseState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(supplierId)) return { error: "Tedarikçi bulunamadı." };
   const amount = parseTL(str(form, "amount"));
   if (!amount || amount > 100_000_000) return { error: "Tutar geçersiz (ör. 1.500,00).", field: "amount" };

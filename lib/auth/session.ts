@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { signJwt, verifyJwt } from "./jwt";
+import { billingInfo } from "@/lib/core/billing";
 
 export { ADMIN_COOKIE } from "./session-cookie";
 import { ADMIN_COOKIE } from "./session-cookie";
@@ -24,14 +25,21 @@ export async function getAdmin() {
   if (!p || typeof p.userId !== "string") return null;
   const u = schema.users, t = schema.tenants;
   const [row] = await getDb()
-    .select({ id: u.id, name: u.name, email: u.email, role: u.role, active: u.active, v: u.tokenVersion, tenantId: u.tenantId, tenantName: t.name, vertical: t.vertical })
+    .select({ id: u.id, name: u.name, email: u.email, role: u.role, active: u.active, v: u.tokenVersion, tenantId: u.tenantId, tenantName: t.name, vertical: t.vertical, trialEndsAt: t.trialEndsAt, paidUntil: t.paidUntil })
     .from(u).innerJoin(t, eq(t.id, u.tenantId)).where(eq(u.id, p.userId));
   if (!row || !row.active || row.v !== p.v || row.tenantId !== p.tenantId) return null;
-  return { id: row.id, name: row.name, email: row.email, role: row.role, tenantId: row.tenantId, tenantName: row.tenantName, vertical: row.vertical };
+  return { id: row.id, name: row.name, email: row.email, role: row.role, tenantId: row.tenantId, tenantName: row.tenantName, vertical: row.vertical, billing: billingInfo({ trialEndsAt: row.trialEndsAt, paidUntil: row.paidUntil }) };
 }
 
 export async function requireAdmin() {
   const a = await getAdmin();
   if (!a) redirect("/giris");
+  return a;
+}
+
+/** Yönetim yazması (server action): abonelik kilitliyse Abonelik sayfasına. Okuma serbest; kasa hiç etkilenmez. */
+export async function requireWriter() {
+  const a = await requireAdmin();
+  if (a.billing.locked) redirect("/yonetim/abonelik?kilit=1");
   return a;
 }

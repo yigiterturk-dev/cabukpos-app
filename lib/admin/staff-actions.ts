@@ -3,7 +3,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { hashPin, pinProblem, verifyPin } from "@/lib/auth/pin";
 import { audit } from "@/lib/audit";
 
@@ -11,7 +11,7 @@ export type StaffState = { error?: string; field?: string; savedAt?: number };
 const UUID = /^[0-9a-f-]{36}$/i;
 
 export async function saveStaff(id: string | null, _: StaffState, form: FormData): Promise<StaffState> {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (id && !UUID.test(id)) return { error: "Personel bulunamadı." };
   const name = String(form.get("name") ?? "").trim();
   const role = String(form.get("role") ?? "kasiyer");
@@ -43,7 +43,7 @@ export async function saveStaff(id: string | null, _: StaffState, form: FormData
 }
 
 export async function setStaffActive(id: string, active: boolean) {
-  const a = await requireAdmin();
+  const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.update(schema.staff).set({ active: active === true }).where(eq(schema.staff.id, id));

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/session";
+import { bannerText } from "@/lib/core/billing";
 import { logout } from "@/lib/auth/actions";
 import { Nav } from "./Nav";
 
@@ -17,7 +19,14 @@ export default async function YonetimLayout({ children }: { children: React.Reac
           </form>
         </div>
       </aside>
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">{children}</main>
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">
+        {a.billing.warn && (
+          <div data-testid="billing-banner" className={`mb-6 rounded-lg border p-3 text-sm print:hidden ${a.billing.locked ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+            {bannerText(a.billing)} <Link href="/yonetim/abonelik" className="font-medium underline">Abonelik</Link>
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { newPairingCode } from "@/lib/auth/tokens";
 import { audit } from "@/lib/audit";
 import { agentConfig, emptyAgentConfig } from "@/lib/agent/config";
@@ -28,7 +28,7 @@ async function assignCode(tenantId: string, agentId: string) {
 }
 
 export async function createAgent(_: AgentState, form: FormData): Promise<AgentState> {
-  const u = await requireAdmin();
+  const u = await requireWriter();
   const name = String(form.get("name") ?? "").trim();
   if (name.length < 2 || name.length > 40) return { error: "Ad 2-40 karakter.", field: "name" };
   const [store] = await withTenant(u.tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
@@ -40,7 +40,7 @@ export async function createAgent(_: AgentState, form: FormData): Promise<AgentS
 }
 
 export async function newAgentPairing(agentId: string): Promise<AgentState> {
-  const u = await requireAdmin();
+  const u = await requireWriter();
   if (!UUID.test(agentId)) return { error: "Ajan bulunamadı." };
   const [row] = await getDb().select({ name: a.name }).from(a).where(and(eq(a.id, agentId), eq(a.tenantId, u.tenantId)));
   if (!row) return { error: "Ajan bulunamadı." };
@@ -51,7 +51,7 @@ export async function newAgentPairing(agentId: string): Promise<AgentState> {
 }
 
 export async function revokeAgent(agentId: string) {
-  const u = await requireAdmin();
+  const u = await requireWriter();
   if (!UUID.test(agentId)) return;
   await getDb().update(a).set({ revokedAt: sql`now()`, tokenHash: null, hubKeyEnc: null, pairingCode: null }).where(and(eq(a.id, agentId), eq(a.tenantId, u.tenantId)));
   await withTenant(u.tenantId, (tx) => audit(tx, u.tenantId, `user:${u.id}`, "agent.revoke", { id: agentId }));
@@ -60,7 +60,7 @@ export async function revokeAgent(agentId: string) {
 
 /** Yapılandırma formu JSON gönderir (dinamik yazıcı listesi). */
 export async function saveAgentConfig(agentId: string, _: AgentState, form: FormData): Promise<AgentState> {
-  const u = await requireAdmin();
+  const u = await requireWriter();
   if (!UUID.test(agentId)) return { error: "Ajan bulunamadı." };
   let raw: unknown;
   try { raw = JSON.parse(String(form.get("config") ?? "")); } catch { return { error: "Yapılandırma okunamadı." }; }
