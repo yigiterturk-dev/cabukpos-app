@@ -7,7 +7,7 @@ import { soldLines } from "./apply";
 
 /** fiscal: asıl satışın kesilmiş e-Arşiv faturası (iade tutanağı için); yoksa null. */
 export type SaleFiscalRef = { number: string; ettn: string; invoiceAt: string; buyerKind: "tckn" | "vkn"; refundedBefore: boolean };
-export type LookedUpSale = { id: string; receiptNo: string; at: string; lines: RefLine[]; fiscal: SaleFiscalRef | null };
+export type LookedUpSale = { id: string; receiptNo: string; at: string; lines: RefLine[]; fiscal: SaleFiscalRef | null; fiscalPending?: boolean };
 
 export async function lookupSale(tenantId: string, receiptNo: string): Promise<LookedUpSale | null> {
   return withTenant(tenantId, async (tx) => {

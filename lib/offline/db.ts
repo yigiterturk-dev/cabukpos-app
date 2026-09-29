@@ -103,7 +103,8 @@ export async function findLocalSale(receiptNo: string): Promise<LookedUpSale | n
   if (!sale) return null;
   const refunds = await d.sales.where("refundOf").equals(sale.id).toArray();
   const f = sale.fiscal?.number && sale.fiscal.ettn ? { number: sale.fiscal.number, ettn: sale.fiscal.ettn, invoiceAt: sale.at, buyerKind: buyerKindOf(sale.fiscal.buyer?.taxId), refundedBefore: refunds.length > 0 } : null;
-  return { id: sale.id, receiptNo: sale.receiptNo, at: sale.at, fiscal: f, lines: refundable(sale.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])), refunds.flatMap((r) => r.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])))) };
+  // e-Arşiv istendi ama kasa numarayı almadı (sonradan kesildi) → iade ekranı buluttan sorar.
+  return { id: sale.id, receiptNo: sale.receiptNo, at: sale.at, fiscal: f, fiscalPending: !!sale.fiscal && !f, lines: refundable(sale.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])), refunds.flatMap((r) => r.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])))) };
 }
 
 /** İade: yerel kayıt + giden kutusu, aynı fiş sayacı. Geri ödeme tek yöntemle, tutar = iade toplamı. */

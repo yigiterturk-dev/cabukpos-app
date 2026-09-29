@@ -163,3 +163,12 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - 138/138 test; E2E M9a (yeni adımla), M9b, M4 OK. Prod: şema yok → `prod-push.sh 4` → Vercel Ready → `5` (canlı m9a).
 - Şifre sıfırlama: `/sifremi-unuttum` → e-posta (Resend; kapalıysa dürüst uyarı + SALES_CONTACT) → `/sifre-yenile?t=` (JWT aud `reset`, 1 saat, şifre özeti parmak izi → tek kullanımlık; tokenVersion++ diğer oturumları düşürür). DB değişikliği yok. E2E `e2e/sifre.mjs` (yalnız yerel: AUTH_SECRET'la bağlantı üretir).
 - Yasal sayfalar `/yasal/{kullanim-kosullari,kvkk,mesafeli-satis,iade-iptal,iletisim}`; satıcı bilgisi env `LEGAL_NAME, LEGAL_ADDRESS, LEGAL_TAX_OFFICE, LEGAL_TAX_ID, LEGAL_MERSIS, LEGAL_EMAIL, LEGAL_PHONE, LEGAL_KEP` (boşsa "[şirket kuruluşunda eklenecek]" + üstte uyarı). Kayıt ve ödeme ekranında kabul metni, giriş/kayıt/ana sayfada alt bağlantılar. ⚠️ Metinler taslak: avukat/mali müşavir onayı; iade politikası (7 gün içinde, satış yoksa tam iade) Yiğit onayı bekler.
+
+## İade tutanağı (2026-09-29, dal `iade-tutanak`, main üstünde)
+- Spec `docs/superpowers/specs/2026-09-29-cabukpos-iade-tutanagi-design.md`, plan `docs/superpowers/plans/2026-09-29-cabukpos-iade-tutanagi.md`.
+- e-Arşiv'li satışın **kısmi** iadesi (ya da önceden iadesi olan satışın iadesi): nihai tüketici/TCKN → kasada iade fişinin altında termal **İADE TUTANAĞI** (tutanak no = iade fiş no, asıl fatura no + ETTN + tarih, satıcı VKN, imza alanları); VKN'li alıcı → fişte "Alıcı iade faturası düzenleyecektir" notu. İçerik tek kaynak `lib/core/refundNote.ts`.
+- Bulut: `fiscal_refunds` (RLS; `refund_sale_id` unique). `onRefund(tx, tenantId, refundOf, refundId)`: ilk iade + tam → iptal kuyruğu (değişmedi); aksi → kayıt (tutanak çözülmüş, `alici_faturasi` açık). Kısmi iade artık `cancel_rejected` ÜRETMEZ, fatura `issued` kalır. `cancelOne` reddi → aynı yedek kayıt. Mali'de `cancel_rejected` etiketi "İptal reddedildi".
+- Kasa: `LookedUpSale.fiscal` (bulutta issued belge; yerelde kasadaki numara). Yerelde numara yoksa (`fiscalPending`) ve çevrimiçiyse bilgi buluttan sorulur. Katalogda `fiscal.sellerTaxId`.
+- Yönetim: Raporlar → İncelenecek üstünde "Alıcının iade faturası bekleniyor (N)" + no/tarih formu (`resolveBuyerInvoice`); Mali → Belgeler satırında "İade tutanağı" / "Alıcı iade faturası …" bağlantısı → `/yonetim/mali/iade/<id>` A4 (yazdır).
+- 147/147 test; E2E `e2e/iade.mjs` İADE OK, regresyon M8 + M3 OK.
+- ⚠️ Tutanak metni taslak: mali müşavir onayı (Yiğit). Prod: `prod-push.sh 1..5` (şema → rls → kontrol → main → canlı E2E iade).

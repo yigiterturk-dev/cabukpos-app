@@ -41,6 +41,10 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
         if (!r.ok) return setError("Fiş sorgulanamadı. Tekrar deneyin.");
         s = (await r.json()) as LookedUpSale;
       }
+      if (s.fiscalPending && online) {
+        const c = await fetch(`/api/sync/sale?no=${encodeURIComponent(n)}`, { cache: "no-store" }).then((r) => (r.ok ? (r.json() as Promise<LookedUpSale>) : null)).catch(() => null);
+        if (c?.fiscal) s = { ...s, fiscal: { ...c.fiscal, refundedBefore: c.fiscal.refundedBefore || s.fiscal?.refundedBefore === true } };
+      }
       if (!s.lines.length) return setError("Bu fişin tamamı zaten iade edilmiş.");
       setSale(s);
       setQty({});
