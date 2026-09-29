@@ -2,7 +2,7 @@
 // Yerel olay: tabEvents'e seq=null ile + giden kutusuna tek işlemde. Sunucu yankısı aynı kimlikle gelir, seq'li hâli kalır.
 import type { TabEv, TabEvent } from "@/lib/core/tab";
 import { foldTabs, lanMergePlan } from "@/lib/core/tab";
-import type { KasaAgent } from "@/lib/agent/config";
+import type { LanLink } from "@/lib/agent/config";
 import type { TabDoc } from "@/lib/sync/docs";
 import { kasaDb } from "./db";
 
@@ -88,7 +88,7 @@ export async function mergeLanEvents(evs: TabEvent[]): Promise<number> {
 }
 
 /** En iyi çaba: ajan yoksa/erişilemezse sessizce vazgeçer (bulut yolu zaten var). */
-export async function pushLan(a: KasaAgent, events: TabEvent[]) {
+export async function pushLan(a: LanLink, events: TabEvent[]) {
   for (let i = 0; i < events.length; i += LAN_BATCH) {
     try {
       await fetch(`${a.url}/tabs/events`, { method: "POST", headers: { Authorization: `Bearer ${a.ticket}`, "Content-Type": "application/json" }, body: JSON.stringify({ events: events.slice(i, i + LAN_BATCH) }) });
@@ -97,11 +97,11 @@ export async function pushLan(a: KasaAgent, events: TabEvent[]) {
 }
 
 /** Ajana bağlanınca buluta henüz gitmemiş (seq null) tüm olaylar: kesintide açılan cihaz da eksiksiz olsun. */
-export async function resendPending(a: KasaAgent) {
+export async function resendPending(a: LanLink) {
   await pushLan(a, (await allTabEvents()).filter((e) => e.seq === null));
 }
 
-export function createLanStream(a: KasaAgent, onChange: () => void, onState?: (live: boolean) => void) {
+export function createLanStream(a: LanLink, onChange: () => void, onState?: (live: boolean) => void) {
   let es: EventSource | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;

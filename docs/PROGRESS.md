@@ -143,3 +143,13 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-m9c-ajans-okuma-design.md`, pla
 - Ajans tarafı: restoran-zirve `lib/platforms/cabukpos` (`orders.stats`), `CABUKPOS_API_URL` (varsayılan cabukpos-app.vercel.app).
 - Yerel: şema değişince hem `db:push:test` hem `db:push` (yerel sunucu `cabukpos` DB'sini kullanır).
 - Prod: `scripts/prod-push.sh 1` (şema) → `2` (rls, yeni tabloya GRANT) → `3` (integration_keys|f, sales|t, t) → `4` main → `5` canlı E2E m9c.
+
+## LAN merkezi — internetsiz salon (2026-09-29)
+
+Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `docs/superpowers/plans/2026-09-29-cabukpos-lan-merkez.md`. 135/135 test; E2E `lan` (2× üst üste) + regresyon M5, M4 OK.
+- Ajan 0.5.0: `agent/src/tabs.ts` arabellek (bellek + `tabs.jsonl`, 24 saat, 20 000, lanSeq yalnız artar); `POST /tabs/events` (≤200), `GET /tabs/stream` (SSE; `?ticket=` YALNIZ bu yolda, `Last-Event-ID`, ajan sıfırlandıysa baştan). Ajan buluta olay yollamaz.
+- Cihaz: `mergeLanEvents` yalnız yerelde olmayanı `seq: null` ekler (bulut seq'li kopya ezilmez), giden kutusuna girmez; yeni olay ajana da gider; bağlanınca seq'siz olaylar yeniden yollanır.
+- Katalog: kasa `agent` (değişmedi); kasa DIŞI restoran cihazı yeni `lan` alanı (yalnız url+bilet, yazdırma yok) — ajan sertifikalıysa (https) ya da yerel geliştirmede (localhost). Canlıda sertifikasız → null → tablet bugünkü gibi yalnız bulut (Chrome yerel ağ izin penceresi de çıkmaz).
+- Gösterge: `link` bulut|lan|yok; "Yerel ağ (internet yok)" yalnız lan'da ortak başlıkta + mutfak/kurye başlığında; mevcut "Canlı bağlantı yok" metni aynen.
+- E2E notu: art arda koşuda eşleme sınırı dolar → yerelde `delete from login_attempts`. Bir koşuda garson sipariş penceresinde "Artır" tıklaması takıldı (sonraki 3 koşu temiz) — tekrarlarsa useTabs yeniden çizim sıklığına bak.
+- Prod: şema değişikliği YOK → main + Vercel. Kasalar ajan 0.5.0'ı Donanım'dan yeniden indirmeli. Tablet LAN'ı: cabukpos.com DNS → Cloudflare + `CF_API_TOKEN`, `CF_ZONE_ID`.

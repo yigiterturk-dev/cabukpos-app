@@ -7,16 +7,24 @@ import { getDevice } from "@/lib/auth/kasa";
 import { sha256 } from "@/lib/auth/tokens";
 import { isVatRate } from "@/lib/core/money";
 import { kasaAgentFor } from "@/lib/agent/registry";
+import type { KasaAgent, LanLink } from "@/lib/agent/config";
 import { DEFAULT_MODES } from "@/lib/core/fiscal";
 
 export const dynamic = "force-dynamic";
+
+/** Kasa dışı cihaz: ajanın sertifikası varsa (tablet https ile ulaşır) ya da yerel geliştirmede; yoksa null → bugünkü gibi yalnız bulut. */
+function lanLink(hub: KasaAgent | null, req: Request): LanLink | null {
+  if (!hub) return null;
+  const local = ["localhost", "127.0.0.1"].includes(new URL(req.url).hostname);
+  return hub.url.startsWith("https://") || local ? { url: hub.url, ticket: hub.ticket } : null;
+}
 const noStore = { "Cache-Control": "no-store" };
 
 export async function GET(req: Request) {
   const device = await getDevice();
   if (!device) return Response.json({ error: "cihaz" }, { status: 401, headers: noStore });
   const d = schema.devices, sh = schema.shifts;
-  const [[dv], [store, cats, prods, staff, [shift], [fs]], salon, agent] = await Promise.all([
+  const [[dv], [store, cats, prods, staff, [shift], [fs]], salon, agent, hub] = await Promise.all([
     getDb().select({ next: d.nextReceiptNo }).from(d).where(eq(d.id, device.id)),
     withTenant(device.tenantId, (tx) =>
       Promise.all([
@@ -31,6 +39,7 @@ export async function GET(req: Request) {
     ),
     device.vertical === "restoran" ? salonCatalog(device) : null,
     device.role === "kasa" ? kasaAgentFor(device) : null, // tablet/mutfak ekranı ajana ulaşamaz (127.0.0.1); yazıcıyı kasa sürer
+    device.role !== "kasa" && device.vertical === "restoran" ? kasaAgentFor(device) : null, // LAN merkezi (yalnız adisyon akışı)
   ]);
   const products = prods.filter((p) => isVatRate(p.vatRate)).map(({ stationId, ...p }) => ({
     ...p,
@@ -54,6 +63,7 @@ export async function GET(req: Request) {
       openShift: shift ? { ...shift, openedAt: shift.openedAt.toISOString() } : null,
       catalog: since === v ? null : catalog,
       agent, // her çekişte yeni bilet (30 gün geçerli)
+      lan: lanLink(hub, req),
     },
     { headers: noStore },
   );

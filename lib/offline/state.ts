@@ -4,7 +4,7 @@ import type { VatRate } from "@/lib/core/money";
 import type { VatLine } from "@/lib/core/cart";
 import type { Payment } from "@/lib/core/payment";
 import type { SyncDoc } from "@/lib/sync/docs";
-import type { KasaAgent } from "@/lib/agent/config";
+import type { KasaAgent, LanLink } from "@/lib/agent/config";
 import type { LineOption, OptionGroup } from "@/lib/core/options";
 import type { Buyer, ChannelModes } from "@/lib/core/fiscal";
 
@@ -32,6 +32,7 @@ export type Meta = {
   pinFails: number;
   pinLockUntil: number;
   agent?: KasaAgent | null; // M4: şubedeki yerel ajan (yoksa null/undefined → tarayıcı yazdırma)
+  lan?: LanLink | null; // LAN merkezi: kasa dışı cihazın adisyon akışı (yazdırma yok)
 };
 
 export type LocalSale = {
@@ -55,10 +56,11 @@ export const PIN_LOCK_MS = 5 * 60_000;
  * - Fiş sırası geri gitmez: max(yerel, bulut).
  * - Giden kutusu boşsa bulut vardiyada yetkilidir (yönetimden kapatılmış olabilir); doluysa yerel vardiya korunur.
  */
-export function reconcile(meta: Meta, server: { v: string; device: DeviceInfo; openShift: LocalShift | null; catalog: Catalog | null; agent?: KasaAgent | null }, pending: number): Meta {
+export function reconcile(meta: Meta, server: { v: string; device: DeviceInfo; openShift: LocalShift | null; catalog: Catalog | null; agent?: KasaAgent | null; lan?: LanLink | null }, pending: number): Meta {
   return {
     ...meta,
     agent: server.agent ?? null,
+    lan: server.lan ?? null,
     device: server.device,
     v: server.catalog ? server.v : meta.v,
     catalog: server.catalog ?? meta.catalog,

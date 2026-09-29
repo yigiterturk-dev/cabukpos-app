@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { foldTabs, type TabEvent } from "@/lib/core/tab";
 import { addTabEvents, allTabEvents, createLanStream, createTabStream, pruneTabEvents, pushLan, type NewTabEvent } from "@/lib/offline/tabs";
-import type { KasaAgent } from "@/lib/agent/config";
+import type { LanLink } from "@/lib/agent/config";
 
-export function useTabs(enabled: boolean, kick: () => void, agent?: KasaAgent | null) {
+export function useTabs(enabled: boolean, kick: () => void, agent?: LanLink | null) {
   const [events, setEvents] = useState<TabEvent[]>([]);
   const [cloud, setCloud] = useState(false);
   const [lan, setLan] = useState(false);
@@ -19,9 +19,8 @@ export function useTabs(enabled: boolean, kick: () => void, agent?: KasaAgent | 
   const agentUrl = agent?.url, agentTicket = agent?.ticket;
   useEffect(() => {
     if (!enabled || !agentUrl || !agentTicket) return;
-    const s = createLanStream({ ...agent!, url: agentUrl, ticket: agentTicket }, () => void reload(), setLan);
+    const s = createLanStream({ url: agentUrl, ticket: agentTicket }, () => void reload(), setLan);
     return () => s.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnız adres/bilet değişince yeniden bağlan
   }, [enabled, agentUrl, agentTicket, reload]);
   const tabs = useMemo(() => foldTabs(events), [events]);
   const add = useCallback(async (list: NewTabEvent[]) => {

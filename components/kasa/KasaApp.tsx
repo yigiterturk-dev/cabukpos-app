@@ -293,7 +293,7 @@ export function KasaApp() {
   const role = meta?.device?.role ?? "kasa";
   const restoran = meta?.device?.vertical === "restoran";
   const kick = useCallback(() => void sync.current?.kick(), []);
-  const tabsApi = useTabs(Boolean(restoran), kick, meta?.agent);
+  const tabsApi = useTabs(Boolean(restoran), kick, meta?.agent ?? meta?.lan);
   const now = useNow();
   const printingRef = useRef(new Map<string, number>()); // bilet → bir sonraki deneme zamanı
   useEffect(() => {
@@ -441,6 +441,7 @@ export function KasaApp() {
       {cashier && <span className="font-medium">{cashier.name}</span>}
       <SyncBadge s={status} />
       <AgentBadge s={agentCfg ? agent : null} />
+      {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
       {status.rejected > 0 && <span className="text-xs font-medium text-red-700">{status.rejected} belge reddedildi</span>}
       <div className="ml-auto flex items-center gap-4">
         {cashier && meta.agent?.drawer && atHome && (

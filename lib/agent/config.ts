@@ -51,6 +51,8 @@ export const heartbeatBody = z.object({
 export type Heartbeat = z.infer<typeof heartbeatBody>;
 
 /** Katalogla kasaya inen ajan bilgisi. */
+/** LAN merkezi: yalnız adisyon akışı için ajan adresi + bilet (yazdırma yetkisi yok). */
+export type LanLink = { url: string; ticket: string };
 export type KasaAgent = { url: string; ticket: string; autoPrint: boolean; drawer: boolean; scale: boolean; printers: { id: string; role: string; width: 58 | 80; codepage: "pc857" | "ascii" }[] };
 
 export const AGENT_PORT = 17654;
