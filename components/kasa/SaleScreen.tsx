@@ -7,6 +7,10 @@ import { buildIndex, parseKg, resolveScan } from "@/lib/core/scan";
 import type { KasaProduct } from "@/lib/offline/state";
 import type { Buyer } from "@/lib/core/fiscal";
 import { InvoiceForm } from "./InvoiceForm";
+import { ArrowRight, Banknote, CheckCircle2, CreditCard, FileText, Plus, Printer, Scale, ScanBarcode, ShoppingBasket, Trash2, Utensils, X } from "lucide-react";
+import { Button, Dialog, IconButton } from "@/components/ui";
+import { categoryTone } from "@/lib/ui/categoryTone";
+import { quickCash } from "@/lib/ui/quickCash";
 
 export type PayResult = { ok: true; saleId: string; receiptNo: string; change: number } | { ok: false; error: string };
 export type OnPay = (saleId: string, payments: Payment[], buyer: Buyer | null) => Promise<PayResult>;
@@ -29,6 +33,11 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
   add("nakit", cash); add("kart", card); add("yemek_karti", meal);
   const s = settle(total, payments);
   const all = (m: "nakit" | "kart" | "yemek_karti") => { const v = formatTL(total).replace(" ₺", ""); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
+  const other = (card === null ? 0 : parseTL(card) ?? 0) + (meal === null ? 0 : parseTL(meal) ?? 0);
+  const due = Math.max(0, total - other); // nakitle kapanacak kalan
+  const setCashK = (k: number) => setCash(formatTL(k).replace(" ₺", ""));
+  const full = formatTL(total).replace(" ₺", "");
+  const mode = cash === full && card === null && meal === null ? "nakit" : !cash && card === full && meal === null ? "kart" : !cash && card === null && meal === full ? "yemek_karti" : null;
   const submit = () => start(async () => {
     setError(null);
     try {
@@ -39,42 +48,55 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
     }
   });
 
+  const METHODS = [
+    { m: "nakit" as const, label: "Tamamı nakit", Icon: Banknote },
+    { m: "kart" as const, label: "Tamamı kart", Icon: CreditCard },
+    { m: "yemek_karti" as const, label: "Tamamı yemek kartı", Icon: Utensils },
+  ];
+  const amount = "tabular h-14 flex-1 rounded-xl border border-line bg-white px-4 text-right text-2xl font-semibold outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
   return (
-    <div role="dialog" aria-modal="true" aria-label="Ödeme" className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
-      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-        <div className="flex items-baseline justify-between"><h2 className="text-lg font-semibold">Ödeme</h2><span className="tabular text-2xl font-bold">{formatTL(total)}</span></div>
-        <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-          <button type="button" onClick={() => all("nakit")} className="rounded-lg border border-line px-2 py-2 hover:bg-stone-50">Tamamı nakit</button>
-          <button type="button" onClick={() => all("kart")} className="rounded-lg border border-line px-2 py-2 hover:bg-stone-50">Tamamı kart</button>
-          <button type="button" onClick={() => all("yemek_karti")} className="rounded-lg border border-line px-2 py-2 hover:bg-stone-50">Tamamı yemek kartı</button>
-        </div>
-        <div className="mt-4 space-y-3">
-          <label className="flex items-center gap-3"><span className="w-28 text-sm">Alınan nakit</span><input name="amount-nakit" inputMode="decimal" value={cash} onChange={(e) => setCash(e.target.value)} className="tabular flex-1 rounded-lg border border-line px-3 py-2 text-right" /></label>
-          {card !== null && <label className="flex items-center gap-3"><span className="w-28 text-sm">Kart</span><input name="amount-kart" inputMode="decimal" value={card} onChange={(e) => setCard(e.target.value)} className="tabular flex-1 rounded-lg border border-line px-3 py-2 text-right" /><button type="button" aria-label="Kartı kaldır" onClick={() => setCard(null)} className="px-2 text-muted">×</button></label>}
-          {meal !== null && <label className="flex items-center gap-3"><span className="w-28 text-sm">Yemek kartı</span><input name="amount-yemek_karti" inputMode="decimal" value={meal} onChange={(e) => setMeal(e.target.value)} className="tabular flex-1 rounded-lg border border-line px-3 py-2 text-right" /><button type="button" aria-label="Yemek kartını kaldır" onClick={() => setMeal(null)} className="px-2 text-muted">×</button></label>}
-          <div className="flex gap-3 text-sm">
-            {card === null && <button type="button" onClick={() => setCard("")} className="text-brand underline">Kart ekle</button>}
-            {meal === null && <button type="button" onClick={() => setMeal("")} className="text-brand underline">Yemek kartı ekle</button>}
-          </div>
-        </div>
-        {invoicing ? (
-          <InvoiceForm initial={buyer} onSave={(b) => { setBuyer(b); setInvoicing(false); }} onCancel={() => { setBuyer(null); setInvoicing(false); }} />
-        ) : (
-          <div className="mt-3 flex items-center gap-2 text-sm">
-            <button type="button" onClick={() => setInvoicing(true)} className="rounded-lg border border-line px-3 py-1.5 hover:bg-stone-50">Fatura</button>
-            {buyer && <span className="rounded-full bg-brand/10 px-2 py-0.5 text-brand" data-testid="buyer-badge">{buyer.name}</span>}
+    <Dialog label="Ödeme" title="Ödeme" aside={<span className="tabular text-3xl font-bold tracking-tight">{formatTL(total)}</span>} onClose={onClose}
+      footer={<>
+        <Button variant="secondary" size="lg" onClick={onClose} className="flex-1">Vazgeç</Button>
+        <Button size="lg" disabled={!s.ok || pending || invoicing} onClick={submit} className="flex-[2]">{pending ? "Kaydediliyor…" : "Satışı tamamla"}</Button>
+      </>}>
+      <div className="grid grid-cols-3 gap-2">
+        {METHODS.map(({ m, label, Icon }) => (
+          <button key={m} type="button" onClick={() => all(m)} aria-pressed={mode === m}
+            className={`press flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-medium ${mode === m ? "border-brand bg-brand-soft text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong hover:bg-surface-2"}`}>
+            <Icon aria-hidden className="size-6" />{label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-5 space-y-3">
+        <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Alınan nakit</span><input name="amount-nakit" inputMode="decimal" value={cash} onChange={(e) => setCash(e.target.value)} placeholder="0,00" className={amount} /></label>
+        {due > 0 && (
+          <div className="flex flex-wrap gap-2 pl-[7.75rem]">
+            <Button variant="secondary" size="sm" onClick={() => setCashK(due)}>Tam tutar</Button>
+            {quickCash(due).map((k) => <Button key={k} variant="secondary" size="sm" className="tabular" onClick={() => setCashK(k)}>{formatTL(k).replace(",00", "")}</Button>)}
           </div>
         )}
-        <div className="mt-4 min-h-6 text-sm font-medium" aria-live="polite">
-          {s.ok ? <span className="text-emerald-700">Para üstü {formatTL(s.change)}</span> : payments.length > 0 && <span className="text-red-700">{s.error}</span>}
-        </div>
-        {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
-        <div className="mt-5 flex gap-2">
-          <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-line py-3 text-sm">Vazgeç</button>
-          <button type="button" disabled={!s.ok || pending || invoicing} onClick={submit} className="flex-[2] rounded-lg bg-brand py-3 font-medium text-white disabled:opacity-40">{pending ? "Kaydediliyor…" : "Satışı tamamla"}</button>
+        {card !== null && <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Kart</span><input name="amount-kart" inputMode="decimal" value={card} onChange={(e) => setCard(e.target.value)} className={amount} /><IconButton label="Kartı kaldır" onClick={() => setCard(null)}><X aria-hidden className="size-5" /></IconButton></label>}
+        {meal !== null && <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Yemek kartı</span><input name="amount-yemek_karti" inputMode="decimal" value={meal} onChange={(e) => setMeal(e.target.value)} className={amount} /><IconButton label="Yemek kartını kaldır" onClick={() => setMeal(null)}><X aria-hidden className="size-5" /></IconButton></label>}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {card === null && <Button variant="ghost" size="sm" onClick={() => setCard("")}><Plus aria-hidden className="size-4" />Kart ekle</Button>}
+          {meal === null && <Button variant="ghost" size="sm" onClick={() => setMeal("")}><Plus aria-hidden className="size-4" />Yemek kartı ekle</Button>}
+          {!invoicing && <Button variant="ghost" size="sm" onClick={() => setInvoicing(true)}><FileText aria-hidden className="size-4" />Fatura</Button>}
+          {buyer && !invoicing && <span className="inline-flex items-center rounded-full bg-brand-soft px-2.5 text-sm text-brand" data-testid="buyer-badge">{buyer.name}</span>}
         </div>
       </div>
-    </div>
+      {invoicing && <InvoiceForm initial={buyer} onSave={(b) => { setBuyer(b); setInvoicing(false); }} onCancel={() => { setBuyer(null); setInvoicing(false); }} />}
+      <div className="mt-5" aria-live="polite">
+        {s.ok ? (
+          <div className="flex items-baseline justify-between rounded-xl bg-ok-soft px-4 py-3 text-ok"><span className="font-medium">Para üstü</span><span className="tabular text-2xl font-bold">{formatTL(s.change)}</span></div>
+        ) : payments.length > 0 ? (
+          <div className="rounded-xl bg-bad-soft px-4 py-3 text-sm font-medium text-bad">{s.error}</div>
+        ) : (
+          <div className="rounded-xl bg-surface-3 px-4 py-3 text-sm text-muted">Ödeme yöntemini seçin ya da alınan tutarı girin.</div>
+        )}
+      </div>
+      {error && <p className="mt-3 text-sm text-bad">{error}</p>}
+    </Dialog>
   );
 }
 
@@ -97,25 +119,23 @@ function WeighDialog({ product, onOk, onClose, scale }: { product: KasaProduct; 
     setReading(false);
   };
   return (
-    <div role="dialog" aria-modal="true" aria-label="Tartım" className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
-      <form onSubmit={(e) => { e.preventDefault(); if (g) onOk(g); }} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold">{product.name}</h2>
-        <p className="tabular text-sm text-muted">{formatTL(product.price)}/kg</p>
-        <label className="mt-4 block text-sm font-medium" htmlFor="weigh-kg">Ağırlık (kg)</label>
-        <input id="weigh-kg" name="kg" autoFocus inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} placeholder="ör. 0,750" className="tabular mt-1.5 w-full rounded-lg border border-line px-3 py-3 text-right text-xl" />
+    <Dialog label="Tartım" title={product.name} aside={<span className="tabular text-sm text-muted">{formatTL(product.price)}/kg</span>} onClose={onClose} size="sm"
+      footer={<>
+        <Button variant="secondary" size="lg" onClick={onClose} className="flex-1">Vazgeç</Button>
+        <Button type="submit" form="weigh-form" size="lg" disabled={!g} className="flex-[2]">Sepete ekle</Button>
+      </>}>
+      <form id="weigh-form" onSubmit={(e) => { e.preventDefault(); if (g) onOk(g); }}>
+        <label className="block text-sm font-medium text-ink-2" htmlFor="weigh-kg">Ağırlık (kg)</label>
+        <input id="weigh-kg" name="kg" autoFocus inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} placeholder="ör. 0,750" className="tabular mt-1.5 h-16 w-full rounded-xl border border-line px-4 text-right text-3xl font-semibold outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
         {scale && (
-          <div className="mt-2 flex items-center gap-3">
-            <button type="button" onClick={() => void fromScale()} disabled={reading} className="rounded-lg border border-brand px-3 py-2 text-sm font-medium text-brand disabled:opacity-40">{reading ? "Okunuyor…" : "Teraziden al"}</button>
-            {scaleMsg && <span className="text-sm text-red-700" role="alert">{scaleMsg}</span>}
+          <div className="mt-3 flex items-center gap-3">
+            <Button variant="secondary" onClick={() => void fromScale()} disabled={reading}><Scale aria-hidden className="size-4" />{reading ? "Okunuyor…" : "Teraziden al"}</Button>
+            {scaleMsg && <span className="text-sm text-bad" role="alert">{scaleMsg}</span>}
           </div>
         )}
-        <div className="tabular mt-3 min-h-6 text-right font-medium">{g ? formatTL(Math.round((product.price * g) / 1000)) : v && <span className="text-sm text-red-700">Ağırlık geçersiz.</span>}</div>
-        <div className="mt-4 flex gap-2">
-          <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-line py-3 text-sm">Vazgeç</button>
-          <button type="submit" disabled={!g} className="flex-[2] rounded-lg bg-brand py-3 font-medium text-white disabled:opacity-40">Sepete ekle</button>
-        </div>
+        <div className="tabular mt-4 min-h-8 text-right text-2xl font-bold">{g ? formatTL(Math.round((product.price * g) / 1000)) : v && <span className="text-sm font-medium text-bad">Ağırlık geçersiz.</span>}</div>
       </form>
-    </div>
+    </Dialog>
   );
 }
 
@@ -164,60 +184,86 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
     setQ("");
   };
 
+  const inCart = new Map(cart.map((l) => [l.productId, l.qtyMilli]));
+  const count = cart.reduce((a, l) => a + (byId.get(l.productId)?.kind === "tartili" ? 1 : l.qtyMilli / 1000), 0);
+  const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-white text-ink-2 hover:border-line-strong"}`;
+
   return (
-    <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1fr_380px]">
+    <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1fr_400px]">
       <section className="flex min-h-0 flex-col">
-        <input ref={search} value={q} onChange={(e) => { setQ(e.target.value); setScanError(null); }} onKeyDown={onScan} placeholder="Ürün ara ya da barkod okut (5* = 5 adet)" aria-label="Ürün ara ya da barkod okut" autoFocus className="rounded-xl border border-line px-4 py-3" />
-        <p className="mb-3 mt-1 min-h-5 text-sm text-red-700" role="alert">{scanError}</p>
-        <div className="mb-3 flex gap-2 overflow-x-auto">
-          <button type="button" onClick={() => setCat(null)} className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-sm ${cat === null ? "border-brand bg-brand-soft text-brand" : "border-line"}`}>{market && !q ? "Hızlı tuşlar" : "Tümü"}</button>
-          {categories.map((c) => <button key={c.id} type="button" onClick={() => setCat(c.id)} className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-sm ${cat === c.id ? "border-brand bg-brand-soft text-brand" : "border-line"}`}>{c.name}</button>)}
+        <div className="relative">
+          <ScanBarcode aria-hidden className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted" />
+          <input ref={search} value={q} onChange={(e) => { setQ(e.target.value); setScanError(null); }} onKeyDown={onScan} placeholder="Ürün ara ya da barkod okut (5* = 5 adet)" aria-label="Ürün ara ya da barkod okut" autoFocus
+            className="h-14 w-full rounded-2xl border border-line bg-white pl-12 pr-4 text-base shadow-card outline-none transition placeholder:text-stone-400 focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
         </div>
-        <div className="grid grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 xl:grid-cols-4">
-          {shown.map((p) => (
-            <button key={p.id} type="button" onClick={() => { pick(p); refocus(); }} className="flex h-24 flex-col justify-between rounded-xl border border-line p-3 text-left hover:border-brand active:bg-brand-soft">
-              <span className="font-medium leading-tight">{p.name}</span>
-              <span className="tabular text-sm text-muted">{formatTL(p.price)}{p.kind === "tartili" && "/kg"}</span>
-            </button>
-          ))}
-          {shown.length === 0 && <p className="col-span-full py-8 text-center text-sm text-muted">{market && !q ? "Hızlı tuş yok. Barkod okutun ya da arayın." : "Ürün yok."}</p>}
+        <p className="mb-2 mt-1 min-h-5 text-sm font-medium text-bad" role="alert">{scanError}</p>
+        <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button type="button" onClick={() => setCat(null)} className={chip(cat === null)}>{market && !q ? "Hızlı tuşlar" : "Tümü"}</button>
+          {categories.map((c) => <button key={c.id} type="button" onClick={() => setCat(c.id)} className={chip(cat === c.id)}><span aria-hidden className={`size-2.5 rounded-full ${categoryTone(c.id).dot}`} />{c.name}</button>)}
+        </div>
+        <div className="grid auto-rows-[7rem] grid-cols-2 gap-3 overflow-y-auto pb-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          {shown.map((p) => {
+            const n = inCart.get(p.id);
+            return (
+              <button key={p.id} type="button" onClick={() => { pick(p); refocus(); }}
+                className={`press relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-white p-3.5 pt-4 text-left shadow-card hover:border-line-strong ${n ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
+                <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
+                <span className="line-clamp-2 pr-7 text-[15px] font-semibold leading-snug">{p.name}</span>
+                <span className="tabular text-[15px] font-medium text-ink-2">{formatTL(p.price)}{p.kind === "tartili" && <span className="text-muted">/kg</span>}</span>
+                {n !== undefined && <span aria-hidden className="tabular absolute right-2.5 top-3 grid min-w-7 place-items-center rounded-full bg-brand px-1.5 py-0.5 text-xs font-bold text-white">{p.kind === "tartili" ? <Scale className="size-3.5" /> : n / 1000}</span>}
+              </button>
+            );
+          })}
+          {shown.length === 0 && <p className="col-span-full py-12 text-center text-sm text-muted">{market && !q ? "Hızlı tuş yok. Barkod okutun ya da arayın." : "Ürün yok."}</p>}
         </div>
       </section>
-      <aside className="flex min-h-0 flex-col rounded-2xl border border-line">
+      <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <h2 className="font-semibold">Sepet</h2>
+          {cart.length > 0 && <span className="tabular text-sm text-muted">{count.toLocaleString("tr-TR")} ürün</span>}
+        </div>
         <div className="flex-1 divide-y divide-line overflow-y-auto">
-          {cart.length === 0 && <p className="p-6 text-center text-sm text-muted">Sepet boş</p>}
+          {cart.length === 0 && (
+            <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted">
+              <ShoppingBasket aria-hidden className="size-10 text-stone-300" />Sepet boş
+            </div>
+          )}
           {cart.map((l) => {
             const weighed = byId.get(l.productId)?.kind === "tartili";
+            const step = "press grid size-11 place-items-center rounded-xl border border-line bg-white text-lg font-medium hover:bg-surface-3";
             return (
-              <div key={l.productId} className="flex items-center gap-2 p-3" data-testid="cart-line">
+              <div key={l.productId} className="flex items-center gap-2 px-4 py-2.5" data-testid="cart-line">
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{l.name}</div><div className="tabular text-xs text-muted">{weighed ? `${kg(l.qtyMilli)} × ${formatTL(l.unitPrice)}/kg` : formatTL(l.unitPrice)}</div></div>
                 {weighed ? (
-                  <button type="button" aria-label={`${l.name} sil`} onClick={() => shrink(setQty(cart, l.productId, 0))} className="rounded-lg border border-line px-2 py-1 text-xs">Sil</button>
+                  <button type="button" aria-label={`${l.name} sil`} onClick={() => shrink(setQty(cart, l.productId, 0))} className={`${step} text-bad`}><Trash2 aria-hidden className="size-4" /></button>
                 ) : (
                   <>
-                    <button type="button" aria-label={`${l.name} azalt`} onClick={() => shrink(setQty(cart, l.productId, l.qtyMilli - 1000))} className="size-8 rounded-lg border border-line">−</button>
-                    <span className="tabular w-8 text-center" data-testid="cart-qty">{l.qtyMilli / 1000}</span>
-                    <button type="button" aria-label={`${l.name} artır`} onClick={() => setCart((c) => setQty(c, l.productId, l.qtyMilli + 1000))} className="size-8 rounded-lg border border-line">+</button>
+                    <button type="button" aria-label={`${l.name} azalt`} onClick={() => shrink(setQty(cart, l.productId, l.qtyMilli - 1000))} className={step}>−</button>
+                    <span className="tabular w-8 text-center font-semibold" data-testid="cart-qty">{l.qtyMilli / 1000}</span>
+                    <button type="button" aria-label={`${l.name} artır`} onClick={() => setCart((c) => setQty(c, l.productId, l.qtyMilli + 1000))} className={step}>+</button>
                   </>
                 )}
-                <span className="tabular w-24 text-right font-medium">{formatTL(lineTotal(l))}</span>
+                <span className="tabular w-24 text-right font-semibold">{formatTL(lineTotal(l))}</span>
               </div>
             );
           })}
         </div>
-        <div className="border-t border-line p-4">
+        <div className="border-t border-line bg-surface-2 p-4">
           {t.vat.map((v) => <div key={v.rate} className="tabular flex justify-between text-xs text-muted"><span>KDV %{v.rate}</span><span>{formatTL(v.vat)}</span></div>)}
-          <div data-testid="cart-total" className="tabular mt-1 flex items-baseline justify-between"><span className="text-sm">TOPLAM</span><span className="text-3xl font-bold">{formatTL(t.total)}</span></div>
+          <div data-testid="cart-total" className="tabular mt-1 flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">TOPLAM</span><span className="text-4xl font-bold tracking-tight">{formatTL(t.total)}</span></div>
           {last && (
-            <div className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
-              Fiş {last.receiptNo} · Para üstü {formatTL(last.change)}
-              <button type="button" onClick={() => onReceipt(last.saleId)} className="ml-2 font-medium underline">Fişi yazdır</button>
+            <div className="mt-3 rounded-xl border border-emerald-200 bg-ok-soft p-3 text-sm text-ok">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 aria-hidden className="size-5 shrink-0" />
+                <span className="flex-1 font-medium">Fiş {last.receiptNo} · Para üstü {formatTL(last.change)}</span>
+                <Button variant="secondary" size="sm" onClick={() => onReceipt(last.saleId)}><Printer aria-hidden className="size-4" />Fişi yazdır</Button>
+              </div>
               {prints[last.saleId] && (
-                <div className="mt-1" data-testid="print-state" aria-live="polite">
+                <div className="mt-1.5 pl-7" data-testid="print-state" aria-live="polite">
                   {prints[last.saleId].state === "printing" && "Fiş yazdırılıyor…"}
                   {prints[last.saleId].state === "ok" && "Fiş yazdırıldı."}
                   {prints[last.saleId].state === "fail" && (
-                    <span className="text-red-700">
+                    <span className="text-bad">
                       Yazdırılamadı{prints[last.saleId].error ? ` (${prints[last.saleId].error})` : ""}.{" "}
                       <button type="button" onClick={() => onRetryPrint?.(last.saleId)} className="font-medium underline">Yeniden dene</button>
                     </span>
@@ -226,9 +272,9 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
               )}
             </div>
           )}
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <button type="button" onClick={clear} disabled={!cart.length} className="rounded-xl border border-line py-4 text-sm disabled:opacity-40">Temizle</button>
-            <button type="button" onClick={() => setPaying(true)} disabled={!cart.length} className="col-span-2 rounded-xl bg-brand py-4 text-lg font-semibold text-white disabled:opacity-40">Öde</button>
+          <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
+            <Button variant="secondary" size="xl" onClick={clear} disabled={!cart.length} className="!text-base !font-medium"><Trash2 aria-hidden className="size-5" />Temizle</Button>
+            <Button size="xl" onClick={() => setPaying(true)} disabled={!cart.length} className="text-xl">Öde<ArrowRight aria-hidden className="size-6" /></Button>
           </div>
         </div>
       </aside>

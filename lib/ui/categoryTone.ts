@@ -1,7 +1,7 @@
 // Kategori rengi: ürünü kasada gözle bulmak için soluk ton. Sınıflar düz metin (Tailwind taraması görsün).
 export type Tone = { dot: string; stripe: string };
 
-export const NEUTRAL_TONE: Tone = { dot: "bg-stone-300", stripe: "bg-stone-200" };
+export const NEUTRAL_TONE: Tone = { dot: "bg-stone-300", stripe: "bg-transparent" };
 
 const TONES: Tone[] = [
   { dot: "bg-orange-400", stripe: "bg-orange-300" },

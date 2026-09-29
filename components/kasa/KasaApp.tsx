@@ -484,18 +484,18 @@ export function KasaApp() {
       {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
       {status.rejected > 0 && <span className="text-xs font-medium text-bad">{status.rejected} belge reddedildi</span>}
       {cashier && meta.agent?.drawer && atHome && (
-        <Button variant="secondary" onClick={() => {
+        <Button variant="secondary" title="Çekmece" onClick={() => {
           if (meta.catalog.staff.find((x) => x.id === cashier.id)?.role === "mudur") void drawerBy(null);
           else setView({ name: "cekmece" });
-        }}><Inbox aria-hidden className="size-4" />Çekmece</Button>
+        }}><Inbox aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Çekmece</span></Button>
       )}
-      {cashier && meta.shift && atHome && <Button variant="secondary" onClick={() => setView({ name: "iade" })}><Undo2 aria-hidden className="size-4" />İade</Button>}
-      {cashier && meta.shift && atHome && <Button variant="secondary" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" />Gün sonu</Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" title="İade" onClick={() => setView({ name: "iade" })}><Undo2 aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">İade</span></Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" title="Gün sonu" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Gün sonu</span></Button>}
       {cashier && (
         <span className="flex h-10 items-center gap-1 rounded-full border border-line bg-white pl-1 shadow-card">
           <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{cashier.name.trim().charAt(0).toLocaleUpperCase("tr")}</span>
           <span className="max-w-32 truncate px-1 text-sm font-medium">{cashier.name}</span>
-          <button type="button" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted hover:bg-surface-3 hover:text-ink"><LogOut aria-hidden className="size-4" />Kasiyer değiştir</button>
+          <button type="button" title="Kasiyer değiştir" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted hover:bg-surface-3 hover:text-ink"><LogOut aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Kasiyer değiştir</span></button>
         </span>
       )}
     </Bar>
