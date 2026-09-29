@@ -122,3 +122,12 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-m9a-rapor-design.md`, plan `doc
 - Rapor = istek anında SQL (`lib/admin/report.ts`) + saf hesap (`lib/core/report.ts`). İade olayı iade fişinin kendi numarasıyla görünür.
 - E2E art arda koşulursa kayıt sınırı (saatte 5/IP) dolar → yerelde `delete from login_attempts where key like 'signup:%'`.
 - Prod: `scripts/prod-push.sh 1` (şema: register_events + sales_at_idx) → `2` (rls) → `3` (relrowsecurity: register_events t) → main → canlı E2E m9a.
+
+## M9b — Abonelik (2026-09-29)
+
+Spec `docs/superpowers/specs/2026-09-29-cabukpos-m9b-abonelik-design.md`, plan `docs/superpowers/plans/2026-09-29-cabukpos-m9b-abonelik.md`. 120/120 test, E2E M9b + regresyon M1/M9a OK.
+- 14 gün deneme (`tenants.trial_ends_at`, mevcut işletmeler yayından 14 gün), durum tarihten türer: deneme/aktif → 7 gün ek süre → kilit. Kilit = yönetim server action'ları `requireWriter` ile Abonelik'e yönlenir; okuma açık; **kasa hiç kilitlenmez**.
+- Ödeme: `BillingProvider`; v1 yalnız `fake` (`BILLING_PROVIDER=fake`, yalnız yerel). Canlıda env yok → "Online ödeme yakında". Gerçek sağlayıcı = yeni dosya + webhook route → `completePayment`.
+- Fiyat env: `PLAN_PRICE_AYLIK`, `PLAN_PRICE_YILLIK` (kuruş, KDV dahil), `SALES_CONTACT`. Yerel .env.local'da TEST değerleri.
+- Günlük cron `/api/cron/billing` (06:00 UTC): bitişe 1-7 gün kala sahiplere tek e-posta (Resend yoksa atlar).
+- Prod: şema → db-rls (billing_payments izni) → kontrol → main → canlı E2E m9b (ödeme adımları atlanır).
