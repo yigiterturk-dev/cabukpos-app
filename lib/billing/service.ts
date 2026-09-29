@@ -6,7 +6,7 @@ import { extendFrom, type BillingPeriod } from "@/lib/core/billing";
 const T = schema.tenants, P = schema.billingPayments;
 
 export async function tenantBilling(tenantId: string) {
-  const [t] = await getDb().select({ trialEndsAt: T.trialEndsAt, paidUntil: T.paidUntil }).from(T).where(eq(T.id, tenantId));
+  const [t] = await getDb().select({ trialEndsAt: T.trialEndsAt, paidUntil: T.paidUntil, address: T.address }).from(T).where(eq(T.id, tenantId));
   return t ?? null;
 }
 

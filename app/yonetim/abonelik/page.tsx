@@ -21,6 +21,8 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
       <PageHeader title="Abonelik" desc="ÇabukPOS aboneliği. Abonelik bitse de kasa satışa devam eder; yalnız yönetim salt okunur olur." />
       {sp.kilit && b.locked && <Card className="mb-4 border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">Abonelik sona erdiği için değişiklik yapılamıyor. Ödeme yapınca yönetim hemen açılır.</Card>}
       {sp.sonuc === "ok" && <Card className="mb-4 border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800" role="status">Ödeme alındı, teşekkürler.</Card>}
+      {sp.sonuc === "isleniyor" && <Card className="mb-4 border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">Ödeme işleniyor; banka onayı gelince abonelik birkaç saniye içinde uzar. Sayfayı yenileyebilirsin.</Card>}
+      {sp.sonuc === "telefon" && <Card className="mb-4 border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">Kartla ödeme için geçerli bir cep telefonu gir.</Card>}
       {sp.sonuc === "hata" && <Card className="mb-4 border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">Ödeme tamamlanamadı. Tekrar deneyebilirsin.</Card>}
       <Card className="mb-6 flex flex-wrap items-center gap-3 p-4">
         <Badge tone={b.locked ? "bad" : b.warn ? "warn" : "ok"}><span data-testid="billing-state">{STATE_LABEL[b.state]}</span></Badge>
@@ -39,6 +41,7 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
               {provider && price ? (
                 <form action={startCheckout}>
                   <input type="hidden" name="period" value={p.key} />
+                  {provider.name === "paytr" && <input name="phone" type="tel" required minLength={10} placeholder="Cep telefonu (05…)" autoComplete="tel" className="mb-2 w-full rounded-lg border border-line px-3 py-2 text-sm" />}
                   <button className="w-full rounded-lg bg-brand py-2.5 font-medium text-white">{p.label} öde</button>
                 </form>
               ) : <p className="text-sm text-muted">Online ödeme yakında.{contact ? ` Ödeme için: ${contact}` : ""}</p>}
