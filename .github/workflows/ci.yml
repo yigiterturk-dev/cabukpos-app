@@ -47,3 +47,16 @@ jobs:
       - run: npm run lint
       - run: npx tsc --noEmit
       - run: npm run build
+      - name: Start production server
+        run: |
+          nohup npm start -- -p 3810 > /tmp/cabukpos-next.log 2>&1 &
+          for i in {1..30}; do
+            curl --fail --silent http://127.0.0.1:3810/api/health && exit 0
+            sleep 1
+          done
+          cat /tmp/cabukpos-next.log
+          exit 1
+      - name: Smoke test health and readiness
+        run: |
+          curl --fail --silent http://127.0.0.1:3810/api/health
+          curl --fail --silent http://127.0.0.1:3810/api/ready
