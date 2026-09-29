@@ -9,8 +9,9 @@ import { createQueue } from "./queue";
 import { sendToPrinter } from "./printers";
 import { readStable } from "./scale-io";
 import type { ScaleReading } from "./scale";
+import { createTabBuffer, MAX_BATCH, validEvent, type Entry } from "./tabs";
 
-export const VERSION = "0.4.0";
+export const VERSION = "0.5.0";
 
 export type Hub = {
   hubKey: string;
@@ -21,11 +22,20 @@ export type Hub = {
   /** test için yazıcı/terazi değiştirilebilir */
   send?: (p: PrinterConfig, data: Uint8Array) => Promise<void>;
   scale?: (c: AgentConfig["scale"]) => Promise<ScaleReading>;
+  /** LAN merkezi: adisyon olayı arabelleğinin dosyası (null → yalnız bellek) */
+  tabsFile?: string | null;
+  streamMs?: number;
 };
 
 type PrinterStatus = { ok: boolean | null; error: string | null };
 
 export function createHub(h: Hub) {
+  const tabs = createTabBuffer(h.tabsFile ?? null);
+  const clients = new Set<http.ServerResponse>();
+  setInterval(() => tabs.compact(), 3600_000).unref();
+  const writeBatch = (res: http.ServerResponse, entries: Entry[]) => {
+    if (entries.length) res.write(`id: ${entries.at(-1)!.lanSeq}\ndata: ${JSON.stringify(entries.map((e) => e.event))}\n\n`);
+  };
   const status = new Map<string, PrinterStatus>();
   const send = h.send ?? sendToPrinter;
   const printerById = (id: string) => h.config()?.printers.find((p) => p.id === id);
@@ -53,6 +63,7 @@ export function createHub(h: Hub) {
       printers: (c?.printers ?? []).map((p) => ({ id: p.id, name: p.name, role: p.role, ...(status.get(p.id) ?? { ok: null, error: null }) })),
       failed: queue.failed(),
       scale: !!c && c.scale.kind !== "yok",
+      tabs: { buffered: tabs.size(), clients: clients.size },
     };
   }
 
@@ -66,11 +77,12 @@ export function createHub(h: Hub) {
     if (req.method === "OPTIONS") { res.writeHead(origin === h.origin ? 204 : 403, cors); return res.end(); }
     if (origin && origin !== h.origin) return send(403, { error: "köken" });
 
-    const ticket = /^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1];
+    const url = new URL(req.url ?? "/", "http://x");
+    const streamRoute = req.method === "GET" && url.pathname === "/tabs/stream";
+    const ticket = /^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1] ?? (streamRoute ? url.searchParams.get("ticket") ?? undefined : undefined);
     const claims = ticket ? await verifyTicket(h.hubKey, ticket) : null;
     if (!claims || claims.t !== h.tenantId || h.revoked().includes(claims.d)) return send(401, { error: "bilet" });
 
-    const url = new URL(req.url ?? "/", "http://x");
     let body: Record<string, unknown> = {};
     if (req.method === "POST") {
       const chunks: Buffer[] = [];
@@ -80,6 +92,25 @@ export function createHub(h: Hub) {
     }
 
     const route = `${req.method} ${url.pathname}`;
+    if (route === "POST /tabs/events") {
+      const evs = body.events;
+      if (!Array.isArray(evs) || evs.length > MAX_BATCH || !evs.every(validEvent)) return send(400, { error: "olay" });
+      const added = tabs.accept(evs);
+      for (const c of clients) writeBatch(c, added);
+      return send(200, { accepted: added.length });
+    }
+    if (route === "GET /tabs/stream") {
+      const last = Number(req.headers["last-event-id"] ?? url.searchParams.get("after") ?? 0) || 0;
+      res.writeHead(200, { ...cors, "Content-Type": "text/event-stream", Connection: "keep-alive" });
+      res.write(": ok\n\n");
+      const pending = tabs.after(last > tabs.lastSeq() ? 0 : last);
+      for (let i = 0; i < pending.length; i += MAX_BATCH) writeBatch(res, pending.slice(i, i + MAX_BATCH));
+      clients.add(res);
+      const ping = setInterval(() => res.write(": ping\n\n"), 25_000);
+      const end = setTimeout(() => res.end(), h.streamMs ?? 240_000);
+      res.on("close", () => { clients.delete(res); clearInterval(ping); clearTimeout(end); });
+      return;
+    }
     if (route === "GET /status") return send(200, statusBody());
     if (route === "POST /print") {
       const p = pick(typeof body.printer === "string" ? body.printer : undefined);

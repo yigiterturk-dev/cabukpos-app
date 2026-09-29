@@ -1,6 +1,7 @@
 // agent/src/main.ts — ÇabukPOS yerel ajanı. Komutlar: pair <kod> [--url], run, install, uninstall, test-print [yazıcı].
 // Seçenekler: --dir <klasör> (varsayılan %APPDATA%\cabukpos | ~/.config/cabukpos), --port <n>.
 import { execFile } from "node:child_process";
+import path from "node:path";
 import { AGENT_PORT } from "@/lib/agent/config";
 import { EscPos } from "@/lib/core/escpos";
 import { heartbeat, pair } from "./cloud";
@@ -27,7 +28,7 @@ async function cmdPair(code: string | undefined) {
 
 async function cmdRun() {
   let s: AgentState = need();
-  const hub = createHub({ hubKey: s.hubKey, tenantId: s.tenantId, origin: new URL(s.cloudUrl).origin, config: () => s.config, revoked: () => s.revoked });
+  const hub = createHub({ hubKey: s.hubKey, tenantId: s.tenantId, origin: new URL(s.cloudUrl).origin, config: () => s.config, revoked: () => s.revoked, tabsFile: path.join(dir, "tabs.jsonl") });
   await hub.listenLocal(s.port).catch((e: Error) => die(`127.0.0.1:${s.port} açılamadı: ${e.message}`));
   log(`ÇabukPOS ajanı ${VERSION} — http://127.0.0.1:${s.port}`);
 
