@@ -17,6 +17,9 @@ Bu belge canlı çalıştırma sınırlarını ve geri dönüş adımlarını te
 ## Canlı kontrol
 
 - Vercel deployment'ın Ready durumunu ve build logunu doğrulayın.
+- Liveness için `/api/health`, veritabanı dahil trafik hazırlığı için `/api/ready`
+  uçlarının sırasıyla `200` ve `200` dönmesini kontrol edin. `/api/ready` `503`
+  dönerse deployment'ı trafiğe almadan önce veritabanı bağlantısını inceleyin.
 - `/giris`, `/kayit` ve `/f/<token>` akışlarını anonim olarak kontrol edin.
 - Yönetim ve kasa girişinden sonra küçük bir test satışı açıp eşitleme, fiş ve
   gün sonu akışını doğrulayın.
