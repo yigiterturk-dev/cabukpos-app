@@ -59,19 +59,19 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   };
 
   return (
-    <div className="p-4">
+    <div className="flex-1 p-4">
       <div className="mb-4 flex items-center gap-3">
-        <h2 className="text-lg font-semibold">Paket siparişleri</h2>
-        {waiting > 0 && <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-medium text-white" data-testid="waiting-count">{waiting} onay bekliyor</span>}
-        <button type="button" onClick={onNew} className="ml-auto rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white">+ Yeni paket</button>
+        <h2 className="text-xl font-semibold tracking-tight">Paket siparişleri</h2>
+        {waiting > 0 && <span className="animate-pulse rounded-full bg-bad px-2.5 py-0.5 text-xs font-medium text-white" data-testid="waiting-count">{waiting} onay bekliyor</span>}
+        <button type="button" onClick={onNew} className="press ml-auto inline-flex min-h-11 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-card hover:bg-brand-hover">+ Yeni paket</button>
       </div>
       <div className="grid gap-3 lg:grid-cols-5 md:grid-cols-3">
         {COLUMNS.map((c) => {
           const cards = list.filter((t) => c.key.includes(deliveryStatus(t)));
           if (c.key[0] === "onay_bekliyor" && !cards.length) return <div key={c.title} className="hidden lg:block" />;
           return (
-            <section key={c.title} aria-label={c.title} className="min-w-0">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{c.title} <span className="tabular">({cards.length})</span></h3>
+            <section key={c.title} aria-label={c.title} className="min-w-0 rounded-2xl bg-surface-3/70 p-2">
+              <h3 className="mb-2 px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted">{c.title} <span className="tabular">({cards.length})</span></h3>
               <ul className="space-y-2">
                 {cards.map((t) => {
                   const st = deliveryStatus(t);
@@ -81,7 +81,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                   const deadline = o?.source?.deadline ? Math.ceil((Date.parse(o.source.deadline) - now) / 60_000) : null;
                   const closed = st === "teslim" || st === "iptal" || st === "reddedildi";
                   return (
-                    <li key={t.id} data-testid="delivery-card" className={`rounded-xl border bg-white p-3 text-sm ${st === "onay_bekliyor" ? "border-red-300 ring-2 ring-red-100" : "border-line"} ${closed ? "opacity-70" : ""}`}>
+                    <li key={t.id} data-testid="delivery-card" className={`rounded-xl border bg-white p-3 text-sm shadow-card ${st === "onay_bekliyor" ? "border-red-300 ring-2 ring-bad-soft" : "border-line"} ${closed ? "opacity-70" : ""}`}>
                       <button type="button" onClick={() => !closed && onOpen(t.id)} className="block w-full text-left">
                         <div className="flex items-baseline gap-2">
                           <span className="font-semibold">{tabLabel(t, tables, PLATFORM_NAMES)}</span>
@@ -169,7 +169,7 @@ function CancelDialog({ meta, onMeta, waiter, onOk, onClose }: { meta: Meta; onM
           <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="w-full rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
-            <button type="button" disabled={reason.trim().length < 2} onClick={() => (waiter.role === "mudur" ? onOk(null, reason.trim()) : setPin(true))} className="flex-[2] rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40">{waiter.role === "mudur" ? "İptal et" : "Müdür onayına"}</button>
+            <button type="button" disabled={reason.trim().length < 2} onClick={() => (waiter.role === "mudur" ? onOk(null, reason.trim()) : setPin(true))} className="flex-[2] rounded-lg bg-bad px-4 py-2 text-sm font-medium text-white disabled:opacity-40">{waiter.role === "mudur" ? "İptal et" : "Müdür onayına"}</button>
           </div>
         </>
       ) : (

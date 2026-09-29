@@ -66,7 +66,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
   if (approving) {
     return (
       <main className="mx-auto w-full max-w-sm px-4 py-8 text-center">
-        <h1 className="text-xl font-semibold">Müdür onayı</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Müdür onayı</h1>
         <p className="mb-6 text-sm text-muted">{formatTL(total)} iade · müdür PIN&apos;i girsin</p>
         <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => void record(m.id)} />
         <button type="button" onClick={() => setApproving(false)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-6 w-full">Vazgeç</button>
@@ -77,7 +77,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-6">
       <button type="button" onClick={onBack} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 -ml-3 mb-4">← Kasa</button>
-      <h1 className="mb-4 text-xl font-semibold tracking-tight">İade</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">İade</h1>
       <form onSubmit={(e) => { e.preventDefault(); void find(); }} className="flex gap-2">
         <input value={no} onChange={(e) => setNo(e.target.value)} autoFocus placeholder="Fiş no (ör. K1-000042)" aria-label="İade fiş no" className="flex-1 rounded-xl border border-line px-4 py-3 uppercase" />
         <Button type="submit" disabled={busy || !no.trim()}>Fişi bul</Button>
@@ -100,9 +100,9 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
                     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={q > 0} onChange={(e) => set(e.target.checked ? l.qtyMilli : 0)} className="size-4 accent-[var(--color-brand)]" />Tamamı</label>
                   ) : (
                     <>
-                      <button type="button" aria-label={`${l.name} iade azalt`} onClick={() => set(q - 1000)} className="size-8 rounded-lg border border-line">−</button>
+                      <button type="button" aria-label={`${l.name} iade azalt`} onClick={() => set(q - 1000)} className="press grid size-11 place-items-center rounded-xl border border-line bg-white text-lg font-medium hover:bg-surface-3">−</button>
                       <span className="tabular w-8 text-center">{q / 1000}</span>
-                      <button type="button" aria-label={`${l.name} iade artır`} onClick={() => set(q + 1000)} className="size-8 rounded-lg border border-line">+</button>
+                      <button type="button" aria-label={`${l.name} iade artır`} onClick={() => set(q + 1000)} className="press grid size-11 place-items-center rounded-xl border border-line bg-white text-lg font-medium hover:bg-surface-3">+</button>
                     </>
                   )}
                 </div>
@@ -112,7 +112,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
           <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Geri ödeme">
             <span className="text-sm">Geri ödeme:</span>
             {SELECTABLE_METHODS.map((m) => (
-              <button key={m.value} type="button" aria-pressed={method === m.value} onClick={() => setMethod(m.value)} className={`rounded-lg border px-3 py-2 text-sm ${method === m.value ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`}>{m.label}</button>
+              <button key={m.value} type="button" aria-pressed={method === m.value} onClick={() => setMethod(m.value)} className={`press min-h-11 rounded-[10px] border px-3 text-sm ${method === m.value ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`}>{m.label}</button>
             ))}
           </div>
           <div className="mt-5 flex items-center justify-between">

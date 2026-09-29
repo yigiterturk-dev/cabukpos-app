@@ -10,7 +10,7 @@ import type { NewTabEvent } from "@/lib/offline/tabs";
 import type { Meta } from "@/lib/offline/state";
 import { Button, Field, Input } from "@/components/ui";
 
-const pill = (on: boolean) => `rounded-lg border px-3 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`;
+const pill = (on: boolean) => `press min-h-11 rounded-[10px] border px-3 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`;
 const EMPTY: CustomerLookup = { customer: null, addresses: [], recent: [] };
 
 export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: Meta; staffId: string; add: (list: NewTabEvent[]) => Promise<unknown>; onCreated: (tabId: string) => void; onBack: () => void }) {
@@ -75,7 +75,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-6">
       <button type="button" onClick={onBack} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 -ml-3 mb-4">← Paket</button>
-      <h1 className="mb-5 text-xl font-semibold tracking-tight">Yeni paket sipariş</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight">Yeni paket sipariş</h1>
       <form onSubmit={lookup} className="flex items-end gap-2">
         <div className="flex-1"><Field label="Telefon"><Input name="phone" inputMode="tel" autoFocus value={phoneInput} onChange={(e) => { setPhoneInput(e.target.value); setFound(null); }} placeholder="0532 123 45 67" className="text-lg" /></Field></div>
         <Button type="submit" disabled={busy} variant={found ? "ghost" : "primary"}>Müşteriyi bul</Button>

@@ -32,7 +32,7 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-5">
       <div className="mb-4 flex items-center gap-3">
-        <h1 className="text-lg font-semibold">Siparişlerim <span className="tabular text-muted">({active.length})</span></h1>
+        <h1 className="text-xl font-semibold tracking-tight">Siparişlerim <span className="tabular text-muted">({active.length})</span></h1>
         {waiting.length > 0 && <button type="button" disabled={busy} onClick={() => void out()} className={`ml-auto ${strong}`}>Yola çıktım ({waiting.length})</button>}
       </div>
       <ul className="space-y-3">
@@ -45,7 +45,7 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
             <li key={t.id} data-testid="courier-card" className="rounded-xl border border-line bg-white p-4 text-sm">
               <div className="flex items-baseline gap-2">
                 <span className="font-semibold">{o?.name ?? "Paket"}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs ${st === "yolda" ? "bg-blue-50 text-blue-800" : st === "hazir" ? "bg-ok-soft text-ok" : "bg-surface-3 text-ink-2"}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs ${st === "yolda" ? "bg-sky-50 text-sky-800" : st === "hazir" ? "bg-ok-soft text-ok" : "bg-surface-3 text-ink-2"}`}>
                   {st === "yolda" ? "Yolda" : st === "hazir" ? "Hazır" : "Hazırlanıyor"}
                 </span>
                 <span className="ml-auto tabular text-xs text-muted">{minutesSince(t.openedAt, now)} dk</span>

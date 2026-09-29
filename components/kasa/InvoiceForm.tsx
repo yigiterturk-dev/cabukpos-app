@@ -13,7 +13,7 @@ export function InvoiceForm({ initial, onSave, onCancel }: { initial: Buyer | nu
   const set = (k: keyof typeof v) => (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value }));
   const save = () => { setTouched(true); if (r.success) onSave(r.data); };
   return (
-    <div className="mt-4 space-y-3 rounded-xl border border-line p-3" aria-label="Fatura bilgisi">
+    <div className="mt-4 space-y-3 rounded-2xl border border-line bg-surface-2 p-4" aria-label="Fatura bilgisi">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Fatura (e-Arşiv)</h3>
         <button type="button" onClick={() => setV((x) => ({ ...x, taxId: NIHAI_TUKETICI.taxId, name: NIHAI_TUKETICI.name, address: "" }))} className="text-sm text-brand underline">Nihai tüketici</button>
