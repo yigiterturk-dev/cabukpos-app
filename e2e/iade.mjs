@@ -9,7 +9,6 @@ const stamp = Date.now();
 const tenant = `E2E Kebapçı ${stamp}`;
 const step = (m) => console.log("•", m);
 const expect = (got, want, what) => { if (got !== want) throw new Error(`${what}: ${JSON.stringify(got)} ≠ ${JSON.stringify(want)}`); };
-const year = new Date().getFullYear();
 
 // HEADED=1: görünür pencere, yavaş; sonda pencere kapanana kadar açık kalır (tasarım/akış demosu).
 const HEADED = !!process.env.HEADED;
