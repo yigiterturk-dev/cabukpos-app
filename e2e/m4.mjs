@@ -32,9 +32,11 @@ let agentProc = null;
 const waitFor = async (fn, what, ms = 15000) => { const until = Date.now() + ms; while (Date.now() < until) { if (await fn()) return; await sleep(200); } throw new Error(`zaman aşımı: ${what}`); };
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
+// Chrome 142+ yerel ağ erişimi: https (canlı) sayfadan 127.0.0.1 ajanına istek izin ister; headless reddeder → izin ver.
+const agentContext = async (opts) => { const c = await browser.newContext(opts); await c.grantPermissions(["local-network-access"], { origin: new URL(BASE).origin }); return c; };
 const errors = [];
 const page = async () => {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+  const p = await (await agentContext({ viewport: { width: 1280, height: 900 } })).newPage();
   p.on("pageerror", (e) => errors.push(e.message));
   return p;
 };

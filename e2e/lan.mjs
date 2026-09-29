@@ -28,9 +28,11 @@ const text = (b) => b.toString("latin1");
 const kitchenJobs = () => jobs.filter((j) => !text(j).includes("TOPLAM"));
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
+// Chrome 142+ yerel ağ erişimi: https (canlı) sayfadan 127.0.0.1 ajanına istek izin ister; headless reddeder → izin ver.
+const agentContext = async (opts) => { const c = await browser.newContext(opts); await c.grantPermissions(["local-network-access"], { origin: new URL(BASE).origin }); return c; };
 const errors = [];
 const page = async (viewport = { width: 1280, height: 900 }) => {
-  const p = await (await browser.newContext({ viewport })).newPage();
+  const p = await (await agentContext({ viewport })).newPage();
   p.on("pageerror", (e) => errors.push(e.message));
   return p;
 };
