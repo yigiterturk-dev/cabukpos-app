@@ -279,7 +279,7 @@ async function applyRefund(tx: Tx, ctx: DeviceCtx, doc: RefundDoc): Promise<stri
   }
   if (doc.payments[0].amount !== totals(c.lines).total) c.reasons.push("iade ödemesi toplamla eşleşmiyor");
   await write(tx, ctx, doc, c, doc.payments, 0, { status: "iade", refundOf: doc.refundOf, approvedBy: doc.approvedBy });
-  await onRefund(tx, doc.refundOf);
+  await onRefund(tx, ctx.tenantId, doc.refundOf, doc.id);
   return null;
 }
 

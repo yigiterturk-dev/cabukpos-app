@@ -70,9 +70,12 @@ async function sync(f: Fx, extra: Record<string, unknown> = {}, total = 2000) {
   return id;
 }
 async function refund(f: Fx, saleId: string, total: number) {
-  const r = await applyDoc(f.ctx, { kind: "refund", id: randomUUID(), shiftId: f.sh.id, staffId: f.kasiyer.id, approvedBy: f.mudur.id, refundOf: saleId, receiptSeq: ++f.seq.n, at: new Date().toISOString(), lines: [line(total)], payments: [{ method: "nakit", amount: total }] });
+  const id = randomUUID();
+  const r = await applyDoc(f.ctx, { kind: "refund", id, shiftId: f.sh.id, staffId: f.kasiyer.id, approvedBy: f.mudur.id, refundOf: saleId, receiptSeq: ++f.seq.n, at: new Date().toISOString(), lines: [line(total)], payments: [{ method: "nakit", amount: total }] });
   assert.equal(r.ok, true, JSON.stringify(r));
+  return id;
 }
+const refundsOf = async (f: Fx, docId: string) => withTenant(f.t.id, (tx) => tx.select().from(schema.fiscalRefunds).where(eq(schema.fiscalRefunds.fiscalDocId, docId)).orderBy(schema.fiscalRefunds.createdAt));
 const docOf = async (f: Fx, saleId: string) => (await withTenant(f.t.id, (tx) => tx.select().from(schema.fiscalDocuments).where(eq(schema.fiscalDocuments.saleId, saleId))))[0];
 const setFs = (f: Fx, v: Partial<typeof schema.fiscalSettings.$inferInsert>) => withTenant(f.t.id, (tx) => tx.insert(schema.fiscalSettings).values({ tenantId: f.t.id, ...v }).onConflictDoUpdate({ target: schema.fiscalSettings.tenantId, set: v }));
 const year = new Date().getFullYear();
@@ -135,7 +138,7 @@ test("hata: simülasyon sayaç yakmaz, vade, retryable:false, eşzamanlı tek nu
   assert.equal((await docOf(f, s3)).attempts, 5); // otomatik deneme yok
 });
 
-test("iade: tam → cancelled, kısmi → cancel_rejected, 8 gün → cancel_rejected, kesilmeden tam → cancelled", async () => {
+test("iade: tam → cancelled, kısmi → tutanak/alıcı faturası kaydı, 8 gün → cancel_rejected + tutanak, kesilmeden tam → cancelled", async () => {
   const f = await fixture("MALI-IADE");
   await setFs(f, { channelModes: { kasa: "earsiv", masa: "info", paket: "info", platform: "info" } });
   const full = await sync(f, {}, 3000);
@@ -147,9 +150,20 @@ test("iade: tam → cancelled, kısmi → cancel_rejected, 8 gün → cancel_rej
 
   const part = await sync(f, {}, 3000);
   await issueOne(f.t.id, part);
-  await refund(f, part, 1000);
+  const r1 = await refund(f, part, 1000);
   const p = await docOf(f, part);
-  assert.deepEqual([p.status, p.lastError], ["cancel_rejected", "kısmi iade"]);
+  assert.deepEqual([p.status, p.cancelPending], ["issued", false]);
+  const fr = await refundsOf(f, p.id);
+  assert.deepEqual(fr.map((x) => [x.refundSaleId, x.kind, !!x.resolvedAt]), [[r1, "tutanak", true]]);
+  await refund(f, part, 2000); // kalan tamamı: önceki iade var → yine kısmi, iptal yok
+  assert.equal((await docOf(f, part)).cancelPending, false);
+  assert.equal((await refundsOf(f, p.id)).length, 2);
+
+  const vkn = await sync(f, { fiscal: { token: newFiscalToken(), buyer: VKN_BUYER } }, 3000);
+  await issueOne(f.t.id, vkn);
+  await refund(f, vkn, 1000);
+  const [v] = await refundsOf(f, (await docOf(f, vkn)).id);
+  assert.deepEqual([v.kind, v.resolvedAt], ["alici_faturasi", null]);
 
   const old = await sync(f, {}, 3000);
   await issueOne(f.t.id, old);
@@ -158,6 +172,7 @@ test("iade: tam → cancelled, kısmi → cancel_rejected, 8 gün → cancel_rej
   await cancelOne(f.t.id, (await docOf(f, old)).id);
   const o = await docOf(f, old);
   assert.deepEqual([o.status, o.lastError], ["cancel_rejected", "İptal süresi geçti"]);
+  assert.deepEqual((await refundsOf(f, o.id)).map((x) => x.kind), ["tutanak"]);
 
   await setFs(f, { fakeFail: true });
   const unissued = await sync(f, {}, 3000);

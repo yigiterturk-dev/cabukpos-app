@@ -3,6 +3,7 @@
 import { and, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { getDb, schema, withTenant, type Tx } from "@/db";
 import { buyerSchema, DEFAULT_MODES, docModeFor, formatNumber, MAX_ATTEMPTS, newFiscalToken, nextRetryDue, NIHAI_TUKETICI, type Buyer, type Channel } from "@/lib/core/fiscal";
+import { buyerKindOf } from "@/lib/core/refundNote";
 import { getProvider, type IssueInput } from "./provider";
 
 const D = schema.fiscalDocuments;
@@ -74,15 +75,22 @@ export async function issueOne(tenantId: string, saleId: string, { force = false
   return res?.out ?? null;
 }
 
-/** İade eşitlemesinde (aynı işlem). Tam iade → iptal kuyruğu; kısmi → iade faturası gerekli. */
-export async function onRefund(tx: Tx, refundOf: string) {
+/** Kısmi iade ya da iptali reddedilen tam iade: TCKN → tutanak (çözülmüş), VKN → alıcının iade faturası beklenir. */
+async function openRefundRecord(tx: Tx, tenantId: string, doc: typeof D.$inferSelect, refundSaleId: string) {
+  const kind = buyerKindOf(doc.buyer?.taxId) === "vkn" ? "alici_faturasi" : "tutanak";
+  await tx.insert(schema.fiscalRefunds).values({ tenantId, refundSaleId, fiscalDocId: doc.id, kind, resolvedAt: kind === "tutanak" ? new Date() : null }).onConflictDoNothing();
+}
+
+/** İade eşitlemesinde (aynı işlem). İlk iade ve tam → iptal kuyruğu; aksi (kısmi) → iade kaydı (tutanak / alıcı faturası). */
+export async function onRefund(tx: Tx, tenantId: string, refundOf: string, refundId: string) {
   const [doc] = await tx.select().from(D).where(eq(D.saleId, refundOf));
   if (!doc || doc.status === "cancelled") return;
   const [orig] = await tx.select({ total: schema.sales.total }).from(schema.sales).where(eq(schema.sales.id, refundOf));
-  const [ref] = await tx.select({ sum: sql<number>`coalesce(sum(${schema.sales.total}), 0)::int` }).from(schema.sales).where(and(eq(schema.sales.refundOf, refundOf), eq(schema.sales.status, "iade")));
-  const full = !!orig && ref.sum >= orig.total;
-  if (doc.status === "issued") {
-    await tx.update(D).set(full ? { cancelPending: true } : { status: "cancel_rejected", lastError: "kısmi iade" }).where(eq(D.id, doc.id));
+  const [ref] = await tx.select({ n: sql<number>`count(*)::int`, sum: sql<number>`coalesce(sum(${schema.sales.total}), 0)::int` }).from(schema.sales).where(and(eq(schema.sales.refundOf, refundOf), eq(schema.sales.status, "iade")));
+  const full = !!orig && ref.n === 1 && ref.sum >= orig.total;
+  if (doc.status === "issued" || doc.status === "cancel_rejected") {
+    if (full && doc.status === "issued") await tx.update(D).set({ cancelPending: true }).where(eq(D.id, doc.id));
+    else await openRefundRecord(tx, tenantId, doc, refundId);
   } else if (full && (doc.status === "pending" || doc.status === "error")) {
     await tx.update(D).set({ status: "cancelled", lastError: "kesilmeden iade edildi" }).where(eq(D.id, doc.id));
   }
@@ -97,6 +105,10 @@ export async function cancelOne(tenantId: string, docId: string): Promise<IssueO
     try { r = await getProvider(s?.provider ?? "fake-earsiv", { fakeFail: false }).cancel({ ettn: doc.ettn!, issuedAt: doc.issuedAt! }); }
     catch { return outcome(doc); } // geçici hata: kuyrukta kalır
     const [d] = await tx.update(D).set(r.ok ? { status: "cancelled", cancelPending: false, lastError: null } : { status: "cancel_rejected", cancelPending: false, lastError: r.error }).where(eq(D.id, doc.id)).returning();
+    if (!r.ok) {
+      const [rs] = await tx.select({ id: schema.sales.id }).from(schema.sales).where(and(eq(schema.sales.refundOf, doc.saleId), eq(schema.sales.status, "iade"))).limit(1);
+      if (rs) await openRefundRecord(tx, tenantId, doc, rs.id);
+    }
     return outcome(d);
   });
 }
