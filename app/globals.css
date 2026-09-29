@@ -16,3 +16,13 @@ body {
 }
 
 .tabular { font-variant-numeric: tabular-nums; }
+
+/* Yasal metinler */
+.legal h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; }
+.legal h2 { margin-top: 1.75rem; font-size: 1.1rem; font-weight: 600; }
+.legal ul, .legal ol { padding-left: 1.25rem; }
+.legal ul:not(.list-none) { list-style: disc; }
+.legal ul.list-none { padding-left: 0; }
+.legal ol { list-style: decimal; }
+.legal li + li { margin-top: 0.25rem; }
+.legal a { color: var(--color-brand); text-decoration: underline; }

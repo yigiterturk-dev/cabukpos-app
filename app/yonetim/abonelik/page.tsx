@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatTL } from "@/lib/core/money";
 import { PERIODS, STATE_LABEL } from "@/lib/core/billing";
@@ -43,6 +44,7 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
                   <input type="hidden" name="period" value={p.key} />
                   {provider.name === "paytr" && <input name="phone" type="tel" required minLength={10} placeholder="Cep telefonu (05…)" autoComplete="tel" className="mb-2 w-full rounded-lg border border-line px-3 py-2 text-sm" />}
                   <button className="w-full rounded-lg bg-brand py-2.5 font-medium text-white">{p.label} öde</button>
+                  <p className="mt-2 text-xs text-muted">Ödeyerek <Link href="/yasal/mesafeli-satis" target="_blank" className="underline">Mesafeli satış sözleşmesi</Link>ni ve <Link href="/yasal/iade-iptal" target="_blank" className="underline">İptal ve iade</Link> koşullarını kabul edersiniz. Otomatik yenileme yoktur.</p>
                 </form>
               ) : <p className="text-sm text-muted">Online ödeme yakında.{contact ? ` Ödeme için: ${contact}` : ""}</p>}
             </Card>

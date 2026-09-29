@@ -30,6 +30,7 @@ export function SignupForm() {
       <Err s={state} f="email" />
       <Field label="Şifre" hint="En az 10 karakter, harf ve rakam"><Input name="password" type="password" autoComplete="new-password" minLength={10} required /></Field>
       <Err s={state} f="password" />
+      <p className="text-xs text-muted">Hesap oluşturarak <Link href="/yasal/kullanim-kosullari" target="_blank" className="underline">Kullanım koşulları</Link>nı kabul etmiş ve <Link href="/yasal/kvkk" target="_blank" className="underline">KVKK aydınlatma metni</Link>ni okumuş olursunuz.</p>
       <Button type="submit" disabled={pending} className="w-full">{pending ? "Oluşturuluyor…" : "Hesap oluştur"}</Button>
       <p className="text-center text-sm text-muted">Hesabınız var mı? <Link href="/giris" className="text-brand underline">Giriş yapın</Link></p>
     </form>

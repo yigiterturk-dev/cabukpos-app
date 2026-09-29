@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LegalFooter } from "@/components/Legal";
 
 export default function Home() {
   return (
@@ -11,6 +12,7 @@ export default function Home() {
           <Link href="/giris" className="rounded-lg border border-line px-4 py-3 font-medium hover:bg-stone-50">Yönetim girişi</Link>
           <Link href="/kayit" className="text-sm text-muted underline">İşletme hesabı aç</Link>
         </div>
+        <LegalFooter className="mt-12" />
       </div>
     </main>
   );
