@@ -30,6 +30,9 @@ export const tenants = pgTable("tenants", {
   taxId: text("tax_id"), // M8: e-Arşiv satıcı bilgisi
   taxOffice: text("tax_office"),
   address: text("address"),
+  trialEndsAt: ts("trial_ends_at").notNull().default(sql`now() + interval '14 days'`), // M9b: mevcut işletmeler yayından 14 gün
+  paidUntil: ts("paid_until"),
+  billingRemindedEnd: ts("billing_reminded_end"), // hatırlatma gönderilen bitiş (aynı bitişe bir kez)
   createdAt: ts("created_at").notNull().defaultNow(),
 });
 
@@ -484,3 +487,17 @@ export const registerEvents = pgTable("register_events", {
   total: integer("total").notNull(),
   syncedAt: ts("synced_at").notNull().defaultNow(),
 }, (t) => [index("register_events_at_idx").on(t.tenantId, t.storeId, t.at)]);
+
+// — M9b: abonelik ödemeleri. RLS yok (sağlayıcı geri bildirimi kiracı bağlamsız gelir); yalnız lib/billing erişir. —
+export const billingPayments = pgTable("billing_payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  provider: text("provider").notNull(),
+  period: text("period").notNull(), // aylik | yillik
+  amount: integer("amount").notNull(), // kuruş, KDV dahil
+  status: text("status").notNull().default("bekliyor"), // bekliyor | odendi | basarisiz
+  providerRef: text("provider_ref"),
+  periodEnd: ts("period_end"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  paidAt: ts("paid_at"),
+}, (t) => [index("billing_payments_tenant_idx").on(t.tenantId, t.createdAt)]);
