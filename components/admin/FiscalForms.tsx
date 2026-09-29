@@ -6,7 +6,7 @@ import { Button, Field, Input, Textarea } from "@/components/ui";
 import type { Channel, ChannelModes, DocMode } from "@/lib/core/fiscal";
 
 const CH_LABEL: Record<Channel, string> = { kasa: "Kasa (hızlı satış)", masa: "Masa", paket: "Paket servis", platform: "Platform siparişi" };
-const Err = ({ s, f }: { s: FiscalState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-xs text-red-700">{s.error}</p> : null);
+const Err = ({ s, f }: { s: FiscalState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-xs text-bad">{s.error}</p> : null);
 
 export function FiscalSettingsForm({ initial, channels, fake }: {
   initial: { taxId: string; taxOffice: string; address: string; series: string; modes: ChannelModes; fakeFail: boolean };
@@ -32,7 +32,7 @@ export function FiscalSettingsForm({ initial, channels, fake }: {
               <input type="hidden" name={`mode-${c}`} value={modes[c]} />
               <div className="flex gap-1" role="group" aria-label={CH_LABEL[c]}>
                 {([["info", "Bilgi fişi"], ["earsiv", "e-Arşiv"]] as [DocMode, string][]).map(([v, l]) => (
-                  <button key={v} type="button" aria-pressed={modes[c] === v} onClick={() => setModes((m) => ({ ...m, [c]: v }))} className={`rounded-lg border px-3 py-2 text-sm ${modes[c] === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{l}</button>
+                  <button key={v} type="button" aria-pressed={modes[c] === v} onClick={() => setModes((m) => ({ ...m, [c]: v }))} className={`rounded-lg border px-3 py-2 text-sm ${modes[c] === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{l}</button>
                 ))}
               </div>
             </div>
@@ -40,16 +40,16 @@ export function FiscalSettingsForm({ initial, channels, fake }: {
         </div>
       </div>
       {fake && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
+        <div className="rounded-lg border border-amber-300 bg-warn-soft p-3 text-sm">
           <p className="font-medium">TEST sağlayıcısı: kesilen belgelerin mali değeri yoktur.</p>
           <p className="mt-1 text-muted">Gerçek entegratör (Paraşüt/Uyumsoft/İzibiz) anahtarı gelince bağlanacak.</p>
           <label className="mt-2 flex items-center gap-2"><input type="checkbox" name="fakeFail" defaultChecked={initial.fakeFail} className="size-4 accent-[var(--color-brand)]" />Hata simülasyonu (her kesim hata verir)</label>
         </div>
       )}
-      {state.error && !state.field && <p className="text-sm text-red-700">{state.error}</p>}
+      {state.error && !state.field && <p className="text-sm text-bad">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
-        {state.savedAt && !state.error && <span className="text-sm text-emerald-700" role="status">Kaydedildi.</span>}
+        {state.savedAt && !state.error && <span className="text-sm text-ok" role="status">Kaydedildi.</span>}
       </div>
     </form>
   );
@@ -61,10 +61,10 @@ export function FiscalRowActions({ id, status, canMail, url }: { id: string; sta
   const run = (fn: () => Promise<FiscalState>) => start(async () => setMsg(await fn()));
   return (
     <div className={`flex flex-wrap items-center gap-3 text-xs ${pending ? "opacity-60" : ""}`}>
-      {(status === "pending" || status === "error") && <button type="button" disabled={pending} onClick={() => run(() => retryFiscal(id))} className="text-brand underline">Yeniden dene</button>}
-      {status === "issued" && canMail && <button type="button" disabled={pending} onClick={() => run(() => resendFiscalMail(id))} className="text-brand underline">E-postayı gönder</button>}
+      {(status === "pending" || status === "error") && <button type="button" disabled={pending} onClick={() => run(() => retryFiscal(id))} className="font-medium text-brand hover:underline">Yeniden dene</button>}
+      {status === "issued" && canMail && <button type="button" disabled={pending} onClick={() => run(() => resendFiscalMail(id))} className="font-medium text-brand hover:underline">E-postayı gönder</button>}
       <a href={url} target="_blank" rel="noreferrer" className="underline">Sayfayı aç</a>
-      {msg && <span role="status" className={msg.error ? "text-red-700" : "text-emerald-700"}>{msg.error ?? msg.info}</span>}
+      {msg && <span role="status" className={msg.error ? "text-bad" : "text-ok"}>{msg.error ?? msg.info}</span>}
     </div>
   );
 }

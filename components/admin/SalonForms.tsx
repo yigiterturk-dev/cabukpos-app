@@ -7,8 +7,8 @@ import { Select, type Option } from "@/components/Select";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 
-const Err = ({ s, f }: { s: SalonState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 text-sm text-red-700">{s.error}</p> : null);
-const Saved = ({ s }: { s: SalonState }) => (s.savedAt ? <span className="text-sm text-emerald-700">Kaydedildi.</span> : null);
+const Err = ({ s, f }: { s: SalonState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
+const Saved = ({ s }: { s: SalonState }) => (s.savedAt ? <span className="text-sm text-ok">Kaydedildi.</span> : null);
 
 export function AreaForm() {
   const { state, pending, onSubmit } = useFormAction(saveArea, {} as SalonState);
@@ -62,11 +62,11 @@ export function OptionGroupForm({ initial }: { initial?: GroupInitial }) {
   const { state, pending, onSubmit } = useFormAction(saveOptionGroup.bind(null, initial?.id ?? null), {} as SalonState);
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <div key={initial?.id ?? state.savedAt ?? 0} className="grid gap-4 sm:grid-cols-[1fr_7rem_7rem]">
-        <div><Field label="Grup adı"><Input name="name" defaultValue={initial?.name} placeholder="Pişirme" required /></Field><Err s={state} f="name" /></div>
+      <div key={initial?.id ?? state.savedAt ?? 0} className="grid gap-4 sm:grid-cols-[1fr_7rem_7rem] lg:grid-cols-2">
+        <div className="lg:col-span-2"><Field label="Grup adı"><Input name="name" defaultValue={initial?.name} placeholder="Pişirme" required /></Field><Err s={state} f="name" /></div>
         <Field label="En az" hint="0 = isteğe bağlı"><Input name="min" inputMode="numeric" defaultValue={initial?.min ?? 0} /></Field>
         <div><Field label="En çok"><Input name="max" inputMode="numeric" defaultValue={initial?.max ?? 1} /></Field><Err s={state} f="max" /></div>
-        <div className="sm:col-span-3">
+        <div className="sm:col-span-3 lg:col-span-2">
           <Field label="Seçenekler" hint="Satır başına bir seçenek; fiyat farkı sonda: Peynir +15 · Yarım porsiyon -90">
             <Textarea name="options" rows={4} defaultValue={initial?.options.map(optionLine).join("\n")} placeholder={"Az pişmiş\nOrta\nİyi pişmiş"} />
           </Field>
@@ -89,7 +89,7 @@ export function DeviceRoleForm({ deviceId, role: initialRole, stations: initialS
       <input type="hidden" name="role" value={role} />
       <div className="flex gap-1" role="group" aria-label="Cihaz rolü">
         {ROLES.map(([v, l]) => (
-          <button key={v} type="button" aria-pressed={role === v} onClick={() => setRole(v)} className={`rounded-lg border px-2.5 py-1.5 ${role === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{l}</button>
+          <button key={v} type="button" aria-pressed={role === v} onClick={() => setRole(v)} className={`rounded-lg border px-2.5 py-1.5 ${role === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{l}</button>
         ))}
       </div>
       {role === "mutfak" && stationOptions.map((s) => (

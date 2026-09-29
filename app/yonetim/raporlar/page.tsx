@@ -54,13 +54,13 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
     <>
       <PageHeader title="Raporlar" desc={DESC[tab.key]} />
       {critical.length > 0 && (
-        <Card className="mb-6 border-red-200 bg-red-50 p-4" data-testid="critical-card">
-          <div className="mb-2 flex items-baseline justify-between"><h2 className="font-semibold text-red-800">Kritik stok ({critical.length})</h2><Link href="/yonetim/stok?kritik=1" className="text-sm text-red-800 underline">Stok</Link></div>
+        <Card className="mb-6 border-red-200 bg-bad-soft p-4" data-testid="critical-card">
+          <div className="mb-2 flex items-baseline justify-between"><h2 className="font-semibold text-bad">Kritik stok ({critical.length})</h2><Link href="/yonetim/stok?kritik=1" className="text-sm text-bad hover:underline">Stok</Link></div>
           <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm">{critical.map((c) => <li key={c.id}><b>{c.name}</b> <span className="tabular">{formatQty(c.level, c.unit)}</span> <span className="text-muted">(sınır {formatQty(c.minStock!, c.unit)})</span></li>)}</ul>
         </Card>
       )}
       <div className="mb-4 flex flex-wrap gap-1" role="tablist" aria-label="Rapor">
-        {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} role="tab" aria-selected={t.key === tab.key} className={`rounded-lg border px-3 py-1.5 text-sm ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{t.label}</Link>)}
+        {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} role="tab" aria-selected={t.key === tab.key} className={`rounded-lg border px-3 py-1.5 text-sm ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{t.label}</Link>)}
       </div>
       {tab.range && <RangeBar sekme={tab.key} range={range} csv={tab.csv ? tab.key : null} extra={tab.key === "urunler" ? { sirala: sp.sirala } : tab.key === "personel" ? { kisi: kisi ?? undefined } : {}} />}
       {body}

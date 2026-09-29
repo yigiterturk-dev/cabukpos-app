@@ -24,13 +24,13 @@ export default async function Salon() {
             <div className="mb-3 flex items-center gap-3">
               <h2 className="font-semibold">{ar.name}</h2>
               <span className="text-sm text-muted">{ts.length} masa</span>
-              <form action={deleteArea.bind(null, ar.id)} className="ml-auto"><button className="text-sm text-red-700 underline">Bölgeyi sil</button></form>
+              <form action={deleteArea.bind(null, ar.id)} className="ml-auto"><button className="text-sm text-bad hover:underline">Bölgeyi sil</button></form>
             </div>
             <div className="mb-3 flex flex-wrap gap-2">
               {ts.map((t) => (
                 <form key={t.id} action={deleteTable.bind(null, t.id)} className="flex items-center gap-1 rounded-full border border-line py-1 pl-3 pr-1 text-sm">
                   <span>{t.name}</span>
-                  <button aria-label={`${t.name} masasını sil`} className="rounded-full px-2 text-muted hover:bg-stone-100">×</button>
+                  <button aria-label={`${t.name} masasını sil`} className="rounded-full px-2 text-muted hover:bg-surface-3">×</button>
                 </form>
               ))}
             </div>

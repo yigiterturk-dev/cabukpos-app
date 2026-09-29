@@ -9,7 +9,7 @@ import { Select, type Option } from "@/components/Select";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input } from "@/components/ui";
 
-const Err = ({ s, f }: { s: PurchaseState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-sm text-red-700">{s.error}</p> : null);
+const Err = ({ s, f }: { s: PurchaseState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
 
 export function PurchaseForm({ products, suppliers, today }: { products: (Option & { unit: StockUnit })[]; suppliers: Option[]; today: string }) {
   const { state, pending, onSubmit } = useFormAction(savePurchase, {} as PurchaseState);
@@ -45,7 +45,7 @@ function PurchaseFields({ state, pending, onSubmit, products, suppliers, today }
               <Input name="price" inputMode="decimal" value={r.price} onChange={(e) => set(r.k, { price: e.target.value })} aria-label="Birim fiyat" className="w-32" />
               <span className="w-20 text-sm text-muted">{u ? `₺/${u}` : ""}</span>
               <span className="tabular w-28 text-right text-sm">{t !== null ? formatTL(t) : ""}</span>
-              {rows.length > 1 && <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.k !== r.k))} className="rounded px-2 text-muted hover:bg-stone-100" aria-label="Kalemi sil">×</button>}
+              {rows.length > 1 && <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.k !== r.k))} className="rounded px-2 text-muted hover:bg-surface-3" aria-label="Kalemi sil">×</button>}
             </div>
           );
         })}
@@ -53,11 +53,11 @@ function PurchaseFields({ state, pending, onSubmit, products, suppliers, today }
         <Err s={state} f="lines" />
       </div>
       <Field label="Not"><Input name="note" /></Field>
-      {state.error && !["supplierId", "date", "lines"].includes(state.field ?? "") && <p className="text-sm text-red-700">{state.error}</p>}
+      {state.error && !["supplierId", "date", "lines"].includes(state.field ?? "") && <p className="text-sm text-bad">{state.error}</p>}
       <div className="flex items-center gap-4">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Alışı kaydet"}</Button>
         <span className="text-sm">Toplam <b className="tabular" data-testid="purchase-total">{formatTL(total)}</b></span>
-        {state.savedAt && <span className="text-sm text-emerald-700">Kaydedildi; stok ve maliyet güncellendi.</span>}
+        {state.savedAt && <span className="text-sm text-ok">Kaydedildi; stok ve maliyet güncellendi.</span>}
       </div>
     </form>
   );
@@ -73,11 +73,11 @@ export function SupplierForm({ initial }: { initial?: SupplierInitial }) {
       <div><Field label="Telefon"><Input name="phone" inputMode="tel" defaultValue={initial?.phone ?? ""} /></Field></div>
       <div><Field label="Vergi / TC no"><Input name="taxNo" inputMode="numeric" defaultValue={initial?.taxNo ?? ""} /></Field><Err s={state} f="taxNo" /></div>
       <div><Field label="Not"><Input name="note" defaultValue={initial?.note ?? ""} /></Field></div>
-      {state.error && !["name", "taxNo"].includes(state.field ?? "") && <p className="text-sm text-red-700 sm:col-span-2">{state.error}</p>}
+      {state.error && !["name", "taxNo"].includes(state.field ?? "") && <p className="text-sm text-bad sm:col-span-2">{state.error}</p>}
       <div className="flex items-center gap-3 sm:col-span-2">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Tedarikçiyi kaydet"}</Button>
-        {initial && <Link href={`/yonetim/tedarikciler?id=${initial.id}`} className="text-sm text-muted underline">Vazgeç</Link>}
-        {state.savedAt && !initial && <span className="text-sm text-emerald-700">Kaydedildi.</span>}
+        {initial && <Link href={`/yonetim/tedarikciler?id=${initial.id}`} className="text-sm text-muted hover:text-ink hover:underline">Vazgeç</Link>}
+        {state.savedAt && !initial && <span className="text-sm text-ok">Kaydedildi.</span>}
       </div>
     </form>
   );
@@ -94,13 +94,13 @@ export function PaymentForm({ supplierId, today }: { supplierId: string; today: 
       <div>
         <input type="hidden" name="method" value={method} />
         <div className="flex gap-1" role="group" aria-label="Ödeme şekli">
-          {METHODS.map(([v, l]) => <button key={v} type="button" aria-pressed={method === v} onClick={() => setMethod(v)} className={`rounded-lg border px-3 py-2 text-sm ${method === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{l}</button>)}
+          {METHODS.map(([v, l]) => <button key={v} type="button" aria-pressed={method === v} onClick={() => setMethod(v)} className={`rounded-lg border px-3 py-2 text-sm ${method === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{l}</button>)}
         </div>
       </div>
       <div className="w-40"><Field label="Tarih"><Input name="date" type="date" defaultValue={today} max={today} required /></Field></div>
       <div className="min-w-40 flex-1"><Field label="Not"><Input key={`n${state.savedAt ?? 0}`} name="note" /></Field></div>
       <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Ödeme ekle"}</Button>
-      <div className="basis-full text-sm" aria-live="polite">{state.error ? <span className="text-red-700">{state.error}</span> : state.savedAt ? <span className="text-emerald-700">Ödeme eklendi.</span> : null}</div>
+      <div className="basis-full text-sm" aria-live="polite">{state.error ? <span className="text-bad">{state.error}</span> : state.savedAt ? <span className="text-ok">Ödeme eklendi.</span> : null}</div>
     </form>
   );
 }

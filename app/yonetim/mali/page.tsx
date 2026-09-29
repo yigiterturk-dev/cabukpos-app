@@ -16,7 +16,7 @@ const STATUS: Record<string, { label: string; tone: "neutral" | "ok" | "warn" | 
 };
 const FILTERS = [["", "Tümü"], ["error", "Hata"], ["pending", "Bekliyor"], ["issued", "Kesildi"], ["cancel_rejected", "İade faturası gerekli"], ["cancelled", "İptal"]] as const;
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
-const seg = (on: boolean) => `rounded-lg border px-3 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`;
+const seg = (on: boolean) => `rounded-lg border px-3 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`;
 
 export default async function Mali({ searchParams }: { searchParams: Promise<{ sekme?: string; durum?: string }> }) {
   const a = await requireAdmin();

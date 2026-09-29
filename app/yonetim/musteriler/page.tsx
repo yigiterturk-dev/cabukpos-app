@@ -36,11 +36,11 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
                 {c.lastOrderAt && <span className="text-xs text-muted">son sipariş {c.lastOrderAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>}
                 <Link href={id === c.id ? `/yonetim/musteriler?q=${encodeURIComponent(q)}` : `/yonetim/musteriler?q=${encodeURIComponent(q)}&id=${c.id}`} className="ml-auto text-sm text-brand underline">{id === c.id ? "Kapat" : "Düzenle"}</Link>
               </div>
-              <ul className="mt-1 space-y-0.5 text-sm text-stone-700">
+              <ul className="mt-1 space-y-0.5 text-sm text-ink-2">
                 {addrs.filter((x) => x.customerId === c.id).map((x) => (
                   <li key={x.id} className="flex items-center gap-2">
                     <span>{x.address}{x.directions ? ` · ${x.directions}` : ""}{x.zoneId ? ` · ${zones.find((z) => z.id === x.zoneId)?.name ?? ""}` : ""}</span>
-                    {id === c.id && <form action={deleteAddress.bind(null, x.id)}><button className="text-xs text-red-700 underline">Sil</button></form>}
+                    {id === c.id && <form action={deleteAddress.bind(null, x.id)}><button className="text-xs text-bad underline">Sil</button></form>}
                   </li>
                 ))}
               </ul>

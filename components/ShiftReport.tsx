@@ -18,7 +18,7 @@ const tm = (d: Date) => d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute:
 export const signedTL = (k: number) => `${k < 0 ? "-" : k > 0 ? "+" : ""}${formatTL(Math.abs(k))}`;
 
 function Row({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: "ok" | "bad" }) {
-  const c = tone === "bad" ? "text-red-700" : tone === "ok" ? "text-emerald-700" : "";
+  const c = tone === "bad" ? "text-bad" : tone === "ok" ? "text-ok" : "";
   return (
     <div className={`flex justify-between gap-4 py-1.5 ${strong ? "font-semibold" : ""}`}>
       <span>{label}</span>

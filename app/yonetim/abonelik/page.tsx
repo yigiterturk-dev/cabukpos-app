@@ -20,11 +20,11 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
   return (
     <>
       <PageHeader title="Abonelik" desc="ÇabukPOS aboneliği. Abonelik bitse de kasa satışa devam eder; yalnız yönetim salt okunur olur." />
-      {sp.kilit && b.locked && <Card className="mb-4 border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">Abonelik sona erdiği için değişiklik yapılamıyor. Ödeme yapınca yönetim hemen açılır.</Card>}
-      {sp.sonuc === "ok" && <Card className="mb-4 border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800" role="status">Ödeme alındı, teşekkürler.</Card>}
-      {sp.sonuc === "isleniyor" && <Card className="mb-4 border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">Ödeme işleniyor; banka onayı gelince abonelik birkaç saniye içinde uzar. Sayfayı yenileyebilirsin.</Card>}
-      {sp.sonuc === "telefon" && <Card className="mb-4 border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">Kartla ödeme için geçerli bir cep telefonu gir.</Card>}
-      {sp.sonuc === "hata" && <Card className="mb-4 border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">Ödeme tamamlanamadı. Tekrar deneyebilirsin.</Card>}
+      {sp.kilit && b.locked && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Abonelik sona erdiği için değişiklik yapılamıyor. Ödeme yapınca yönetim hemen açılır.</Card>}
+      {sp.sonuc === "ok" && <Card className="mb-4 border-emerald-200 bg-ok-soft p-4 text-sm text-ok" role="status">Ödeme alındı, teşekkürler.</Card>}
+      {sp.sonuc === "isleniyor" && <Card className="mb-4 border-amber-200 bg-warn-soft p-4 text-sm text-warn" role="status">Ödeme işleniyor; banka onayı gelince abonelik birkaç saniye içinde uzar. Sayfayı yenileyebilirsin.</Card>}
+      {sp.sonuc === "telefon" && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Kartla ödeme için geçerli bir cep telefonu gir.</Card>}
+      {sp.sonuc === "hata" && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Ödeme tamamlanamadı. Tekrar deneyebilirsin.</Card>}
       <Card className="mb-6 flex flex-wrap items-center gap-3 p-4">
         <Badge tone={b.locked ? "bad" : b.warn ? "warn" : "ok"}><span data-testid="billing-state">{STATE_LABEL[b.state]}</span></Badge>
         <span className="text-sm" data-testid="billing-ends">
@@ -54,7 +54,7 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
       {pays.length > 0 && (
         <Card className="mt-6 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-line text-left text-xs text-muted"><tr>{["Tarih", "Dönem", "Tutar", "Durum", "Dönem sonu"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
+            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr>{["Tarih", "Dönem", "Tutar", "Durum", "Dönem sonu"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
             <tbody className="divide-y divide-line">{pays.map((p) => (
               <tr key={p.id}><td className="px-4 py-2.5">{day(p.createdAt)}</td><td className="px-4 py-2.5">{p.period === "yillik" ? "Yıllık" : "Aylık"}</td><td className="px-4 py-2.5 tabular-nums">{formatTL(p.amount)}</td><td className="px-4 py-2.5">{STATUS[p.status] ?? p.status}</td><td className="px-4 py-2.5">{p.periodEnd ? day(p.periodEnd) : "—"}</td></tr>
             ))}</tbody>

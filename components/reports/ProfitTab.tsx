@@ -18,7 +18,7 @@ export async function ProfitTab({ tenantId, range }: { tenantId: string; range: 
         {rows.length === 0 ? <Empty>Bu aralıkta satış yok.</Empty> : (
           <Card className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-line text-left text-xs text-muted">
+              <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted">
                 <tr>{["Ürün", "Adet", "Net ciro", "Maliyet", "Brüt kâr", "Marj", "Maliyeti eksik"].map((h, i) => <th key={h} className={`px-4 py-2.5 font-medium ${i ? "text-right" : ""}`}>{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -28,9 +28,9 @@ export async function ProfitTab({ tenantId, range }: { tenantId: string; range: 
                     <td className="px-4 py-2.5 text-right tabular-nums">{(r.qtyMilli / 1000).toLocaleString("tr-TR")}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{formatTL(r.net)}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums" data-testid="profit-cost">{formatTL(r.cost)}</td>
-                    <td className={`px-4 py-2.5 text-right tabular-nums ${r.profit < 0 ? "text-red-700" : ""}`}>{formatTL(r.profit)}</td>
+                    <td className={`px-4 py-2.5 text-right tabular-nums ${r.profit < 0 ? "text-bad" : ""}`}>{formatTL(r.profit)}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums" data-testid="profit-margin">{r.margin === null ? "—" : `%${r.margin.toFixed(1)}`}</td>
-                    <td className={`px-4 py-2.5 text-right tabular-nums ${r.missing ? "text-amber-700" : "text-muted"}`}>{r.missing || "—"}</td>
+                    <td className={`px-4 py-2.5 text-right tabular-nums ${r.missing ? "text-warn" : "text-muted"}`}>{r.missing || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -40,7 +40,7 @@ export async function ProfitTab({ tenantId, range }: { tenantId: string; range: 
             </table>
           </Card>
         )}
-        {sum.missing > 0 && <p className="mt-3 text-sm text-amber-700">Maliyeti eksik satırlar: ürüne ya da reçetedeki hammaddeye alış girilmemiş. Bu satırların maliyeti 0 sayıldı, marjı gösterilmez.</p>}
+        {sum.missing > 0 && <p className="mt-3 text-sm text-warn">Maliyeti eksik satırlar: ürüne ya da reçetedeki hammaddeye alış girilmemiş. Bu satırların maliyeti 0 sayıldı, marjı gösterilmez.</p>}
     </>
   );
 }

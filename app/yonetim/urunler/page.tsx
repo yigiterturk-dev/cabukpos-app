@@ -65,17 +65,17 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className={TABLE_HEAD}>
-              <tr><th className="px-4 py-2.5 font-medium">Ürün</th><th className="px-4 py-2.5 font-medium">Kategori</th><th className="px-4 py-2.5 text-right font-medium">Fiyat</th><th className="px-4 py-2.5 text-right font-medium">Maliyet</th><th className="px-4 py-2.5 font-medium">KDV</th><th className="px-4 py-2.5 font-medium">Barkod</th><th className="px-4 py-2.5 font-medium">Durum</th><th className="px-4 py-2.5" /></tr>
+              <tr><th className="px-4 py-2.5 font-medium">Ürün</th><th className="px-4 py-2.5 font-medium">Kategori</th><th className="px-4 py-2.5 text-right font-medium">Fiyat</th><th className="px-4 py-2.5 text-right font-medium">Maliyet</th><th className="hidden px-4 py-2.5 font-medium 2xl:table-cell">KDV</th><th className="hidden px-4 py-2.5 font-medium 2xl:table-cell">Barkod</th><th className="px-4 py-2.5 font-medium">Durum</th><th className="px-4 py-2.5" /></tr>
             </thead>
             <tbody className="divide-y divide-line">
               {shown.map((p) => (
                 <tr key={p.id} className={p.active ? "" : "opacity-60"}>
                   <td className="px-4 py-2.5 font-medium">{p.name}{!p.sellable && <span className="ml-2 text-xs text-muted">{p.unit}{p.yieldMilli ? " · ara ürün" : ""}</span>}{p.kind === "tartili" && <span className="ml-2 text-xs text-muted">kg{p.plu ? ` · PLU ${p.plu}` : ""}</span>}{p.quick && <span className="ml-2 text-xs text-brand">hızlı tuş</span>}</td>
                   <td className="px-4 py-2.5 text-muted">{p.categoryId ? catName.get(p.categoryId) : "—"}</td>
-                  <td className="tabular px-4 py-2.5 text-right">{p.sellable ? <>{formatTL(p.price)}{p.kind === "tartili" && "/kg"}</> : "—"}</td>
-                  <td className="tabular px-4 py-2.5 text-right text-muted">{p.cost == null ? "—" : `${formatTL(p.cost)}/${stockUnitOf(p)}`}</td>
-                  <td className="px-4 py-2.5">%{p.vatRate}</td>
-                  <td className="px-4 py-2.5 text-muted">{p.barcodes.length || "—"}</td>
+                  <td className="tabular whitespace-nowrap px-4 py-2.5 text-right">{p.sellable ? <>{formatTL(p.price)}{p.kind === "tartili" && "/kg"}</> : "—"}</td>
+                  <td className="tabular whitespace-nowrap px-4 py-2.5 text-right text-muted">{p.cost == null ? "—" : `${formatTL(p.cost)}/${stockUnitOf(p)}`}</td>
+                  <td className="hidden px-4 py-2.5 2xl:table-cell">%{p.vatRate}</td>
+                  <td className="hidden px-4 py-2.5 text-muted 2xl:table-cell">{p.barcodes.length || "—"}</td>
                   <td className="px-4 py-2.5">{p.active ? <Badge tone="ok">{p.sellable ? "Satışta" : "Aktif"}</Badge> : <Badge>Kapalı</Badge>}</td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-right">
                     <Link href={`/yonetim/urunler?duzenle=${p.id}`} className="mr-3 font-medium text-brand hover:underline">Düzenle</Link>

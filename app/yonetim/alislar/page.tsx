@@ -33,7 +33,7 @@ export default async function Alislar() {
       {list.length === 0 ? <Empty>Henüz alış yok.</Empty> : (
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-line text-left text-muted"><tr><th className="p-3 font-medium">Tarih</th><th className="p-3 font-medium">Tedarikçi</th><th className="p-3 font-medium">Belge</th><th className="p-3 font-medium">Kalemler</th><th className="p-3 text-right font-medium">Tutar</th><th className="p-3" /></tr></thead>
+            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr><th className="p-3 font-medium">Tarih</th><th className="p-3 font-medium">Tedarikçi</th><th className="p-3 font-medium">Belge</th><th className="p-3 font-medium">Kalemler</th><th className="p-3 text-right font-medium">Tutar</th><th className="p-3" /></tr></thead>
             <tbody className="divide-y divide-line">
               {list.map((x) => (
                 <tr key={x.id} className={x.status === "iptal" ? "opacity-60" : ""} data-testid="purchase">
@@ -42,7 +42,7 @@ export default async function Alislar() {
                   <td className="p-3 text-muted">{x.docNo ?? ""}</td>
                   <td className="p-3 text-muted">{lines.filter((l) => l.purchaseId === x.id).map((l) => `${l.name} ${formatQty(l.qtyMilli, stockUnitOf(l))}`).join(", ")}</td>
                   <td className="tabular p-3 text-right">{formatTL(x.total)}</td>
-                  <td className="p-3 text-right">{x.status === "iptal" ? <Badge>İptal</Badge> : <form action={cancelPurchase.bind(null, x.id)}><button className="text-muted underline">İptal et</button></form>}</td>
+                  <td className="p-3 text-right">{x.status === "iptal" ? <Badge>İptal</Badge> : <form action={cancelPurchase.bind(null, x.id)}><button className="text-muted hover:text-ink hover:underline">İptal et</button></form>}</td>
                 </tr>
               ))}
             </tbody>

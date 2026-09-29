@@ -50,20 +50,20 @@ export function RecipeForm({ owner, ingredients, initial }: { owner: RecipeOwner
             <Input name="qty" inputMode="decimal" value={r.qty} onChange={(e) => set(r.k, { qty: e.target.value })} aria-label="Miktar" className="w-28" />
             <span className="w-10 text-sm text-muted">{ing ? inputUnit(ing.unit) : ""}</span>
             <span className="tabular w-24 text-right text-sm text-muted">{ing?.cost != null ? formatTL(Math.round((ing.cost * toMilli(r.qty, ing.unit)) / 1000)) : ing ? "maliyet yok" : ""}</span>
-            <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.k !== r.k))} className="rounded px-2 text-muted hover:bg-stone-100" aria-label="Satırı sil">×</button>
+            <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.k !== r.k))} className="rounded px-2 text-muted hover:bg-surface-3" aria-label="Satırı sil">×</button>
           </div>
         );
       })}
       <Button type="button" variant="secondary" onClick={() => { setRows((rs) => [...rs, { k: next, id: "", qty: "" }]); setNext(next + 1); }}>+ Malzeme</Button>
-      <div className="rounded-lg bg-stone-50 p-3 text-sm" data-testid="recipe-cost">
+      <div className="rounded-lg bg-surface-2 p-3 text-sm" data-testid="recipe-cost">
         {owner.yieldMilli ? <>Parti maliyeti <b className="tabular">{formatTL(Math.round(total))}</b> · {owner.unit} başına <b className="tabular">{formatTL(Math.round(perUnit))}</b></> : <>Maliyet <b className="tabular">{formatTL(Math.round(total))}</b></>}
-        {missing && <span className="ml-2 text-amber-700">(maliyeti olmayan malzeme var)</span>}
+        {missing && <span className="ml-2 text-warn">(maliyeti olmayan malzeme var)</span>}
         {margin !== null && <> · KDV hariç fiyat {formatTL(Math.round(net!))} · marj <b className="tabular">%{margin.toFixed(1)}</b></>}
       </div>
-      {state.error && <p className="text-sm text-red-700">{state.error}</p>}
+      {state.error && <p className="text-sm text-bad">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Reçeteyi kaydet"}</Button>
-        {state.savedAt && <span className="text-sm text-emerald-700">Kaydedildi.</span>}
+        {state.savedAt && <span className="text-sm text-ok">Kaydedildi.</span>}
       </div>
     </form>
   );
@@ -75,13 +75,13 @@ export function ProductionForm({ products }: { products: (Option & { yieldLabel:
   const y = products.find((p) => p.value === pid)?.yieldLabel;
   return (
     <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-3">
-      <div><div className="mb-1.5 text-sm font-medium">Ara ürün</div><Select name="productId" options={products} defaultValue="" placeholder="Seçin" onChange={setPid} />{state.field === "productId" && <p className="mt-1 text-sm text-red-700">{state.error}</p>}</div>
-      <div><Field label="Parti sayısı" hint={y ? `1 parti = ${y}` : "ör. 2 ya da 0,5"}><Input key={state.savedAt ?? 0} name="batches" inputMode="decimal" defaultValue="1" /></Field>{state.field === "batches" && <p className="mt-1 text-sm text-red-700">{state.error}</p>}</div>
+      <div><div className="mb-1.5 text-sm font-medium">Ara ürün</div><Select name="productId" options={products} defaultValue="" placeholder="Seçin" onChange={setPid} />{state.field === "productId" && <p className="mt-1 text-sm text-bad">{state.error}</p>}</div>
+      <div><Field label="Parti sayısı" hint={y ? `1 parti = ${y}` : "ör. 2 ya da 0,5"}><Input key={state.savedAt ?? 0} name="batches" inputMode="decimal" defaultValue="1" /></Field>{state.field === "batches" && <p className="mt-1 text-sm text-bad">{state.error}</p>}</div>
       <div><Field label="Not"><Input key={state.savedAt ?? 0} name="note" /></Field></div>
-      {state.error && !state.field && <p className="text-sm text-red-700 sm:col-span-3">{state.error}</p>}
+      {state.error && !state.field && <p className="text-sm text-bad sm:col-span-3">{state.error}</p>}
       <div className="flex items-center gap-3 sm:col-span-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Üretimi kaydet"}</Button>
-        {state.savedAt && <span className="text-sm text-emerald-700">Kaydedildi; stok ve maliyet güncellendi.</span>}
+        {state.savedAt && <span className="text-sm text-ok">Kaydedildi; stok ve maliyet güncellendi.</span>}
       </div>
     </form>
   );

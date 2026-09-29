@@ -95,7 +95,7 @@ function Fields({ s, initial, categories, salon }: { s: CatalogState; initial?: 
         </>
       )}
       </>)}
-      <div className="sm:col-span-2"><Field label="Barkodlar" hint="Virgül ya da satırla ayırın; boş olabilir"><Textarea name="barcodes" rows={2} defaultValue={initial?.barcodes.join("\n")} /></Field><Err s={s} f="barcodes" /></div>
+      <div className="sm:col-span-2 lg:col-span-1"><Field label="Barkodlar" hint="Virgül ya da satırla ayırın; boş olabilir"><Textarea name="barcodes" rows={2} defaultValue={initial?.barcodes.join("\n")} /></Field><Err s={s} f="barcodes" /></div>
     </div>
   );
 }
@@ -108,7 +108,7 @@ export function ProductForm({ initial, categories, salon }: { initial?: ProductI
       {state.error && !FIELDS.includes(state.field ?? "") && <p className="text-sm text-bad">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Ürünü kaydet"}</Button>
-        {initial && <Link href="/yonetim/urunler" className="text-sm text-muted underline">Vazgeç</Link>}
+        {initial && <Link href="/yonetim/urunler" className="text-sm text-muted hover:text-ink hover:underline">Vazgeç</Link>}
         {state.savedAt && !initial && <span className="text-sm text-ok">Kaydedildi.</span>}
       </div>
     </form>

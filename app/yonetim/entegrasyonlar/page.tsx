@@ -24,7 +24,7 @@ export default async function Entegrasyonlar() {
               {k.revokedAt ? <Badge tone="bad">İptal</Badge> : <Badge tone="ok">Etkin</Badge>}
               <span className="text-xs text-muted">Oluşturma {dt(k.createdAt)}{k.lastUsedAt ? ` · son kullanım ${dt(k.lastUsedAt)}` : " · hiç kullanılmadı"}</span>
               {owner && !k.revokedAt && (
-                <form action={revokeIntegrationKey.bind(null, k.id)} className="ml-auto"><button className="text-sm text-red-700 underline">İptal et</button></form>
+                <form action={revokeIntegrationKey.bind(null, k.id)} className="ml-auto"><button className="text-sm text-bad hover:underline">İptal et</button></form>
               )}
             </div>
           ))}

@@ -7,12 +7,12 @@ import { Select } from "@/components/Select";
 import { Button, Field, Input } from "@/components/ui";
 
 function CodeBox({ s }: { s: AgentState }) {
-  if (!s.code) return s.error && !s.field ? <p className="mt-2 text-sm text-red-700">{s.error}</p> : null;
+  if (!s.code) return s.error && !s.field ? <p className="mt-2 text-sm text-bad">{s.error}</p> : null;
   return (
     <div className="mt-4 rounded-xl border border-brand bg-brand-soft p-4">
       <div className="text-sm">{s.agentName} için eşleme kodu</div>
       <div data-testid="agent-code" className="mt-1 font-mono text-3xl font-bold tracking-[0.3em] text-brand">{s.code}</div>
-      <p className="mt-2 text-sm text-stone-700">
+      <p className="mt-2 text-sm text-ink-2">
         Kasadaki bilgisayarda: <code className="rounded bg-white px-1">node cabukpos-agent.cjs pair {s.code}</code>, ardından <code className="rounded bg-white px-1">install</code>.{" "}
         {new Date(s.expiresAt!).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })} saatine kadar geçerli.
       </p>
@@ -25,7 +25,7 @@ export function AgentCreateForm() {
   return (
     <form onSubmit={onSubmit}>
       <div className="flex flex-wrap items-start gap-3">
-        <div><Field label="Bilgisayar adı"><Input name="name" placeholder="Kasa PC" required /></Field>{state.field === "name" && <p className="mt-1 text-sm text-red-700">{state.error}</p>}</div>
+        <div><Field label="Bilgisayar adı"><Input name="name" placeholder="Kasa PC" required /></Field>{state.field === "name" && <p className="mt-1 text-sm text-bad">{state.error}</p>}</div>
         <Button type="submit" disabled={pending} className="mt-6">{pending ? "Ekleniyor…" : "Ajan ekle"}</Button>
       </div>
       <CodeBox s={state} />
@@ -37,7 +37,7 @@ export function AgentPairButton({ action }: { action: () => Promise<AgentState> 
   const [state, dispatch, pending] = useActionState(action, {} as AgentState);
   return (
     <div>
-      <form action={dispatch}><button disabled={pending} className="text-brand underline">Yeni eşleme kodu</button></form>
+      <form action={dispatch}><button disabled={pending} className="font-medium text-brand hover:underline">Yeni eşleme kodu</button></form>
       <CodeBox s={state} />
     </div>
   );
@@ -47,7 +47,7 @@ const newPrinter = (n: number): PrinterConfig => ({ id: `p${n}`, name: n === 1 ?
 const Seg = <T extends string | number>({ value, options, onChange, label }: { value: T; options: readonly { value: T; label: string }[]; onChange: (v: T) => void; label: string }) => (
   <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
     {options.map((o) => (
-      <button key={String(o.value)} type="button" aria-pressed={value === o.value} onClick={() => onChange(o.value)} className={`rounded-lg border px-3 py-2 text-sm ${value === o.value ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-stone-50"}`}>{o.label}</button>
+      <button key={String(o.value)} type="button" aria-pressed={value === o.value} onClick={() => onChange(o.value)} className={`rounded-lg border px-3 py-2 text-sm ${value === o.value ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{o.label}</button>
     ))}
   </div>
 );
@@ -74,7 +74,7 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
               <label className="inline-flex items-center gap-2"><input type="checkbox" checked={p.drawer} onChange={(e) => setP(i, { drawer: e.target.checked })} /> Para çekmecesi bu yazıcıya bağlı</label>
-              <button type="button" className="ml-auto text-red-700 underline" onClick={() => setC({ ...c, printers: c.printers.filter((_, j) => j !== i) })}>Yazıcıyı kaldır</button>
+              <button type="button" className="ml-auto text-bad underline" onClick={() => setC({ ...c, printers: c.printers.filter((_, j) => j !== i) })}>Yazıcıyı kaldır</button>
             </div>
           </div>
         ))}
@@ -105,8 +105,8 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
       <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={c.autoPrint} onChange={(e) => setC({ ...c, autoPrint: e.target.checked })} /> Satıştan sonra fişi kendiliğinden yazdır</label>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Donanımı kaydet"}</Button>
-        {state.savedAt && <span className="text-sm text-emerald-700">Kaydedildi; ajan bir dakika içinde alır.</span>}
-        {state.error && <span className="text-sm text-red-700">{state.error}</span>}
+        {state.savedAt && <span className="text-sm text-ok">Kaydedildi; ajan bir dakika içinde alır.</span>}
+        {state.error && <span className="text-sm text-bad">{state.error}</span>}
       </div>
     </form>
   );

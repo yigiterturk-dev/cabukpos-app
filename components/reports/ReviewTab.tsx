@@ -36,7 +36,7 @@ export async function ReviewTab({ tenantId, range }: { tenantId: string; range: 
   return (
     <Card className="overflow-x-auto" data-testid="review-list">
       <table className="w-full text-sm">
-        <thead className="border-b border-line text-left text-xs text-muted"><tr>{["Tarih", "Tür", "Fiş", "Tutar", "Personel", "Neden"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
+        <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr>{["Tarih", "Tür", "Fiş", "Tutar", "Personel", "Neden"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
         <tbody className="divide-y divide-line">{rows.map((r) => (
           <tr key={r.key}>
             <td className="whitespace-nowrap px-4 py-2.5">{dt(r.at)}</td>
@@ -44,7 +44,7 @@ export async function ReviewTab({ tenantId, range }: { tenantId: string; range: 
             <td className="px-4 py-2.5">{r.shiftId ? <Link href={`/yonetim/raporlar/${r.shiftId}`} className="underline">{r.ref}</Link> : r.ref}</td>
             <td className="px-4 py-2.5 tabular-nums">{r.amount === null ? "—" : formatTL(r.amount)}</td>
             <td className="px-4 py-2.5">{r.staff ?? "—"}</td>
-            <td className="px-4 py-2.5 text-amber-900">{r.review}</td>
+            <td className="px-4 py-2.5 text-warn">{r.review}</td>
           </tr>
         ))}</tbody>
       </table>

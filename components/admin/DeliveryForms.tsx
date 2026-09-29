@@ -6,8 +6,8 @@ import { useFormAction } from "@/components/useFormAction";
 import { Select, type Option } from "@/components/Select";
 import { Button, Field, Input } from "@/components/ui";
 
-const Err = ({ s, f }: { s: DeliveryState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 text-sm text-red-700">{s.error}</p> : null);
-const Saved = ({ s }: { s: DeliveryState }) => (s.savedAt ? <span className="text-sm text-emerald-700">{s.info ?? "Kaydedildi."}</span> : null);
+const Err = ({ s, f }: { s: DeliveryState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
+const Saved = ({ s }: { s: DeliveryState }) => (s.savedAt ? <span className="text-sm text-ok">{s.info ?? "Kaydedildi."}</span> : null);
 const tl = (k: number | undefined) => (k ? formatTL(k).replace(" ₺", "") : "");
 
 export function ZoneForm({ initial }: { initial?: { id: string; name: string; fee: number; minOrder: number } }) {

@@ -36,7 +36,7 @@ export function LabelSheet({ items }: { items: LabelItem[] }) {
           <Button variant="secondary" disabled={!chosen.length || pending} onClick={() => start(async () => { await markLabelsPrinted(chosen.map((c) => c.id)); setDone(true); })}>{pending ? "İşaretleniyor…" : "Basıldı olarak işaretle"}</Button>
           <button type="button" onClick={() => setSel(new Set(items.map((i) => i.id)))} className="text-sm underline">Tümünü seç</button>
           <button type="button" onClick={() => setSel(new Set())} className="text-sm underline">Hiçbiri</button>
-          {done && <span className="text-sm text-emerald-700" aria-live="polite">İşaretlendi.</span>}
+          {done && <span className="text-sm text-ok" aria-live="polite">İşaretlendi.</span>}
         </div>
         <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
           {items.map((i) => (
@@ -52,7 +52,7 @@ export function LabelSheet({ items }: { items: LabelItem[] }) {
       </div>
       <div className="hidden print:grid print:grid-cols-[repeat(3,70mm)] print:auto-rows-[37mm]">
         {chosen.map((i) => (
-          <div key={i.id} className="flex flex-col justify-between overflow-hidden border border-dashed border-stone-300 p-[3mm] text-black">
+          <div key={i.id} className="flex flex-col justify-between overflow-hidden border border-dashed border-line-strong p-[3mm] text-black">
             <div className="line-clamp-2 text-[11pt] font-semibold leading-tight">{i.name}</div>
             <div className="flex items-end justify-between gap-2">
               <div>

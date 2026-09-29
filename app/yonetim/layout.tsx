@@ -39,7 +39,7 @@ export default async function YonetimLayout({ children }: { children: React.Reac
         <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1"><Nav vertical={a.vertical} /></div>
         {footer}
       </aside>
-      <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-line bg-white/95 px-3 py-2 backdrop-blur print:hidden md:hidden">
+      <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-line bg-white px-3 py-2 print:hidden md:hidden">
         <MobileNav>
           <div className="mb-5">{brand}</div>
           <div className="flex-1"><Nav vertical={a.vertical} /></div>

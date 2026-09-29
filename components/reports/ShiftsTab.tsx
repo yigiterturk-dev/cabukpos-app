@@ -27,21 +27,21 @@ export async function ShiftsTab({ tenantId }: { tenantId: string }) {
       {rows.length === 0 ? <Empty>Henüz vardiya yok. Kasada vardiya açılınca burada görünür.</Empty> : (
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-line text-left text-xs text-muted">
+            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted">
               <tr>{["Cihaz", "Açan", "Açılış", "Kapanış", "Satış", "Ciro", "Fark"].map((h, i) => <th key={h} className={`px-4 py-2.5 font-medium ${i >= 4 ? "text-right" : ""}`}>{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-line">
               {rows.map((r) => {
                 const diff = r.countedCash !== null && r.expectedCash !== null ? r.countedCash - r.expectedCash : null;
                 return (
-                  <tr key={r.id} className="hover:bg-stone-50">
+                  <tr key={r.id} className="hover:bg-surface-2">
                     <td className="px-4 py-2.5"><Link href={`/yonetim/raporlar/${r.id}`} className="font-medium underline">{r.device}</Link></td>
                     <td className="px-4 py-2.5">{r.opener}</td>
                     <td className="px-4 py-2.5 whitespace-nowrap">{dt(r.openedAt)}</td>
                     <td className="px-4 py-2.5 whitespace-nowrap">{r.closedAt ? dt(r.closedAt) : <Badge tone="brand">Açık</Badge>}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{r.count}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{formatTL(r.gross)}</td>
-                    <td className={`px-4 py-2.5 text-right tabular-nums ${diff === null ? "text-muted" : diff < 0 ? "text-red-700" : diff > 0 ? "text-emerald-700" : ""}`}>{diff === null ? "—" : signedTL(diff)}</td>
+                    <td className={`px-4 py-2.5 text-right tabular-nums ${diff === null ? "text-muted" : diff < 0 ? "text-bad" : diff > 0 ? "text-ok" : ""}`}>{diff === null ? "—" : signedTL(diff)}</td>
                   </tr>
                 );
               })}

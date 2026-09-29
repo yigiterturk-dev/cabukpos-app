@@ -30,8 +30,8 @@ export default async function Platformlar() {
         <Card key={c.id} className="mb-6 space-y-4 p-5">
           <div className="flex flex-wrap items-center gap-3"><h2 className="font-semibold">{PLATFORM_NAMES[c.platform] ?? c.platform}</h2><ConnectionToggles id={c.id} autoAccept={c.autoAccept} active={c.active} /></div>
           <div className="space-y-1 text-sm">
-            <div>Webhook adresi: <code className="break-all rounded bg-stone-50 px-1">{`${origin}/api/platform/${c.platform}/webhook?c=${c.id}`}</code></div>
-            <div>İmza anahtarı (HMAC-SHA256, <code>x-signature</code>): <code className="break-all rounded bg-stone-50 px-1" data-testid="webhook-secret">{c.webhookSecret}</code></div>
+            <div>Webhook adresi: <code className="break-all rounded bg-surface-2 px-1">{`${origin}/api/platform/${c.platform}/webhook?c=${c.id}`}</code></div>
+            <div>İmza anahtarı (HMAC-SHA256, <code>x-signature</code>): <code className="break-all rounded bg-surface-2 px-1" data-testid="webhook-secret">{c.webhookSecret}</code></div>
           </div>
           {c.platform === "mock" && <TestOrderButton connectionId={c.id} />}
           <div>
@@ -41,7 +41,7 @@ export default async function Platformlar() {
             <ul className="mt-3 divide-y divide-line text-sm">
               {codes.filter((k) => k.platform === c.platform && k.storeId === c.storeId).map((k) => (
                 <li key={k.id} className="flex items-center gap-3 py-1.5"><code className="w-40">{k.code}</code><span>{k.product}</span>
-                  <form action={deleteCode.bind(null, k.id)} className="ml-auto"><button className="text-xs text-red-700 underline">Sil</button></form></li>
+                  <form action={deleteCode.bind(null, k.id)} className="ml-auto"><button className="text-xs text-bad underline">Sil</button></form></li>
               ))}
             </ul>
           </div>

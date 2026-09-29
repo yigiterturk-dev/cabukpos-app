@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { deleteStation } from "@/lib/admin/salon-actions";
 import { agentConfig } from "@/lib/agent/config";
 import { CategoryStation, StationForm } from "@/components/admin/SalonForms";
-import { Card, Empty, PageHeader } from "@/components/ui";
+import { Card, Empty, PageHeader, Panel } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -26,16 +26,15 @@ export default async function Istasyonlar() {
   return (
     <>
       <PageHeader title="Mutfak istasyonları" desc="Siparişler istasyona göre ayrılır: mutfak ekranında o istasyonun sütununa düşer, yazıcısı varsa oraya da basılır." />
-      <Card className="mb-6 p-5">
+      <div className="mb-6"><Panel title="İstasyon ekle" desc={printers.length === 0 ? "Mutfak yazıcısı için önce Donanım sayfasında ajana yazıcı ekleyin." : undefined}>
         <StationForm printers={printers} />
-        {printers.length === 0 && <p className="mt-3 text-sm text-muted">Mutfak yazıcısı için önce Donanım sayfasında ajana yazıcı ekleyin.</p>}
-      </Card>
+      </Panel></div>
       {stations.length === 0 ? <Empty>Henüz istasyon yok. İstasyonsuz siparişler tüm mutfak ekranlarında görünür.</Empty> : (
         <Card className="mb-6 divide-y divide-line">
           {stations.map((s) => (
             <div key={s.id} className="flex flex-wrap items-end gap-3 p-4">
               <StationForm initial={s} printers={printers} />
-              <form action={deleteStation.bind(null, s.id)} className="ml-auto"><button className="text-sm text-red-700 underline">Sil</button></form>
+              <form action={deleteStation.bind(null, s.id)} className="ml-auto"><button className="text-sm text-bad hover:underline">Sil</button></form>
             </div>
           ))}
         </Card>

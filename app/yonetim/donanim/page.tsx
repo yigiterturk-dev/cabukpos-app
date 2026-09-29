@@ -21,8 +21,8 @@ export default async function Donanim() {
       <PageHeader title="Donanım" desc="Kasadaki bilgisayarda çalışan ÇabukPOS ajanı fiş yazıcısını, para çekmecesini ve teraziyi yönetir." />
       <Card className="mb-6 p-5">
         <AgentCreateForm />
-        <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="lna-note">Kasa ekranında Chrome “yerel ağ erişimi” izni sorduğunda <strong>İzin ver</strong> deyin; aksi halde ajan “kapalı” görünür.</p>
-        <details className="mt-4 text-sm text-stone-700">
+        <p className="mt-4 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn" data-testid="lna-note">Kasa ekranında Chrome “yerel ağ erişimi” izni sorduğunda <strong>İzin ver</strong> deyin; aksi halde ajan “kapalı” görünür.</p>
+        <details className="mt-4 text-sm text-ink-2">
           <summary className="cursor-pointer font-medium">Kurulum adımları</summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>Kasadaki bilgisayara Node.js (LTS) kurun.</li>
@@ -48,16 +48,16 @@ export default async function Donanim() {
                   {r.lastSeenAt && <span className="text-xs text-muted">Son görülme {dt(r.lastSeenAt)}{r.version ? ` · sürüm ${r.version}` : ""}{r.lanIp ? ` · ${r.lanIp}` : ""}</span>}
                   <div className="ml-auto flex flex-wrap items-start gap-4 text-sm">
                     <AgentPairButton action={newAgentPairing.bind(null, r.id)} />
-                    {!r.revokedAt && <form action={revokeAgent.bind(null, r.id)}><button className="text-red-700 underline">İptal et</button></form>}
+                    {!r.revokedAt && <form action={revokeAgent.bind(null, r.id)}><button className="text-bad hover:underline">İptal et</button></form>}
                   </div>
                 </div>
                 {r.status && (
                   <ul className="mt-3 space-y-1 text-sm">
                     {r.status.printers.map((p) => {
                       const name = cfg.printers.find((x) => x.id === p.id)?.name ?? p.id;
-                      return <li key={p.id} data-testid={`printer-status-${p.id}`}>{name}: {p.ok === null ? <span className="text-muted">henüz yazdırılmadı</span> : p.ok ? <span className="text-emerald-700">hazır</span> : <span className="text-red-700">hata — {p.error}</span>}</li>;
+                      return <li key={p.id} data-testid={`printer-status-${p.id}`}>{name}: {p.ok === null ? <span className="text-muted">henüz yazdırılmadı</span> : p.ok ? <span className="text-ok">hazır</span> : <span className="text-bad">hata — {p.error}</span>}</li>;
                     })}
-                    {r.status.failed > 0 && <li className="text-red-700">{r.status.failed} fiş yazdırılamadı (kasada “Yeniden dene”)</li>}
+                    {r.status.failed > 0 && <li className="text-bad">{r.status.failed} fiş yazdırılamadı (kasada “Yeniden dene”)</li>}
                   </ul>
                 )}
                 <p className="mt-2 text-xs text-muted">

@@ -27,7 +27,7 @@ export default async function Uretim() {
       {recent.length > 0 && (
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-line text-left text-muted"><tr><th className="p-3 font-medium">Tarih</th><th className="p-3 font-medium">Ara ürün</th><th className="p-3 text-right font-medium">Parti</th><th className="p-3 text-right font-medium">Miktar</th><th className="p-3 font-medium">Not</th></tr></thead>
+            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr><th className="p-3 font-medium">Tarih</th><th className="p-3 font-medium">Ara ürün</th><th className="p-3 text-right font-medium">Parti</th><th className="p-3 text-right font-medium">Miktar</th><th className="p-3 font-medium">Not</th></tr></thead>
             <tbody className="divide-y divide-line">
               {recent.map((r) => (
                 <tr key={r.id}>
