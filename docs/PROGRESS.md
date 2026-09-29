@@ -131,3 +131,15 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-m9b-abonelik-design.md`, plan `
 - Fiyat env: `PLAN_PRICE_AYLIK`, `PLAN_PRICE_YILLIK` (kuruş, KDV dahil), `SALES_CONTACT`. Yerel .env.local'da TEST değerleri.
 - Günlük cron `/api/cron/billing` (06:00 UTC): bitişe 1-7 gün kala sahiplere tek e-posta (Resend yoksa atlar).
 - Prod: şema → db-rls (billing_payments izni) → kontrol → main → canlı E2E m9b (ödeme adımları atlanır).
+
+## M9c — Ajans izinli okuma (2026-09-29)
+
+Spec `docs/superpowers/specs/2026-09-29-cabukpos-m9c-ajans-okuma-design.md`, plan `docs/superpowers/plans/2026-09-29-cabukpos-m9c-ajans-okuma.md`. 130/130 test, E2E M9c + regresyon M9a OK.
+- Yönetim → Entegrasyonlar: yalnız sahip `cpk_…` ajans anahtarı üretir (bir kez gösterilir, DB'de sha256) ve iptal eder. Oluşturma abonelik kilidinde kapalı, iptal her zaman açık.
+- Uç `GET /api/v1/stats/daily?from&to` (Bearer, ≤92 gün, anahtar başına 60/dk): günlük sipariş/ciro/iade + kanal kırılımı (masa/paket/kasa). Kilitte de çalışır.
+- Platform satışı ve iadesi hariç (ajans onu platform bağlantısından alır); iadenin kanalı asıl satıştan (`refund_of` join); adisyon parçaları aynı gün tek sipariş.
+- `integration_keys` RLS dışı (devices gibi; anahtar kiracı bilinmeden aranır) → yalnız `lib/integrations/keys.ts`, her sorguda tenantId.
+- `lib/ratelimit`: `next/headers` dinamik içe aktarılır (node testleri `hit()`i yükleyebilsin).
+- Ajans tarafı: restoran-zirve `lib/platforms/cabukpos` (`orders.stats`), `CABUKPOS_API_URL` (varsayılan cabukpos-app.vercel.app).
+- Yerel: şema değişince hem `db:push:test` hem `db:push` (yerel sunucu `cabukpos` DB'sini kullanır).
+- Prod: `scripts/prod-push.sh 1` (şema) → `2` (rls, yeni tabloya GRANT) → `3` (integration_keys|f, sales|t, t) → `4` main → `5` canlı E2E m9c.
