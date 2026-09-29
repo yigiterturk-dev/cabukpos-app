@@ -1,7 +1,7 @@
 // Amaca özel JWT'ler (edge + node): her tür ayrı anahtar + audience → biri diğerinin yerine geçemez.
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 
-export type Aud = "admin" | "cashier";
+export type Aud = "admin" | "cashier" | "reset";
 
 function key(aud: Aud): Uint8Array {
   const s = process.env.AUTH_SECRET;
