@@ -565,6 +565,7 @@ export function KasaApp() {
       <>
         {header}
         <Center title="Vardiya kapalı" sub="Satışa başlamak için kasadaki nakdi girip vardiyayı açın.">
+          {d.billing && <p data-testid="kasa-billing" className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{d.billing.state === "deneme" || d.billing.state === "aktif" ? `Abonelik ${d.billing.daysLeft} gün sonra bitiyor.` : "Abonelik sona erdi. Satış devam eder; yöneticinize haber verin."}</p>}
           <MoneyForm label="Kasadaki açılış nakdi (TL)" submit="Vardiyayı aç" defaultValue="0" onSubmit={async (k) => { setMeta(await openShiftLocal(cashier.id, k)); void sync.current?.kick(); }} />
         </Center>
       </>

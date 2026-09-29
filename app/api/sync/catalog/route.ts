@@ -1,5 +1,6 @@
 // Katalog aşağı: cihaz + açık vardiya + fiş sayacı her seferinde; katalog (kategori, ürün, personel PIN hash'i)
 // yalnız içerik özeti ?v= ile farklıysa. Kimlik: cihaz çerezi.
+import { billingInfo } from "@/lib/core/billing";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { getDevice } from "@/lib/auth/kasa";
@@ -43,11 +44,13 @@ export async function GET(req: Request) {
     ...(salon ? { areas: salon.areas, tables: salon.tables, stations: salon.stations, optionGroups: salon.optionGroups, deliveryZones: salon.deliveryZones } : {}),
   };
   const v = await sha256(JSON.stringify(catalog));
+  const [bt] = await getDb().select({ trialEndsAt: schema.tenants.trialEndsAt, paidUntil: schema.tenants.paidUntil }).from(schema.tenants).where(eq(schema.tenants.id, device.tenantId));
+  const bi = bt ? billingInfo(bt) : null;
   const since = new URL(req.url).searchParams.get("v");
   return Response.json(
     {
       v,
-      device: { id: device.id, name: device.name, receiptPrefix: device.receiptPrefix, tenantName: device.tenantName, vertical: device.vertical, role: device.role, stations: device.stations, storeName: store?.name ?? "", storeAddress: store?.address ?? null, nextReceiptNo: dv?.next ?? 1 },
+      device: { id: device.id, name: device.name, receiptPrefix: device.receiptPrefix, tenantName: device.tenantName, vertical: device.vertical, role: device.role, stations: device.stations, storeName: store?.name ?? "", storeAddress: store?.address ?? null, nextReceiptNo: dv?.next ?? 1, billing: bi?.warn ? { state: bi.state, daysLeft: bi.daysLeft } : null },
       openShift: shift ? { ...shift, openedAt: shift.openedAt.toISOString() } : null,
       catalog: since === v ? null : catalog,
       agent, // her çekişte yeni bilet (30 gün geçerli)

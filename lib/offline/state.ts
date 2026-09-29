@@ -1,4 +1,5 @@
 // lib/offline/state.ts — Kasa yerel durumunun şekli ve saf uzlaştırma kuralları (tarayıcı + test).
+import type { BillingState } from "@/lib/core/billing";
 import type { VatRate } from "@/lib/core/money";
 import type { VatLine } from "@/lib/core/cart";
 import type { Payment } from "@/lib/core/payment";
@@ -8,7 +9,7 @@ import type { LineOption, OptionGroup } from "@/lib/core/options";
 import type { Buyer, ChannelModes } from "@/lib/core/fiscal";
 
 export type DeviceRole = "kasa" | "garson" | "mutfak" | "kurye";
-export type DeviceInfo = { id: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role?: DeviceRole; stations?: string[]; storeName: string; storeAddress: string | null; nextReceiptNo: number };
+export type DeviceInfo = { id: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role?: DeviceRole; stations?: string[]; storeName: string; storeAddress: string | null; nextReceiptNo: number; billing?: { state: BillingState; daysLeft: number } | null };
 export type KasaProduct = { id: string; name: string; price: number; vatRate: VatRate; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; quick: boolean; stationId?: string | null; optionGroupIds?: string[] };
 export type KasaStaff = { id: string; name: string; role: "kasiyer" | "mudur" | "garson" | "kurye"; pinHash: string };
 export type Area = { id: string; name: string };
