@@ -8,10 +8,11 @@ import { minutesSince } from "./useTabs";
 
 const TONE: Record<TableStatus, string> = {
   bos: "border-line bg-white",
-  dolu: "border-brand bg-brand-soft",
-  hazir: "border-emerald-600 bg-emerald-50",
-  uzun: "border-amber-500 bg-amber-50",
+  dolu: "border-brand/60 bg-brand-soft",
+  hazir: "border-ok bg-ok-soft",
+  uzun: "border-amber-500 bg-warn-soft",
 };
+const BAR: Record<TableStatus, string> = { bos: "bg-transparent", dolu: "bg-brand", hazir: "bg-ok", uzun: "bg-amber-500" };
 const LABEL: Record<TableStatus, string> = { bos: "Boş", dolu: "Dolu", hazir: "Hazır bekliyor", uzun: "Uzun süredir açık" };
 
 export function SalonScreen({ areas, tables, tabs, now, onOpen }: { areas: Area[]; tables: Table[]; tabs: Map<string, TabState>; now: number; onOpen: (tableId: string) => void }) {
@@ -21,17 +22,17 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen }: { areas: Area[
   const current = areas.some((a) => a.id === areaId) ? areaId : areas[0].id;
   return (
     <div className="p-4">
-      <div className="mb-4 flex gap-1 overflow-x-auto" role="tablist" aria-label="Bölgeler">
+      <div className="mb-4 inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-surface-3 p-1" role="tablist" aria-label="Bölgeler">
         {areas.map((a) => {
           const busy = tables.filter((t) => t.areaId === a.id && byTable.has(t.id)).length;
           return (
-            <button key={a.id} type="button" role="tab" aria-selected={a.id === current} onClick={() => setAreaId(a.id)} className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm ${a.id === current ? "bg-brand font-medium text-white" : "border border-line hover:bg-stone-50"}`}>
+            <button key={a.id} type="button" role="tab" aria-selected={a.id === current} onClick={() => setAreaId(a.id)} className={`press h-10 whitespace-nowrap rounded-[9px] px-4 text-sm font-medium ${a.id === current ? "bg-white text-ink shadow-card" : "text-muted hover:text-ink"}`}>
               {a.name}{busy > 0 && <span className="ml-1.5 opacity-80">({busy})</span>}
             </button>
           );
         })}
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
         {tables.filter((t) => t.areaId === current).map((t) => {
           const open = byTable.get(t.id) ?? [];
           const st = tableStatus(open, now);
@@ -39,12 +40,14 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen }: { areas: Area[
           const since = open.length ? minutesSince(open.reduce((a, x) => (x.openedAt < a ? x.openedAt : a), open[0].openedAt), now) : 0;
           return (
             <button key={t.id} type="button" onClick={() => onOpen(t.id)} aria-label={`${t.name}, ${LABEL[st]}`} data-status={st}
-              className={`flex min-h-28 flex-col rounded-xl border-2 p-3 text-left transition hover:shadow ${TONE[st]}`}>
-              <span className="text-lg font-semibold">{t.name}</span>
-              {open.length > 0 && <span className="tabular mt-auto font-medium">{formatTL(total)}</span>}
+              className={`press relative flex min-h-32 flex-col overflow-hidden rounded-2xl border-2 p-3.5 pt-4 text-left shadow-card hover:shadow-pop ${TONE[st]}`}>
+              <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${BAR[st]}`} />
+              <span className="text-xl font-semibold tracking-tight">{t.name}</span>
+              {open.length === 0 && <span className="mt-auto text-xs font-medium text-muted">Boş</span>}
+              {open.length > 0 && <span className="tabular mt-auto text-lg font-bold">{formatTL(total)}</span>}
               {open.length > 0 && <span className="text-xs text-muted">{since} dk{open.length > 1 ? ` · ${open.length} adisyon` : ""}</span>}
               <span className="mt-1 flex flex-wrap gap-1 text-[11px] font-medium">
-                {st === "hazir" && <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-white">Hazır</span>}
+                {st === "hazir" && <span className="rounded bg-ok px-1.5 py-0.5 text-white">Hazır</span>}
                 {open.some((x) => x.billRequested) && <span className="rounded bg-ink px-1.5 py-0.5 text-white">Hesap</span>}
               </span>
             </button>

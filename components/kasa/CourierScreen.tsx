@@ -11,8 +11,8 @@ import type { Cashier } from "./PinPad";
 import { Modal } from "./TabScreen";
 import { minutesSince } from "./useTabs";
 
-const btn = "rounded-lg border border-line px-3 py-2 text-sm hover:bg-stone-50 disabled:opacity-40";
-const strong = "rounded-lg bg-ink px-3 py-2 text-sm font-medium text-white disabled:opacity-40";
+const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-white px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
+const strong = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] bg-ink px-3 py-2 text-sm font-medium text-white shadow-card hover:bg-ink-2 disabled:opacity-40";
 
 export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onCloseShift }: {
   meta: Meta; courier: Cashier; tabs: Map<string, TabState>; now: number; add: (list: NewTabEvent[]) => Promise<unknown>;
@@ -45,14 +45,14 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
             <li key={t.id} data-testid="courier-card" className="rounded-xl border border-line bg-white p-4 text-sm">
               <div className="flex items-baseline gap-2">
                 <span className="font-semibold">{o?.name ?? "Paket"}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs ${st === "yolda" ? "bg-blue-50 text-blue-800" : st === "hazir" ? "bg-green-50 text-green-800" : "bg-stone-100 text-stone-700"}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs ${st === "yolda" ? "bg-blue-50 text-blue-800" : st === "hazir" ? "bg-ok-soft text-ok" : "bg-surface-3 text-ink-2"}`}>
                   {st === "yolda" ? "Yolda" : st === "hazir" ? "Hazır" : "Hazırlanıyor"}
                 </span>
                 <span className="ml-auto tabular text-xs text-muted">{minutesSince(t.openedAt, now)} dk</span>
               </div>
               {o && <div className="mt-1">{o.address}</div>}
               {o?.directions && <div className="text-xs text-muted">{o.directions}</div>}
-              {o?.note && <div className="mt-1 text-xs font-medium text-amber-800">Not: {o.note}</div>}
+              {o?.note && <div className="mt-1 text-xs font-medium text-warn">Not: {o.note}</div>}
               <div className="mt-2 flex items-center gap-2">
                 <span className="tabular text-base font-semibold">{formatTL(t.remaining)}</span>
                 {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
@@ -85,7 +85,7 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
                 className={`${btn} ${deliver.order?.payIntent === p.value ? "border-brand font-medium text-brand" : ""}`}>{p.label}</button>
             ))}
           </div>
-          <button type="button" onClick={() => setDeliver(null)} className="mt-4 w-full text-center text-sm underline">Vazgeç</button>
+          <button type="button" onClick={() => setDeliver(null)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
     </main>

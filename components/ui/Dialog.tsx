@@ -1,5 +1,5 @@
 "use client";
-// Diyalog: örtü + panel. Form gerekiyorsa gövdede <form id> + alt şeritte <button form=id type=submit>. Esc ve örtüye tıklama onClose'u çağırır (verilmişse).
+// Diyalog: örtü + panel. Form gerekiyorsa gövdede <form id> + alt şeritte <button form=id type=submit>. Esc onClose'u çağırır; örtüye dokunmak kapatmaz (kasada yanlışlıkla dokunup girilen tutar kaybolmasın).
 import { useEffect, type ReactNode } from "react";
 
 const WIDTH = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-2xl" };
@@ -14,7 +14,7 @@ export function Dialog({ label, title, aside, onClose, size = "md", footer, chil
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
   return (
-    <div role="dialog" aria-modal="true" aria-label={label} className="fixed inset-0 z-50 grid place-items-center bg-stone-900/40 p-4 backdrop-blur-[2px]" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+    <div role="dialog" aria-modal="true" aria-label={label} className="fixed inset-0 z-50 grid place-items-center bg-stone-900/40 p-4 backdrop-blur-[2px]">
       <div className={`flex max-h-[92vh] w-full ${WIDTH[size]} flex-col overflow-hidden rounded-[20px] bg-white shadow-pop`}>
         {title !== undefined && (
           <div className="flex items-baseline justify-between gap-3 border-b border-line px-6 py-4">

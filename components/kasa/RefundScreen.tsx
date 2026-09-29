@@ -69,20 +69,20 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
         <h1 className="text-xl font-semibold">Müdür onayı</h1>
         <p className="mb-6 text-sm text-muted">{formatTL(total)} iade · müdür PIN&apos;i girsin</p>
         <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => void record(m.id)} />
-        <button type="button" onClick={() => setApproving(false)} className="mt-6 text-sm underline">Vazgeç</button>
+        <button type="button" onClick={() => setApproving(false)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-6 w-full">Vazgeç</button>
       </main>
     );
   }
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-6">
-      <button type="button" onClick={onBack} className="mb-4 text-sm underline">← Kasa</button>
+      <button type="button" onClick={onBack} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 -ml-3 mb-4">← Kasa</button>
       <h1 className="mb-4 text-xl font-semibold tracking-tight">İade</h1>
       <form onSubmit={(e) => { e.preventDefault(); void find(); }} className="flex gap-2">
         <input value={no} onChange={(e) => setNo(e.target.value)} autoFocus placeholder="Fiş no (ör. K1-000042)" aria-label="İade fiş no" className="flex-1 rounded-xl border border-line px-4 py-3 uppercase" />
         <Button type="submit" disabled={busy || !no.trim()}>Fişi bul</Button>
       </form>
-      {error && <p className="mt-3 text-sm text-red-700" role="alert">{error}</p>}
+      {error && <p className="mt-3 text-sm text-bad" role="alert">{error}</p>}
       {sale && (
         <section className="mt-6">
           <p className="mb-2 text-sm text-muted">Fiş {sale.receiptNo} · {new Date(sale.at).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" })}</p>
@@ -112,7 +112,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
           <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Geri ödeme">
             <span className="text-sm">Geri ödeme:</span>
             {SELECTABLE_METHODS.map((m) => (
-              <button key={m.value} type="button" aria-pressed={method === m.value} onClick={() => setMethod(m.value)} className={`rounded-lg border px-3 py-2 text-sm ${method === m.value ? "border-brand bg-brand-soft font-medium text-brand" : "border-line"}`}>{m.label}</button>
+              <button key={m.value} type="button" aria-pressed={method === m.value} onClick={() => setMethod(m.value)} className={`rounded-lg border px-3 py-2 text-sm ${method === m.value ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`}>{m.label}</button>
             ))}
           </div>
           <div className="mt-5 flex items-center justify-between">

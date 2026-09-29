@@ -11,24 +11,21 @@ import { FEE_NAME, formatPhone, intentLabel, zoneCheck } from "@/lib/core/delive
 import type { NewTabEvent } from "@/lib/offline/tabs";
 import type { KasaProduct, KasaStaff, Meta, Table } from "@/lib/offline/state";
 import { PinPad } from "./PinPad";
+import { Dialog } from "@/components/ui";
+import { categoryTone } from "@/lib/ui/categoryTone";
 import { minutesSince } from "./useTabs";
 
 type Add = (list: NewTabEvent[]) => Promise<unknown>;
 export type Waiter = { id: string; name: string; role: KasaStaff["role"] };
 
 export function Modal({ label, children, onClose }: { label: string; children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div role="dialog" aria-modal="true" aria-label={label} className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4" onKeyDown={(e) => e.key === "Escape" && onClose()}>
-      <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold">{label}</h2>
-        {children}
-      </div>
-    </div>
-  );
+  return <Dialog label={label} title={label} onClose={onClose}>{children}</Dialog>;
 }
 
-const btn = "rounded-lg border border-line px-3 py-2 text-sm hover:bg-stone-50";
-const primary = "rounded-lg bg-brand px-4 py-3 font-medium text-white disabled:opacity-40";
+const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-white px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
+const strong = "press inline-flex min-h-11 items-center justify-center rounded-[10px] bg-ink px-3 text-sm font-medium text-white shadow-card hover:bg-ink-2";
+const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-white text-ink-2 hover:border-line-strong"}`;
+const primary = "press inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 font-semibold text-white shadow-card hover:bg-brand-hover disabled:opacity-40";
 
 function OptionsDialog({ product, groups, onAdd, onClose }: { product: KasaProduct; groups: OptionGroup[]; onAdd: (unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number) => void; onClose: () => void }) {
   const [picked, setPicked] = useState<string[]>([]);
@@ -47,21 +44,21 @@ function OptionsDialog({ product, groups, onAdd, onClose }: { product: KasaProdu
           <legend className="mb-2 text-sm font-medium">{g.name} <span className="font-normal text-muted">{g.min > 0 ? "(zorunlu)" : ""}{g.max > 1 ? ` en çok ${g.max}` : ""}</span></legend>
           <div className="flex flex-wrap gap-2">
             {g.options.map((o) => (
-              <button key={o.id} type="button" aria-pressed={picked.includes(o.id)} onClick={() => toggle(g, o.id)} className={`rounded-lg border px-3 py-2 text-sm ${picked.includes(o.id) ? "border-brand bg-brand-soft font-medium text-brand" : "border-line"}`}>
+              <button key={o.id} type="button" aria-pressed={picked.includes(o.id)} onClick={() => toggle(g, o.id)} className={`rounded-lg border px-3 py-2 text-sm ${picked.includes(o.id) ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`}>
                 {o.name}{o.delta ? ` ${o.delta > 0 ? "+" : "−"}${formatTL(Math.abs(o.delta))}` : ""}
               </button>
             ))}
           </div>
         </fieldset>
       ))}
-      <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Not</span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="ör. soğansız" className="w-full rounded-lg border border-line px-3 py-2" /></label>
+      <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Not</span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="ör. soğansız" className="w-full rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
       <div className="mb-4 flex items-center gap-3">
         <button type="button" aria-label="Azalt" onClick={() => setQty((q) => Math.max(1, q - 1))} className={btn}>−</button>
         <span className="tabular w-8 text-center text-lg font-semibold">{qty}</span>
         <button type="button" aria-label="Artır" onClick={() => setQty((q) => Math.min(99, q + 1))} className={btn}>+</button>
         <span className="tabular ml-auto font-semibold">{r.ok ? formatTL(r.unitPrice * qty) : ""}</span>
       </div>
-      {!r.ok && picked.length > 0 && <p className="mb-2 text-sm text-red-700">{r.error}</p>}
+      {!r.ok && picked.length > 0 && <p className="mb-2 text-sm text-bad">{r.error}</p>}
       <div className="flex gap-2">
         <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
         <button type="button" disabled={!r.ok} onClick={() => r.ok && onAdd(r.unitPrice, r.options, note.trim() || null, qty * 1000)} className={`flex-[2] ${primary}`}>Ekle</button>
@@ -92,13 +89,13 @@ function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose }
             <div className="mb-4">
               <div className="mb-2 flex gap-1">
                 {([["yuzde", "Yüzde"], ["tutar", "Tutar (TL)"], ["kaldir", "İndirimi kaldır"]] as const).map(([k, l]) => (
-                  <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={`rounded-lg border px-3 py-2 text-sm ${kind === k ? "border-brand bg-brand-soft font-medium text-brand" : "border-line"}`}>{l}</button>
+                  <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={`rounded-lg border px-3 py-2 text-sm ${kind === k ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`}>{l}</button>
                 ))}
               </div>
               {kind !== "kaldir" && <input aria-label={kind === "yuzde" ? "İndirim yüzdesi" : "İndirim tutarı"} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} className="tabular w-full rounded-lg border border-line px-3 py-2 text-right" />}
             </div>
           )}
-          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="w-full rounded-lg border border-line px-3 py-2" /></label>
+          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="w-full rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
           {waiter.role !== "mudur" && <p className="mb-3 text-sm text-muted">Müdür onayı gerekir.</p>}
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
@@ -108,7 +105,7 @@ function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose }
       ) : (
         <>
           <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => onOk(m.id, reason.trim(), d)} />
-          <button type="button" onClick={onClose} className="mt-4 w-full text-center text-sm underline">Vazgeç</button>
+          <button type="button" onClick={onClose} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-4 w-full">Vazgeç</button>
         </>
       )}
     </Modal>
@@ -165,39 +162,40 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   const occupied = openTabsByTable(allTabs);
 
   return (
-    <div className="grid min-h-[calc(100dvh-3rem)] md:grid-cols-[1fr_24rem]">
+    <div className="grid min-h-0 flex-1 md:grid-cols-[1fr_24rem]">
       <section className="p-4">
-        <div className="mb-3 flex flex-wrap gap-1">
-          <button type="button" onClick={() => setCat(null)} className={`rounded-lg px-3 py-2 text-sm ${cat === null ? "bg-ink text-white" : "border border-line"}`}>Tümü</button>
-          {cats.map((c) => <button key={c.id} type="button" onClick={() => setCat(c.id)} className={`rounded-lg px-3 py-2 text-sm ${cat === c.id ? "bg-ink text-white" : "border border-line"}`}>{c.name}</button>)}
+        <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button type="button" onClick={() => setCat(null)} className={chip(cat === null)}>Tümü</button>
+          {cats.map((c) => <button key={c.id} type="button" onClick={() => setCat(c.id)} className={chip(cat === c.id)}><span aria-hidden className={`size-2.5 rounded-full ${categoryTone(c.id).dot}`} />{c.name}</button>)}
         </div>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-2">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
           {products.map((p) => (
-            <button key={p.id} type="button" disabled={busy} onClick={() => tapProduct(p)} className="flex min-h-20 flex-col rounded-xl border border-line p-3 text-left hover:bg-stone-50">
-              <span className="font-medium leading-tight">{p.name}</span>
-              <span className="tabular mt-auto text-sm text-muted">{formatTL(p.price)}{p.optionGroupIds?.length ? " ⋯" : ""}</span>
+            <button key={p.id} type="button" disabled={busy} onClick={() => tapProduct(p)} className="press relative flex min-h-24 flex-col overflow-hidden rounded-2xl border border-line bg-white p-3.5 pt-4 text-left shadow-card hover:border-line-strong">
+              <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
+              <span className="line-clamp-2 font-semibold leading-snug">{p.name}</span>
+              <span className="tabular mt-auto pt-2 text-sm font-medium text-ink-2">{formatTL(p.price)}{p.optionGroupIds?.length ? " ⋯" : ""}</span>
             </button>
           ))}
         </div>
       </section>
 
-      <aside className="flex flex-col border-l border-line bg-stone-50/50">
-        <div className="flex items-center gap-2 border-b border-line p-3">
-          <button type="button" onClick={onBack} className="text-sm underline">← {table ? "Salon" : "Paket"}</button>
-          <h2 className="ml-2 text-xl font-semibold">{title}</h2>
+      <aside className="flex flex-col border-l border-line bg-white">
+        <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
+          <button type="button" onClick={onBack} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 -ml-2">← {table ? "Salon" : "Paket"}</button>
+          <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
           {tab && <span className="text-sm text-muted">{minutesSince(tab.openedAt, now)} dk</span>}
           {tabs.length > 1 && (
             <div className="ml-auto flex gap-1">
-              {tabs.map((t, i) => <button key={t.id} type="button" aria-pressed={t.id === tabId} onClick={() => setPick(t.id)} className={`rounded px-2 py-1 text-xs ${t.id === tabId ? "bg-ink text-white" : "border border-line"}`}>Adisyon {i + 1}</button>)}
+              {tabs.map((t, i) => <button key={t.id} type="button" aria-pressed={t.id === tabId} onClick={() => setPick(t.id)} className={`rounded px-2 py-1 text-xs ${t.id === tabId ? "bg-brand text-white" : "border border-line bg-white"}`}>Adisyon {i + 1}</button>)}
             </div>
           )}
         </div>
         {order && (
           <div className="border-b border-line px-3 py-2 text-sm" data-testid="order-info">
             <div className="font-medium">{order.name} · <span className="tabular">{formatPhone(order.phone)}</span></div>
-            <div className="text-stone-700">{order.address}{order.directions ? ` · ${order.directions}` : ""}</div>
+            <div className="text-ink-2">{order.address}{order.directions ? ` · ${order.directions}` : ""}</div>
             <div className="text-xs text-muted">{[zone?.name, intentLabel(order.payIntent), order.note].filter(Boolean).join(" · ")}</div>
-            {belowMin && zone && <div className="mt-1 text-xs font-medium text-amber-700">Asgari tutar {formatTL(zone.minOrder)} altında</div>}
+            {belowMin && zone && <div className="mt-1 text-xs font-medium text-warn">Asgari tutar {formatTL(zone.minOrder)} altında</div>}
           </div>
         )}
         <ul className="flex-1 divide-y divide-line overflow-y-auto" aria-label="Adisyon">
@@ -211,12 +209,12 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
                   <span className="flex-1">
                     <span className="block">{l.name}</span>
                     {l.options.length > 0 && <span className="block text-xs text-muted">{optionsText(l.options)}</span>}
-                    {l.note && <span className="block text-xs text-amber-700">! {l.note}</span>}
+                    {l.note && <span className="block text-xs text-warn">! {l.note}</span>}
                     <span className="mt-0.5 flex gap-1 text-[11px]">
-                      {!l.sent && !l.voided && l.productId !== null && <span className="rounded bg-amber-100 px-1.5 text-amber-800">gönderilmedi</span>}
-                      {k && <span className={`rounded px-1.5 ${k.status === "hazir" ? "bg-emerald-600 text-white" : "bg-stone-200"}`}>{{ yeni: "mutfakta", hazirlaniyor: "hazırlanıyor", hazir: "hazır", teslim: "teslim" }[k.status]}</span>}
+                      {!l.sent && !l.voided && l.productId !== null && <span className="rounded bg-warn-soft px-1.5 text-warn">gönderilmedi</span>}
+                      {k && <span className={`rounded px-1.5 ${k.status === "hazir" ? "bg-ok text-white" : "bg-surface-3"}`}>{{ yeni: "mutfakta", hazirlaniyor: "hazırlanıyor", hazir: "hazır", teslim: "teslim" }[k.status]}</span>}
                       {l.comped && <span className="rounded bg-sky-100 px-1.5 text-sky-800">ikram</span>}
-                      {l.paidMilli > 0 && <span className="rounded bg-stone-200 px-1.5">ödendi {qtyText(l.paidMilli)}</span>}
+                      {l.paidMilli > 0 && <span className="rounded bg-surface-3 px-1.5">ödendi {qtyText(l.paidMilli)}</span>}
                     </span>
                   </span>
                   <span className="tabular">{l.comped ? formatTL(0) : formatTL(lineGross(l))}</span>
@@ -226,14 +224,14 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
           })}
         </ul>
         {tab && (
-          <div className="space-y-2 border-t border-line p-3">
+          <div className="space-y-2 border-t border-line bg-surface-2 p-3">
             {tab.discountAmount > 0 && <div className="flex justify-between text-sm"><span>İndirim</span><span className="tabular">−{formatTL(tab.discountAmount)}</span></div>}
             {tab.paid > 0 && <div className="flex justify-between text-sm"><span>Ödenen</span><span className="tabular">−{formatTL(tab.paid)}</span></div>}
-            <div className="flex justify-between text-lg font-semibold"><span>Kalan</span><span className="tabular" data-testid="tab-remaining">{formatTL(tab.remaining)}</span></div>
+            <div className="flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">Kalan</span><span className="tabular text-3xl font-bold tracking-tight" data-testid="tab-remaining">{formatTL(tab.remaining)}</span></div>
             {tab.remaining === 0 && live.length > 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli) && (
-              <button type="button" onClick={() => void run([ev({ type: "close", reason: "ödenecek tutar yok" })]).then(onBack)} className="w-full rounded-lg bg-ink py-2 text-sm font-medium text-white">Masayı kapat</button>
+              <button type="button" onClick={() => void run([ev({ type: "close", reason: "ödenecek tutar yok" })]).then(onBack)} className={`w-full ${strong}`}>Masayı kapat</button>
             )}
-            {ready.length > 0 && <button type="button" onClick={() => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })))} className="w-full rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white">Hazır — teslim edildi</button>}
+            {ready.length > 0 && <button type="button" onClick={() => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })))} className="press min-h-11 w-full rounded-[10px] bg-ok text-sm font-medium text-white shadow-card">Hazır — teslim edildi</button>}
             <div className="grid grid-cols-3 gap-2">
               {table && <button type="button" onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>}
               <button type="button" onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by)] })} className={btn}>İndirim</button>
@@ -242,8 +240,8 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             </div>
           </div>
         )}
-        <div className="border-t border-line p-3">
-          <button type="button" disabled={!unsent.length || busy} onClick={send} className={`w-full ${primary}`}>Mutfağa gönder{unsent.length ? ` (${unsent.length})` : ""}</button>
+        <div className="border-t border-line bg-surface-2 p-3 pt-0">
+          <button type="button" disabled={!unsent.length || busy} onClick={send} className={`min-h-14 w-full text-lg ${primary}`}>Mutfağa gönder{unsent.length ? ` (${unsent.length})` : ""}</button>
         </div>
       </aside>
 
@@ -265,7 +263,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             {!dialog.line.comped && dialog.line.paidMilli === 0 && (
               <button type="button" onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İkram: ${l.name}`, run: (by, reason) => [ev({ type: "comp", lineId: l.lineId, reason }, by)] }); }} className={btn}>İkram et</button>
             )}
-            <button type="button" onClick={() => setDialog(null)} className="mt-2 text-sm underline">Kapat</button>
+            <button type="button" onClick={() => setDialog(null)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-2 w-full">Kapat</button>
           </div>
         </Modal>
       )}
@@ -283,7 +281,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
               <button key={t.id} type="button" onClick={() => void run([ev({ type: "move", toTableId: t.id })]).then(onBack)} className={btn}>{t.name}</button>
             ))}
           </div>
-          <button type="button" onClick={() => setDialog(null)} className="mt-4 w-full text-center text-sm underline">Vazgeç</button>
+          <button type="button" onClick={() => setDialog(null)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
     </div>
@@ -294,7 +292,7 @@ function NoteDialog({ line, onSave, onClose }: { line: TabLine; onSave: (note: s
   const [note, setNote] = useState(line.note ?? "");
   return (
     <Modal label={`Not: ${line.name}`} onClose={onClose}>
-      <input autoFocus aria-label="Not" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} className="mb-4 w-full rounded-lg border border-line px-3 py-2" />
+      <input autoFocus aria-label="Not" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} className="mb-4 w-full rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
       <div className="flex gap-2">
         <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
         <button type="button" onClick={() => onSave(note.trim() || null)} className={`flex-[2] ${primary}`}>Kaydet</button>

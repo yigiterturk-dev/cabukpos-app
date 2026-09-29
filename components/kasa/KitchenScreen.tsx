@@ -34,38 +34,38 @@ export function KitchenScreen({ meta, tabs, now, add }: { meta: Meta; tabs: Map<
     const mins = minutesSince(t.at, now);
     return (
       <button key={t.id} type="button" disabled={busy === t.id || t.status === "hazir"} onClick={() => void next(tab, t)} data-ticket={t.id} data-status={t.status}
-        className={`flex flex-col rounded-xl border-2 p-3 text-left ${t.status === "hazir" ? "border-emerald-600 bg-emerald-50" : t.status === "hazirlaniyor" ? "border-amber-500 bg-amber-50" : mins >= 15 ? "border-red-600 bg-white" : "border-line bg-white"}`}>
-        <span className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold">{tabLabel(tab, tables, PLATFORM_NAMES)}</span>
+        className={`press flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left shadow-card ${t.status === "hazir" ? "border-ok" : t.status === "hazirlaniyor" ? "border-amber-500" : mins >= 15 ? "border-red-600" : "border-line"}`}>
+        <span className={`flex items-baseline gap-2 px-3.5 py-2.5 ${t.status === "hazir" ? "bg-ok-soft" : t.status === "hazirlaniyor" ? "bg-warn-soft" : mins >= 15 ? "bg-bad-soft" : "bg-surface-2"}`}>
+          <span className="text-2xl font-bold tracking-tight">{tabLabel(tab, tables, PLATFORM_NAMES)}</span>
           <span className="text-sm text-muted">{stations.find((s) => s.id === t.stationId)?.name ?? ""}</span>
-          <span className={`tabular ml-auto text-sm ${mins >= 15 && t.status !== "hazir" ? "font-bold text-red-700" : "text-muted"}`}>{mins} dk</span>
+          <span className={`tabular ml-auto text-sm ${mins >= 15 && t.status !== "hazir" ? "font-bold text-bad" : "text-muted"}`}>{mins} dk</span>
         </span>
-        <ul className="mt-2 space-y-1">
+        <ul className="flex-1 space-y-1.5 px-3.5 py-3">
           {t.lineIds.map((id) => {
             const l = tab.lines.find((x) => x.lineId === id);
             if (!l) return null;
             return (
-              <li key={id} className={l.voided ? "text-red-700 line-through" : ""}>
+              <li key={id} className={l.voided ? "text-bad line-through" : ""}>
                 <span className="text-lg font-semibold">{qtyText(l.qtyMilli)} × {l.name}</span>{l.voided && <span className="ml-2 text-sm font-bold no-underline">İPTAL</span>}
                 {l.options.length > 0 && <span className="block text-sm">+ {optionsText(l.options)}</span>}
-                {l.note && <span className="block text-sm font-medium text-amber-800">! {l.note}</span>}
+                {l.note && <span className="block text-sm font-medium text-warn">! {l.note}</span>}
               </li>
             );
           })}
         </ul>
-        <span className="mt-3 text-sm font-medium">{t.status === "yeni" ? "Dokun: hazırlanıyor" : t.status === "hazirlaniyor" ? "Dokun: hazır" : "Hazır"}</span>
+        <span className={`mx-3.5 mb-3.5 rounded-[10px] py-2.5 text-center text-sm font-semibold ${t.status === "yeni" ? "bg-ink text-white" : t.status === "hazirlaniyor" ? "bg-ok text-white" : "bg-ok-soft text-ok"}`}>{t.status === "yeni" ? "Dokun: hazırlanıyor" : t.status === "hazirlaniyor" ? "Dokun: hazır" : "Hazır"}</span>
       </button>
     );
   };
   const open = items.filter((i) => i.t.status !== "hazir");
   const ready = items.filter((i) => i.t.status === "hazir");
   return (
-    <div className="grid gap-4 p-4 lg:grid-cols-[1fr_20rem]">
+    <div className="grid flex-1 gap-4 p-4 lg:grid-cols-[1fr_20rem]">
       <section aria-label="Bekleyen siparişler">
         {open.length === 0 ? <p className="p-12 text-center text-muted">Bekleyen sipariş yok.</p> : <div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-3">{open.map(card)}</div>}
       </section>
       <section aria-label="Hazır" className="space-y-3">
-        <h2 className="font-semibold text-emerald-700">Hazır</h2>
+        <h2 className="flex items-center gap-2 font-semibold text-ok"><span className="size-2 rounded-full bg-ok" />Hazır</h2>
         {ready.map(card)}
       </section>
     </div>

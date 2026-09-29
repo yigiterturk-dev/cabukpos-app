@@ -25,8 +25,8 @@ const COLUMNS: { key: DeliveryStatus[]; title: string }[] = [
 const PREP = [10, 20, 30, 45];
 const REJECT = ["Ürün kalmadı", "Yoğunluk", "Kapalıyız", "Adres bölge dışı"];
 
-const btn = "rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-stone-50 disabled:opacity-40";
-const strong = "rounded-lg bg-ink px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40";
+const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-white px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
+const strong = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] bg-ink px-3 py-2 text-sm font-medium text-white shadow-card hover:bg-ink-2 disabled:opacity-40";
 
 type Dialog = { k: "accept" | "reject" | "courier" | "cancel"; tab: TabState };
 
@@ -87,16 +87,16 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                           <span className="font-semibold">{tabLabel(t, tables, PLATFORM_NAMES)}</span>
                           <span className="ml-auto tabular text-xs text-muted">{minutesSince(t.openedAt, now)} dk</span>
                         </div>
-                        {o && <div className="truncate text-stone-700">{t.kind === "platform" ? o.name : formatPhone(o.phone)}</div>}
+                        {o && <div className="truncate text-ink-2">{t.kind === "platform" ? o.name : formatPhone(o.phone)}</div>}
                         {o && <div className="truncate text-xs text-muted">{[zone?.name, o.address].filter(Boolean).join(" · ")}</div>}
                         <div className="mt-1 flex items-center gap-2">
                           <span className="tabular font-semibold">{formatTL(t.total)}</span>
                           {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
                         </div>
                         {courier && <div className="mt-1 text-xs">Kurye: <span className="font-medium">{courier}</span></div>}
-                        {st === "onay_bekliyor" && deadline !== null && <div className={`mt-1 text-xs font-medium ${deadline <= 2 ? "text-red-700" : "text-amber-700"}`}>Onay için {Math.max(0, deadline)} dk</div>}
-                        {st === "iptal" && <div className="mt-1 text-xs text-red-700">İptal: {t.delivery.cancelled}</div>}
-                        {st === "reddedildi" && <div className="mt-1 text-xs text-red-700">Red: {t.delivery.rejected}</div>}
+                        {st === "onay_bekliyor" && deadline !== null && <div className={`mt-1 text-xs font-medium ${deadline <= 2 ? "text-bad" : "text-warn"}`}>Onay için {Math.max(0, deadline)} dk</div>}
+                        {st === "iptal" && <div className="mt-1 text-xs text-bad">İptal: {t.delivery.cancelled}</div>}
+                        {st === "reddedildi" && <div className="mt-1 text-xs text-bad">Red: {t.delivery.rejected}</div>}
                       </button>
                       {!closed && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -112,7 +112,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                               {t.kind === "paket" && !t.delivery.courierId && <button type="button" disabled={busy || t.remaining === 0} onClick={() => onBill(t.id)} className={btn}>Hesap (gel-al)</button>}
                             </>
                           )}
-                          {st !== "onay_bekliyor" && t.paid === 0 && <button type="button" disabled={busy} onClick={() => setDialog({ k: "cancel", tab: t })} className="rounded-lg px-2 py-1.5 text-xs text-red-700 underline">İptal</button>}
+                          {st !== "onay_bekliyor" && t.paid === 0 && <button type="button" disabled={busy} onClick={() => setDialog({ k: "cancel", tab: t })} className="rounded-lg px-2 py-1.5 text-xs text-bad underline">İptal</button>}
                         </div>
                       )}
                     </li>
@@ -130,7 +130,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
           <div className="grid grid-cols-4 gap-2">
             {PREP.map((m) => <button key={m} type="button" disabled={busy} onClick={() => void accept(dialog.tab, m)} className={btn}>{m} dk</button>)}
           </div>
-          <button type="button" onClick={() => setDialog(null)} className="mt-4 w-full text-center text-sm underline">Vazgeç</button>
+          <button type="button" onClick={() => setDialog(null)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
       {dialog?.k === "reject" && (
@@ -138,7 +138,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
           <div className="grid gap-2">
             {REJECT.map((r) => <button key={r} type="button" disabled={busy} onClick={() => void run(() => add([ev(dialog.tab, { type: "reject", reason: r })]))} className={btn}>{r}</button>)}
           </div>
-          <button type="button" onClick={() => setDialog(null)} className="mt-4 w-full text-center text-sm underline">Vazgeç</button>
+          <button type="button" onClick={() => setDialog(null)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
       {dialog?.k === "courier" && (
@@ -150,7 +150,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
             ))}
             {dialog.tab.delivery.courierId && <button type="button" disabled={busy} onClick={() => void run(() => add([ev(dialog.tab, { type: "courier", staffId: null })]))} className={btn}>Kuryeyi kaldır</button>}
           </div>
-          <button type="button" onClick={() => setDialog(null)} className="mt-4 w-full text-center text-sm underline">Vazgeç</button>
+          <button type="button" onClick={() => setDialog(null)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
       {dialog?.k === "cancel" && <CancelDialog meta={meta} onMeta={onMeta} waiter={waiter} onClose={() => setDialog(null)} onOk={(by, reason) => void run(() => add([ev(dialog.tab, { type: "cancel", reason }, by)]))} />}
@@ -166,7 +166,7 @@ function CancelDialog({ meta, onMeta, waiter, onOk, onClose }: { meta: Meta; onM
     <Modal label="Siparişi iptal et" onClose={onClose}>
       {!pin ? (
         <>
-          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="w-full rounded-lg border border-line px-3 py-2" /></label>
+          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="w-full rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
             <button type="button" disabled={reason.trim().length < 2} onClick={() => (waiter.role === "mudur" ? onOk(null, reason.trim()) : setPin(true))} className="flex-[2] rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40">{waiter.role === "mudur" ? "İptal et" : "Müdür onayına"}</button>
@@ -175,7 +175,7 @@ function CancelDialog({ meta, onMeta, waiter, onOk, onClose }: { meta: Meta; onM
       ) : (
         <>
           <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => onOk(m.id, reason.trim())} />
-          <button type="button" onClick={onClose} className="mt-4 w-full text-center text-sm underline">Vazgeç</button>
+          <button type="button" onClick={onClose} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-4 w-full">Vazgeç</button>
         </>
       )}
     </Modal>

@@ -21,13 +21,13 @@ export function InvoiceForm({ initial, onSave, onCancel }: { initial: Buyer | nu
       <Field label="VKN / TCKN" hint={kind === "vkn" ? "Vergi kimlik no (şirket)" : kind === "tckn" ? "T.C. kimlik no" : undefined}>
         <Input name="buyer-taxId" inputMode="numeric" maxLength={11} value={v.taxId} onChange={set("taxId")} autoComplete="off" />
       </Field>
-      {err("taxId") && <p className="text-xs text-red-700">{err("taxId")}</p>}
+      {err("taxId") && <p className="text-xs text-bad">{err("taxId")}</p>}
       <Field label={kind === "vkn" ? "Unvan" : "Ad soyad"}><Input name="buyer-name" value={v.name} onChange={set("name")} maxLength={200} /></Field>
-      {err("name") && <p className="text-xs text-red-700">{err("name")}</p>}
+      {err("name") && <p className="text-xs text-bad">{err("name")}</p>}
       <Field label="E-posta" hint="Fatura bağlantısı gönderilir (isteğe bağlı)"><Input name="buyer-email" type="email" value={v.email} onChange={set("email")} /></Field>
-      {err("email") && <p className="text-xs text-red-700">{err("email")}</p>}
+      {err("email") && <p className="text-xs text-bad">{err("email")}</p>}
       <Field label={kind === "vkn" ? "Adres (zorunlu)" : "Adres"}><Textarea name="buyer-address" rows={2} value={v.address} onChange={set("address")} maxLength={500} /></Field>
-      {err("address") && <p className="text-xs text-red-700">{err("address")}</p>}
+      {err("address") && <p className="text-xs text-bad">{err("address")}</p>}
       <div className="flex gap-2">
         <Button type="button" variant="secondary" onClick={onCancel} className="flex-1">Faturasız</Button>
         <Button type="button" onClick={save} className="flex-1">Fatura bilgisini kaydet</Button>
