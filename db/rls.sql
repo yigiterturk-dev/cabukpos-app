@@ -21,7 +21,7 @@ end $$;
 
 -- M8: mali belge
 do $$ declare t text; begin
-  foreach t in array array['fiscal_settings','fiscal_documents'] loop
+  foreach t in array array['fiscal_settings','fiscal_documents','fiscal_refunds'] loop
     execute format('alter table %I enable row level security', t);
     execute format('alter table %I force row level security', t);
     execute format('drop policy if exists tenant_isolation on %I', t);

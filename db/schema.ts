@@ -473,6 +473,19 @@ export const fiscalDocuments = pgTable("fiscal_documents", {
   issuedAt: ts("issued_at"),
 }, (t) => [index("fiscal_documents_status_idx").on(t.tenantId, t.status)]);
 
+// — İade tutanağı / alıcı iade faturası: e-Arşiv'li satışın kısmi iadesi (ya da iptali reddedilen tam iade). —
+export const fiscalRefunds = pgTable("fiscal_refunds", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  refundSaleId: uuid("refund_sale_id").notNull().unique().references(() => sales.id, { onDelete: "cascade" }),
+  fiscalDocId: uuid("fiscal_doc_id").notNull().references(() => fiscalDocuments.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull().$type<"tutanak" | "alici_faturasi">(),
+  buyerInvoiceNo: text("buyer_invoice_no"),
+  buyerInvoiceDate: date("buyer_invoice_date"),
+  resolvedAt: ts("resolved_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("fiscal_refunds_open_idx").on(t.tenantId, t.resolvedAt)]);
+
 // — M9a: kasa olayı (sepetten silme / sepeti boşaltma). Değişmez; kimlik istemcide. —
 export const registerEvents = pgTable("register_events", {
   id: uuid("id").primaryKey(),
