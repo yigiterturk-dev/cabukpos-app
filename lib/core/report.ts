@@ -177,3 +177,34 @@ function cell(v: string | number | null): string {
   return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 export const toCsv = (head: string[], rows: (string | number | null)[][]) => `﻿${[head, ...rows].map((r) => r.map(cell).join(";")).join("\r\n")}\r\n`;
+
+// — M9c: ajans API'si günlük özeti. Platform satışı (ve iadesi) hariç: ajans onu platform bağlantısından alıyor. —
+export const API_MAX_DAYS = 92;
+/** Katı doğrulama (parseRange gibi düzeltmez): bozuk, ters ya da 92 günden uzun → null. */
+export function apiRange(from: string | null, to: string | null): Range | null {
+  if (!validDay(from ?? undefined) || !validDay(to ?? undefined) || from! > to!) return null;
+  const r = { bas: from!, bit: to! };
+  return dayCount(r) > API_MAX_DAYS ? null : r;
+}
+
+export type DailyRow = { status: "kapandi" | "iade"; channel: SaleRow["channel"]; total: Kurus; tabId: string | null; at: Date };
+export type DailyStat = { day: string; orderCount: number; cancelledCount: number; grossRevenue: number; channels: { masa: number; paket: number; kasa: number } };
+const istDay = (d: Date) => new Date(d.getTime() + IST).toISOString().slice(0, 10);
+
+/** Adisyon parçaları (hesap bölme) aynı gün tek sipariş; iade ciroyu düşer ve iptal sayılır. */
+export function dailyStats(rows: DailyRow[]): DailyStat[] {
+  const days = new Map<string, { gross: number; refunds: number; tabs: Set<string>; ch: DailyStat["channels"] }>();
+  for (const x of rows) {
+    if (x.channel === "platform") continue;
+    const k = istDay(x.at);
+    let d = days.get(k);
+    if (!d) days.set(k, (d = { gross: 0, refunds: 0, tabs: new Set(), ch: { masa: 0, paket: 0, kasa: 0 } }));
+    if (x.status === "iade") { d.gross -= x.total; d.refunds++; continue; }
+    d.gross += x.total;
+    if (x.tabId) { if (d.tabs.has(x.tabId)) continue; d.tabs.add(x.tabId); }
+    d.ch[x.channel]++;
+  }
+  return [...days].sort(([a], [b]) => (a < b ? -1 : 1)).map(([day, d]) => ({
+    day, orderCount: d.ch.masa + d.ch.paket + d.ch.kasa, cancelledCount: d.refunds, grossRevenue: d.gross / 100, channels: d.ch,
+  }));
+}
