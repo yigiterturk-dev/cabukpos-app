@@ -13,6 +13,7 @@ import { ProductsTab } from "@/components/reports/ProductsTab";
 import { StaffTab } from "@/components/reports/StaffTab";
 import { ProfitTab } from "@/components/reports/ProfitTab";
 import { ShiftsTab } from "@/components/reports/ShiftsTab";
+import { ReviewTab } from "@/components/reports/ReviewTab";
 
 export const dynamic = "force-dynamic";
 const DESC: Record<ReportTab, string> = {
@@ -22,6 +23,7 @@ const DESC: Record<ReportTab, string> = {
   personel: "Kişi başına satış ve iade, iptal, ikram, indirim, sepetten silme. İsme tıklayınca olay listesi.",
   vardiyalar: "Vardiya (gün sonu) raporları. Son 200 vardiya.",
   karlilik: "Ürün kârlılığı: KDV hariç net ciro, satış anındaki maliyet, brüt kâr. İadeler düşülür.",
+  inceleme: "Çevrimdışı kasadan gelip kabul edilen ama işaretlenen kayıtlar: fiyat farkı, silinmiş ürün, fiş no çakışması, fazla iade, platform hatası.",
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -45,6 +47,7 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
     const [rows, events] = await withTenant(a.tenantId, async (tx) => [await staffData(tx, range), kisi ? await staffEvents(tx, range, kisi) : null] as const);
     body = <StaffTab rows={rows} range={range} kisi={kisi} events={events} />;
   } else if (tab.key === "karlilik") body = <ProfitTab tenantId={a.tenantId} range={range} />;
+  else if (tab.key === "inceleme") body = <ReviewTab tenantId={a.tenantId} range={range} />;
   else body = <ShiftsTab tenantId={a.tenantId} />;
 
   return (

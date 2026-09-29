@@ -154,3 +154,10 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - E2E notu: art arda koşuda eşleme sınırı dolar → yerelde `delete from login_attempts`. Bir koşuda garson sipariş penceresinde "Artır" tıklaması takıldı (sonraki 3 koşu temiz) — tekrarlarsa useTabs yeniden çizim sıklığına bak.
 - Prod: şema değişikliği YOK → main + Vercel. Kasalar ajan 0.5.0'ı Donanım'dan yeniden indirmeli. Tablet LAN'ı: cabukpos.com DNS → Cloudflare + `CF_API_TOKEN`, `CF_ZONE_ID`.
 - ⚠️ Chrome 142+ "Yerel ağ erişimi" (canlıda doğrulandı, Chrome 154): https canlı sayfadan `127.0.0.1` ajanına istek İZİN ister. Kasa PC'sinde Chrome ilk seferde "yerel ağdaki cihazlara erişim" penceresi açar → **İzin ver** denmeli (yoksa yazıcı/çekmece/terazi ve LAN sessizce çalışmaz). M4'ten beri var; canlı E2E ilk kez yakaladı. E2E'ler (m4, m5, lan) bağlama `local-network-access` izni verir.
+
+## Tam bitirme (2026-09-29, dal `tam-bitirme`, lan-merkez üstünde)
+- Donanım: Chrome "yerel ağ erişimi" izni kurulum adımı + üstte uyarı. Kasa rozeti: ajan erişilemez ve izin `denied` ise "Chrome yerel ağ izni kapalı" (başlıkta nasıl açılacağı).
+- PayTR (`lib/billing/paytr.ts`): iFrame API. `BILLING_PROVIDER=paytr` + `PAYTR_MERCHANT_ID/KEY/SALT` (+ `PAYTR_TEST_MODE=1`) ile açılır; anahtar eksikse ödeme kapalı kalır. Akış: get-token → `/yonetim/abonelik/odeme/<id>` iframe → PayTR paneline Bildirim URL'si `https://<app>/api/billing/paytr` (imza doğrulanır, taksitsiz, `payment_amount` bizim tutarla aynı değilse başarısız) → `completePayment`. `merchant_oid` = tiresiz uuid. Kartla ödeme cep telefonu ister (formda). ok_url `?sonuc=isleniyor`. Canlıda henüz env YOK (şirket kurulunca).
+- Raporlar → İncelenecek: `sales.review` + `tab_events.review` + reddedilen belgeler (push reddi artık `audit_log` `sync.red`, actor `device:<id>`). E2E m9a'ya adım eklendi.
+- Uygulama simgeleri: `app/icon.png`, `app/apple-icon.png`, `app/favicon.ico`, `public/icons/{icon-192,icon-512,maskable-512}.png` (manifest'te).
+- 138/138 test; E2E M9a (yeni adımla), M9b, M4 OK. Prod: şema yok → `prod-push.sh 4` → Vercel Ready → `5` (canlı m9a).

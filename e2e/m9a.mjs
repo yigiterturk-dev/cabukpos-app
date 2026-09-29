@@ -1,6 +1,6 @@
 // e2e/m9a.mjs — Raporlar. Kasa: Adana×2 + Ayran → Adana azalt (silme 300) → satış 350 kart →
 // Ayran ekle + azaltarak sil (50) → Adana ekle + Temizle (300) → Ayran iadesi (müdür PIN) → Özet brüt 300, 1 fiş →
-// Personel: Ayşe silinen 3 · 650, iade 1 · 50, olay listesinde "Sepet boşaltıldı" → CSV (BOM + ;) → Vardiyalar sekmesi.
+// Personel: Ayşe silinen 3 · 650, iade 1 · 50, olay listesinde "Sepet boşaltıldı" → CSV (BOM + ;) → Vardiyalar sekmesi → İncelenecek (reddedilen belge).
 // Kullanım: npm run build && node --env-file=.env.local e2e/m9a.mjs (sunucu :3800)
 import { chromium } from "playwright-core";
 
@@ -120,6 +120,15 @@ try {
   await admin.getByRole("tab", { name: "Vardiyalar" }).click();
   await admin.getByText("Açık").first().waitFor();
   step("Vardiyalar sekmesi");
+
+  // İncelenecek: biçimi bozuk belge reddedilir → yönetimde "Reddedildi" satırı
+  const cat = await (await kasa.request.get(`${BASE}/api/sync/catalog`)).json();
+  const bad = { id: "00000000-0000-4000-8000-000000000001", kind: "sale" };
+  const pr = await (await kasa.request.post(`${BASE}/api/sync/push`, { data: { deviceId: cat.device.id, docs: [bad] } })).json();
+  if (pr.results?.[0]?.ok !== false) throw new Error(`bozuk belge reddedilmedi: ${JSON.stringify(pr)}`);
+  await admin.getByRole("tab", { name: "İncelenecek" }).click();
+  await admin.getByTestId("review-list").getByText("Reddedildi · sale").waitFor();
+  step("İncelenecek sekmesi: reddedilen belge listede");
 
   if (errors.length) throw new Error(`sayfa hataları: ${errors.join(" | ")}`);
   console.log("M9a OK");
