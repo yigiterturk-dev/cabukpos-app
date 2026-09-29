@@ -10,6 +10,7 @@ import { findLocalSale, recordRefundLocal } from "@/lib/offline/db";
 import type { LocalSale, Meta } from "@/lib/offline/state";
 import { normalizeReceiptNo } from "@/lib/sync/docs";
 import type { LookedUpSale } from "@/lib/sync/lookup";
+import { isPartialRefund } from "@/lib/core/refundNote";
 import { Button } from "@/components/ui";
 import { PinPad, type Cashier } from "./PinPad";
 
@@ -57,7 +58,9 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
   const record = async (approvedBy: string) => {
     if (!sale) return;
     setBusy(true);
-    const r = await recordRefundLocal(cashier, approvedBy, sale, picked, method, refundId);
+    // Asıl satış e-Arşiv'liyse iade fişine tutanak / alıcı faturası notu (bulut aynı kuralla kaydını açar).
+    const rf = sale.fiscal ? (({ refundedBefore, ...f }) => ({ ...f, partial: isPartialRefund(sale.lines, picked, refundedBefore), sellerTaxId: meta.catalog.fiscal?.sellerTaxId ?? null }))(sale.fiscal) : undefined;
+    const r = await recordRefundLocal(cashier, approvedBy, sale, picked, method, refundId, rf);
     setBusy(false);
     if (r.ok) onDone(r.sale);
     else { setApproving(false); setError(r.error); }

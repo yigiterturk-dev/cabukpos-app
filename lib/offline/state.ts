@@ -1,4 +1,5 @@
 // lib/offline/state.ts — Kasa yerel durumunun şekli ve saf uzlaştırma kuralları (tarayıcı + test).
+import type { RefundFiscal } from "@/lib/core/refundNote";
 import type { BillingState } from "@/lib/core/billing";
 import type { VatRate } from "@/lib/core/money";
 import type { VatLine } from "@/lib/core/cart";
@@ -17,7 +18,7 @@ export type Table = { id: string; areaId: string; name: string };
 export type Station = { id: string; name: string; printer: string | null };
 export type DeliveryZone = { id: string; name: string; fee: number; minOrder: number };
 // M5: restoran salonu (market kataloğunda yok)
-export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; fiscal?: { modes: ChannelModes; provider: string } };
+export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null } };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
 export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number };
 
@@ -42,6 +43,7 @@ export type LocalSale = {
   tabId?: string; tableName?: string; // M5: masadan parça ödeme (M6: paket/platform başlığı)
   refund?: boolean; refundOf?: string; refundOfNo?: string; approvedBy?: string; // iade fişi
   fiscal?: { token: string; buyer: Buyer | null; number: string | null; ettn: string | null }; // M8 e-Arşiv
+  refundFiscal?: RefundFiscal; // iade: asıl satış e-Arşiv'liyse tutanak / alıcı faturası notu
 };
 export type OutboxRow = { n?: number; id: string; doc: SyncDoc };
 export type RejectedRow = { id: string; doc: SyncDoc; error: string; at: string };

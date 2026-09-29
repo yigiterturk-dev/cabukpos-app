@@ -10,6 +10,7 @@ import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, re
 import type { Buyer } from "@/lib/core/fiscal";
 import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, withTestFlag, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
 import { fiscalNotes } from "@/lib/core/receipt";
+import { refundNote } from "@/lib/core/refundNote";
 import { pendingPrints } from "@/lib/core/kitchen";
 import { paidLinesOf, payableLines, type PayLine } from "@/lib/core/split";
 import { totals } from "@/lib/core/cart";
@@ -176,6 +177,7 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
   const weighed = (id: string) => meta.catalog.products.find((p) => p.id === id)?.kind === "tartili";
   const f = withTestFlag(meta, sale).fiscal;
   const fiscal = f ? fiscalNotes(f, location.origin) : null;
+  const rn = sale.refund && sale.refundFiscal ? refundNote(sale.refundFiscal, d.tenantName, sale.receiptNo) : null;
   return (
     <>
       <style>{`@page { size: 80mm auto; margin: 0 } @media print { body { background: #fff } }`}</style>
@@ -224,6 +226,15 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
             {fiscal.rows.map(([k, v]) => <div key={k} className="flex justify-between gap-2"><span>{k}</span><span className="text-right">{v}</span></div>)}
             {fiscal.notes.map((n) => <div key={n} className="break-all">{n}</div>)}
             {!fiscal.notes.some((n) => n.includes(fiscal.url)) && <a href={fiscal.url} className="block break-all underline print:no-underline">{fiscal.url}</a>}
+          </div>
+        )}
+        {rn?.kind === "note" && <p className="mt-2 border-t border-dashed border-ink pt-1">{rn.text}</p>}
+        {rn?.kind === "tutanak" && (
+          <div className="mt-2 border-t border-dashed border-ink pt-1" data-testid="refund-note">
+            <div className="text-center font-bold">{rn.title}</div>
+            {rn.rows.map(([k, v]) => <div key={k} className="flex justify-between gap-2"><span>{k}</span><span className="break-all text-right">{v}</span></div>)}
+            <p className="mt-1">{rn.statement}</p>
+            {rn.sign.map((s) => <div key={s} className="mt-4 flex gap-1"><span>{s}:</span><span className="flex-1 border-b border-dotted border-ink" /></div>)}
           </div>
         )}
         {!fiscal?.title && <p className="mt-3 border-t border-dashed border-ink pt-2 text-center">Bilgi fişidir, mali değeri yoktur.</p>}

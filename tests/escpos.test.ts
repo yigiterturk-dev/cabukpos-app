@@ -56,6 +56,13 @@ test("fiş: başlar, keser, toplam ve fiş no içerir; 58 mm'de satır taşmaz",
 test("fiş: iade ve gün sonu", () => {
   const r = ascii(renderReceipt({ ...sale, refund: true, refundOfNo: "K1-000040", change: 0 }, head, { width: 80, codepage: "ascii" }));
   assert.ok(r.includes("IADE FISI") && r.includes("K1-000040"));
+  const rf = { number: "CBP2026000000001", ettn: "11111111-2222-3333-4444-555555555555", invoiceAt: "2026-09-29T09:00:00.000Z", buyerKind: "tckn" as const, partial: true, sellerTaxId: "1234567890" };
+  const tt = ascii(renderReceipt({ ...sale, refund: true, refundOfNo: "K1-000040", change: 0, refundFiscal: rf }, head, { width: 80, codepage: "ascii" }));
+  assert.ok(ascii(renderReceipt({ ...sale, refund: true, refundOfNo: "K1-000040", change: 0, refundFiscal: rf }, head, { width: 58, codepage: "ascii" })).includes("IADE TUTANAGI"));
+  assert.ok(tt.includes("IADE TUTANAGI") && tt.includes("Musteri imza") && tt.includes("ETTN:") && tt.includes("11111111-2222-3333-4444-555555555555") && tt.includes("CBP2026000000001"));
+  const nt = ascii(renderReceipt({ ...sale, refund: true, refundOfNo: "K1-000040", change: 0, refundFiscal: { ...rf, buyerKind: "vkn" } }, head, { width: 80, codepage: "ascii" }));
+  assert.ok(nt.includes("iade faturasi duzenleyecektir") && !nt.includes("IADE TUTANAGI"));
+  assert.ok(!ascii(renderReceipt({ ...sale, refund: true, refundOfNo: "K1-000040", change: 0, refundFiscal: { ...rf, partial: false } }, head, { width: 80, codepage: "ascii" })).includes("TUTANAG"));
   const summary = summarizeShift(10000, [sale]);
   const z = ascii(renderShiftReport({ deviceName: "Kasa 1", openedByName: "Ayşe", closedByName: "Ayşe", openingCash: 10000, openedAt: new Date(), closedAt: new Date(), countedCash: 10000 + t.total, expectedCash: null, summary }, head, { width: 58, codepage: "ascii" }));
   assert.ok(z.includes("GUN SONU") && z.includes("Beklenen kasa") && z.includes("Fark"));

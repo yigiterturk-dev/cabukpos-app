@@ -10,6 +10,7 @@ import type { PaidLine, TabEvent } from "@/lib/core/tab";
 import type { LineOption } from "@/lib/core/options";
 import { docModeFor, newFiscalToken, type Buyer, type Channel } from "@/lib/core/fiscal";
 import type { LookedUpSale } from "@/lib/sync/lookup";
+import { buyerKindOf, type RefundFiscal } from "@/lib/core/refundNote";
 import { emptyMeta, type ClosedShift, type LocalSale, type Meta, type OutboxRow, type RejectedRow } from "./state";
 
 class KasaDb extends Dexie {
@@ -101,11 +102,12 @@ export async function findLocalSale(receiptNo: string): Promise<LookedUpSale | n
   const sale = (await d.sales.where("receiptNo").equals(receiptNo).toArray()).find((s) => !s.refund);
   if (!sale) return null;
   const refunds = await d.sales.where("refundOf").equals(sale.id).toArray();
-  return { id: sale.id, receiptNo: sale.receiptNo, at: sale.at, lines: refundable(sale.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])), refunds.flatMap((r) => r.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])))) };
+  const f = sale.fiscal?.number && sale.fiscal.ettn ? { number: sale.fiscal.number, ettn: sale.fiscal.ettn, invoiceAt: sale.at, buyerKind: buyerKindOf(sale.fiscal.buyer?.taxId), refundedBefore: refunds.length > 0 } : null;
+  return { id: sale.id, receiptNo: sale.receiptNo, at: sale.at, fiscal: f, lines: refundable(sale.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])), refunds.flatMap((r) => r.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])))) };
 }
 
 /** İade: yerel kayıt + giden kutusu, aynı fiş sayacı. Geri ödeme tek yöntemle, tutar = iade toplamı. */
-export async function recordRefundLocal(staff: { id: string; name: string }, approvedBy: string, of: { id: string; receiptNo: string }, lines: RefLine[], method: Payment["method"], refundId: string): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
+export async function recordRefundLocal(staff: { id: string; name: string }, approvedBy: string, of: { id: string; receiptNo: string }, lines: RefLine[], method: Payment["method"], refundId: string, refundFiscal?: RefundFiscal): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
   const d = kasaDb();
   return d.transaction("rw", [d.meta, d.sales, d.outbox], async () => {
     const done = await d.sales.get(refundId);
@@ -118,7 +120,7 @@ export async function recordRefundLocal(staff: { id: string; name: string }, app
     const payments = [{ method, amount: t.total }];
     const seq = m.nextSeq;
     const at = new Date().toISOString();
-    const sale: LocalSale = { id: refundId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines: picked, payments, total: t.total, change: 0, vat: t.vat, refund: true, refundOf: of.id, refundOfNo: of.receiptNo, approvedBy };
+    const sale: LocalSale = { id: refundId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines: picked, payments, total: t.total, change: 0, vat: t.vat, refund: true, refundOf: of.id, refundOfNo: of.receiptNo, approvedBy, ...(refundFiscal ? { refundFiscal } : {}) };
     await d.sales.add(sale);
     await enqueue({ kind: "refund", id: refundId, shiftId: m.shift.id, staffId: staff.id, approvedBy, refundOf: of.id, receiptSeq: seq, at, lines: picked, payments });
     await d.meta.put({ ...m, nextSeq: seq + 1 });

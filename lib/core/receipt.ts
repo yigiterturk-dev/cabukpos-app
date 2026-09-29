@@ -5,6 +5,7 @@ import type { Payment } from "./payment";
 import type { VatLine } from "./cart";
 import type { summarizeShift } from "./shift";
 import { EscPos, type Codepage, type PaperWidth } from "./escpos";
+import { refundNote, type RefundFiscal } from "./refundNote";
 
 export type PrintOpts = { width: PaperWidth; codepage: Codepage; drawer?: boolean; appUrl?: string };
 /** M8: e-Arşiv. number yoksa henüz kesilmedi (çevrimdışı/gecikme) → bağlantı ya da e-posta notu. */
@@ -27,6 +28,7 @@ export type ReceiptSale = {
   payments: Payment[]; total: number; change: number; vat: VatLine[];
   refund?: boolean; refundOfNo?: string; tableName?: string;
   fiscal?: ReceiptFiscal;
+  refundFiscal?: RefundFiscal; // e-Arşiv'li satışın iadesi → tutanak / alıcı faturası notu
 };
 export type ReceiptHeader = { tenantName: string; storeName: string; storeAddress: string | null };
 
@@ -74,6 +76,14 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
     for (const [k, v] of f.rows) p.cols2(k, v);
     for (const n of f.notes) p.lines(n);
     p.align("center").qr(f.url).align("left");
+  }
+  const rn = sale.refund && sale.refundFiscal ? refundNote(sale.refundFiscal, h.tenantName, sale.receiptNo) : null;
+  if (rn?.kind === "note") p.rule().lines(rn.text);
+  if (rn?.kind === "tutanak") {
+    p.rule().align("center").bold(true).line(rn.title).bold(false).align("left");
+    for (const [k, v] of rn.rows) if (k === "ETTN") p.lines(`${k}: ${v}`); else p.cols2(k, v);
+    p.lines(rn.statement);
+    for (const s of rn.sign) p.line().line(`${s}: `.padEnd(o.width === 58 ? 32 : 48, "."));
   }
   if (!f?.title) p.rule().align("center").lines("Bilgi fişidir, mali değeri yoktur.").align("left");
   p.feed(3).cut();
