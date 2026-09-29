@@ -18,7 +18,8 @@ import { PLATFORM_NAMES } from "@/lib/core/platform";
 import type { Payment } from "@/lib/core/payment";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
 import type { LocalSale, Meta } from "@/lib/offline/state";
-import { Button, Field, Input } from "@/components/ui";
+import { ArrowLeft, ClipboardCheck, Inbox, LayoutGrid, LogOut, Printer, Bike, Undo2, Zap } from "lucide-react";
+import { Button, Card, Field, Input, LogoMark, Segmented } from "@/components/ui";
 import { ShiftReport, type ShiftReportData } from "@/components/ShiftReport";
 import { PinPad, type Cashier } from "./PinPad";
 import { RefundScreen } from "./RefundScreen";
@@ -38,23 +39,48 @@ type View = { name: "home" } | { name: "sale" } | { name: "tab"; tableId: string
   | { name: "paket" } | { name: "yeni-paket" } | { name: "ptab"; tabId: string } | { name: "kurye-kapat" } | { name: "kurye-gun-sonu"; by: string }; // M6
 type PrintState = PrintView & { jobId?: string | null };
 
-function Center({ title, sub, children }: { title: string; sub?: string; children?: React.ReactNode }) {
+function Center({ title, sub, logo, card, children }: { title: string; sub?: string; logo?: boolean; card?: boolean; children?: React.ReactNode }) {
   return (
     <main className="grid flex-1 place-items-center px-4 py-8">
       <div className="w-full max-w-sm">
+        {logo && <LogoMark size="lg" className="mx-auto mb-5" />}
         <h1 className="text-center text-2xl font-semibold tracking-tight">{title}</h1>
-        {sub && <p className="mt-1 text-center text-sm text-muted">{sub}</p>}
-        {children && <div className="mt-6">{children}</div>}
+        {sub && <p className="mt-1.5 text-center text-sm text-muted">{sub}</p>}
+        {children && (card ? <Card className="mt-6 p-6">{children}</Card> : <div className="mt-8">{children}</div>)}
       </div>
     </main>
   );
 }
 
+/** Kasa üst şeridi: marka + işletme/cihaz, bölüm segmenti, sağda durum ve eylemler. */
+function Bar({ tenant, device, nav, children }: { tenant: string; device: string; nav?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-white px-3 py-2 print:hidden">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <LogoMark />
+        <div className="min-w-0 leading-tight">
+          <div className="truncate text-sm font-semibold">{tenant}</div>
+          <div className="truncate text-xs text-muted">{device}</div>
+        </div>
+      </div>
+      {nav}
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{children}</div>
+    </header>
+  );
+}
+
+const LinkNote = ({ link }: { link: string }) => (
+  <>
+    {link === "yok" && <span className="text-xs font-medium text-warn">Canlı bağlantı yok</span>}
+    {link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
+  </>
+);
+
 function SyncBadge({ s }: { s: SyncStatus }) {
   const online = s.online && !s.unpaired;
   return (
-    <span data-testid="sync-status" className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${online ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
-      <span className={`size-2 rounded-full ${online ? "bg-emerald-600" : "bg-amber-500"}`} />
+    <span data-testid="sync-status" className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${online ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
+      <span className={`size-2 rounded-full ${online ? "bg-emerald-500" : "animate-pulse bg-amber-500"}`} />
       {online ? "Çevrimiçi" : "Çevrimdışı"}
       {s.pending > 0 && <span data-testid="sync-pending"> · {s.pending} bekleyen</span>}
     </span>
@@ -83,8 +109,8 @@ function AgentBadge({ s }: { s: AgentStatus | null }) {
   const bad = !s.reachable || s.printers.some((p) => p.ok === false) || s.failed.length > 0;
   const text = !s.reachable ? (lnaDenied ? "Chrome yerel ağ izni kapalı" : "Ajan kapalı") : s.printers.length === 0 ? "Yazıcı tanımlı değil" : bad ? `Yazıcı hatası${s.failed.length ? ` · ${s.failed.length} fiş bekliyor` : ""}` : "Yazıcı hazır";
   return (
-    <span data-testid="agent-status" title={lnaDenied && !s.reachable ? "Adres çubuğundaki kilit simgesi → Site ayarları → Yerel ağ erişimi: İzin ver, sonra sayfayı yenileyin." : s.printers.find((p) => p.error)?.error ?? undefined} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${bad ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-800"}`}>
-      <span className={`size-2 rounded-full ${bad ? "bg-red-600" : "bg-emerald-600"}`} />
+    <span data-testid="agent-status" title={lnaDenied && !s.reachable ? "Adres çubuğundaki kilit simgesi → Site ayarları → Yerel ağ erişimi: İzin ver, sonra sayfayı yenileyin." : s.printers.find((p) => p.error)?.error ?? undefined} className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${bad ? "bg-bad-soft text-bad" : "bg-ok-soft text-ok"}`}>
+      <Printer aria-hidden className="size-3.5" />
       {text}
     </span>
   );
@@ -105,9 +131,9 @@ function MoneyForm({ label, hint, submit, onSubmit, defaultValue = "" }: { label
         setBusy(false);
       }}
     >
-      <Field label={label} hint={hint}><Input name="amount" inputMode="decimal" defaultValue={defaultValue} className="text-lg" required /></Field>
-      {error && <p className="text-sm text-red-700">{error}</p>}
-      <Button type="submit" disabled={busy} className="w-full">{submit}</Button>
+      <Field label={label} hint={hint}><Input name="amount" inputMode="decimal" defaultValue={defaultValue} className="tabular h-14 text-right text-2xl font-semibold" required /></Field>
+      {error && <p className="text-sm text-bad">{error}</p>}
+      <Button type="submit" size="lg" disabled={busy} className="w-full">{submit}</Button>
     </form>
   );
 }
@@ -153,13 +179,13 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
   return (
     <>
       <style>{`@page { size: 80mm auto; margin: 0 } @media print { body { background: #fff } }`}</style>
-      <div className="flex justify-center gap-3 border-b border-line p-3 print:hidden">
-        <Button variant="secondary" onClick={() => void print()}>Yazdır</Button>
-        {meta.agent && <button type="button" onClick={() => window.print()} className="inline-flex items-center px-3 text-sm underline">Tarayıcıdan yazdır</button>}
-        <button type="button" onClick={onBack} className="inline-flex items-center px-3 text-sm underline">Kasaya dön</button>
+      <div className="flex justify-center gap-2 border-b border-line bg-white p-3 print:hidden">
+        <Button variant="ghost" onClick={onBack}><ArrowLeft aria-hidden className="size-4" />Kasaya dön</Button>
+        {meta.agent && <Button variant="ghost" onClick={() => window.print()}>Tarayıcıdan yazdır</Button>}
+        <Button onClick={() => void print()}><Printer aria-hidden className="size-4" />Yazdır</Button>
       </div>
       {msg && <p className="p-2 text-center text-sm print:hidden" role="status">{msg}</p>}
-      <article className="mx-auto my-4 w-[72mm] font-mono text-[12px] leading-snug print:my-0 print:p-[4mm]">
+      <article className="mx-auto my-6 w-[80mm] bg-white p-[4mm] font-mono shadow-card print:shadow-none text-[12px] leading-snug print:my-0 print:p-[4mm]">
         <header className="text-center">
           <div className="text-[14px] font-bold">{d.tenantName}</div>
           {sale.refund && <div className="mt-1 text-[14px] font-bold">İADE FİŞİ</div>}
@@ -238,7 +264,7 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-6">
       <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
-        <button type="button" onClick={onBack} className="text-sm underline">← Kasa</button>
+        <Button variant="ghost" onClick={onBack}><ArrowLeft aria-hidden className="size-4" />Kasa</Button>
         {closed && data && meta.agent && (
           <Button variant="secondary" onClick={() => {
             const sh = meta.lastClosed!;
@@ -247,13 +273,13 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
         )}
         {closed && <Button variant="secondary" onClick={() => window.print()}>Yazdır / PDF</Button>}
       </div>
-      <h1 className="text-xl font-semibold tracking-tight">{closed ? "Vardiya kapandı" : "Gün sonu"}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{closed ? "Vardiya kapandı" : "Gün sonu"}</h1>
       <p className="mb-5 text-sm text-muted">{meta.device?.tenantName} · {meta.device?.name}</p>
       {data && <ShiftReport data={data} showSales={closed} />}
       {!closed && (
-        <div className="mt-6 print:hidden">
+        <Card className="mt-6 p-5 print:hidden">
           <MoneyForm label="Sayılan nakit (TL)" hint="Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır." submit="Gün sonunu kapat" onSubmit={onClose} />
-        </div>
+        </Card>
       )}
     </main>
   );
@@ -451,37 +477,35 @@ export function KasaApp() {
     setView({ name: "home" });
     if (!(await openDrawer(meta.agent))) refreshAgent();
   };
-  const header = (
-    <header className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-2 text-sm print:hidden">
-      <span className="font-semibold">{d.tenantName}</span>
-      <span className="text-muted">{d.name}</span>
-      {cashier && <span className="font-medium">{cashier.name}</span>}
+  const bar = (nav?: React.ReactNode) => (
+    <Bar tenant={d.tenantName} device={d.name} nav={nav}>
       <SyncBadge s={status} />
       <AgentBadge s={agentCfg ? agent : null} />
       {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
-      {status.rejected > 0 && <span className="text-xs font-medium text-red-700">{status.rejected} belge reddedildi</span>}
-      <div className="ml-auto flex items-center gap-4">
-        {cashier && meta.agent?.drawer && atHome && (
-          <button type="button" className="underline" onClick={() => {
-            if (meta.catalog.staff.find((x) => x.id === cashier.id)?.role === "mudur") void drawerBy(null);
-            else setView({ name: "cekmece" });
-          }}>Çekmece</button>
-        )}
-        {cashier && meta.shift && atHome && <button type="button" onClick={() => setView({ name: "iade" })} className="underline">İade</button>}
-        {cashier && meta.shift && atHome && <button type="button" onClick={() => setView({ name: "gun-sonu" })} className="underline">Gün sonu</button>}
-        {cashier && <button type="button" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="text-muted underline">Kasiyer değiştir</button>}
-      </div>
-    </header>
+      {status.rejected > 0 && <span className="text-xs font-medium text-bad">{status.rejected} belge reddedildi</span>}
+      {cashier && meta.agent?.drawer && atHome && (
+        <Button variant="secondary" onClick={() => {
+          if (meta.catalog.staff.find((x) => x.id === cashier.id)?.role === "mudur") void drawerBy(null);
+          else setView({ name: "cekmece" });
+        }}><Inbox aria-hidden className="size-4" />Çekmece</Button>
+      )}
+      {cashier && meta.shift && atHome && <Button variant="secondary" onClick={() => setView({ name: "iade" })}><Undo2 aria-hidden className="size-4" />İade</Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" />Gün sonu</Button>}
+      {cashier && (
+        <span className="flex h-10 items-center gap-1 rounded-full border border-line bg-white pl-1 shadow-card">
+          <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{cashier.name.trim().charAt(0).toLocaleUpperCase("tr")}</span>
+          <span className="max-w-32 truncate px-1 text-sm font-medium">{cashier.name}</span>
+          <button type="button" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted hover:bg-surface-3 hover:text-ink"><LogOut aria-hidden className="size-4" />Kasiyer değiştir</button>
+        </span>
+      )}
+    </Bar>
   );
+  const header = bar();
 
   if (restoran && role === "mutfak") {
     return (
       <>
-        <header className="flex items-center gap-4 border-b border-line px-4 py-2 text-sm">
-          <span className="font-semibold">{d.tenantName}</span><span className="text-muted">{d.name} · Mutfak</span>
-          <SyncBadge s={status} />
-          {tabsApi.link === "yok" && <span className="text-xs font-medium text-amber-700">Canlı bağlantı yok</span>}{tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
-        </header>
+        <Bar tenant={d.tenantName} device={`${d.name} · Mutfak`}><LinkNote link={tabsApi.link} /><SyncBadge s={status} /></Bar>
         <KitchenScreen meta={meta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} />
       </>
     );
@@ -490,20 +514,18 @@ export function KasaApp() {
     return <>{header}<GunSonu meta={meta} closed onClose={async () => {}} onBack={() => setView({ name: "home" })} /></>;
   }
   if (!cashier) {
-    return <>{header}<Center title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} /></Center></>;
+    return <>{header}<Center logo title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} /></Center></>;
   }
   if (restoran && role === "kurye") {
     const kHeader = (
-      <header className="flex items-center gap-3 border-b border-line px-4 py-2 text-sm">
-        <span className="font-semibold">{d.tenantName}</span><span className="font-medium">{cashier.name}</span>
-        <SyncBadge s={status} />
-        {tabsApi.link === "yok" && <span className="text-xs font-medium text-amber-700">Canlı bağlantı yok</span>}{tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
-        {view.name === "home" && <button type="button" onClick={() => setCashier(null)} className="ml-auto text-muted underline">Çıkış</button>}
-      </header>
+      <Bar tenant={d.tenantName} device={cashier.name}>
+        <LinkNote link={tabsApi.link} /><SyncBadge s={status} />
+        {view.name === "home" && <Button variant="ghost" onClick={() => setCashier(null)}><LogOut aria-hidden className="size-4" />Çıkış</Button>}
+      </Bar>
     );
     if (view.name === "kurye-kapat") {
       return <>{kHeader}<Center title="Hesap kapat" sub="Kasiyer ya da müdür PIN'i"><PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "kasiyer" || x.role === "mudur"} onOk={(c) => setView({ name: "kurye-gun-sonu", by: c.id })} />
-        <button type="button" onClick={() => setView({ name: "home" })} className="mt-4 text-sm underline">Vazgeç</button></Center></>;
+        <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-4 w-full">Vazgeç</Button></Center></>;
     }
     if (view.name === "kurye-gun-sonu" && meta.shift) {
       const by = view.by;
@@ -524,7 +546,7 @@ export function KasaApp() {
         {header}
         <Center title="Müdür onayı" sub="Çekmeceyi açmak için müdür PIN'i girsin.">
           <PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "mudur"} onOk={(m) => void drawerBy(m.id)} />
-          <button type="button" onClick={() => setView({ name: "home" })} className="mt-6 w-full text-center text-sm underline">Vazgeç</button>
+          <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 w-full">Vazgeç</Button>
         </Center>
       </>
     );
@@ -553,12 +575,14 @@ export function KasaApp() {
   const billTab = view.name === "bill" ? tabsApi.tabs.get(view.tabId) : undefined;
   const inPaket = view.name === "paket" || view.name === "yeni-paket" || view.name === "ptab" || Boolean(billTab && billTab.kind !== "masa");
   const section = inPaket ? "paket" : view.name === "sale" || !hasSalon ? "sale" : "salon";
-  const tabBtn = (on: boolean) => `rounded-lg px-4 py-1.5 text-sm ${on ? "bg-ink text-white" : "border border-line"}`;
+  const icon = "size-4";
   const salonTabs = (hasSalon || hasPaket) && role === "kasa" && (
-    <nav className="flex gap-1 border-b border-line px-4 py-2 print:hidden" aria-label="Kasa bölümü">
-      {hasSalon && <button type="button" aria-pressed={section === "salon"} onClick={() => setView({ name: "home" })} className={tabBtn(section === "salon")}>Salon</button>}
-      {hasPaket && <button type="button" aria-pressed={section === "paket"} onClick={() => setView({ name: "paket" })} className={tabBtn(section === "paket")}>Paket</button>}
-      <button type="button" aria-pressed={section === "sale"} onClick={() => setView({ name: "sale" })} className={tabBtn(section === "sale")}>Hızlı satış</button>
+    <nav aria-label="Kasa bölümü">
+      <Segmented size="lg" items={[
+        ...(hasSalon ? [{ key: "salon", label: <><LayoutGrid aria-hidden className={icon} />Salon</>, pressed: section === "salon", onClick: () => setView({ name: "home" }) }] : []),
+        ...(hasPaket ? [{ key: "paket", label: <><Bike aria-hidden className={icon} />Paket</>, pressed: section === "paket", onClick: () => setView({ name: "paket" }) }] : []),
+        { key: "sale", label: <><Zap aria-hidden className={icon} />Hızlı satış</>, pressed: section === "sale", onClick: () => setView({ name: "sale" }) },
+      ]} />
     </nav>
   );
   const paketView = () => {
@@ -582,8 +606,8 @@ export function KasaApp() {
     return (
       <>
         {header}
-        <Center title="Vardiya kapalı" sub="Satışa başlamak için kasadaki nakdi girip vardiyayı açın.">
-          {d.billing && <p data-testid="kasa-billing" className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{d.billing.state === "deneme" || d.billing.state === "aktif" ? `Abonelik ${d.billing.daysLeft} gün sonra bitiyor.` : "Abonelik sona erdi. Satış devam eder; yöneticinize haber verin."}</p>}
+        <Center card title="Vardiya kapalı" sub="Satışa başlamak için kasadaki nakdi girip vardiyayı açın.">
+          {d.billing && <p data-testid="kasa-billing" className="mb-4 rounded-[10px] bg-warn-soft px-3 py-2 text-sm text-warn">{d.billing.state === "deneme" || d.billing.state === "aktif" ? `Abonelik ${d.billing.daysLeft} gün sonra bitiyor.` : "Abonelik sona erdi. Satış devam eder; yöneticinize haber verin."}</p>}
           <MoneyForm label="Kasadaki açılış nakdi (TL)" submit="Vardiyayı aç" defaultValue="0" onSubmit={async (k) => { setMeta(await openShiftLocal(cashier.id, k)); void sync.current?.kick(); }} />
         </Center>
       </>
@@ -613,18 +637,16 @@ export function KasaApp() {
   if (inPaket) {
     return (
       <>
-        {header}
-        {salonTabs}
+        {bar(salonTabs)}
         {paketView() ?? <DeliveryBoard meta={meta} onMeta={setMeta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} waiter={waiter}
           onNew={() => setView({ name: "yeni-paket" })} onOpen={(tabId) => setView({ name: "ptab", tabId })} onBill={(tabId) => setView({ name: "bill", tabId })} onHandover={onHandover} />}
       </>
     );
   }
-  if (hasSalon && view.name !== "sale") return <>{header}{salonTabs}{salonView()}</>;
+  if (hasSalon && view.name !== "sale") return <>{bar(salonTabs)}{salonView()}</>;
   return (
     <>
-      {header}
-      {salonTabs}
+      {bar(salonTabs)}
       <SaleScreen
         categories={meta.catalog.categories}
         products={meta.catalog.products}

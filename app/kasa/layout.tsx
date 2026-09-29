@@ -3,5 +3,5 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Kasa · ÇabukPOS" };
 
 export default function KasaLayout({ children }: { children: React.ReactNode }) {
-  return <div className="flex min-h-dvh flex-col bg-white">{children}</div>;
+  return <div className="flex min-h-dvh flex-col bg-surface-2">{children}</div>;
 }

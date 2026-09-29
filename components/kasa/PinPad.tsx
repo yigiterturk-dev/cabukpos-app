@@ -1,8 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Delete } from "lucide-react";
 import { verifyPin } from "@/lib/auth/pin";
 import { kasaDb, loadMeta } from "@/lib/offline/db";
 import { PIN_LOCK_MS, PIN_MAX_FAILS, type KasaStaff, type Meta } from "@/lib/offline/state";
+
+const KEY = "press h-20 rounded-2xl border border-line bg-white text-3xl font-medium shadow-card hover:border-line-strong active:bg-surface-3";
 
 export type Cashier = { id: string; name: string };
 
@@ -43,19 +46,19 @@ export function PinPad({ meta, onOk, onMeta, only }: { meta: Meta; onOk: (c: Cas
   };
   return (
     <form onSubmit={(e) => { e.preventDefault(); void submit(); }} className="mx-auto w-full max-w-xs">
-      <div className="mb-4 flex h-12 items-center justify-center gap-3" aria-label="Girilen PIN">
-        {Array.from({ length: Math.max(4, pin.length) }, (_, i) => <span key={i} className={`size-3.5 rounded-full ${i < pin.length ? "bg-ink" : "border-2 border-line"}`} />)}
+      <div className="mb-6 flex h-6 items-center justify-center gap-4" aria-label="Girilen PIN">
+        {Array.from({ length: Math.max(4, pin.length) }, (_, i) => <span key={i} className={`size-4 rounded-full transition ${i < pin.length ? "scale-110 bg-brand" : "border-2 border-line-strong"}`} />)}
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-3">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
-          <button key={d} type="button" onClick={() => key(d)} className="h-16 rounded-xl border border-line text-2xl font-medium hover:bg-stone-50 active:bg-stone-100">{d}</button>
+          <button key={d} type="button" onClick={() => key(d)} className={KEY}>{d}</button>
         ))}
-        <button type="button" onClick={() => setPin((p) => p.slice(0, -1))} className="h-16 rounded-xl text-sm text-muted hover:bg-stone-50">Sil</button>
-        <button type="button" onClick={() => key("0")} className="h-16 rounded-xl border border-line text-2xl font-medium hover:bg-stone-50 active:bg-stone-100">0</button>
-        <button type="submit" disabled={busy || locked || pin.length < 4} className="h-16 rounded-xl bg-brand text-lg font-medium text-white disabled:opacity-40">Gir</button>
+        <button type="button" aria-label="Sil" onClick={() => setPin((p) => p.slice(0, -1))} className="press grid h-20 place-items-center rounded-2xl text-muted hover:bg-surface-3 hover:text-ink"><Delete aria-hidden className="size-7" /></button>
+        <button type="button" onClick={() => key("0")} className={KEY}>0</button>
+        <button type="submit" disabled={busy || locked || pin.length < 4} className="press h-20 rounded-2xl bg-brand text-xl font-semibold text-white shadow-card hover:bg-brand-hover disabled:opacity-40">Gir</button>
       </div>
-      {locked && <p className="mt-4 text-center text-sm text-red-700">Çok fazla yanlış deneme. {Math.ceil((meta.pinLockUntil - now) / 1000)} sn sonra tekrar deneyin.</p>}
-      {error && !locked && <p className="mt-4 text-center text-sm text-red-700">{error}</p>}
+      {locked && <p className="mt-4 text-center text-sm text-bad">Çok fazla yanlış deneme. {Math.ceil((meta.pinLockUntil - now) / 1000)} sn sonra tekrar deneyin.</p>}
+      {error && !locked && <p className="mt-4 text-center text-sm text-bad">{error}</p>}
     </form>
   );
 }

@@ -90,3 +90,9 @@ export function Empty({ icon, children }: { icon?: ReactNode; children: ReactNod
     </div>
   );
 }
+
+/** Marka işareti: turuncu kare içinde Ç. Tüm yüzeylerde aynı. */
+export function LogoMark({ size = "md", className = "" }: { size?: "sm" | "md" | "lg"; className?: string }) {
+  const s = { sm: "size-7 rounded-lg text-sm", md: "size-9 rounded-[10px] text-base", lg: "size-14 rounded-2xl text-2xl" }[size];
+  return <span aria-hidden className={`grid shrink-0 place-items-center bg-brand font-bold text-white shadow-card ${s} ${className}`}>Ç</span>;
+}
