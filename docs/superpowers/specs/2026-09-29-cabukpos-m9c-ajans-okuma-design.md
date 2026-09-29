@@ -18,12 +18,12 @@ etkisi ekranları POS'un gerçek salon/paket verisiyle çalışır.
 
 ### Veri
 
-Yeni tablo `integration_keys` (RLS'li, `business_id` ile ayrışır; `db-rls.mjs`'e eklenir):
+Yeni tablo `integration_keys` — **RLS dışı** (`devices` gibi: anahtar, kiracı bilinmeden hash ile aranır); her sorguda `tenant_id` koşulu, yalnız `lib/integrations/keys.ts` erişir:
 
 | alan | tür | not |
 |---|---|---|
 | id | uuid pk | |
-| business_id | uuid fk | |
+| tenant_id | uuid fk (cascade) | |
 | name | text | ör. "Zirve Ajans" |
 | prefix | text | anahtarın ilk 8 karakteri, listede gösterim için |
 | key_hash | text unique | sha256(anahtar), hex |
@@ -31,26 +31,22 @@ Yeni tablo `integration_keys` (RLS'li, `business_id` ile ayrışır; `db-rls.mjs
 | last_used_at | timestamptz null | uçta en fazla dakikada bir güncellenir |
 | revoked_at | timestamptz null | |
 
-Anahtar biçimi: `cpk_` + 32 bayt base64url. Düz metin yalnız üretim anında bir kez gösterilir, saklanmaz.
-
-Anahtar arama RLS bağlamı olmadan yapılmalı (işletme henüz bilinmiyor) → M8'deki desenle
-`SECURITY DEFINER` fonksiyon `integration_key_lookup(hash)` → `(id, business_id)` yalnız
-`revoked_at is null` satırlar için; sahibine `definer_read` politikası.
+Anahtar biçimi: `cpk_` + 32 bayt base64url (`newDeviceToken`). Düz metin yalnız üretim anında bir kez gösterilir, saklanmaz.
 
 ### Yönetim ekranı
 
 Yönetim → **Entegrasyonlar** (Nav'da Abonelik'ten sonra). Yalnız admin (işletme sahibi):
 - "Ajans erişimi oluştur" (ad girilir) → anahtar bir kez, kopyala düğmesiyle gösterilir.
 - Liste: ad, `cpk_xxxx…`, oluşturma, son kullanım, durum; "İptal et" (geri alınamaz).
-- Anahtar yönetimi `requireAdmin` (okuma değil, yazma işlemi) — abonelik kilidi (`requireWriter`) bu sayfayı da kilitler; ancak **uç okuması kilitte de çalışır** (veri müşterinindir).
+- Yalnız `role = sahip`. Oluşturma `requireWriter` (abonelik kilidinde kapalı); **iptal kilitte de açık** (güvenlik); **uç okuması kilitte de çalışır** (veri müşterinindir).
 
 ### Uç
 
 `GET /api/v1/stats/daily?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `Authorization: Bearer cpk_…` → hash → lookup. Yok/iptal → `401 {"error":"unauthorized"}`.
 - Aralık: `from <= to`, en fazla 92 gün; aksi `400`.
-- Sınır: anahtar başına dakikada 60 istek (`login_attempts` benzeri sayaç ya da mevcut ratelimit yardımcısı) → `429`.
-- Sorgu, işletmenin RLS bağlamında (`withBusiness`) M9a rapor SQL'inin yanında yeni `dailyStats(tx, range)` fonksiyonu.
+- Sınır: anahtar başına dakikada 60 istek (`lib/ratelimit` `hit('apikey:<id>', 1)`) → `429`.
+- Sorgu, kiracının RLS bağlamında (`withTenant`): `lib/admin/report.ts` → `dailyStatsData(tx, range)`, saf hesap `lib/core/report.ts` → `dailyStats(rows)`. İadenin kanalı asıl satışınkidir (`refund_of` join; iade satırı kendisi `kasa` yazılır).
 - Yanıt:
 
 ```json
@@ -78,8 +74,9 @@ Satışsız günler yanıtta yer almaz.
 
 - `lib/platforms/labels.ts`: `cabukpos` eklenir ("ÇabukPOS").
 - `CREDENTIAL_FIELDS.cabukpos = [{ key: "apiKey", label: "Ajans erişim anahtarı", secret: true, hint: "ÇabukPOS → Yönetim → Entegrasyonlar" }]`; şema `apiKey` `cpk_` ile başlamalı.
-- `lib/platforms/cabukpos`: `createCabukposClient` — `capabilities = ["orderStats"]`; `testConnection` = son 1 günü çeker, `business.name` döner; `listOrderStats` = uç; 92 günden uzun aralığı parçalar. `401` → `PlatformError("auth")`, `429` → `PlatformError("rate_limit")`.
-- Taban adres env `CABUKPOS_API_URL` (varsayılan `https://app.cabukpos.com`).
+- `lib/platforms/cabukpos`: `createCabukposClient` — `capabilities = ["orders.stats"]`; `testConnection` = son 1 günü çeker, `business.name` döner; `listOrderStats` = uç; 92 günden uzun aralığı parçalar. `401` → `PlatformError("auth")`, `429` → `PlatformError("rate_limit")`.
+- Taban adres env `CABUKPOS_API_URL` (varsayılan `https://cabukpos-app.vercel.app`; cabukpos.com DNS gelince değişir).
+- `platform` pgEnum'una `cabukpos` eklenir (yerel `db:push`; panel canlı değil).
 - Mevcut senkron + `order_stats` olduğu gibi; yalnız toplamlar yazılır. Kanal kırılımı gösterimi sonraya (YAGNI).
 - Ajans paneli canlı değil → bu taraf yalnız kod + test.
 
@@ -92,8 +89,8 @@ Satışsız günler yanıtta yer almaz.
 
 Ajans birim: sahte `fetch` ile istemci (başarı, 401→auth, 429→rate_limit, 92+ gün parçalama).
 
-E2E `e2e/m9c.mjs`: giriş → Entegrasyonlar'da anahtar üret → satış yap → uç 200 ve satış sayılmış → iptal → 401. Regresyon: M9a, M9b.
+E2E `e2e/m9c.mjs`: kayıt → Entegrasyonlar'da anahtar üret → uç 200 (işletme adı, `days` dizi) → 400 (ters aralık) → iptal → 401. Satış sayımı DB testinde. Regresyon: M9a, M9b.
 
 ## Canlıya alma
 
-ÇabukPOS: `scripts/prod-push.sh 1..5` (şema → rls → kontrol: `integration_keys` relrowsecurity t + lookup fonksiyonu → main → canlı E2E), Yiğit `!` ile tek tek. Yeni env yok.
+ÇabukPOS: `scripts/prod-push.sh 1..5` (şema → rls (yeni tabloya GRANT) → kontrol: `integration_keys` var → main → canlı E2E), Yiğit `!` ile tek tek. Yeni env yok.
