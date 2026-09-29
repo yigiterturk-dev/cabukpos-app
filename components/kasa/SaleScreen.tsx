@@ -88,7 +88,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
       {invoicing && <InvoiceForm initial={buyer} onSave={(b) => { setBuyer(b); setInvoicing(false); }} onCancel={() => { setBuyer(null); setInvoicing(false); }} />}
       <div className="mt-5" aria-live="polite">
         {s.ok ? (
-          <div className="flex items-baseline justify-between rounded-xl bg-ok-soft px-4 py-3 text-ok"><span className="font-medium">Para üstü</span><span className="tabular text-2xl font-bold">{formatTL(s.change)}</span></div>
+          <div className="flex items-baseline justify-between rounded-xl bg-ok-soft px-4 py-3 text-ok"><span className="font-medium">Para üstü</span>{" "}<span className="tabular text-2xl font-bold">{formatTL(s.change)}</span></div>
         ) : payments.length > 0 ? (
           <div className="rounded-xl bg-bad-soft px-4 py-3 text-sm font-medium text-bad">{s.error}</div>
         ) : (
