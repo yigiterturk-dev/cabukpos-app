@@ -31,7 +31,7 @@ export function CustomerForm({ initial }: { initial: { id: string; name: string;
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
       <div><Field label="Ad"><Input name="name" defaultValue={initial.name} className="w-56" required /></Field><Err s={state} f="name" /></div>
       <Field label="Not"><Input name="note" defaultValue={initial.note ?? ""} placeholder="ör. zili çalmayın" className="w-72" /></Field>
-      <Button type="submit" variant="ghost" disabled={pending}>Kaydet</Button>
+      <Button type="submit" variant="secondary" disabled={pending}>Kaydet</Button>
       <Saved s={state} /><Err s={state} />
     </form>
   );
@@ -66,7 +66,7 @@ export function CodeForm({ connectionId, products }: { connectionId: string; pro
         <div><Field label="Platform ürün kodu"><Input name="code" placeholder="LAH-01" className="w-40" required /></Field><Err s={state} f="code" /></div>
         <div className="w-64"><div className="mb-1.5 text-sm font-medium">Ürün</div><Select name="productId" options={products} placeholder="Ürün seçin" /><Err s={state} f="productId" /></div>
       </div>
-      <Button type="submit" variant="ghost" disabled={pending}>Eşle</Button>
+      <Button type="submit" variant="secondary" disabled={pending}>Eşle</Button>
       <Saved s={state} /><Err s={state} />
     </form>
   );
@@ -76,7 +76,7 @@ export function TestOrderButton({ connectionId }: { connectionId: string }) {
   const [state, dispatch, pending] = useActionState(sendTestOrder.bind(null, connectionId), {} as DeliveryState);
   return (
     <form action={dispatch} className="flex items-center gap-3">
-      <Button type="submit" variant="ghost" disabled={pending}>{pending ? "Gönderiliyor…" : "Deneme siparişi gönder"}</Button>
+      <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Gönderiliyor…" : "Deneme siparişi gönder"}</Button>
       <Saved s={state} /><Err s={state} />
     </form>
   );

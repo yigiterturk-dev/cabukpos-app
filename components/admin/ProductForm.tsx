@@ -120,7 +120,7 @@ export function CategoryForm() {
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-start gap-2">
       <div><Input key={state.savedAt ?? 0} name="categoryName" placeholder="Yeni kategori" aria-label="Kategori adı" className="w-48" /><Err s={state} f="categoryName" /></div>
-      <Button type="submit" variant="ghost" disabled={pending}>Kategori ekle</Button>
+      <Button type="submit" variant="secondary" disabled={pending}>Kategori ekle</Button>
     </form>
   );
 }

@@ -49,7 +49,7 @@ function PurchaseFields({ state, pending, onSubmit, products, suppliers, today }
             </div>
           );
         })}
-        <Button type="button" variant="ghost" onClick={() => { setRows((rs) => [...rs, { k: next, pid: "", qty: "", price: "" }]); setNext(next + 1); }}>+ Kalem</Button>
+        <Button type="button" variant="secondary" onClick={() => { setRows((rs) => [...rs, { k: next, pid: "", qty: "", price: "" }]); setNext(next + 1); }}>+ Kalem</Button>
         <Err s={state} f="lines" />
       </div>
       <Field label="Not"><Input name="note" /></Field>

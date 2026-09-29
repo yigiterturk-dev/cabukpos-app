@@ -154,7 +154,7 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
     <>
       <style>{`@page { size: 80mm auto; margin: 0 } @media print { body { background: #fff } }`}</style>
       <div className="flex justify-center gap-3 border-b border-line p-3 print:hidden">
-        <Button variant="ghost" onClick={() => void print()}>Yazdır</Button>
+        <Button variant="secondary" onClick={() => void print()}>Yazdır</Button>
         {meta.agent && <button type="button" onClick={() => window.print()} className="inline-flex items-center px-3 text-sm underline">Tarayıcıdan yazdır</button>}
         <button type="button" onClick={onBack} className="inline-flex items-center px-3 text-sm underline">Kasaya dön</button>
       </div>
@@ -240,12 +240,12 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
       <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
         <button type="button" onClick={onBack} className="text-sm underline">← Kasa</button>
         {closed && data && meta.agent && (
-          <Button variant="ghost" onClick={() => {
+          <Button variant="secondary" onClick={() => {
             const sh = meta.lastClosed!;
             void printShift(meta, { deviceName: meta.device!.name, openedByName: data.openedByName, closedByName: data.closedByName, openingCash: sh.openingCash, openedAt: new Date(sh.openedAt), closedAt: new Date(sh.closedAt), countedCash: sh.countedCash, expectedCash: sh.expectedCash, summary: data.summary, fiscalErrors: data.fiscalErrors });
           }}>Fiş yazıcısına</Button>
         )}
-        {closed && <Button variant="ghost" onClick={() => window.print()}>Yazdır / PDF</Button>}
+        {closed && <Button variant="secondary" onClick={() => window.print()}>Yazdır / PDF</Button>}
       </div>
       <h1 className="text-xl font-semibold tracking-tight">{closed ? "Vardiya kapandı" : "Gün sonu"}</h1>
       <p className="mb-5 text-sm text-muted">{meta.device?.tenantName} · {meta.device?.name}</p>

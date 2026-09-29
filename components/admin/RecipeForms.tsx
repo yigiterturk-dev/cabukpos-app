@@ -54,7 +54,7 @@ export function RecipeForm({ owner, ingredients, initial }: { owner: RecipeOwner
           </div>
         );
       })}
-      <Button type="button" variant="ghost" onClick={() => { setRows((rs) => [...rs, { k: next, id: "", qty: "" }]); setNext(next + 1); }}>+ Malzeme</Button>
+      <Button type="button" variant="secondary" onClick={() => { setRows((rs) => [...rs, { k: next, id: "", qty: "" }]); setNext(next + 1); }}>+ Malzeme</Button>
       <div className="rounded-lg bg-stone-50 p-3 text-sm" data-testid="recipe-cost">
         {owner.yieldMilli ? <>Parti maliyeti <b className="tabular">{formatTL(Math.round(total))}</b> · {owner.unit} başına <b className="tabular">{formatTL(Math.round(perUnit))}</b></> : <>Maliyet <b className="tabular">{formatTL(Math.round(total))}</b></>}
         {missing && <span className="ml-2 text-amber-700">(maliyeti olmayan malzeme var)</span>}

@@ -33,7 +33,7 @@ export function LabelSheet({ items }: { items: LabelItem[] }) {
       <div className="print:hidden">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Button onClick={() => window.print()} disabled={!chosen.length}>Yazdır ({chosen.length})</Button>
-          <Button variant="ghost" disabled={!chosen.length || pending} onClick={() => start(async () => { await markLabelsPrinted(chosen.map((c) => c.id)); setDone(true); })}>{pending ? "İşaretleniyor…" : "Basıldı olarak işaretle"}</Button>
+          <Button variant="secondary" disabled={!chosen.length || pending} onClick={() => start(async () => { await markLabelsPrinted(chosen.map((c) => c.id)); setDone(true); })}>{pending ? "İşaretleniyor…" : "Basıldı olarak işaretle"}</Button>
           <button type="button" onClick={() => setSel(new Set(items.map((i) => i.id)))} className="text-sm underline">Tümünü seç</button>
           <button type="button" onClick={() => setSel(new Set())} className="text-sm underline">Hiçbiri</button>
           {done && <span className="text-sm text-emerald-700" aria-live="polite">İşaretlendi.</span>}

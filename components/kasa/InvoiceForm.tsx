@@ -29,7 +29,7 @@ export function InvoiceForm({ initial, onSave, onCancel }: { initial: Buyer | nu
       <Field label={kind === "vkn" ? "Adres (zorunlu)" : "Adres"}><Textarea name="buyer-address" rows={2} value={v.address} onChange={set("address")} maxLength={500} /></Field>
       {err("address") && <p className="text-xs text-red-700">{err("address")}</p>}
       <div className="flex gap-2">
-        <Button type="button" variant="ghost" onClick={onCancel} className="flex-1">Faturasız</Button>
+        <Button type="button" variant="secondary" onClick={onCancel} className="flex-1">Faturasız</Button>
         <Button type="button" onClick={save} className="flex-1">Fatura bilgisini kaydet</Button>
       </div>
     </div>

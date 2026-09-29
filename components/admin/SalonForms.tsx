@@ -25,7 +25,7 @@ export function TablesForm({ areaId, areaName }: { areaId: string; areaName: str
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-start gap-2">
       <div><Input key={state.savedAt ?? 0} name="names" placeholder="M1-M12 ya da Bahçe 1, Bahçe 2" aria-label={`${areaName} masa adları`} className="w-72" required /><Err s={state} f="names" /><Err s={state} /></div>
-      <Button type="submit" variant="ghost" disabled={pending}>Masa ekle</Button>
+      <Button type="submit" variant="secondary" disabled={pending}>Masa ekle</Button>
     </form>
   );
 }
@@ -95,7 +95,7 @@ export function DeviceRoleForm({ deviceId, role: initialRole, stations: initialS
       {role === "mutfak" && stationOptions.map((s) => (
         <label key={s.value} className="flex items-center gap-1"><input type="checkbox" name="stations" value={s.value} defaultChecked={initialStations.includes(s.value)} className="size-4 accent-[var(--color-brand)]" />{s.label}</label>
       ))}
-      <Button type="submit" variant="ghost" disabled={pending}>Rolü kaydet</Button>
+      <Button type="submit" variant="secondary" disabled={pending}>Rolü kaydet</Button>
       <Saved s={state} />
       <Err s={state} />
     </form>
