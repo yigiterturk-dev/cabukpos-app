@@ -11,7 +11,9 @@ const step = (m) => console.log("•", m);
 const expect = (got, want, what) => { if (got !== want) throw new Error(`${what}: ${JSON.stringify(got)} ≠ ${JSON.stringify(want)}`); };
 const year = new Date().getFullYear();
 
-const browser = await chromium.launch({ channel: "chrome", headless: true });
+// HEADED=1: görünür pencere, yavaş; sonda pencere kapanana kadar açık kalır (tasarım/akış demosu).
+const HEADED = !!process.env.HEADED;
+const browser = await chromium.launch({ channel: "chrome", headless: !HEADED, slowMo: HEADED ? 350 : 0 });
 const sql = postgres(process.env.MIGRATE_DATABASE_URL ?? process.env.DATABASE_URL, { max: 1 });
 const errors = [];
 const page = async () => {
@@ -162,6 +164,10 @@ try {
 
   if (errors.length) throw new Error(`sayfa hataları: ${errors.join(" | ")}`);
   console.log("İADE OK");
+  if (HEADED) {
+    console.log(`Demo hesabı: iade-${stamp}@ornek.com / Cabukpos2026x · kasa PIN 5820 (kasiyer), 7391 (müdür). Pencereyi kapatınca biter.`);
+    await new Promise((r) => browser.on("disconnected", r));
+  }
 } finally {
   await browser.close();
   await sql.end();
