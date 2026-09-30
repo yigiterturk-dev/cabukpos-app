@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, eq, inArray } from "drizzle-orm";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, ChartColumn, Minus, Monitor, Package, TriangleAlert } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, ChartColumn, CheckCircle2, Minus, Monitor, Package, Plus, TriangleAlert, UserPlus } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { firstStoreId, stockLevels } from "@/lib/admin/stock";
@@ -39,21 +39,32 @@ export default async function Bugun() {
   const a = await requireAdmin();
   const today = istToday();
   const restoran = a.vertical === "restoran";
-  const { sum, critical, recent, storeId } = await withTenant(a.tenantId, async (tx) => {
+  const { sum, critical, recent, storeId, setup } = await withTenant(a.tenantId, async (tx) => {
     const storeId = await firstStoreId(tx);
     const S = schema.sales;
     const recent = await tx.select({ id: S.id, receiptNo: S.receiptNo, channel: S.channel, status: S.status, total: S.total, at: S.createdAt, staff: schema.staff.name })
       .from(S).innerJoin(schema.staff, eq(schema.staff.id, S.staffId)).where(inArray(S.status, ["kapandi", "iade"])).orderBy(desc(S.createdAt)).limit(8);
+    const [productSeed, deviceSeed, staffSeed] = await Promise.all([
+      tx.select({ id: schema.products.id }).from(schema.products).limit(1),
+      tx.select({ id: schema.devices.id }).from(schema.devices).limit(1),
+      tx.select({ id: schema.staff.id }).from(schema.staff).limit(1),
+    ]);
     return {
       storeId,
       sum: await summaryData(tx, { bas: today, bit: today }),
       critical: storeId ? (await stockLevels(tx, storeId)).filter(isCriticalRow) : [],
       recent,
+      setup: { product: productSeed.length > 0, device: deviceSeed.length > 0, staff: staffSeed.length > 0 },
     };
   });
   const open = restoran && storeId ? [...foldTabs(await initialEvents({ tenantId: a.tenantId, storeId })).values()].filter((t) => !t.closed) : [];
   const openTotal = open.reduce((t, x) => t + x.remaining, 0);
   const dateLabel = new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Istanbul" });
+  const setupSteps = [
+    { label: "İlk ürünü ekle", href: "/yonetim/urunler", done: setup.product, Icon: Plus },
+    { label: "Kasa cihazını eşleştir", href: "/yonetim/cihazlar", done: setup.device, Icon: Monitor },
+    { label: "Personel PIN'i oluştur", href: "/yonetim/personel", done: setup.staff, Icon: UserPlus },
+  ];
 
   return (
     <>
@@ -67,6 +78,31 @@ export default async function Bugun() {
           </div>
         }
       />
+      {!setupSteps.every((step) => step.done) && (
+        <Card className="mb-6 overflow-hidden border-brand-ring bg-brand-soft/30" data-testid="setup-guide">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-ring/70 px-5 py-4">
+            <div>
+              <h2 className="font-semibold">İlk kurulumu tamamlayın</h2>
+              <p className="mt-1 text-sm text-ink-2">ÇabukPOS’u satışa hazır hale getirmek için üç kısa adım.</p>
+            </div>
+            <Link href="/kasa" className={buttonClass("primary", "sm")}>Kasayı aç<ArrowRight aria-hidden className="size-4" /></Link>
+          </div>
+          <div className="grid gap-px bg-brand-ring/60 sm:grid-cols-3">
+            {setupSteps.map(({ label, href, done, Icon }, index) => (
+              <Link key={label} href={href} className="group flex items-center gap-3 bg-white/75 px-5 py-4 outline-none transition hover:bg-white focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+                <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${done ? "bg-ok-soft text-ok" : "bg-brand-soft text-brand"}`}>
+                  {done ? <CheckCircle2 aria-hidden className="size-5" /> : <Icon aria-hidden className="size-5" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs text-muted">Adım {index + 1}</span>
+                  <span className={`block text-sm font-medium ${done ? "text-muted line-through" : "text-ink"}`}>{label}</span>
+                </span>
+                {!done && <ArrowRight aria-hidden className="size-4 text-muted transition-transform group-hover:translate-x-0.5" />}
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
       <div className={`mb-6 grid gap-4 sm:grid-cols-2 ${restoran ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         <Stat label="Ciro" value={formatTL(sum.now.gross)} now={sum.now.gross} before={sum.before.gross} testId="today-gross" />
         <Stat label="Fiş" value={String(sum.now.count)} now={sum.now.count} before={sum.before.count} testId="today-count" />
