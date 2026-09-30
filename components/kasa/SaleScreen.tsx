@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { addProduct, lineTotal, removedLines, setQty, totals, type CartLine, type RemovedLine } from "@/lib/core/cart";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { settle, type Payment } from "@/lib/core/payment";
@@ -184,19 +184,45 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
     setQ("");
   };
 
+  useEffect(() => {
+    const onShortcut = (e: KeyboardEvent) => {
+      if (e.key === "F2") {
+        e.preventDefault();
+        search.current?.focus();
+        search.current?.select();
+      } else if (e.key === "Escape" && document.activeElement === search.current && q) {
+        e.preventDefault();
+        setQ("");
+        setScanError(null);
+      }
+    };
+    window.addEventListener("keydown", onShortcut);
+    return () => window.removeEventListener("keydown", onShortcut);
+  }, [q]);
+
   const inCart = new Map(cart.map((l) => [l.productId, l.qtyMilli]));
   const count = cart.reduce((a, l) => a + (byId.get(l.productId)?.kind === "tartili" ? 1 : l.qtyMilli / 1000), 0);
-  const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-white text-ink-2 hover:border-line-strong"}`;
+  const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-white text-ink-2 hover:border-line-strong"}`;
 
   return (
     <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1fr_400px]">
       <section className="flex min-h-0 flex-col">
+        <div className="mb-3 flex items-end justify-between gap-3 px-1">
+          <div>
+            <p className="text-lg font-semibold tracking-tight">Yeni satış</p>
+            <p className="text-xs text-muted">Ürünü seçin veya barkodu okutun.</p>
+          </div>
+          <span className="hidden rounded-md bg-surface-3 px-2 py-1 text-xs text-muted sm:inline-flex">F2 ara · Enter ekle</span>
+        </div>
         <div className="relative">
           <ScanBarcode aria-hidden className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted" />
           <input ref={search} value={q} onChange={(e) => { setQ(e.target.value); setScanError(null); }} onKeyDown={onScan} placeholder="Ürün ara ya da barkod okut (5* = 5 adet)" aria-label="Ürün ara ya da barkod okut" autoFocus
-            className="h-14 w-full rounded-2xl border border-line bg-white pl-12 pr-4 text-base shadow-card outline-none transition placeholder:text-stone-400 focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
+            className="h-14 w-full rounded-2xl border border-line bg-white pl-12 pr-4 text-base shadow-card outline-none transition placeholder:text-stone-400 hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
         </div>
-        <p className="mb-2 mt-1 min-h-5 text-sm font-medium text-bad" role="alert">{scanError}</p>
+        <div className="mb-2 mt-1 flex min-h-5 items-center justify-between gap-3 px-1">
+          <p className="text-sm font-medium text-bad" role="alert">{scanError}</p>
+          {!scanError && <span className="text-xs text-muted">{shown.length} ürün gösteriliyor</span>}
+        </div>
         <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
           <button type="button" onClick={() => setCat(null)} className={chip(cat === null)}>{market && !q ? "Hızlı tuşlar" : "Tümü"}</button>
           {categories.map((c) => <button key={c.id} type="button" onClick={() => setCat(c.id)} className={chip(cat === c.id)}><span aria-hidden className={`size-2.5 rounded-full ${categoryTone(c.id).dot}`} />{c.name}</button>)}
@@ -206,7 +232,7 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
             const n = inCart.get(p.id);
             return (
               <button key={p.id} type="button" onClick={() => { pick(p); refocus(); }}
-                className={`press relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-white p-3.5 pt-4 text-left shadow-card hover:border-line-strong ${n ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
+                className={`press relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-white p-3.5 pt-4 text-left shadow-card outline-none hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${n ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
                 <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
                 <span className="line-clamp-2 pr-7 text-[15px] font-semibold leading-snug">{p.name}</span>
                 <span className="tabular text-[15px] font-medium text-ink-2">{formatTL(p.price)}{p.kind === "tartili" && <span className="text-muted">/kg</span>}</span>
@@ -230,7 +256,7 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
           )}
           {cart.map((l) => {
             const weighed = byId.get(l.productId)?.kind === "tartili";
-            const step = "press grid size-11 place-items-center rounded-xl border border-line bg-white text-lg font-medium hover:bg-surface-3";
+            const step = "press grid size-11 place-items-center rounded-xl border border-line bg-white text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60";
             return (
               <div key={l.productId} className="flex items-center gap-2 px-4 py-2.5" data-testid="cart-line">
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{l.name}</div><div className="tabular text-xs text-muted">{weighed ? `${kg(l.qtyMilli)} × ${formatTL(l.unitPrice)}/kg` : formatTL(l.unitPrice)}</div></div>
