@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, eq, inArray } from "drizzle-orm";
-import { ArrowRight, ChartColumn, Monitor, Package, TriangleAlert } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, ChartColumn, Minus, Monitor, Package, TriangleAlert } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { firstStoreId, stockLevels } from "@/lib/admin/stock";
@@ -18,11 +18,19 @@ const hm = (d: Date) => d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute:
 
 function Stat({ label, value, now, before, testId }: { label: string; value: string; now: number; before: number; testId: string }) {
   const p = pctChange(now, before);
+  const Trend = p === null ? Minus : p < 0 ? ArrowDownRight : p > 0 ? ArrowUpRight : Minus;
   return (
-    <Card className="p-4">
-      <div className="text-xs font-medium text-muted">{label}</div>
-      <div className="mt-1 text-[26px] font-semibold tracking-tight tabular" data-testid={testId}>{value}</div>
-      <div className={`text-xs tabular ${p === null ? "text-muted" : p < 0 ? "text-bad" : "text-ok"}`}>{p === null ? "dün —" : `${p >= 0 ? "+" : ""}${p.toFixed(1)}% düne göre`}</div>
+    <Card className="relative overflow-hidden p-5">
+      <div className="absolute inset-x-0 top-0 h-1 bg-brand/80" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{label}</div>
+        <span className="rounded-md bg-surface-3 px-2 py-1 text-[11px] text-muted">Bugün</span>
+      </div>
+      <div className="mt-2 text-[30px] font-semibold leading-none tracking-tight tabular" data-testid={testId}>{value}</div>
+      <div className={`mt-2 inline-flex items-center gap-1 text-xs tabular ${p === null ? "text-muted" : p < 0 ? "text-bad" : p > 0 ? "text-ok" : "text-muted"}`}>
+        <Trend aria-hidden className="size-3.5" />
+        {p === null ? "dün karşılaştırması yok" : `${p >= 0 ? "+" : ""}${p.toFixed(1)}% düne göre`}
+      </div>
     </Card>
   );
 }
@@ -64,10 +72,11 @@ export default async function Bugun() {
         <Stat label="Fiş" value={String(sum.now.count)} now={sum.now.count} before={sum.before.count} testId="today-count" />
         <Stat label="Ortalama sepet" value={sum.now.avg === null ? "—" : formatTL(sum.now.avg)} now={sum.now.avg ?? 0} before={sum.before.avg ?? 0} testId="today-avg" />
         {restoran && (
-          <Card className="p-4">
-            <div className="text-xs font-medium text-muted">Açık adisyon</div>
-            <div className="mt-1 text-[26px] font-semibold tracking-tight tabular" data-testid="today-open">{open.length}</div>
-            <div className="text-xs text-muted tabular">{open.length ? `${formatTL(openTotal)} tahsil edilecek` : "şu an açık yok"}</div>
+          <Card className="relative overflow-hidden border-brand-ring bg-brand-soft/30 p-5">
+            <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
+            <div className="text-xs font-semibold uppercase tracking-[0.08em] text-brand">Açık adisyon</div>
+            <div className="mt-2 text-[30px] font-semibold leading-none tracking-tight tabular" data-testid="today-open">{open.length}</div>
+            <div className="mt-2 text-xs text-ink-2 tabular">{open.length ? `${formatTL(openTotal)} tahsil edilecek` : "şu an açık yok"}</div>
           </Card>
         )}
       </div>
@@ -83,7 +92,7 @@ export default async function Bugun() {
               <thead className="bg-surface-2 text-left text-xs text-muted"><tr><th className="px-4 py-2.5 font-medium">Saat</th><th className="px-4 py-2.5 font-medium">Fiş</th><th className="px-4 py-2.5 font-medium">Kanal</th><th className="px-4 py-2.5 font-medium">Personel</th><th className="px-4 py-2.5 text-right font-medium">Tutar</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {recent.map((r) => (
-                  <tr key={r.id}>
+                  <tr key={r.id} className="transition-colors hover:bg-surface-2">
                     <td className="px-4 py-2.5 tabular text-muted">{istToday(r.at.getTime()) === today ? hm(r.at) : r.at.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Istanbul" })}</td>
                     <td className="px-4 py-2.5 font-mono text-xs">{r.receiptNo}</td>
                     <td className="px-4 py-2.5">{CHANNEL[r.channel] ?? r.channel}{r.status === "iade" && <span className="ml-2"><Badge tone="bad">İade</Badge></span>}</td>
