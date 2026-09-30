@@ -15,5 +15,5 @@ npm run dev
 Uygulama `cabukpos_app` rolüyle bağlanır (süper kullanıcı değil, RLS'yi atlamaz); şema işleri `MIGRATE_DATABASE_URL` ile. Tasarım: `docs/superpowers/specs/`, ilerleme: `docs/PROGRESS.md`.
 
 Production doğrulama kapısı: `npm test`, `npm run lint`, `npx tsc --noEmit`, `npm run build`.
-Yerel production E2E için build sonrası `node --env-file=.env.local e2e/iade.mjs` çalıştırın.
+Yerel production E2E için build sonrası çalışan bir production sunucusuna karşı `BASE=http://localhost:3800 npm run e2e:critical` çalıştırın.
 GitHub Actions aynı kapıları temiz bir PostgreSQL 16 üzerinde çalıştırır; operasyon ve rollback notları `docs/OPERATIONS.md` içindedir.
