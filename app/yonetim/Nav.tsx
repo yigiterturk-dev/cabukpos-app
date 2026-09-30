@@ -58,7 +58,7 @@ export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
                 const Icon = i.icon;
                 return (
                   <li key={i.href}>
-                    <Link href={i.href} aria-current={on ? "page" : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition ${on ? "bg-brand-soft font-medium text-brand" : "text-ink-2 hover:bg-surface-3 hover:text-ink"}`}>
+                    <Link href={i.href} aria-current={on ? "page" : undefined} className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm outline-none transition focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "bg-brand-soft font-medium text-brand" : "text-ink-2 hover:bg-surface-3 hover:text-ink"}`}>
                       <Icon aria-hidden className={`size-4 shrink-0 ${on ? "text-brand" : "text-muted"}`} />{i.label}
                     </Link>
                   </li>
@@ -87,14 +87,14 @@ export function MobileNav({ children }: { children: React.ReactNode }) {
   }, [open]);
   return (
     <>
-      <button type="button" aria-label="Menüyü aç" aria-expanded={open} onClick={() => setOpen(true)} className="press grid size-10 place-items-center rounded-[10px] text-ink-2 hover:bg-surface-3 md:hidden">
+      <button type="button" aria-label="Menüyü aç" aria-expanded={open} onClick={() => setOpen(true)} className="press grid size-11 place-items-center rounded-[10px] text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 md:hidden">
         <Menu aria-hidden className="size-5" />
       </button>
       {open && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menü">
           <div className="absolute inset-0 bg-stone-900/30" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-white p-4 shadow-pop">
-            <button type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-10 place-items-center rounded-[10px] text-ink-2 hover:bg-surface-3">
+            <button type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-11 place-items-center rounded-[10px] text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60">
               <X aria-hidden className="size-5" />
             </button>
             {children}
