@@ -62,6 +62,11 @@ try {
   expect((await api(key)).status, 401, "iptal sonrası");
   step("son kullanım görünür; İptal et → 401");
 
+  await admin.goto(`${BASE}/yonetim/denetim`);
+  await admin.getByText("integration_key.create", { exact: true }).waitFor();
+  await admin.getByText("integration_key.revoke", { exact: true }).waitFor();
+  step("Denetim: anahtar oluşturma ve iptal kayıtları görünür");
+
   if (errors.length) throw new Error(`sayfa hataları: ${errors.join(" | ")}`);
   console.log("M9c OK");
 } finally {
