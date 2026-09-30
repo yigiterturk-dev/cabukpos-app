@@ -9,11 +9,11 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "success";
 type Size = "sm" | "md" | "lg" | "xl";
 
 const VARIANT: Record<Variant, string> = {
-  primary: "bg-brand text-white shadow-card hover:bg-brand-hover",
-  secondary: "border border-line bg-white text-ink shadow-card hover:border-line-strong hover:bg-surface-2",
-  ghost: "text-ink-2 hover:bg-surface-3",
-  danger: "border border-red-200 bg-white text-bad hover:bg-bad-soft",
-  success: "bg-ok text-white shadow-card hover:bg-emerald-800",
+  primary: "bg-brand text-white shadow-card hover:bg-brand-hover hover:shadow-pop",
+  secondary: "border border-line bg-white text-ink shadow-card hover:border-line-strong hover:bg-surface-2 hover:shadow-pop",
+  ghost: "text-ink-2 hover:bg-surface-3 hover:text-ink",
+  danger: "border border-red-200 bg-white text-bad hover:bg-bad-soft hover:shadow-card",
+  success: "bg-ok text-white shadow-card hover:bg-emerald-800 hover:shadow-pop",
 };
 const SIZE: Record<Size, string> = {
   sm: "h-8 rounded-lg px-2.5 text-[13px]",
@@ -23,7 +23,7 @@ const SIZE: Record<Size, string> = {
 };
 
 export function buttonClass(variant: Variant = "primary", size: Size = "md") {
-  return `press inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap disabled:pointer-events-none disabled:opacity-40 ${VARIANT[variant]} ${SIZE[size]}`;
+  return `press inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40 ${VARIANT[variant]} ${SIZE[size]}`;
 }
 
 export function Button({ variant = "primary", size = "md", className = "", ...p }: ComponentProps<"button"> & { variant?: Variant; size?: Size }) {
@@ -35,7 +35,7 @@ export function IconButton({ label, variant = "ghost", size = "md", className = 
   return <button type="button" aria-label={label} title={label} {...p} className={`${buttonClass(variant, size)} ${sq} !px-0 ${className}`} />;
 }
 
-const FIELD = "w-full rounded-[10px] border border-line bg-white px-3 py-2 text-sm outline-none transition placeholder:text-stone-400 focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
+const FIELD = "min-h-11 w-full rounded-[10px] border border-line bg-white px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-stone-400 hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
 
 export function Input({ className = "", ...p }: ComponentProps<"input">) {
   return <input {...p} className={`${FIELD} ${className}`} />;
@@ -56,7 +56,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 export function Card({ className = "", ...p }: ComponentProps<"div">) {
-  return <div {...p} className={`rounded-[14px] border border-line bg-white shadow-card ${className}`} />;
+  return <div {...p} className={`rounded-[14px] border border-line bg-white shadow-card transition-shadow duration-150 ${className}`} />;
 }
 
 export function PageHeader({ title, desc, actions }: { title: string; desc?: string; actions?: ReactNode }) {
@@ -94,7 +94,7 @@ export function Empty({ icon, children }: { icon?: ReactNode; children: ReactNod
 /** Marka işareti: turuncu kare içinde Ç. Tüm yüzeylerde aynı. */
 export function LogoMark({ size = "md", className = "" }: { size?: "sm" | "md" | "lg"; className?: string }) {
   const s = { sm: "size-7 rounded-lg text-sm", md: "size-9 rounded-[10px] text-base", lg: "size-14 rounded-2xl text-2xl" }[size];
-  return <span aria-hidden className={`grid shrink-0 place-items-center bg-brand font-bold text-white shadow-card ${s} ${className}`}>Ç</span>;
+  return <span aria-hidden className={`grid shrink-0 place-items-center bg-brand font-bold text-white shadow-card ring-1 ring-black/5 ${s} ${className}`}>Ç</span>;
 }
 
 /** Yönetim tablosu başlık satırı (thead) sınıfı: tüm listelerde aynı. */

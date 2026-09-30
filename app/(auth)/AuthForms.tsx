@@ -20,7 +20,7 @@ export function SignupForm() {
         <input type="hidden" name="vertical" value={vertical} />
         <div className="grid grid-cols-2 gap-2" role="group" aria-label="İşletme türü">
           {([["restoran", "Restoran", UtensilsCrossed], ["market", "Market", Store]] as const).map(([v, l, I]) => (
-            <button key={v} type="button" aria-pressed={vertical === v} onClick={() => setVertical(v)} className={`press flex flex-col items-center gap-1.5 rounded-[10px] border px-3 py-3.5 text-sm font-medium transition ${vertical === v ? "border-brand bg-brand-soft text-brand ring-4 ring-brand-ring/40" : "border-line text-ink-2 hover:bg-surface-2"}`}><I aria-hidden className="size-5" />{l}</button>
+            <button key={v} type="button" aria-pressed={vertical === v} onClick={() => setVertical(v)} className={`press flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-[10px] border px-3 py-3.5 text-sm font-medium outline-none transition focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${vertical === v ? "border-brand bg-brand-soft text-brand ring-4 ring-brand-ring/40" : "border-line text-ink-2 hover:border-line-strong hover:bg-surface-2"}`}><I aria-hidden className="size-5" />{l}</button>
           ))}
         </div>
         <Err s={state} f="vertical" />
