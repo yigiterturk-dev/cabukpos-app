@@ -32,6 +32,8 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
   const add = (method: Payment["method"], v: string | null) => { const k = v === null ? null : parseTL(v); if (k) payments.push({ method, amount: k }); };
   add("nakit", cash); add("kart", card); add("yemek_karti", meal);
   const s = settle(total, payments);
+  const paid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const remaining = Math.max(0, total - paid);
   const all = (m: "nakit" | "kart" | "yemek_karti") => { const v = formatTL(total).replace(" ₺", ""); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
   const other = (card === null ? 0 : parseTL(card) ?? 0) + (meal === null ? 0 : parseTL(meal) ?? 0);
   const due = Math.max(0, total - other); // nakitle kapanacak kalan
@@ -53,7 +55,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
     { m: "kart" as const, label: "Tamamı kart", Icon: CreditCard },
     { m: "yemek_karti" as const, label: "Tamamı yemek kartı", Icon: Utensils },
   ];
-  const amount = "tabular h-14 flex-1 rounded-xl border border-line bg-white px-4 text-right text-2xl font-semibold outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
+  const amount = "tabular h-14 flex-1 rounded-xl border border-line bg-white px-4 text-right text-2xl font-semibold outline-none transition-[border-color,box-shadow] hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
   return (
     <Dialog label="Ödeme" title="Ödeme" aside={<span className="tabular text-3xl font-bold tracking-tight">{formatTL(total)}</span>} onClose={onClose}
       footer={<>
@@ -63,7 +65,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
       <div className="grid grid-cols-3 gap-2">
         {METHODS.map(({ m, label, Icon }) => (
           <button key={m} type="button" onClick={() => all(m)} aria-pressed={mode === m}
-            className={`press flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-medium ${mode === m ? "border-brand bg-brand-soft text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong hover:bg-surface-2"}`}>
+            className={`press flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${mode === m ? "border-brand bg-brand-soft text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong hover:bg-surface-2"}`}>
             <Icon aria-hidden className="size-6" />{label}
           </button>
         ))}
@@ -90,7 +92,13 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
         {s.ok ? (
           <div className="flex items-baseline justify-between rounded-xl bg-ok-soft px-4 py-3 text-ok"><span className="font-medium">Para üstü</span>{" "}<span className="tabular text-2xl font-bold">{formatTL(s.change)}</span></div>
         ) : payments.length > 0 ? (
-          <div className="rounded-xl bg-bad-soft px-4 py-3 text-sm font-medium text-bad">{s.error}</div>
+          <div className="rounded-xl bg-warn-soft px-4 py-3 text-warn">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-medium">Kalan tutar</span>
+              <span className="tabular text-xl font-bold">{formatTL(remaining)}</span>
+            </div>
+            <p className="mt-1 text-xs">{s.error}</p>
+          </div>
         ) : (
           <div className="rounded-xl bg-surface-3 px-4 py-3 text-sm text-muted">Ödeme yöntemini seçin ya da alınan tutarı girin.</div>
         )}
