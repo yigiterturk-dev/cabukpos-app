@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, ChartColumn, CheckCircle2, Minus, Monitor, Package, Plus, TriangleAlert, UserPlus } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
@@ -39,22 +39,31 @@ export default async function Bugun() {
   const a = await requireAdmin();
   const today = istToday();
   const restoran = a.vertical === "restoran";
-  const { sum, critical, recent, storeId, setup } = await withTenant(a.tenantId, async (tx) => {
+  const { sum, critical, recent, storeId, setup, attention } = await withTenant(a.tenantId, async (tx) => {
     const storeId = await firstStoreId(tx);
     const S = schema.sales;
     const recent = await tx.select({ id: S.id, receiptNo: S.receiptNo, channel: S.channel, status: S.status, total: S.total, at: S.createdAt, staff: schema.staff.name })
       .from(S).innerJoin(schema.staff, eq(schema.staff.id, S.staffId)).where(inArray(S.status, ["kapandi", "iade"])).orderBy(desc(S.createdAt)).limit(8);
-    const [productSeed, deviceSeed, staffSeed] = await Promise.all([
+    const [productSeed, deviceSeed, staffSeed, reviewSales, reviewEvents, rejectedDocs, fiscalErrors, buyerInvoices] = await Promise.all([
       tx.select({ id: schema.products.id }).from(schema.products).limit(1),
       tx.select({ id: schema.devices.id }).from(schema.devices).limit(1),
       tx.select({ id: schema.staff.id }).from(schema.staff).limit(1),
+      tx.select({ value: count() }).from(schema.sales).where(isNotNull(schema.sales.review)),
+      tx.select({ value: count() }).from(schema.tabEvents).where(isNotNull(schema.tabEvents.review)),
+      tx.select({ value: count() }).from(schema.auditLog).where(eq(schema.auditLog.action, "sync.red")),
+      tx.select({ value: count() }).from(schema.fiscalDocuments).where(inArray(schema.fiscalDocuments.status, ["error", "cancel_rejected"])),
+      tx.select({ value: count() }).from(schema.fiscalRefunds).where(and(eq(schema.fiscalRefunds.kind, "alici_faturasi"), isNull(schema.fiscalRefunds.resolvedAt))),
     ]);
+    const review = Number(reviewSales[0]?.value ?? 0) + Number(reviewEvents[0]?.value ?? 0) + Number(rejectedDocs[0]?.value ?? 0);
+    const fiscal = Number(fiscalErrors[0]?.value ?? 0);
+    const buyer = Number(buyerInvoices[0]?.value ?? 0);
     return {
       storeId,
       sum: await summaryData(tx, { bas: today, bit: today }),
       critical: storeId ? (await stockLevels(tx, storeId)).filter(isCriticalRow) : [],
       recent,
       setup: { product: productSeed.length > 0, device: deviceSeed.length > 0, staff: staffSeed.length > 0 },
+      attention: { review, fiscal, buyer, total: review + fiscal + buyer },
     };
   });
   const open = restoran && storeId ? [...foldTabs(await initialEvents({ tenantId: a.tenantId, storeId })).values()].filter((t) => !t.closed) : [];
@@ -100,6 +109,22 @@ export default async function Bugun() {
                 {!done && <ArrowRight aria-hidden className="size-4 text-muted transition-transform group-hover:translate-x-0.5" />}
               </Link>
             ))}
+          </div>
+        </Card>
+      )}
+      {attention.total > 0 && (
+        <Card className="mb-6 border-warn/30 bg-warn-soft/30" data-testid="attention-card">
+          <div className="flex items-start gap-3 px-5 py-4">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-warn/15 text-warn"><TriangleAlert aria-hidden className="size-5" /></span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold">Dikkat gerekenler <span className="text-warn">({attention.total})</span></h2>
+              <p className="mt-1 text-sm text-ink-2">Satış akışı devam eder; aşağıdaki kayıtları uygun olduğunuzda kontrol edin.</p>
+              <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                {attention.review > 0 && <Link href="/yonetim/raporlar?sekme=inceleme" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-white px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">İncelenecek ({attention.review})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
+                {attention.fiscal > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=error" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-white px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">Mali belgeler ({attention.fiscal})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
+                {attention.buyer > 0 && <Link href="/yonetim/raporlar?sekme=inceleme" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-white px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">Alıcı iadeleri ({attention.buyer})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
+              </div>
+            </div>
           </div>
         </Card>
       )}
