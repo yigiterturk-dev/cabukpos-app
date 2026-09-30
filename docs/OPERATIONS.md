@@ -27,6 +27,9 @@ Bu belge canlı çalıştırma sınırlarını ve geri dönüş adımlarını te
 
 ## Canlı kontrol
 
+- Deploy sonrası anonim ve korumalı kritik uçları tek komutla kontrol etmek için
+  `npm run audit:runtime` çalıştırın. Başka bir ortamı kontrol etmek için
+  `BASE=https://staging.example.com npm run audit:runtime` kullanabilirsiniz.
 - Vercel deployment'ın Ready durumunu ve build logunu doğrulayın.
 - Liveness için `/api/health`, veritabanı dahil trafik hazırlığı için `/api/ready`
   uçlarının sırasıyla `200` ve `200` dönmesini kontrol edin. `/api/ready` `503`
