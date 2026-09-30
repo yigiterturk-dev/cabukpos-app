@@ -5,6 +5,7 @@ import { chromium } from "playwright-core";
 
 const BASE = process.env.BASE ?? "http://localhost:3800";
 const stamp = Date.now();
+const testIp = `198.51.100.${(stamp % 250) + 1}`;
 const tenant = `E2E Kebapçı ${stamp}`;
 const step = (m) => console.log("•", m);
 const expect = (got, want, what) => { if (got !== want) throw new Error(`${what}: ${JSON.stringify(got)} ≠ ${JSON.stringify(want)}`); };
@@ -14,7 +15,7 @@ const api = (key, q = `from=${day}&to=${day}`) => fetch(`${BASE}/api/v1/stats/da
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const errors = [];
 try {
-  const admin = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+  const admin = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-forwarded-for": testIp } })).newPage();
   admin.on("pageerror", (e) => errors.push(e.message));
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);

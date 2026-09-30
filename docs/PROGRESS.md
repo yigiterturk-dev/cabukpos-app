@@ -112,6 +112,7 @@ Prod sırası: şema push → db-rls → relrowsecurity + prosecdef kontrolü �
 ## Çalıştırma
 - DB: yerel Postgres (`.env.local`: DATABASE_URL uygulama rolü, MIGRATE_DATABASE_URL sahip). Şema `npm run db:push`, RLS `npm run db:rls` (test DB: `db:push:test`, `db:rls:test`).
 - E2E: `npm run build` → `node --env-file=.env.local node_modules/.bin/next start -p 3800` → `node --env-file=.env.local e2e/m1.mjs`. Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt); aşılırsa yerel DB'de `delete from login_attempts where key like 'signup:%'`.
+- Kritik kapı (`npm run e2e:critical`) M9a/iade/M9b/M9c tarayıcılarına ayrılmış dokümantasyon IP'si gönderir; bu dört akış art arda çalıştırıldığında kayıt rate-limit'i birbirini etkilemez.
 - Gün sonu kapanınca kasiyer oturumu düşer; cihazın son 15 dk içinde kapanan vardiyası /kasa/gun-sonu'da PIN'siz yazdırılabilir.
 
 ## M9a — Raporlar (2026-09-29)
