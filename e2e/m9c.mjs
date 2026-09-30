@@ -26,6 +26,19 @@ try {
   await admin.getByRole("button", { name: "Hesap oluştur" }).click();
   await admin.waitForURL(`${BASE}/yonetim**`);
 
+  await admin.goto(`${BASE}/yonetim/veriler`);
+  await admin.getByRole("link", { name: "Veri kopyasını indir" }).waitFor();
+  const exported = await admin.request.get(`${BASE}/api/yonetim/veri-export`);
+  expect(exported.status(), 200, "veri dışa aktarma");
+  const exportBody = await exported.text();
+  if (!exportBody.includes('"exportVersion":1') || !exportBody.includes(tenant)) throw new Error("veri dışa aktarma gövdesi eksik");
+  for (const secret of ["passwordHash", "keyHash", "tokenHash", "webhookSecret", "hubKeyEnc"]) {
+    if (exportBody.includes(secret)) throw new Error(`veri dışa aktarmada gizli alan: ${secret}`);
+  }
+  const anonExport = await (await browser.newContext()).request.get(`${BASE}/api/yonetim/veri-export`, { maxRedirects: 0 });
+  expect(anonExport.status(), 401, "oturumsuz veri dışa aktarma");
+  step("veri dışa aktarma: sahip erişimi, sır redaksiyonu, oturumsuz 401");
+
   expect((await api(null)).status, 401, "anahtarsız");
   await admin.goto(`${BASE}/yonetim/entegrasyonlar`);
   await admin.fill("input[name=name]", "Zirve Ajans");

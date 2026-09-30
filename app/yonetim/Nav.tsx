@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Armchair, Boxes, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Globe, Handshake, LayoutDashboard, MapPin, Menu,
-  MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, SlidersHorizontal, Tag, UserCog, X, type LucideIcon,
+  Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, SlidersHorizontal, Tag, UserCog, X, type LucideIcon,
 } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
@@ -37,6 +37,7 @@ const groups: { title: string; items: Item[] }[] = [
     { href: "/yonetim/cihazlar", label: "Cihazlar", icon: MonitorSmartphone },
     { href: "/yonetim/donanim", label: "Donanım", icon: Printer },
     { href: "/yonetim/mali", label: "Mali", icon: Receipt },
+    { href: "/yonetim/veriler", label: "Veriler", icon: Database },
     { href: "/yonetim/entegrasyonlar", label: "Entegrasyonlar", icon: Plug },
     { href: "/yonetim/abonelik", label: "Abonelik", icon: CreditCard },
   ] },
