@@ -64,6 +64,4 @@ jobs:
         env:
           BASE: http://127.0.0.1:3810
         run: |
-          node e2e/m9a.mjs
-          node e2e/m9b.mjs
-          node e2e/iade.mjs
+          npm run e2e:critical
