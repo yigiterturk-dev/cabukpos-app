@@ -14,6 +14,17 @@ Bu belge canlı çalıştırma sınırlarını ve geri dönüş adımlarını te
 7. Canlıda `DATABASE_URL` uygulama rolü, `MIGRATE_DATABASE_URL` ise yalnız
    migration sahibi rolü olmalıdır. Uygulama rolü `BYPASSRLS` olmamalıdır.
 
+## Yedekleme
+
+- `MIGRATE_DATABASE_URL` ile `npm run db:backup` çalıştırın. Komut custom-format
+  dump üretir ve varsayılan olarak `backups/` altında tarihli dosya bırakır.
+- Güvenli bir dış dizin için `npm run db:backup -- --output=/secure/cabukpos` kullanın;
+  dump dosyasını repoya veya uygulama storage'ına koymayın.
+- Yedeği canlıya geri yüklemeden doğrulamak için `pg_restore --list <dosya>`;
+  gerçek restore provası yalnız izole staging veritabanında yapılmalıdır.
+- Komut yedeği üretir, zamanlamayı kendisi yapmaz. Neon/Vercel dışı güvenilir bir
+  scheduler ile en az günlük çalıştırın ve restore provasını düzenli kaydedin.
+
 ## Canlı kontrol
 
 - Vercel deployment'ın Ready durumunu ve build logunu doğrulayın.
