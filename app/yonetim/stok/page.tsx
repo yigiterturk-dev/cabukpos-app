@@ -30,6 +30,7 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
   const critical = rows.filter(isCriticalRow).length;
   const value = rows.reduce((s, r) => s + (r.cost != null && r.level > 0 ? Math.round((r.cost * r.level) / 1000) : 0), 0);
   const sel = rows.find((r) => r.id === urun);
+  const movementSuffix = `${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ""}${kritik ? "&kritik=1" : ""}`;
   return (
     <>
       <PageHeader title="Stok" desc="Stok takipli ürünler ve hammaddeler. Satışta reçeteye göre düşer; alış fişiyle girer; sayım o anki değeri yazar." />
@@ -50,7 +51,8 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
         list={<>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <form className="min-w-48 flex-1 sm:max-w-sm"><Input name="q" defaultValue={q} placeholder="Ürün ara" aria-label="Stokta ürün ara" />{kritik && <input type="hidden" name="kritik" value="1" />}</form>
-        <Link href={kritik ? "/yonetim/stok" : "/yonetim/stok?kritik=1"} aria-pressed={Boolean(kritik)} className={`rounded-[10px] border px-3 py-2 text-sm ${kritik ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>Yalnız kritikler ({critical})</Link>
+        <Link href={kritik ? "/yonetim/stok" : "/yonetim/stok?kritik=1"} aria-pressed={Boolean(kritik)} className={`rounded-[10px] border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${kritik ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>Yalnız kritikler ({critical})</Link>
+        <span className="text-xs text-muted">{shown.length} ürün gösteriliyor</span>
         {sel && <span className="ml-auto text-sm text-muted">Stok değeri <b className="tabular text-ink" data-testid="stock-value">{formatTL(value)}</b></span>}
       </div>
       {shown.length === 0 ? <Empty>{kritik ? "Kritik stok yok." : "Stok takipli ürün yok."}</Empty> : (
@@ -59,12 +61,12 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
             <thead className={TABLE_HEAD}><tr><th className="px-4 py-2.5 font-medium">Ürün</th><th className="px-4 py-2.5 text-right font-medium">Stok</th><th className="px-4 py-2.5 text-right font-medium">Maliyet</th><th className="px-4 py-2.5 text-right font-medium">Değer</th><th className="px-4 py-2.5" /></tr></thead>
             <tbody className="divide-y divide-line">
               {shown.map((r) => (
-                <tr key={r.id} data-testid={`stok-${r.name}`}>
+                <tr key={r.id} data-testid={`stok-${r.name}`} className={`transition-colors hover:bg-surface-2 ${isCriticalRow(r) ? "bg-bad-soft/35" : ""}`}>
                   <td className="px-4 py-2.5 font-medium">{r.name}{!r.sellable && <span className="ml-2 text-xs text-muted">hammadde</span>}{isCriticalRow(r) && <span className="ml-2" data-testid="stok-kritik"><Badge tone="bad">Kritik</Badge></span>}</td>
                   <td className={`tabular px-4 py-2.5 text-right ${r.level < 0 ? "font-medium text-bad" : ""}`} data-testid="stok-level">{formatQty(r.level, r.unit)}</td>
                   <td className="tabular px-4 py-2.5 text-right text-muted">{r.cost == null ? "—" : `${formatTL(r.cost)}/${r.unit}`}</td>
                   <td className="tabular px-4 py-2.5 text-right">{r.cost == null || r.level <= 0 ? "—" : formatTL(Math.round((r.cost * r.level) / 1000))}</td>
-                  <td className="px-4 py-2.5 text-right"><Link href={`/yonetim/stok?urun=${r.id}`} className="font-medium text-brand hover:underline">Hareket</Link></td>
+                  <td className="px-4 py-2.5 text-right"><Link href={`/yonetim/stok?urun=${r.id}${movementSuffix}`} className="font-medium text-brand hover:underline">Hareket</Link></td>
                 </tr>
               ))}
             </tbody>
@@ -77,7 +79,7 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
           <table className="w-full text-sm">
             <tbody className="divide-y divide-line">
               {moves.map((m) => (
-                <tr key={m.id}>
+                <tr key={m.id} className="transition-colors hover:bg-surface-2">
                   <td className="tabular px-4 py-2.5 text-muted">{dt.format(m.at)}</td>
                   <td className="px-4 py-2.5">{KIND_LABEL[m.kind]}</td>
                   <td className="px-4 py-2.5 font-medium">{m.name}</td>

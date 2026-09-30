@@ -15,7 +15,7 @@ export function StockForm({ productId, unit }: { productId: string; unit: StockU
       <input type="hidden" name="kind" value={kind} />
       <div className="flex gap-1" role="group" aria-label="Hareket türü">
         {KINDS.map(([v, l]) => (
-          <button key={v} type="button" aria-pressed={kind === v} onClick={() => setKind(v)} className={`rounded-lg border px-3 py-2 text-sm ${kind === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>{l}</button>
+          <button key={v} type="button" aria-pressed={kind === v} onClick={() => setKind(v)} className={`min-h-11 rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${kind === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:border-line-strong hover:bg-surface-2"}`}>{l}</button>
         ))}
       </div>
       <div className="w-36"><Field label={kind === "sayim" ? "Sayılan" : "Miktar"} hint={unit}><Input key={`q${state.savedAt ?? 0}`} name="qty" inputMode="decimal" required /></Field></div>
