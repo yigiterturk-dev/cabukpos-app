@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { approveCampaign } from "@/lib/admin/growth-actions";
@@ -16,9 +16,9 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
   if (a.vertical !== "restoran") notFound();
   const { id } = await params;
   const data = await withTenant(a.tenantId, async (tx) => {
-    const [campaign] = await tx.select({ id: schema.growthCampaigns.id, name: schema.growthCampaigns.name, segment: schema.growthCampaigns.segment, message: schema.growthCampaigns.message, audienceCount: schema.growthCampaigns.audienceCount, approvedAt: schema.growthCampaigns.approvedAt, createdAt: schema.growthCampaigns.createdAt }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.id, id)).limit(1);
+    const [campaign] = await tx.select({ id: schema.growthCampaigns.id, name: schema.growthCampaigns.name, segment: schema.growthCampaigns.segment, message: schema.growthCampaigns.message, audienceCount: schema.growthCampaigns.audienceCount, approvedAt: schema.growthCampaigns.approvedAt, createdAt: schema.growthCampaigns.createdAt }).from(schema.growthCampaigns).where(and(eq(schema.growthCampaigns.id, id), eq(schema.growthCampaigns.tenantId, a.tenantId))).limit(1);
     if (!campaign) return null;
-    const events = await tx.select({ type: schema.growthCampaignEvents.type, amount: schema.growthCampaignEvents.amount }).from(schema.growthCampaignEvents).where(eq(schema.growthCampaignEvents.campaignId, id)).orderBy(desc(schema.growthCampaignEvents.at));
+    const events = await tx.select({ type: schema.growthCampaignEvents.type, amount: schema.growthCampaignEvents.amount }).from(schema.growthCampaignEvents).where(and(eq(schema.growthCampaignEvents.campaignId, id), eq(schema.growthCampaignEvents.tenantId, a.tenantId))).orderBy(desc(schema.growthCampaignEvents.at));
     return { campaign, metrics: campaignMetrics(events.map((e) => ({ type: e.type, amount: e.amount }))) };
   });
   if (!data) notFound();
