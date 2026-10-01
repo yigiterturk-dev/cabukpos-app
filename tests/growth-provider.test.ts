@@ -24,6 +24,10 @@ test("geçerli Laya cevabı doğrulanır, bozuk cevap baseline'a döner", async 
   const remote = await advise(samplePack);
   assert.equal(remote.provider, "laya");
   assert.equal(remote.insights[0]?.key, "remote");
+  globalThis.fetch = async () => new Response(JSON.stringify({ insights: [{ key: "stale", kind: "observation", title: "Eski", body: "POS ile eşleşmeyen kanıt", confidence: "observed", evidence: { orders90: 999 } }] }), { status: 200 });
+  const staleEvidence = await advise(samplePack);
+  assert.equal(staleEvidence.provider, "baseline");
+  assert.equal(staleEvidence.fallback, "remote_error");
   globalThis.fetch = async () => new Response(JSON.stringify({ wrong: true }), { status: 200 });
   const fallback = await advise(samplePack);
   assert.equal(fallback.provider, "baseline");

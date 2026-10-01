@@ -36,7 +36,8 @@ Harici gönderim sağlayıcısı mesajı kendisi gönderir; sonuçları yalnızc
 `POST /api/growth/campaigns` ile PII taşımadan taslak oluşturabilir ve sonuçları
 `POST /api/growth/campaigns/:id/events` ile growth anahtarı üzerinden ölçüm olayı
 olarak geri yazar. `externalId` kampanya içinde idempotenttir. `opt_out` olayı
-yalnız tenant içi müşteri UUID’siyle kabul edilir ve pazarlama iznini kalıcı olarak
+audience yanıtından alınan tenant içi HMAC `recipientRef` ile veya geriye dönük
+tenant içi müşteri UUID’siyle kabul edilir ve pazarlama iznini kalıcı olarak
 kapatır; diğer olaylarda müşteri kimliği kabul edilmez.
 
 ## İlk sürümde yapılmayacaklar
@@ -70,4 +71,5 @@ ham yanıt loglanmaz.
 
 İlk MVP yalnız `restoran` tenant’larında açıktır; market tenant’ları endpoint’ten
 `403 unsupported_vertical` alır. Laya’nın kanıt değerleri sonlu, pozitif ve
-sınırlandırılmış sayılar olmalıdır.
+sınırlandırılmış sayılar olmalıdır; ayrıca her değer aynı feature-pack içindeki
+POS metriğiyle birebir eşleşmelidir. Eşleşmeyen uzak cevap baseline advisor’a düşer.

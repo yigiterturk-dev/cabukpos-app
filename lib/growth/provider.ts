@@ -21,6 +21,33 @@ const Insight = z.object({
 });
 const Remote = z.object({ insights: z.array(Insight).max(20) });
 
+function observedEvidence(pack: GrowthFeaturePack): Record<string, number> {
+  return {
+    total: pack.customer.total,
+    consented: pack.customer.consented,
+    active30: pack.customer.active30,
+    dormant30: pack.customer.dormant30,
+    consentedDormant30: pack.customer.consentedDormant30,
+    new30: pack.customer.new30,
+    orders90: pack.package90.orders,
+    gross90: pack.package90.gross,
+    avgBasket90: pack.package90.avgBasket,
+    sent: pack.campaigns.events.sent,
+    delivered: pack.campaigns.events.delivered,
+    converted: pack.campaigns.events.converted,
+    revenue: pack.campaigns.events.revenue,
+  };
+}
+
+function assertObservedEvidence(insights: z.infer<typeof Remote>["insights"], pack: GrowthFeaturePack) {
+  const observed = observedEvidence(pack);
+  for (const insight of insights) {
+    for (const [key, value] of Object.entries(insight.evidence)) {
+      if (observed[key] !== value) throw new Error(`Laya evidence POS verisiyle eşleşmiyor: ${key}`);
+    }
+  }
+}
+
 export type GrowthAdvice = { provider: "baseline" | "laya"; insights: GrowthInsight[]; fallback?: "not_configured" | "remote_error" };
 
 /** Laya HTTP adapter: PII'siz pack gönderir, cevabı doğrular, hata olursa güvenli fallback döner. */
@@ -41,6 +68,7 @@ export async function advise(pack: GrowthFeaturePack): Promise<GrowthAdvice> {
     const raw = await response.text();
     if (raw.length > 64_000) throw new Error("Laya cevabı boyut sınırını aştı.");
     const body = Remote.parse(JSON.parse(raw));
+    assertObservedEvidence(body.insights, pack);
     return { provider: "laya", insights: body.insights };
   } catch {
     return { provider: "baseline", fallback: "remote_error", insights: baselineAdvisor(pack) };
