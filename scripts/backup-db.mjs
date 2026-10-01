@@ -21,4 +21,12 @@ const code = await new Promise((resolveExit, reject) => {
   child.once("exit", (status, signal) => resolveExit(status ?? (signal ? 1 : 0)));
 });
 if (code !== 0) throw new Error(`pg_dump başarısız (kod ${code}).`);
+// Restore rehearsal gate: pg_restore must be able to read the complete catalog.
+// A full throwaway-database restore is scheduled separately in operations.
+const rehearsal = spawn("pg_restore", ["--list", file], { stdio: ["ignore", "ignore", "inherit"] });
+const rehearsalCode = await new Promise((resolveExit, reject) => {
+  rehearsal.once("error", reject);
+  rehearsal.once("exit", (status, signal) => resolveExit(status ?? (signal ? 1 : 0)));
+});
+if (rehearsalCode !== 0) throw new Error(`Yedek restore provası başarısız (kod ${rehearsalCode}).`);
 console.log(`Yedek hazır: ${file}`);

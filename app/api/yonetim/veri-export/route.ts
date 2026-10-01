@@ -41,7 +41,9 @@ export async function GET() {
   });
 
   const body = JSON.stringify({ exportVersion: 1, exportedAt: new Date().toISOString(), tenant: tenantRow, users, devices, agents, platforms, billing, integrationKeys: keys, ...data });
-  const day = new Date().toISOString().slice(0, 10);
+  const parts = new Intl.DateTimeFormat("en", { timeZone: "Europe/Istanbul", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const dateParts = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const day = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
   return new Response(body, {
     headers: {
       "content-type": "application/json; charset=utf-8",

@@ -101,7 +101,9 @@ export async function resetPassword(_: AuthState, form: FormData): Promise<AuthS
   if (!userId) return { error: "Bağlantı geçersiz ya da süresi dolmuş. Yeni bağlantı isteyin." };
   const hash = await bcrypt.hash(password, 12);
   // tokenVersion artar → diğer cihazlardaki yönetim oturumları düşer.
-  const [u] = await getDb().update(U).set({ passwordHash: hash, tokenVersion: sql`${U.tokenVersion} + 1` }).where(eq(U.id, userId)).returning();
+  // Password reset revokes every previous session; the fresh session below is the only one kept.
+  const revokeSessions = getDb().update(U).set({ passwordHash: hash, tokenVersion: sql`${U.tokenVersion} + 1` }).where(eq(U.id, userId)).returning();
+  const [u] = await revokeSessions;
   await getDb().transaction(async (tx) => {
     await tx.execute(sql`select set_config('app.tenant_id', ${u.tenantId}, true)`);
     await audit(tx, u.tenantId, `user:${u.id}`, "user.password_reset");

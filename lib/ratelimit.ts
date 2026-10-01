@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { isIP } from "node:net";
 import { getDb, schema } from "@/db";
 
 /** Anahtar başına kayan pencere sayacı (DB'de, sunucusuz örnekler arasında ortak). Yeni sayıyı döner. */
@@ -21,5 +22,9 @@ export async function hit(key: string, windowMinutes = 15): Promise<number> {
 
 export async function clientIp(): Promise<string> {
   const { headers } = await import("next/headers"); // dinamik: hit() Next dışında (node testleri) da yüklenebilsin
-  return ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "yerel";
+  const h = await headers();
+  const trusted = h.get("x-vercel-forwarded-for") ?? h.get("x-real-ip");
+  const developmentFallback = process.env.NODE_ENV === "production" ? "" : h.get("x-forwarded-for");
+  const candidate = (trusted ?? developmentFallback ?? "").split(",").at(-1)?.trim() ?? "";
+  return isIP(candidate) ? candidate : "yerel";
 }

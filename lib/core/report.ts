@@ -33,7 +33,7 @@ export function parseRange(bas?: string, bit?: string, now = Date.now()): Range 
 }
 export const prevRange = (r: Range): Range => ({ bas: shiftDay(r.bas, -dayCount(r)), bit: shiftDay(r.bas, -1) });
 export const rangeBounds = (r: Range) => ({ from: new Date(`${r.bas}T00:00:00+03:00`), to: new Date(Date.parse(`${r.bit}T00:00:00+03:00`) + DAY) });
-export const presets = (now = Date.now()) => [
+export const dateRanges = (now = Date.now()) => [
   { key: "bugun", label: "Bugün", bas: istToday(now), bit: istToday(now) },
   { key: "dun", label: "Dün", bas: istToday(now, -1), bit: istToday(now, -1) },
   { key: "7", label: "7 gün", bas: istToday(now, -6), bit: istToday(now) },

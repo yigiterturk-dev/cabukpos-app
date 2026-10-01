@@ -2,11 +2,11 @@
 import { and, eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { refundable, type RefLine } from "@/lib/core/refund";
-import { buyerKindOf } from "@/lib/core/refundNote";
+import { buyerKindOf, type FiscalBuyerKind } from "@/lib/core/refundNote";
 import { soldLines } from "./apply";
 
 /** fiscal: asıl satışın kesilmiş e-Arşiv faturası (iade tutanağı için); yoksa null. */
-export type SaleFiscalRef = { number: string; ettn: string; invoiceAt: string; buyerKind: "tckn" | "vkn"; refundedBefore: boolean };
+export type SaleFiscalRef = { number: string; ettn: string; invoiceAt: string; buyerKind: FiscalBuyerKind; refundedBefore: boolean };
 export type LookedUpSale = { id: string; receiptNo: string; at: string; lines: RefLine[]; fiscal: SaleFiscalRef | null; fiscalPending?: boolean };
 
 export async function lookupSale(tenantId: string, receiptNo: string): Promise<LookedUpSale | null> {

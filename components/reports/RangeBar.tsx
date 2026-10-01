@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { presets, type Range, type ReportTab } from "@/lib/core/report";
+import { dateRanges, type Range, type ReportTab } from "@/lib/core/report";
 
 const qs = (o: Record<string, string | undefined>) => new URLSearchParams(Object.entries(o).filter((e): e is [string, string] => !!e[1])).toString();
 export const reportHref = (sekme: ReportTab, r?: Range, extra: Record<string, string | undefined> = {}) => `/yonetim/raporlar?${qs({ sekme, bas: r?.bas, bit: r?.bit, ...extra })}`;
@@ -9,7 +9,7 @@ export function RangeBar({ sekme, range, csv, extra = {} }: { sekme: ReportTab; 
   return (
     <div className="mb-4 flex flex-wrap items-end gap-3 text-sm">
       <div className="flex flex-wrap gap-1" aria-label="Hazır aralık">
-        {presets().map((p) => {
+        {dateRanges().map((p) => {
           const on = p.bas === range.bas && p.bit === range.bit;
           return <Link key={p.key} href={reportHref(sekme, p, extra)} aria-current={on ? "true" : undefined} className={`rounded-lg border px-3 py-2 outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{p.label}</Link>;
         })}

@@ -2,7 +2,8 @@
 // Nihai tüketiciye (TCKN) satıcı iade faturası kesemez → iade tutanağı; VKN'li alıcı iade faturasını kendisi keser.
 import { validateTaxId } from "./fiscal";
 
-export type RefundFiscal = { number: string; ettn: string; invoiceAt: string; buyerKind: "tckn" | "vkn"; partial: boolean; sellerTaxId: string | null };
+export type FiscalBuyerKind = "tckn" | "vkn";
+export type RefundFiscal = { number: string; ettn: string; invoiceAt: string; buyerKind: FiscalBuyerKind; partial: boolean; sellerTaxId: string | null };
 export type RefundNote =
   | { kind: "tutanak"; title: "İADE TUTANAĞI"; rows: [string, string][]; statement: string; sign: string[] }
   | { kind: "note"; text: string };

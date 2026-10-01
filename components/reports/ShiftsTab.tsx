@@ -9,19 +9,22 @@ const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyl
 
 export async function ShiftsTab({ tenantId }: { tenantId: string }) {
   const sh = schema.shifts, s = schema.sales;
-  const rows = await withTenant(tenantId, (tx) =>
-    tx.select({
+  const rows = await withTenant(tenantId, async (tx) => {
+    const shifts = await tx.select({
       id: sh.id, openedAt: sh.openedAt, closedAt: sh.closedAt, countedCash: sh.countedCash, expectedCash: sh.expectedCash,
       device: schema.devices.name, opener: schema.staff.name,
-      gross: sql<number>`coalesce((select sum(${s.total}) from ${s} where ${s.shiftId} = ${sh.id} and ${s.status} = 'kapandi'), 0)::int`,
-      count: sql<number>`(select count(*) from ${s} where ${s.shiftId} = ${sh.id} and ${s.status} = 'kapandi')::int`,
-    })
-      .from(sh)
+    }).from(sh)
       .innerJoin(schema.devices, eq(schema.devices.id, sh.deviceId))
       .innerJoin(schema.staff, eq(schema.staff.id, sh.openedBy))
-      .orderBy(desc(sh.openedAt))
-      .limit(200),
-  );
+      .orderBy(desc(sh.openedAt)).limit(200);
+    const sales = await tx.select({
+      shiftId: s.shiftId,
+      gross: sql<number>`coalesce(sum(${s.total}), 0)::int`,
+      count: sql<number>`count(*)::int`,
+    }).from(s).where(eq(s.status, "kapandi")).groupBy(s.shiftId);
+    const totals = new Map(sales.map((r) => [r.shiftId, r]));
+    return shifts.map((r) => ({ ...r, gross: totals.get(r.id)?.gross ?? 0, count: totals.get(r.id)?.count ?? 0 }));
+  });
   return (
     <>
       {rows.length === 0 ? <Empty>Henüz vardiya yok. Kasada vardiya açılınca burada görünür.</Empty> : (

@@ -1,3 +1,4 @@
+"use client";
 // lib/offline/tabs.ts — Adisyon olaylarının yerel deposu ve canlı akış (tarayıcı).
 // Yerel olay: tabEvents'e seq=null ile + giden kutusuna tek işlemde. Sunucu yankısı aynı kimlikle gelir, seq'li hâli kalır.
 import type { TabEv, TabEvent } from "@/lib/core/tab";

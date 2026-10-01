@@ -1,3 +1,4 @@
+"use client";
 // lib/offline/agent.ts — Kasa → yerel ajan (tarayıcı). Ajan yoksa/ulaşılamazsa çağrılar null ya da hata döner;
 // satış hiçbir zaman bunu beklemez (yazıcı hatası satışı durdurmaz).
 import type { KasaAgent } from "@/lib/agent/config";

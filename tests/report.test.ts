@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  parseRange, prevRange, rangeBounds, dayCount, presets, summarize, pctChange, byChannel, byMethod, heatmap,
+  parseRange, prevRange, rangeBounds, dayCount, dateRanges, summarize, pctChange, byChannel, byMethod, heatmap,
   productRows, categoryRows, staffRows, tabEventRow, registerEventRow, toCsv, csvTL, csvQty, type SaleRow,
 } from "@/lib/core/report";
 
@@ -18,7 +18,7 @@ test("dönem: varsayılan 7 gün, ters sıra düzelir, tavan 366, önceki dönem
   const b = rangeBounds({ bas: "2026-09-29", bit: "2026-09-29" });
   assert.equal(b.from.toISOString(), "2026-09-28T21:00:00.000Z");
   assert.equal(b.to.toISOString(), "2026-09-29T21:00:00.000Z");
-  const p = presets(NOW);
+  const p = dateRanges(NOW);
   assert.deepEqual(p.find((x) => x.key === "ay"), { key: "ay", label: "Bu ay", bas: "2026-09-01", bit: "2026-09-29" });
   assert.deepEqual(p.find((x) => x.key === "dun"), { key: "dun", label: "Dün", bas: "2026-09-28", bit: "2026-09-28" });
 });

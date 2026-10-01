@@ -3,7 +3,7 @@
 import { billingInfo } from "@/lib/core/billing";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
-import { getDevice } from "@/lib/auth/kasa";
+import { getDevice as requireAuthDevice } from "@/lib/auth/kasa";
 import { sha256 } from "@/lib/auth/tokens";
 import { isVatRate } from "@/lib/core/money";
 import { kasaAgentFor } from "@/lib/agent/registry";
@@ -21,7 +21,7 @@ function lanLink(hub: KasaAgent | null, req: Request): LanLink | null {
 const noStore = { "Cache-Control": "no-store" };
 
 export async function GET(req: Request) {
-  const device = await getDevice();
+  const device = await requireAuthDevice();
   if (!device) return Response.json({ error: "cihaz" }, { status: 401, headers: noStore });
   const d = schema.devices, sh = schema.shifts;
   const [[dv], [store, cats, prods, staff, [shift], [fs]], salon, agent, hub, [tn]] = await Promise.all([

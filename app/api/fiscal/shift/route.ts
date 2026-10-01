@@ -1,13 +1,13 @@
 // Kasa gün sonu: vardiyada kesilemeyen (error) e-Arşiv sayısı.
 import { and, eq, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
-import { getDevice } from "@/lib/auth/kasa";
+import { getDevice as requireAuthDevice } from "@/lib/auth/kasa";
 
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(req: Request) {
-  const device = await getDevice();
+  const device = await requireAuthDevice();
   if (!device) return Response.json({ error: "cihaz" }, { status: 401 });
   const shiftId = new URL(req.url).searchParams.get("shiftId") ?? "";
   if (!UUID.test(shiftId)) return Response.json({ error: "shiftId" }, { status: 400 });

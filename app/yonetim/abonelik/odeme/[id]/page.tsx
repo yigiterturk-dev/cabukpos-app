@@ -1,4 +1,3 @@
-import Script from "next/script";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatTL } from "@/lib/core/money";
@@ -19,9 +18,7 @@ export default async function PaytrOdeme({ params, searchParams }: { params: Pro
   return (
     <Card className="mx-auto max-w-2xl p-4">
       <h1 className="mb-3 text-lg font-semibold">ÇabukPOS {p.period === "yillik" ? "yıllık" : "aylık"} abonelik · {formatTL(p.amount)}</h1>
-      <Script src="https://www.paytr.com/js/iframeResizer.min.js" strategy="afterInteractive" />
-      <iframe id="paytriframe" src={`https://www.paytr.com/odeme/guvenli/${t}`} className="min-h-[600px] w-full border-0" title="PayTR güvenli ödeme" />
-      <Script id="paytr-resize" strategy="afterInteractive">{`(function r(){if(window.iFrameResize){window.iFrameResize({},'#paytriframe')}else{setTimeout(r,200)}})()`}</Script>
+      <iframe id="paytriframe" src={`https://www.paytr.com/odeme/guvenli/${t}`} className="h-[700px] w-full border-0" title="PayTR güvenli ödeme" />
     </Card>
   );
 }
