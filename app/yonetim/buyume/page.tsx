@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/auth/session";
 import { createCampaignDraft } from "@/lib/admin/growth-actions";
 import { salesContact } from "@/lib/billing/plans";
 import { GROWTH_SEGMENTS, isGrowthSegment, type GrowthSegment } from "@/lib/growth/segments";
+import { buildFeaturePack } from "@/lib/growth/feature-pack";
+import { baselineAdvisor } from "@/lib/growth/advisor";
 import { Badge, buttonClass, Card, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -24,19 +26,26 @@ export default async function Buyume({ searchParams }: { searchParams: Promise<{
   const sp = await searchParams;
   const contact = salesContact();
   const segment: GrowthSegment = sp.segment && isGrowthSegment(sp.segment) ? sp.segment : "dormant_30";
-  const { campaigns, targetCount, targetPreview, avgPackage } = await withTenant(a.tenantId, async (tx) => {
+  const { campaigns, targetCount, targetPreview, avgPackage, insights } = await withTenant(a.tenantId, async (tx) => {
     const audienceWhere = segment === "dormant_30"
       ? and(eq(schema.customers.marketingConsent, true), isNotNull(schema.customers.lastOrderAt), lt(schema.customers.lastOrderAt, dormantSince))
       : segment === "active_30"
         ? and(eq(schema.customers.marketingConsent, true), gte(schema.customers.lastOrderAt, dormantSince))
         : eq(schema.customers.marketingConsent, true);
-    const [campaigns, targets, preview, average] = await Promise.all([
+    const [campaigns, targets, preview, average, totalCustomers, consentedCustomers, activeCustomers, dormantCustomers, newCustomers, campaignEvents] = await Promise.all([
       tx.select({ id: schema.growthCampaigns.id, name: schema.growthCampaigns.name, message: schema.growthCampaigns.message, audienceCount: schema.growthCampaigns.audienceCount, createdAt: schema.growthCampaigns.createdAt }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.status, "taslak")).orderBy(desc(schema.growthCampaigns.createdAt)).limit(10),
       tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(audienceWhere),
       tx.select({ name: schema.customers.name, phone: schema.customers.phone, lastOrderAt: schema.customers.lastOrderAt }).from(schema.customers).where(audienceWhere).orderBy(schema.customers.lastOrderAt).limit(8),
-      tx.select({ value: sql<number>`coalesce(avg(${schema.sales.total}), 0)::int` }).from(schema.sales).where(and(eq(schema.sales.channel, "paket"), eq(schema.sales.status, "kapandi"), gte(schema.sales.createdAt, sql`now() - interval '90 days'`))),
+      tx.select({ orders: sql<number>`count(*)::int`, gross: sql<number>`coalesce(sum(${schema.sales.total}), 0)::int`, value: sql<number>`coalesce(avg(${schema.sales.total}), 0)::int` }).from(schema.sales).where(and(eq(schema.sales.channel, "paket"), eq(schema.sales.status, "kapandi"), gte(schema.sales.createdAt, sql`now() - interval '90 days'`))),
+      tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers),
+      tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(eq(schema.customers.marketingConsent, true)),
+      tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(gte(schema.customers.lastOrderAt, dormantSince)),
+      tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(and(isNotNull(schema.customers.lastOrderAt), lt(schema.customers.lastOrderAt, dormantSince))),
+      tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(gte(schema.customers.createdAt, dormantSince)),
+      tx.select({ sent: sql<number>`count(*) filter (where ${schema.growthCampaignEvents.type} = 'sent')::int`, delivered: sql<number>`count(*) filter (where ${schema.growthCampaignEvents.type} = 'delivered')::int`, converted: sql<number>`count(*) filter (where ${schema.growthCampaignEvents.type} = 'converted')::int`, revenue: sql<number>`coalesce(sum(${schema.growthCampaignEvents.amount}) filter (where ${schema.growthCampaignEvents.type} = 'converted'), 0)::int` }).from(schema.growthCampaignEvents),
     ]);
-    return { campaigns, targetCount: targets[0]?.n ?? 0, targetPreview: preview, avgPackage: average[0]?.value ?? 0 };
+    const pack = buildFeaturePack({ generatedAt: new Date().toISOString(), vertical: a.vertical, customer: { total: totalCustomers[0]?.n ?? 0, consented: consentedCustomers[0]?.n ?? 0, active30: activeCustomers[0]?.n ?? 0, dormant30: dormantCustomers[0]?.n ?? 0, new30: newCustomers[0]?.n ?? 0 }, package90: { orders: average[0]?.orders ?? 0, gross: average[0]?.gross ?? 0, avgBasket: average[0]?.value ?? 0 }, campaigns: { drafts: campaigns.length, events: { sent: campaignEvents[0]?.sent ?? 0, delivered: campaignEvents[0]?.delivered ?? 0, converted: campaignEvents[0]?.converted ?? 0, revenue: campaignEvents[0]?.revenue ?? 0 } } });
+    return { campaigns, targetCount: targets[0]?.n ?? 0, targetPreview: preview, avgPackage: average[0]?.value ?? 0, insights: baselineAdvisor(pack) };
   });
   return (
     <>
@@ -59,6 +68,7 @@ export default async function Buyume({ searchParams }: { searchParams: Promise<{
       <div className="grid gap-4 md:grid-cols-3">
         {modules.map(({ icon: Icon, title, text }) => <Card key={title} className="p-5"><Icon aria-hidden className="size-5 text-brand" /><h2 className="mt-4 font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-muted">{text}</p></Card>)}
       </div>
+      <Card className="mt-6 p-5"><div className="flex flex-wrap items-baseline justify-between gap-2"><div><h2 className="font-semibold">Veri içgörüleri</h2><p className="mt-1 text-sm text-muted">Şu an kanıtlı fallback advisor; Laya bağlandığında aynı veri sözleşmesi kullanılacak.</p></div><Badge tone="neutral">Tahmin yok</Badge></div><div className="mt-4 grid gap-3 md:grid-cols-3">{insights.map((i) => <div key={i.key} className={`rounded-xl border p-4 ${i.kind === "opportunity" ? "border-brand/30 bg-brand-soft" : i.kind === "warning" ? "border-amber-200 bg-warn-soft" : "border-line bg-surface-2"}`}><div className="text-xs font-semibold uppercase tracking-wide text-muted">{i.kind === "opportunity" ? "Fırsat" : i.kind === "warning" ? "Veri kapısı" : "Gözlem"}</div><h3 className="mt-2 font-medium">{i.title}</h3><p className="mt-1 text-sm leading-5 text-ink-2">{i.body}</p></div>)}</div></Card>
       {sp.olusturuldu && <Card className="mt-6 border-emerald-200 bg-ok-soft p-4 text-sm text-ok" role="status">Kampanya taslağı kaydedildi. Henüz hiçbir mesaj gönderilmedi.</Card>}
       {sp.hata && <Card className="mt-6 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Kampanya adı en az 2, mesajı en az 5 karakter olmalı.</Card>}
       <Card className="mt-6 p-5">
