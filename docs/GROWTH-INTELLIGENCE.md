@@ -26,7 +26,8 @@ sayısal tenant özeti verir. Harici Laya adaptörü bu uçtan aldığı veriyi 
 tenantlarla birleştirmeden önce ayrıca anonim/toplu benchmark kurallarını uygular.
 `GET /api/growth/insights` aynı erişim sınırıyla kanıtlı fallback içgörüleri döndürür;
 Laya bağlandığında `provider` alanı ve içgörü kaynağı değişir, tenant sözleşmesi
-değişmez.
+değişmez. Her iki okuma da tenant audit log'una aktör, şema sürümü ve sağlayıcı/
+fallback bilgisiyle yazılır; token, ham yanıt ve PII yazılmaz.
 
 ## İlk sürümde yapılmayacaklar
 

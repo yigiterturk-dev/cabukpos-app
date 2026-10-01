@@ -4,7 +4,7 @@ import { getAdmin } from "@/lib/auth/session";
 import { keyFromRequest } from "@/lib/integrations/keys";
 import { hit } from "@/lib/ratelimit";
 
-export type GrowthAccess = { tenantId: string; vertical: "restoran" | "market" };
+export type GrowthAccess = { tenantId: string; vertical: "restoran" | "market"; actor: string };
 
 /** Yönetici oturumu veya yalnız growth kapsamlı entegrasyon anahtarı. */
 export async function growthAccess(req: Request): Promise<GrowthAccess | Response> {
@@ -17,5 +17,5 @@ export async function growthAccess(req: Request): Promise<GrowthAccess | Respons
   const vertical = a?.vertical ?? (await getDb().select({ vertical: schema.tenants.vertical }).from(schema.tenants).where(eq(schema.tenants.id, tenantId)).limit(1))[0]?.vertical;
   if (!vertical) return Response.json({ error: "tenant_not_found" }, { status: 401 });
   if (vertical !== "restoran") return Response.json({ error: "unsupported_vertical" }, { status: 403 });
-  return { tenantId, vertical };
+  return { tenantId, vertical, actor: a ? `user:${a.id}` : `integration:${key!.id}` };
 }
