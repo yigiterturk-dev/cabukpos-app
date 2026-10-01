@@ -267,10 +267,9 @@ components:
           items: { $ref: '#/components/schemas/CampaignSummary' }
     CampaignSummary:
       type: object
-      required: [id, name, segment, status, audienceCount, createdAt, metrics]
+      required: [id, segment, status, audienceCount, createdAt, metrics]
       properties:
         id: { type: string, format: uuid }
-        name: { type: string }
         segment: { type: string, enum: [dormant_30, active_30, all_consented] }
         status: { type: string, enum: [taslak, arsiv] }
         audienceCount: { type: integer, minimum: 0 }

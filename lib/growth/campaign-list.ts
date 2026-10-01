@@ -8,7 +8,6 @@ import { campaignMetrics } from "@/lib/growth/metrics";
 export async function listGrowthCampaigns(tx: Tx, input: { tenantId: string; actor: string }) {
   const campaigns = await tx.select({
     id: schema.growthCampaigns.id,
-    name: schema.growthCampaigns.name,
     segment: schema.growthCampaigns.segment,
     status: schema.growthCampaigns.status,
     audienceCount: schema.growthCampaigns.audienceCount,

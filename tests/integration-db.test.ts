@@ -135,6 +135,7 @@ test("growth event intake: tenant sınırı ve externalId idempotency", async ()
   assert.equal(await withTenant(t2.id, (tx) => loadGrowthCampaignStatus(tx, { tenantId: t2.id, campaignId: campaign.id, actor: "integration:test" })), null);
   const listed = await withTenant(t.id, (tx) => listGrowthCampaigns(tx, { tenantId: t.id, actor: "integration:test" }));
   assert.equal(listed.find((item) => item.id === campaign.id)?.metrics.revenue, 12500);
+  assert.equal("name" in (listed.find((item) => item.id === campaign.id) ?? {}), false);
   assert.equal("message" in (listed.find((item) => item.id === campaign.id) ?? {}), false);
   assert.equal((await withTenant(t2.id, (tx) => listGrowthCampaigns(tx, { tenantId: t2.id, actor: "integration:test" }))).some((item) => item.id === campaign.id), false);
 });

@@ -28,7 +28,7 @@ ID'si ve ham sipariş satırı içermez.
 GET /api/growth/campaigns
 
 Tenant içindeki son 50 kampanyayı PII'siz kimlik, segment, durum, hedef sayısı ve
-ölçüm özetleriyle döndürür. Mesaj metni, müşteri kimliği ve müşteri iletişim
+ölçüm özetleriyle döndürür. Kampanya adı, mesaj metni, müşteri kimliği ve müşteri iletişim
 bilgileri dönmez. Yanıt Cache-Control: no-store ile gelir; okuma tenant audit
 log'una yazılır.
 
