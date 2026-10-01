@@ -18,6 +18,7 @@ export const stockUnit = pgEnum("stock_unit", ["adet", "kg", "lt"]);
 export const purchaseStatus = pgEnum("purchase_status", ["kayitli", "iptal"]);
 export const fiscalDocStatus = pgEnum("fiscal_doc_status", ["pending", "issued", "error", "cancelled", "cancel_rejected"]);
 export const supplierPayMethod = pgEnum("supplier_pay_method", ["nakit", "havale", "kart"]);
+export const growthCampaignStatus = pgEnum("growth_campaign_status", ["taslak", "arsiv"]);
 
 const ts = (n: string) => timestamp(n, { withTimezone: true });
 const tenantRef = () => uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" });
@@ -334,6 +335,20 @@ export const customers = pgTable("customers", {
   lastOrderAt: ts("last_order_at"),
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("customers_phone_uq").on(t.tenantId, t.phone)]);
+
+/** Büyüme Merkezi: gönderim yapmayan, tenant içi kampanya taslakları. */
+export const growthCampaigns = pgTable("growth_campaigns", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  name: text("name").notNull(),
+  segment: text("segment").notNull().default("dormant_30"),
+  message: text("message").notNull(),
+  channel: text("channel").notNull().default("manual"),
+  status: growthCampaignStatus("status").notNull().default("taslak"),
+  audienceCount: integer("audience_count").notNull().default(0),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("growth_campaigns_tenant_idx").on(t.tenantId, t.createdAt)]);
 
 export const customerAddresses = pgTable("customer_addresses", {
   id: uuid("id").primaryKey().defaultRandom(),
