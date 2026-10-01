@@ -4,6 +4,8 @@ Bu sözleşme, ayrı satılan Büyüme Merkezi'nin tenant içindeki ÇabukPOS ve
 bağlanması içindir. API mesaj göndermez; yalnızca PII'siz özet okur ve harici
 sağlayıcının ölçüm sonuçlarını geri alır.
 
+Makine-okunur kaynak: `docs/growth-api.openapi.yaml`.
+
 ## Kimlik doğrulama
 
 `Authorization: Bearer cpk_...` başlığı gerekir. Anahtarın kapsamı `growth`

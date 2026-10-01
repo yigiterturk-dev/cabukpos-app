@@ -1,0 +1,222 @@
+openapi: 3.1.0
+info:
+  title: ÇabukPOS Büyüme Merkezi API
+  version: 1.0.0
+  description: >-
+    Tenant-scoped growth API. The API returns aggregate, PII-free features,
+    creates unsent campaign drafts, and accepts idempotent measurement events.
+servers:
+  - url: https://cabukpos-app.vercel.app
+    description: Production alias (deployment must be verified before use)
+paths:
+  /api/growth/feature-pack:
+    get:
+      summary: Get the tenant feature pack
+      security:
+        - GrowthBearer: []
+      responses:
+        '200':
+          description: PII-free aggregate feature pack
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeaturePack' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/growth/insights:
+    get:
+      summary: Get baseline or Laya-validated insights
+      security:
+        - GrowthBearer: []
+      responses:
+        '200':
+          description: Validated insights with provider/fallback metadata
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InsightsResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/growth/campaigns:
+    post:
+      summary: Create an unsent campaign draft
+      security:
+        - GrowthBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CampaignDraftRequest' }
+      responses:
+        '201':
+          description: Draft created; no message was sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CampaignDraftResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/growth/campaigns/{campaignId}/events:
+    post:
+      summary: Record an idempotent campaign measurement event
+      security:
+        - GrowthBearer: []
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CampaignEventRequest' }
+      responses:
+        '201':
+          description: New event recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventCreatedResponse' }
+        '200':
+          description: Duplicate externalId; no second event was written
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [duplicate]
+                properties: { duplicate: { const: true } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+components:
+  securitySchemes:
+    GrowthBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: cpk_
+      description: Integration key with scope=growth; 60 requests/minute/key.
+  schemas:
+    FeaturePack:
+      type: object
+      required: [schemaVersion, generatedAt, privacy, vertical, customer, package90, campaigns]
+      properties:
+        schemaVersion: { const: 1 }
+        generatedAt: { type: string, format: date-time }
+        privacy:
+          type: object
+          required: [pii, minCohortSize, scope]
+          properties:
+            pii: { const: false }
+            minCohortSize: { type: integer, const: 10 }
+            scope: { const: tenant_only }
+        vertical: { const: restoran }
+        customer:
+          $ref: '#/components/schemas/CustomerFeatures'
+        package90:
+          type: object
+          required: [orders, gross, avgBasket]
+          properties:
+            orders: { type: integer, minimum: 0 }
+            gross: { type: integer, minimum: 0, description: Kuruş }
+            avgBasket: { type: integer, minimum: 0, description: Kuruş }
+        campaigns:
+          type: object
+          required: [drafts, events]
+          properties:
+            drafts: { type: integer, minimum: 0 }
+            events:
+              type: object
+              required: [sent, delivered, converted, revenue]
+              properties:
+                sent: { type: integer, minimum: 0 }
+                delivered: { type: integer, minimum: 0 }
+                converted: { type: integer, minimum: 0 }
+                revenue: { type: integer, minimum: 0, description: Kuruş }
+    CustomerFeatures:
+      type: object
+      required: [total, consented, active30, dormant30, new30]
+      properties:
+        total: { type: integer, minimum: 0 }
+        consented: { type: integer, minimum: 0 }
+        active30: { type: integer, minimum: 0 }
+        dormant30: { type: integer, minimum: 0 }
+        new30: { type: integer, minimum: 0 }
+    Insight:
+      type: object
+      required: [key, kind, title, body, confidence, evidence]
+      properties:
+        key: { type: string, minLength: 1, maxLength: 80 }
+        kind: { enum: [opportunity, observation, warning] }
+        title: { type: string, minLength: 1, maxLength: 160 }
+        body: { type: string, minLength: 1, maxLength: 1000 }
+        confidence: { enum: [observed, insufficient_data] }
+        evidence: { type: object, additionalProperties: { type: number, minimum: 0 } }
+    InsightsResponse:
+      type: object
+      required: [schemaVersion, generatedAt, provider, insights]
+      properties:
+        schemaVersion: { const: 1 }
+        generatedAt: { type: string, format: date-time }
+        provider: { enum: [baseline, laya] }
+        fallback: { enum: [not_configured, remote_error] }
+        insights: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/Insight' } }
+    CampaignDraftRequest:
+      type: object
+      required: [name, message, segment]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        message: { type: string, minLength: 5, maxLength: 500 }
+        segment: { enum: [dormant_30, active_30, all_consented] }
+    CampaignDraftResponse:
+      type: object
+      required: [id, audienceCount, status]
+      properties:
+        id: { type: string, format: uuid }
+        audienceCount: { type: integer, minimum: 0 }
+        status: { const: taslak }
+    CampaignEventRequest:
+      type: object
+      required: [type, externalId]
+      additionalProperties: false
+      properties:
+        type: { enum: [sent, delivered, converted, opt_out, failed] }
+        externalId: { type: string, minLength: 1, maxLength: 200 }
+        amount: { type: integer, minimum: 0, maximum: 1000000000, description: Kuruş; yalnız converted için kullanılır }
+        customerId: { type: string, format: uuid, description: Yalnız opt_out için tenant içi UUID }
+    EventCreatedResponse:
+      type: object
+      required: [id, duplicate]
+      properties:
+        id: { type: string, format: uuid }
+        duplicate: { const: false }
+  responses:
+    BadRequest:
+      description: Invalid JSON, input, UUID, or segment
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Unauthorized:
+      description: Missing or invalid authentication
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Wrong scope or unsupported vertical
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    NotFound:
+      description: Campaign or opt-out customer not found in the tenant
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    RateLimited:
+      description: More than 60 requests/minute for the key
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
