@@ -247,12 +247,13 @@ components:
                 revenue: { type: integer, minimum: 0, description: Kuruş }
     CustomerFeatures:
       type: object
-      required: [total, consented, active30, dormant30, new30]
+      required: [total, consented, active30, dormant30, consentedDormant30, new30]
       properties:
         total: { type: integer, minimum: 0 }
         consented: { type: integer, minimum: 0 }
         active30: { type: integer, minimum: 0 }
         dormant30: { type: integer, minimum: 0 }
+        consentedDormant30: { type: integer, minimum: 0 }
         new30: { type: integer, minimum: 0 }
     Insight:
       type: object

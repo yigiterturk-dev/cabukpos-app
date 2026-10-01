@@ -1,7 +1,7 @@
 export type FeaturePackInput = {
   generatedAt: string;
   vertical: "restoran" | "market";
-  customer: { total: number; consented: number; active30: number; dormant30: number; new30: number };
+  customer: { total: number; consented: number; active30: number; dormant30: number; consentedDormant30: number; new30: number };
   package90: { orders: number; gross: number; avgBasket: number };
   campaigns: { drafts: number; events: { sent: number; delivered: number; converted: number; revenue: number } };
 };

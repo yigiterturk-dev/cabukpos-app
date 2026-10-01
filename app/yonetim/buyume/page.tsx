@@ -34,7 +34,7 @@ export default async function Buyume({ searchParams }: { searchParams: Promise<{
       : segment === "active_30"
         ? and(eq(schema.customers.marketingConsent, true), gte(schema.customers.lastOrderAt, dormantSince))
         : eq(schema.customers.marketingConsent, true);
-    const [campaigns, targets, preview, average, totalCustomers, consentedCustomers, activeCustomers, dormantCustomers, newCustomers, campaignEvents] = await Promise.all([
+    const [campaigns, targets, preview, average, totalCustomers, consentedCustomers, activeCustomers, dormantCustomers, consentedDormantCustomers, newCustomers, campaignEvents] = await Promise.all([
       tx.select({ id: schema.growthCampaigns.id, name: schema.growthCampaigns.name, message: schema.growthCampaigns.message, audienceCount: schema.growthCampaigns.audienceCount, createdAt: schema.growthCampaigns.createdAt }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.status, "taslak")).orderBy(desc(schema.growthCampaigns.createdAt)).limit(10),
       tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(audienceWhere),
       tx.select({ name: schema.customers.name, phone: schema.customers.phone, lastOrderAt: schema.customers.lastOrderAt }).from(schema.customers).where(audienceWhere).orderBy(schema.customers.lastOrderAt).limit(8),
@@ -43,10 +43,11 @@ export default async function Buyume({ searchParams }: { searchParams: Promise<{
       tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(eq(schema.customers.marketingConsent, true)),
       tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(gte(schema.customers.lastOrderAt, dormantSince)),
       tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(and(isNotNull(schema.customers.lastOrderAt), lt(schema.customers.lastOrderAt, dormantSince))),
+      tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(and(eq(schema.customers.marketingConsent, true), isNotNull(schema.customers.lastOrderAt), lt(schema.customers.lastOrderAt, dormantSince))),
       tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(gte(schema.customers.createdAt, dormantSince)),
       tx.select({ sent: sql<number>`count(*) filter (where ${schema.growthCampaignEvents.type} = 'sent')::int`, delivered: sql<number>`count(*) filter (where ${schema.growthCampaignEvents.type} = 'delivered')::int`, converted: sql<number>`count(*) filter (where ${schema.growthCampaignEvents.type} = 'converted')::int`, revenue: sql<number>`coalesce(sum(${schema.growthCampaignEvents.amount}) filter (where ${schema.growthCampaignEvents.type} = 'converted'), 0)::int` }).from(schema.growthCampaignEvents),
     ]);
-    const pack = buildFeaturePack({ generatedAt: new Date().toISOString(), vertical: a.vertical, customer: { total: totalCustomers[0]?.n ?? 0, consented: consentedCustomers[0]?.n ?? 0, active30: activeCustomers[0]?.n ?? 0, dormant30: dormantCustomers[0]?.n ?? 0, new30: newCustomers[0]?.n ?? 0 }, package90: { orders: average[0]?.orders ?? 0, gross: average[0]?.gross ?? 0, avgBasket: average[0]?.value ?? 0 }, campaigns: { drafts: campaigns.length, events: { sent: campaignEvents[0]?.sent ?? 0, delivered: campaignEvents[0]?.delivered ?? 0, converted: campaignEvents[0]?.converted ?? 0, revenue: campaignEvents[0]?.revenue ?? 0 } } });
+    const pack = buildFeaturePack({ generatedAt: new Date().toISOString(), vertical: a.vertical, customer: { total: totalCustomers[0]?.n ?? 0, consented: consentedCustomers[0]?.n ?? 0, active30: activeCustomers[0]?.n ?? 0, dormant30: dormantCustomers[0]?.n ?? 0, consentedDormant30: consentedDormantCustomers[0]?.n ?? 0, new30: newCustomers[0]?.n ?? 0 }, package90: { orders: average[0]?.orders ?? 0, gross: average[0]?.gross ?? 0, avgBasket: average[0]?.value ?? 0 }, campaigns: { drafts: campaigns.length, events: { sent: campaignEvents[0]?.sent ?? 0, delivered: campaignEvents[0]?.delivered ?? 0, converted: campaignEvents[0]?.converted ?? 0, revenue: campaignEvents[0]?.revenue ?? 0 } } });
     return { campaigns, targetCount: targets[0]?.n ?? 0, targetPreview: preview, avgPackage: average[0]?.value ?? 0, featurePack: pack };
   });
   const advice = await advise(featurePack);

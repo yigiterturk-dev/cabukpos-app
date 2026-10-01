@@ -14,8 +14,8 @@ export type GrowthInsight = {
 export function baselineAdvisor(pack: GrowthFeaturePack): GrowthInsight[] {
   const out: GrowthInsight[] = [];
   const { customer, package90, campaigns } = pack;
-  if (customer.dormant30 > 0 && customer.consented > 0) {
-    out.push({ key: "dormant-consented", kind: "opportunity", title: "Geri kazanım segmenti hazır", body: `${customer.dormant30} müşteri 30 gündür sipariş vermemiş; iletişim izni olan ${customer.consented} kişi arasından hedef segment oluşturulabilir.`, confidence: "observed", evidence: { dormant30: customer.dormant30, consented: customer.consented } });
+  if (customer.consentedDormant30 > 0) {
+    out.push({ key: "dormant-consented", kind: "opportunity", title: "Geri kazanım segmenti hazır", body: `İletişim izinli ${customer.consentedDormant30} müşteri 30 gündür sipariş vermemiş; tenant içinde geri kazanım segmenti oluşturulabilir.`, confidence: "observed", evidence: { dormant30: customer.dormant30, consentedDormant30: customer.consentedDormant30 } });
   }
   if (package90.orders > 0) {
     out.push({ key: "package-baseline", kind: "observation", title: "Paket satış referansı oluştu", body: `Son 90 günde ${package90.orders} paket siparişi ve ${(package90.gross / 100).toLocaleString("tr-TR")} TL brüt ciro gözlendi.`, confidence: "observed", evidence: { orders90: package90.orders, gross90: package90.gross, avgBasket90: package90.avgBasket } });

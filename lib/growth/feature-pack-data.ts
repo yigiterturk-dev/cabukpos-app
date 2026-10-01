@@ -13,6 +13,7 @@ export function loadFeaturePack(tenantId: string, vertical: FeaturePackInput["ve
         tx.select({ n: count() }).from(C).where(eq(C.marketingConsent, true)),
         tx.select({ n: count() }).from(C).where(gte(C.lastOrderAt, d30)),
         tx.select({ n: count() }).from(C).where(and(isNotNull(C.lastOrderAt), lt(C.lastOrderAt, d30))),
+        tx.select({ n: count() }).from(C).where(and(eq(C.marketingConsent, true), isNotNull(C.lastOrderAt), lt(C.lastOrderAt, d30))),
         tx.select({ n: count() }).from(C).where(gte(C.createdAt, d30)),
       ]),
       tx.select({ orders: count(), gross: sql<number>`coalesce(sum(${S.total}), 0)::int`, avgBasket: sql<number>`coalesce(avg(${S.total}), 0)::int` }).from(S)
@@ -22,7 +23,7 @@ export function loadFeaturePack(tenantId: string, vertical: FeaturePackInput["ve
     ]);
     return buildFeaturePack({
       generatedAt: new Date().toISOString(), vertical,
-      customer: { total: customers[0][0]?.n ?? 0, consented: customers[1][0]?.n ?? 0, active30: customers[2][0]?.n ?? 0, dormant30: customers[3][0]?.n ?? 0, new30: customers[4][0]?.n ?? 0 },
+      customer: { total: customers[0][0]?.n ?? 0, consented: customers[1][0]?.n ?? 0, active30: customers[2][0]?.n ?? 0, dormant30: customers[3][0]?.n ?? 0, consentedDormant30: customers[4][0]?.n ?? 0, new30: customers[5][0]?.n ?? 0 },
       package90: { orders: packageSales[0]?.orders ?? 0, gross: packageSales[0]?.gross ?? 0, avgBasket: packageSales[0]?.avgBasket ?? 0 },
       campaigns: { drafts: campaigns[0]?.n ?? 0, events: { sent: events[0]?.sent ?? 0, delivered: events[0]?.delivered ?? 0, converted: events[0]?.converted ?? 0, revenue: events[0]?.revenue ?? 0 } },
     });
