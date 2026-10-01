@@ -12,6 +12,7 @@ const { istToday } = await import("@/lib/core/report");
 const { GET } = await import("@/app/api/v1/stats/daily/route");
 const { recordCampaignEvent } = await import("@/lib/growth/events");
 const { createGrowthCampaignDraft } = await import("@/lib/growth/campaigns");
+const { loadGrowthCampaignStatus } = await import("@/lib/growth/campaign-status");
 const { eq, like, sql } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "M9C-T", vertical: "restoran" }).returning();
@@ -125,6 +126,12 @@ test("growth event intake: tenant sınırı ve externalId idempotency", async ()
   assert.deepEqual(updatedCustomer, { consent: false, source: "provider_opt_out" });
   const [count] = await withTenant(t.id, (tx) => tx.select({ n: sql<number>`count(*)::int` }).from(schema.growthCampaignEvents).where(eq(schema.growthCampaignEvents.campaignId, campaign.id)));
   assert.equal(count.n, 2);
+  const status = await withTenant(t.id, (tx) => loadGrowthCampaignStatus(tx, { tenantId: t.id, campaignId: campaign.id, actor: "integration:test" }));
+  assert.equal(status?.campaign.id, campaign.id);
+  assert.equal(status?.metrics.converted, 1);
+  assert.equal(status?.metrics.optOut, 1);
+  assert.equal(status?.metrics.revenue, 12500);
+  assert.equal(await withTenant(t2.id, (tx) => loadGrowthCampaignStatus(tx, { tenantId: t2.id, campaignId: campaign.id, actor: "integration:test" })), null);
 });
 
 test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", async () => {
