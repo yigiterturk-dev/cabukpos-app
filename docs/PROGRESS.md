@@ -6,7 +6,7 @@
 - Harici servis erişimi growth kapsamlı anahtarla, dakikada 60 istekle sınırlıdır. Sağlayıcı webhook'u Bearer + timestamp/HMAC imzası, 5 dakika replay penceresi ve 64 KB gövde sınırı kullanır.
 - İzinli kampanya hedefleri sayfalı audience endpoint'inden yalnız growth anahtarıyla türetilmiş hmac-sha256 recipientRef olarak okunur; telefon, ad ve müşteri UUID'si dışarı çıkmaz.
 - API sözleşmesi docs/growth-api.openapi.yaml; operasyon/kullanım sınırları docs/GROWTH-API.md ve docs/GROWTH-SERVICE.md.
-- Kanıt: 162/162 test, lint/typecheck, production build, webhook imza testleri, DB tenant/idempotency/audience testleri ve runtime audit'te 16 anonim/korumalı kontrol tanımı.
+- Kanıt: 164/164 test, lint/typecheck, production build, webhook imza testleri, DB tenant/idempotency/audience testleri ve runtime audit'te 16 anonim/korumalı kontrol tanımı.
 - Açık canlı kapılar: gerçek deployment doğrulaması, provider sandbox teslimat/opt-out provası, backup-restore provası ve hukuki/mali müşavir onayı. Bunlar repo testiyle kanıtlanmış sayılmaz.
 - Canlı alias kontrolü (2026-10-01): health/ready 200 ve mevcut korumalı uçlar geçiyor; Growth feature-pack, insights, campaign, audience, event ve signed webhook uçları 404. Branch deploy edilmediği için canlı alias eski deployment'ı gösteriyor; Growth canlı kabulü yapılmadı.
 
