@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { campaignMetrics } from "@/lib/growth/metrics";
+import { growthEventInput } from "@/lib/growth/event-input";
 
 test("kampanya sonuçları yalnız dönüşüm olayındaki ciroyu toplar", () => {
   const r1 = "hmac-sha256:" + "a".repeat(64);
@@ -15,4 +16,11 @@ test("kampanya sonuçları yalnız dönüşüm olayındaki ciroyu toplar", () =>
 
 test("olay yokken oranlar null, ciro sıfırdır", () => {
   assert.deepEqual(campaignMetrics([]), { sent: 0, delivered: 0, converted: 0, optOut: 0, failed: 0, revenue: 0, deliveryRate: null, conversionRate: null, optOutRate: null });
+});
+
+test("ölçüm olayı düz hash veya recipientRef olmadan kabul edilmez", () => {
+  const base = { type: "converted", externalId: "evt-1", amount: 1000 };
+  assert.equal(growthEventInput.safeParse({ ...base, recipientRef: "sha256:" + "a".repeat(64) }).success, false);
+  assert.equal(growthEventInput.safeParse(base).success, false);
+  assert.equal(growthEventInput.safeParse({ ...base, recipientRef: "hmac-sha256:" + "a".repeat(64) }).success, true);
 });
