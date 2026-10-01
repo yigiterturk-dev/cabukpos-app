@@ -1,8 +1,7 @@
-import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { schema, withTenant } from "@/db";
-import { audit } from "@/lib/audit";
+import { withTenant } from "@/db";
 import { growthAccess } from "@/lib/growth/access";
+import { recordCampaignEvent } from "@/lib/growth/events";
 
 export const dynamic = "force-dynamic";
 
@@ -21,18 +20,7 @@ export async function POST(req: Request, context: { params: Promise<{ campaignId
   const parsed = eventInput.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "invalid_event" }, { status: 400 });
 
-  const result = await withTenant(access.tenantId, async (tx) => {
-    const [campaign] = await tx.select({ id: schema.growthCampaigns.id }).from(schema.growthCampaigns)
-      .where(and(eq(schema.growthCampaigns.id, campaignId), eq(schema.growthCampaigns.tenantId, access.tenantId))).limit(1);
-    if (!campaign) return { error: "campaign_not_found" as const };
-    const amount = parsed.data.type === "converted" ? parsed.data.amount ?? 0 : 0;
-    const [inserted] = await tx.insert(schema.growthCampaignEvents).values({
-      tenantId: access.tenantId, campaignId, type: parsed.data.type, externalId: parsed.data.externalId, amount,
-    }).onConflictDoNothing({ target: [schema.growthCampaignEvents.campaignId, schema.growthCampaignEvents.externalId] }).returning({ id: schema.growthCampaignEvents.id });
-    if (!inserted) return { duplicate: true as const };
-    await audit(tx, access.tenantId, access.actor, "growth.campaign.event", { campaignId, type: parsed.data.type, amount });
-    return { id: inserted.id, duplicate: false as const };
-  });
+  const result = await withTenant(access.tenantId, (tx) => recordCampaignEvent(tx, { tenantId: access.tenantId, campaignId, ...parsed.data, actor: access.actor }));
   if ("error" in result) return Response.json({ error: result.error }, { status: 404 });
   return Response.json(result, { status: result.duplicate ? 200 : 201 });
 }

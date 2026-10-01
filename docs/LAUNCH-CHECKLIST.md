@@ -8,7 +8,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 ### Teknik kapı — mevcut durum
 
 - [x] `npm ci` temiz kurulum: 0 vulnerability
-- [x] `npm test`: 156/156
+- [x] `npm test`: 157/157
 - [x] `npm run qa:static`: lint + typecheck
 - [x] `npm run build`: Webpack production build
 - [x] Production `/api/health` ve `/api/ready`: 200

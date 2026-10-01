@@ -10,7 +10,8 @@ const { dailyStatsData } = await import("@/lib/admin/report");
 const { loadFeaturePack } = await import("@/lib/growth/feature-pack-data");
 const { istToday } = await import("@/lib/core/report");
 const { GET } = await import("@/app/api/v1/stats/daily/route");
-const { eq, like } = await import("drizzle-orm");
+const { recordCampaignEvent } = await import("@/lib/growth/events");
+const { eq, like, sql } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "M9C-T", vertical: "restoran" }).returning();
 const [t2] = await getDb().insert(schema.tenants).values({ name: "M9C-T2", vertical: "restoran" }).returning();
@@ -103,4 +104,19 @@ test("growth feature-pack: tenant özeti PII ve kimlik döndürmez", async () =>
   assert.equal("tenantId" in p, false);
   assert.equal("phone" in p, false);
   assert.equal(p.vertical, "restoran");
+});
+
+test("growth event intake: tenant sınırı ve externalId idempotency", async () => {
+  const [campaign] = await withTenant(t.id, (tx) => tx.insert(schema.growthCampaigns).values({ tenantId: t.id, name: "Geri kazanım", message: "Merhaba", createdBy: null }).returning({ id: schema.growthCampaigns.id }));
+  const request = () => withTenant(t.id, (tx) => recordCampaignEvent(tx, { tenantId: t.id, campaignId: campaign.id, type: "converted", externalId: "provider-event-1", amount: 12500, actor: "integration:test" }));
+  const first = await request();
+  assert.equal("error" in first, false);
+  if ("error" in first) return;
+  assert.equal(first.duplicate, false);
+  if (!first.duplicate) assert.match(first.id, /^[0-9a-f-]{36}$/);
+  assert.deepEqual(await request(), { duplicate: true });
+  const otherTenant = await withTenant(t2.id, (tx) => recordCampaignEvent(tx, { tenantId: t2.id, campaignId: campaign.id, type: "sent", externalId: "other-tenant", actor: "integration:test" }));
+  assert.deepEqual(otherTenant, { error: "campaign_not_found" });
+  const [count] = await withTenant(t.id, (tx) => tx.select({ n: sql<number>`count(*)::int` }).from(schema.growthCampaignEvents).where(eq(schema.growthCampaignEvents.campaignId, campaign.id)));
+  assert.equal(count.n, 1);
 });
