@@ -121,6 +121,8 @@ nextCursor ile devam edilir. Normalizasyon: rakam olmayan karakterleri sil;
 10 haneli ve 0 ile başlamayan numaraya 90 ekle; 0 ile başlayan 11 haneli
 numarada ilk 0'ı 90 ile değiştir; 90 ile başlayan 12 haneli numarayı olduğu
 gibi kullan. Diğer biçimler reddedilir.
+Kampanya işletme sahibi tarafından onaylanmadıysa bu uç 403 döner; taslak
+onayı olmadan hedef listesi veya gönderim akışı açılamaz.
 
 ## Sağlayıcı webhook'u
 

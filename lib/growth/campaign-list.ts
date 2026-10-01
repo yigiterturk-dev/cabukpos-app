@@ -11,6 +11,7 @@ export async function listGrowthCampaigns(tx: Tx, input: { tenantId: string; act
     segment: schema.growthCampaigns.segment,
     status: schema.growthCampaigns.status,
     audienceCount: schema.growthCampaigns.audienceCount,
+    approvedAt: schema.growthCampaigns.approvedAt,
     createdAt: schema.growthCampaigns.createdAt,
   }).from(schema.growthCampaigns).orderBy(desc(schema.growthCampaigns.createdAt)).limit(50);
   const ids = campaigns.map((campaign) => campaign.id);

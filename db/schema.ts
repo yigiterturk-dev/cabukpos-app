@@ -348,6 +348,8 @@ export const growthCampaigns = pgTable("growth_campaigns", {
   status: growthCampaignStatus("status").notNull().default("taslak"),
   audienceCount: integer("audience_count").notNull().default(0),
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: ts("approved_at"),
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [index("growth_campaigns_tenant_idx").on(t.tenantId, t.createdAt)]);
 

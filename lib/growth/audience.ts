@@ -15,10 +15,11 @@ export async function loadGrowthCampaignAudience(tx: Tx, input: {
   limit?: number;
   actor: string;
 }) {
-  const [campaign] = await tx.select({ id: schema.growthCampaigns.id, segment: schema.growthCampaigns.segment })
+  const [campaign] = await tx.select({ id: schema.growthCampaigns.id, segment: schema.growthCampaigns.segment, approvedAt: schema.growthCampaigns.approvedAt })
     .from(schema.growthCampaigns)
     .where(eq(schema.growthCampaigns.id, input.campaignId)).limit(1);
   if (!campaign || !isGrowthSegment(campaign.segment)) return null;
+  if (!campaign.approvedAt) return { error: "campaign_not_approved" as const };
   const segment = campaign.segment as GrowthSegment;
   const cursor = decodeAudienceCursor(input.cursor);
   if (input.cursor && !cursor) return { error: "invalid_cursor" as const };

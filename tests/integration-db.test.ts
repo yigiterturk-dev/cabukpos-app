@@ -15,6 +15,7 @@ const { createGrowthCampaignDraft } = await import("@/lib/growth/campaigns");
 const { loadGrowthCampaignStatus } = await import("@/lib/growth/campaign-status");
 const { listGrowthCampaigns } = await import("@/lib/growth/campaign-list");
 const { loadGrowthCampaignAudience } = await import("@/lib/growth/audience");
+const { approveGrowthCampaign } = await import("@/lib/growth/campaign-approval");
 const { eq, like, sql } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "M9C-T", vertical: "restoran" }).returning();
@@ -147,6 +148,10 @@ test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", asy
   assert.equal(draft.audienceCount, 1);
   const [row] = await withTenant(t.id, (tx) => tx.select({ status: schema.growthCampaigns.status, channel: schema.growthCampaigns.channel }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.id, draft.id)));
   assert.deepEqual(row, { status: "taslak", channel: "manual" });
+  const pendingAudience = await withTenant(t.id, (tx) => loadGrowthCampaignAudience(tx, { tenantId: t.id, campaignId: draft.id, secret: "test-growth-key", limit: 1, actor: "integration:test" }));
+  assert.deepEqual(pendingAudience, { error: "campaign_not_approved" });
+  const [owner] = await withTenant(t.id, (tx) => tx.insert(schema.users).values({ tenantId: t.id, email: "growth-owner-" + crypto.randomUUID() + "@test", name: "Growth Owner", passwordHash: "x" }).returning({ id: schema.users.id }));
+  assert.ok(await withTenant(t.id, (tx) => approveGrowthCampaign(tx, { tenantId: t.id, campaignId: draft.id, approvedBy: owner.id, actor: "user:" + owner.id })));
   const audience = await withTenant(t.id, (tx) => loadGrowthCampaignAudience(tx, { tenantId: t.id, campaignId: draft.id, secret: "test-growth-key", limit: 1, actor: "integration:test" }));
   assert.equal("error" in (audience ?? {}), false);
   if (audience && !("error" in audience)) {

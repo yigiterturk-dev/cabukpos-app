@@ -28,6 +28,6 @@ export async function GET(req: Request, context: { params: Promise<{ campaignId:
     actor: access.actor,
   }));
   if (!result) return Response.json({ error: "campaign_not_found" }, { status: 404 });
-  if ("error" in result) return Response.json({ error: result.error }, { status: 400 });
+  if ("error" in result) return Response.json({ error: result.error }, { status: result.error === "campaign_not_approved" ? 403 : 400 });
   return Response.json({ schemaVersion: 1, ...result }, { headers: { "Cache-Control": "no-store" } });
 }

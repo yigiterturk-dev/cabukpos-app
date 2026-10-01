@@ -5,8 +5,12 @@ if (!url) throw new Error("MIGRATE_DATABASE_URL gerekli");
 
 const sql = postgres(url, { max: 1, onnotice: () => {} });
 const checks = [];
-const column = await sql.unsafe("select 1 from information_schema.columns where table_schema = 'public' and table_name = 'growth_campaign_events' and column_name = 'recipient_ref'");
-checks.push({ ok: column.length === 1, label: "growth_campaign_events.recipient_ref" });
+const columns = await sql.unsafe("select table_name, column_name from information_schema.columns where table_schema = 'public' and ((table_name = 'growth_campaign_events' and column_name = 'recipient_ref') or (table_name = 'growth_campaigns' and column_name in ('approved_at', 'approved_by')))");
+for (const required of [
+  ["growth_campaign_events", "recipient_ref"],
+  ["growth_campaigns", "approved_at"],
+  ["growth_campaigns", "approved_by"],
+]) checks.push({ ok: columns.some((column) => column.table_name === required[0] && column.column_name === required[1]), label: required[0] + "." + required[1] });
 
 const tables = await sql.unsafe("select c.relname, c.relrowsecurity, c.relforcerowsecurity, exists (select 1 from pg_policies p where p.schemaname = 'public' and p.tablename = c.relname and p.policyname = 'tenant_isolation') as has_tenant_policy from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname in ('growth_campaigns', 'growth_campaign_events') order by c.relname");
 for (const table of tables) checks.push({

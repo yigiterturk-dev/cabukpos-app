@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { createGrowthCampaignDraft, isGrowthSegment } from "@/lib/growth/campaigns";
+import { approveGrowthCampaign } from "@/lib/growth/campaign-approval";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
@@ -19,4 +20,13 @@ export async function createCampaignDraft(form: FormData) {
   await withTenant(a.tenantId, (tx) => createGrowthCampaignDraft(tx, { tenantId: a.tenantId, name, message, segment, actor: `user:${a.id}`, createdBy: a.id }));
   revalidatePath("/yonetim/buyume");
   redirect("/yonetim/buyume?olusturuldu=1");
+}
+
+export async function approveCampaign(form: FormData) {
+  const a = await requireWriter();
+  const campaignId = text(form, "campaignId");
+  if (a.role !== "sahip" || a.vertical !== "restoran" || !campaignId) redirect("/yonetim/buyume");
+  await withTenant(a.tenantId, (tx) => approveGrowthCampaign(tx, { tenantId: a.tenantId, campaignId, approvedBy: a.id, actor: "user:" + a.id }));
+  revalidatePath("/yonetim/buyume/" + campaignId);
+  redirect("/yonetim/buyume/" + campaignId + "?onaylandi=1");
 }
