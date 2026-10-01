@@ -17,7 +17,7 @@ export async function loadGrowthCampaignAudience(tx: Tx, input: {
 }) {
   const [campaign] = await tx.select({ id: schema.growthCampaigns.id, segment: schema.growthCampaigns.segment, approvedAt: schema.growthCampaigns.approvedAt })
     .from(schema.growthCampaigns)
-    .where(eq(schema.growthCampaigns.id, input.campaignId)).limit(1);
+    .where(and(eq(schema.growthCampaigns.id, input.campaignId), eq(schema.growthCampaigns.tenantId, input.tenantId))).limit(1);
   if (!campaign || !isGrowthSegment(campaign.segment)) return null;
   if (!campaign.approvedAt) return { error: "campaign_not_approved" as const };
   const segment = campaign.segment as GrowthSegment;
@@ -25,10 +25,10 @@ export async function loadGrowthCampaignAudience(tx: Tx, input: {
   if (input.cursor && !cursor) return { error: "invalid_cursor" as const };
   const dormantSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const audienceWhere = segment === "dormant_30"
-    ? and(eq(schema.customers.marketingConsent, true), isNotNull(schema.customers.lastOrderAt), lt(schema.customers.lastOrderAt, dormantSince))
+    ? and(eq(schema.customers.tenantId, input.tenantId), eq(schema.customers.marketingConsent, true), isNotNull(schema.customers.lastOrderAt), lt(schema.customers.lastOrderAt, dormantSince))
     : segment === "active_30"
-      ? and(eq(schema.customers.marketingConsent, true), gte(schema.customers.lastOrderAt, dormantSince))
-      : eq(schema.customers.marketingConsent, true);
+      ? and(eq(schema.customers.tenantId, input.tenantId), eq(schema.customers.marketingConsent, true), gte(schema.customers.lastOrderAt, dormantSince))
+      : and(eq(schema.customers.tenantId, input.tenantId), eq(schema.customers.marketingConsent, true));
   const where = cursor ? and(audienceWhere, gt(schema.customers.id, cursor)) : audienceWhere;
   const limit = Math.min(Math.max(input.limit ?? 100, 1), PAGE_MAX);
   const rows = await tx.select({ id: schema.customers.id, phone: schema.customers.phone })
