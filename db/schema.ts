@@ -359,6 +359,7 @@ export const growthCampaignEvents = pgTable("growth_campaign_events", {
   customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
   type: growthCampaignEventType("type").notNull(),
   externalId: text("external_id"),
+  recipientRef: text("recipient_ref"),
   amount: integer("amount").notNull().default(0),
   at: ts("at").notNull().defaultNow(),
   createdAt: ts("created_at").notNull().defaultNow(),

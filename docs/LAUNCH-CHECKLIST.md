@@ -24,6 +24,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [ ] Production `AGENT_ALERT_WEBHOOK_URL` tanımlandı; başarısız heartbeat alarmı görüldü
 - [ ] Günlük backup scheduler çalışıyor; son dump `npm run db:backup:verify` ile doğrulandı
 - [ ] İzole staging veritabanına gerçek restore yapıldı ve uygulama açıldı
+- [ ] Growth recipient_ref şeması production'a uygulandı; RLS ve signed webhook staging'de doğrulandı
 - [ ] `BILLING_PROVIDER=paytr` için canlı PayTR anahtarları ve bildirim URL'si doğrulandı
 - [ ] Gerçek e-Arşiv entegratörü seçildi; sandbox kesim, iptal ve e-posta testleri tamamlandı
 - [ ] Bilgi fişi ile mali belge ayrımı mali müşavir tarafından onaylandı

@@ -91,7 +91,7 @@ token loglanmaz.
 İstek gövdesi:
 
 ```json
-{ "type": "converted", "externalId": "provider-event-123", "amount": 12500 }
+{ "type": "converted", "externalId": "provider-event-123", "recipientRef": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "amount": 12500 }
 ```
 
 `type` değerleri: `sent`, `delivered`, `converted`, `opt_out`, `failed`.
@@ -110,6 +110,11 @@ kaydeder. Diğer event türlerinde `customerId` kabul edilmez. Kampanya tenant'a
 ait değilse veya opt-out müşteri tenant'a ait değilse kayıt yapılmaz.
 
 ## Sağlayıcı webhook'u
+
+sent, delivered ve converted olaylarında recipientRef alanı zorunludur:
+PII içermeyen ve sabit sha256:<64 küçük hex> biçiminde bir alıcı referansı.
+Bu referans olmadan olay kabul edilmez; oranlar kişi bazlı yanlış pozitif
+üretmemek için yalnız eşleşebilir referanslarda hesaplanır.
 
 POST /api/growth/webhooks/events
 

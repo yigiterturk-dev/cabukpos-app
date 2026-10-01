@@ -3,11 +3,14 @@ import test from "node:test";
 import { campaignMetrics } from "@/lib/growth/metrics";
 
 test("kampanya sonuçları yalnız dönüşüm olayındaki ciroyu toplar", () => {
+  const r1 = "sha256:" + "a".repeat(64);
+  const r2 = "sha256:" + "b".repeat(64);
+  const r3 = "sha256:" + "c".repeat(64);
   const m = campaignMetrics([
-    { type: "sent" }, { type: "delivered" }, { type: "converted", amount: 12500 },
-    { type: "delivered" }, { type: "converted", amount: 8000 }, { type: "opt_out" }, { type: "failed" },
+    { type: "sent", recipientRef: r1 }, { type: "delivered", recipientRef: r1 }, { type: "converted", recipientRef: r1, amount: 12500 },
+    { type: "delivered", recipientRef: r2 }, { type: "converted", recipientRef: r2, amount: 8000 }, { type: "opt_out", recipientRef: r2 }, { type: "failed", recipientRef: r3 },
   ]);
-  assert.deepEqual(m, { sent: 1, delivered: 2, converted: 2, optOut: 1, failed: 1, revenue: 20500, deliveryRate: 2, conversionRate: 1, optOutRate: 0.5 });
+  assert.deepEqual(m, { sent: 1, delivered: 2, converted: 2, optOut: 1, failed: 1, revenue: 20500, deliveryRate: null, conversionRate: 1, optOutRate: 0.5 });
 });
 
 test("olay yokken oranlar null, ciro sıfırdır", () => {

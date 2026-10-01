@@ -4,7 +4,7 @@ import { schema } from "@/db";
 import { audit } from "@/lib/audit";
 
 export type GrowthEventType = "sent" | "delivered" | "converted" | "opt_out" | "failed";
-export type GrowthEventInput = { tenantId: string; campaignId: string; type: GrowthEventType; externalId: string; amount?: number; customerId?: string; actor: string };
+export type GrowthEventInput = { tenantId: string; campaignId: string; type: GrowthEventType; externalId: string; recipientRef?: string; amount?: number; customerId?: string; actor: string };
 export type GrowthEventResult = { error: "campaign_not_found" | "customer_not_found" } | { duplicate: true } | { id: string; duplicate: false };
 
 /** Tenant transactionı içinde ölçüm olayını idempotent olarak kaydeder; iletişim göndermez. */
@@ -20,7 +20,7 @@ export async function recordCampaignEvent(tx: Tx, input: GrowthEventInput): Prom
   }
   const amount = input.type === "converted" ? input.amount ?? 0 : 0;
   const [inserted] = await tx.insert(schema.growthCampaignEvents).values({
-    tenantId: input.tenantId, campaignId: input.campaignId, customerId: input.customerId ?? null, type: input.type, externalId: input.externalId, amount,
+    tenantId: input.tenantId, campaignId: input.campaignId, customerId: input.customerId ?? null, type: input.type, externalId: input.externalId, recipientRef: input.recipientRef ?? null, amount,
   }).onConflictDoNothing({ target: [schema.growthCampaignEvents.campaignId, schema.growthCampaignEvents.externalId] }).returning({ id: schema.growthCampaignEvents.id });
   if (!inserted) return { duplicate: true };
   if (input.type === "opt_out") {

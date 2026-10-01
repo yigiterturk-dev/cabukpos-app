@@ -18,12 +18,13 @@ export async function listGrowthCampaigns(tx: Tx, input: { tenantId: string; act
     campaignId: schema.growthCampaignEvents.campaignId,
     type: schema.growthCampaignEvents.type,
     amount: schema.growthCampaignEvents.amount,
+    recipientRef: schema.growthCampaignEvents.recipientRef,
   }).from(schema.growthCampaignEvents).where(inArray(schema.growthCampaignEvents.campaignId, ids));
   const byCampaign = new Map<string, typeof events>();
   for (const event of events) byCampaign.set(event.campaignId, [...(byCampaign.get(event.campaignId) ?? []), event]);
   await audit(tx, input.tenantId, input.actor, "growth.campaign.list", { count: campaigns.length });
   return campaigns.map((campaign) => ({
     ...campaign,
-    metrics: campaignMetrics((byCampaign.get(campaign.id) ?? []).map(({ type, amount }) => ({ type, amount }))),
+    metrics: campaignMetrics((byCampaign.get(campaign.id) ?? []).map(({ type, amount, recipientRef }) => ({ type, amount, recipientRef }))),
   }));
 }
