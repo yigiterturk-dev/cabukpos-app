@@ -21,13 +21,15 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
     const rows = await tx.select().from(C).where(where).orderBy(desc(C.lastOrderAt)).limit(50);
     const addrs = rows.length ? await tx.select().from(A).where(and(inArray(A.customerId, rows.map((r) => r.id)), eq(A.deleted, false))).orderBy(desc(A.lastUsedAt)) : [];
     const zones = await tx.select({ id: Z.id, name: Z.name }).from(Z);
-    const [total, active, dormant, fresh] = await Promise.all([
+    const [total, active, dormant, fresh, consented, reachableDormant] = await Promise.all([
       tx.select({ n: count() }).from(C),
       tx.select({ n: count() }).from(C).where(gte(C.lastOrderAt, since)),
       tx.select({ n: count() }).from(C).where(and(isNotNull(C.lastOrderAt), lt(C.lastOrderAt, since))),
       tx.select({ n: count() }).from(C).where(gte(C.createdAt, since)),
+      tx.select({ n: count() }).from(C).where(eq(C.marketingConsent, true)),
+      tx.select({ n: count() }).from(C).where(and(eq(C.marketingConsent, true), isNotNull(C.lastOrderAt), lt(C.lastOrderAt, since))),
     ]);
-    return { rows, addrs, zones, growth: { total: total[0]?.n ?? 0, active: active[0]?.n ?? 0, dormant: dormant[0]?.n ?? 0, fresh: fresh[0]?.n ?? 0 } };
+    return { rows, addrs, zones, growth: { total: total[0]?.n ?? 0, active: active[0]?.n ?? 0, dormant: dormant[0]?.n ?? 0, fresh: fresh[0]?.n ?? 0, consented: consented[0]?.n ?? 0, reachableDormant: reachableDormant[0]?.n ?? 0 } };
   });
   return (
     <>
@@ -38,6 +40,7 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
           ["Son 30 günde aktif", growth.active, "Tekrar sipariş fırsatı"],
           ["Son 30 günde yeni", growth.fresh, "İlk sipariş sonrası takip"],
           ["30 gündür gelmeyen", growth.dormant, "Geri kazanma listesi"],
+          ["Kampanyaya uygun", growth.consented, "Açık iletişim izni"],
         ].map(([label, value, hint]) => (
           <div key={label} className="rounded-[14px] border border-line bg-white p-4 shadow-card">
             <div className="text-sm text-muted">{label}</div>
@@ -46,7 +49,7 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
           </div>
         ))}
       </section>
-      {growth.dormant > 0 && <div className="mb-6 rounded-[14px] border border-brand/20 bg-brand-soft px-4 py-3 text-sm text-ink-2"><b>Bugünün satış fırsatı:</b> {growth.dormant} müşteriyi arayıp/mesajlayıp geri kazanma kampanyası deneyin. Önce son siparişi en eski olanlardan başlayın.</div>}
+      {growth.dormant > 0 && <div className="mb-6 rounded-[14px] border border-brand/20 bg-brand-soft px-4 py-3 text-sm text-ink-2"><b>Bugünün satış fırsatı:</b> {growth.dormant} müşteriyi geri kazanma listesine al. İletişim izni bulunan hedef sayısı şu an <b>{growth.reachableDormant}</b>; kampanya gönderimi açıldığında yalnızca bu grup kullanılacak.</div>}
       <form className="mb-6 flex gap-2"><Input name="q" defaultValue={q} placeholder="Ad ya da telefon" aria-label="Müşteri ara" className="w-72" /><button className="rounded-lg border border-line px-4 text-sm">Ara</button></form>
       {rows.length === 0 ? <Empty>{q ? "Eşleşen müşteri yok." : "Henüz müşteri yok. İlk paket siparişiyle oluşur."}</Empty> : (
         <Card className="divide-y divide-line">
