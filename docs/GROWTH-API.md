@@ -1,0 +1,80 @@
+# Büyüme Merkezi entegrasyon API'si
+
+Bu sözleşme, ayrı satılan Büyüme Merkezi'nin tenant içindeki ÇabukPOS verisine
+bağlanması içindir. API mesaj göndermez; yalnızca PII'siz özet okur ve harici
+sağlayıcının ölçüm sonuçlarını geri alır.
+
+## Kimlik doğrulama
+
+`Authorization: Bearer cpk_...` başlığı gerekir. Anahtarın kapsamı `growth`
+olmalıdır; `stats` anahtarı growth uçlarında `403 forbidden_scope` alır. Anahtar
+tenant'a bağlıdır, dakikada en fazla 60 istek kabul edilir. Yönetici oturumu da
+aynı uçları kullanabilir.
+
+Başarılı yanıtlar `Cache-Control: no-store` ile döner. Kimlik doğrulama, scope,
+tenant ve rate-limit hataları sırasıyla `401`, `403`, `403` ve `429` olabilir.
+
+## Feature pack
+
+`GET /api/growth/feature-pack`
+
+Tenant'a ait toplu sayıları döndürür. `tenantId`, ad, telefon, e-posta, müşteri
+ID'si ve ham sipariş satırı içermez.
+
+```json
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-01T12:00:00.000Z",
+  "privacy": { "pii": false, "minCohortSize": 10 },
+  "vertical": "restoran",
+  "customer": { "total": 120, "consented": 84, "active30": 51, "dormant30": 33, "new30": 9 },
+  "package90": { "orders": 240, "gross": 1845000, "avgBasket": 7688 },
+  "campaigns": { "drafts": 2, "events": { "sent": 80, "delivered": 74, "converted": 11, "revenue": 126000 } }
+}
+```
+
+Tutarlar kuruş cinsindedir. İlk MVP yalnız `restoran` tenant'larında açıktır;
+başka dikeyler `403 unsupported_vertical` alır.
+
+## İçgörüler
+
+`GET /api/growth/insights`
+
+Feature pack üzerinden baseline advisor veya yapılandırılmış Laya adapter çıktısı
+döner. Laya yoksa `provider: "baseline", fallback: "not_configured"`; Laya
+hatası/bozuk cevabı varsa `provider: "baseline", fallback: "remote_error"` olur.
+Başarılı Laya cevabı en fazla 20 doğrulanmış içgörü içerir; ham Laya yanıtı ve
+token loglanmaz.
+
+## Kampanya ölçüm olayı
+
+`POST /api/growth/campaigns/:campaignId/events`
+
+İstek gövdesi:
+
+```json
+{ "type": "converted", "externalId": "provider-event-123", "amount": 12500 }
+```
+
+`type` değerleri: `sent`, `delivered`, `converted`, `opt_out`, `failed`.
+`externalId` kampanya içinde idempotent anahtardır. İlk kayıt `201`, duplicate
+kayıt `200 { "duplicate": true }` döner. `amount` yalnız `converted` için
+ölçülür ve kuruştur; diğer event'lerde sıfırlanır.
+
+`opt_out` için tenant içi müşteri UUID'si zorunludur:
+
+```json
+{ "type": "opt_out", "externalId": "provider-optout-123", "customerId": "<tenant-ici-uuid>" }
+```
+
+Bu olay müşterinin pazarlama iznini kapatır ve `provider_opt_out` kaynağıyla
+kaydeder. Diğer event türlerinde `customerId` kabul edilmez. Kampanya tenant'a
+ait değilse veya opt-out müşteri tenant'a ait değilse kayıt yapılmaz.
+
+## Veri ve operasyon sınırları
+
+- ÇabukPOS gönderim sağlayıcısı değildir; SMS/WhatsApp/e-posta yollamaz.
+- İşletme sahibi taslağı onaylamadan iletişim akışı açılmaz.
+- Feature pack ve advisor okumaları tenant audit log'una yazılır.
+- Event yazımları tenant audit log'una yazılır; token, ham yanıt ve müşteri telefonu yazılmaz.
+- Tenantlar arası benchmark veya ham veri paylaşımı bu MVP'nin dışındadır.
