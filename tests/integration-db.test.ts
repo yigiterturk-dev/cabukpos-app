@@ -13,6 +13,7 @@ const { GET } = await import("@/app/api/v1/stats/daily/route");
 const { recordCampaignEvent } = await import("@/lib/growth/events");
 const { createGrowthCampaignDraft } = await import("@/lib/growth/campaigns");
 const { loadGrowthCampaignStatus } = await import("@/lib/growth/campaign-status");
+const { listGrowthCampaigns } = await import("@/lib/growth/campaign-list");
 const { eq, like, sql } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "M9C-T", vertical: "restoran" }).returning();
@@ -132,6 +133,10 @@ test("growth event intake: tenant sınırı ve externalId idempotency", async ()
   assert.equal(status?.metrics.optOut, 1);
   assert.equal(status?.metrics.revenue, 12500);
   assert.equal(await withTenant(t2.id, (tx) => loadGrowthCampaignStatus(tx, { tenantId: t2.id, campaignId: campaign.id, actor: "integration:test" })), null);
+  const listed = await withTenant(t.id, (tx) => listGrowthCampaigns(tx, { tenantId: t.id, actor: "integration:test" }));
+  assert.equal(listed.find((item) => item.id === campaign.id)?.metrics.revenue, 12500);
+  assert.equal("message" in (listed.find((item) => item.id === campaign.id) ?? {}), false);
+  assert.equal((await withTenant(t2.id, (tx) => listGrowthCampaigns(tx, { tenantId: t2.id, actor: "integration:test" }))).some((item) => item.id === campaign.id), false);
 });
 
 test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", async () => {

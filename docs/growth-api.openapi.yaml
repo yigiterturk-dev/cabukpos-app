@@ -44,6 +44,22 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '429': { $ref: '#/components/responses/RateLimited' }
   /api/growth/campaigns:
+    get:
+      summary: List recent PII-free campaign statuses
+      security:
+        - GrowthBearer: []
+      responses:
+        '200':
+          description: Up to 50 tenant campaigns with measured rates
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CampaignListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
     post:
       summary: Create an unsent campaign draft
       security:
@@ -207,6 +223,26 @@ components:
         id: { type: string, format: uuid }
         audienceCount: { type: integer, minimum: 0 }
         status: { const: taslak }
+    CampaignListResponse:
+      type: object
+      required: [schemaVersion, campaigns]
+      properties:
+        schemaVersion: { const: 1 }
+        campaigns:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CampaignSummary' }
+    CampaignSummary:
+      type: object
+      required: [id, name, segment, status, audienceCount, createdAt, metrics]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        segment: { type: string, enum: [dormant_30, active_30, all_consented] }
+        status: { type: string, enum: [taslak, arsiv] }
+        audienceCount: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        metrics: { $ref: '#/components/schemas/CampaignMetrics' }
     CampaignStatusResponse:
       type: object
       required: [campaign, metrics]

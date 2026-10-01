@@ -23,6 +23,15 @@ tenant ve rate-limit hataları sırasıyla `401`, `403`, `403` ve `429` olabilir
 Tenant'a ait toplu sayıları döndürür. `tenantId`, ad, telefon, e-posta, müşteri
 ID'si ve ham sipariş satırı içermez.
 
+## Kampanya listesi
+
+GET /api/growth/campaigns
+
+Tenant içindeki son 50 kampanyayı PII'siz kimlik, segment, durum, hedef sayısı ve
+ölçüm özetleriyle döndürür. Mesaj metni, müşteri kimliği ve müşteri iletişim
+bilgileri dönmez. Yanıt Cache-Control: no-store ile gelir; okuma tenant audit
+log'una yazılır.
+
 ## Kampanya taslağı
 
 `POST /api/growth/campaigns`
