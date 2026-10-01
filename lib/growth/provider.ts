@@ -29,7 +29,9 @@ export async function advise(pack: GrowthFeaturePack): Promise<GrowthAdvice> {
       signal: AbortSignal.timeout(5_000),
     });
     if (!response.ok) throw new Error(`Laya HTTP ${response.status}`);
-    const body = Remote.parse(await response.json());
+    const raw = await response.text();
+    if (raw.length > 64_000) throw new Error("Laya cevabı boyut sınırını aştı.");
+    const body = Remote.parse(JSON.parse(raw));
     return { provider: "laya", insights: body.insights };
   } catch {
     return { provider: "baseline", fallback: "remote_error", insights: baselineAdvisor(pack) };

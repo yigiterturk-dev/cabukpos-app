@@ -28,6 +28,10 @@ test("geçerli Laya cevabı doğrulanır, bozuk cevap baseline'a döner", async 
   const fallback = await advise(samplePack);
   assert.equal(fallback.provider, "baseline");
   assert.equal(fallback.fallback, "remote_error");
+  globalThis.fetch = async () => new Response("x".repeat(64_001), { status: 200 });
+  const oversized = await advise(samplePack);
+  assert.equal(oversized.provider, "baseline");
+  assert.equal(oversized.fallback, "remote_error");
   globalThis.fetch = oldFetch;
   if (oldUrl === undefined) delete process.env.GROWTH_ADVISOR_URL; else process.env.GROWTH_ADVISOR_URL = oldUrl;
   if (oldToken === undefined) delete process.env.GROWTH_ADVISOR_TOKEN; else process.env.GROWTH_ADVISOR_TOKEN = oldToken;
