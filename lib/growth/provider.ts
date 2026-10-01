@@ -2,13 +2,22 @@ import { z } from "zod";
 import { baselineAdvisor, type GrowthInsight } from "@/lib/growth/advisor";
 import type { GrowthFeaturePack } from "@/lib/growth/advisor";
 
+const EVIDENCE_KEYS = new Set([
+  "total", "consented", "active30", "dormant30", "consentedDormant30", "new30",
+  "orders90", "gross90", "avgBasket90", "sent", "delivered", "converted", "revenue",
+]);
+const Evidence = z.record(z.string(), z.number().finite().min(0).max(1_000_000_000)).superRefine((value, ctx) => {
+  for (const key of Object.keys(value)) {
+    if (!EVIDENCE_KEYS.has(key)) ctx.addIssue({ code: "custom", path: [key], message: "bilinmeyen evidence metriği" });
+  }
+});
 const Insight = z.object({
   key: z.string().min(1).max(80),
   kind: z.enum(["opportunity", "observation", "warning"]),
   title: z.string().min(1).max(160),
   body: z.string().min(1).max(1000),
   confidence: z.enum(["observed", "insufficient_data"]),
-  evidence: z.record(z.string(), z.number().finite().min(0).max(1_000_000_000)).default({}),
+  evidence: Evidence.default({}),
 });
 const Remote = z.object({ insights: z.array(Insight).max(20) });
 
