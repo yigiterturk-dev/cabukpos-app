@@ -65,6 +65,19 @@ if (advisorUrl || advisorToken) {
   checks.push({ ok, label: "Growth/Laya danışmanı", detail: ok ? "URL + token tanımlı" : "URL/token birlikte ve production'da HTTPS olmalı" });
 }
 
+if (process.env.LAUNCH_RUNTIME_CHECK === "1") {
+  const appUrl = process.env.APP_URL?.trim();
+  if (!appUrl) {
+    checks.push({ ok: false, label: "Runtime route doğrulaması", detail: "APP_URL gerekli" });
+  } else {
+    const { spawnSync } = await import("node:child_process");
+    const result = spawnSync(process.execPath, ["scripts/runtime-audit.mjs"], {
+      env: { ...process.env, BASE: appUrl }, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    });
+    checks.push({ ok: result.status === 0, label: "Runtime route doğrulaması", detail: result.status === 0 ? "health/ready ve korumalı Growth rotaları geçti" : "APP_URL runtime audit başarısız; deployment 404 veya auth sözleşmesi kontrol edilmeli" });
+  }
+}
+
 const failed = checks.filter((check) => !check.ok);
 for (const check of checks) console.log(`${check.ok ? "OK" : "MISS"} ${check.label}: ${check.detail}`);
 

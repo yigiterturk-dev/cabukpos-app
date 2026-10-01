@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { createServer } from "node:http";
 import test from "node:test";
 
 const required = {
@@ -23,6 +24,19 @@ function run(overrides: Record<string, string>) {
   });
 }
 
+function runAsync(overrides: Record<string, string>) {
+  return new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve) => {
+    const child = spawn(process.execPath, ["scripts/launch-check.mjs"], {
+      cwd: process.cwd(),
+      env: { ...process.env, NODE_ENV: "production", ...required, ...overrides },
+    });
+    let stdout = "", stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
+    child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+    child.on("close", (status: number | null) => resolve({ status, stdout, stderr }));
+  });
+}
+
 test("launch check production HTTPS ayarlarını kabul eder", () => {
   const result = run({ APP_URL: "https://cabukpos.test", AGENT_ALERT_WEBHOOK_URL: "https://alerts.test/hook", GROWTH_ADVISOR_URL: "https://laya.test/advise", GROWTH_ADVISOR_TOKEN: "test-token" });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
@@ -36,4 +50,38 @@ test("launch check HTTP veya bozuk URL'yi reddeder", () => {
   assert.match(result.stdout, /Agent alarm webhook'u: AGENT_ALERT_WEBHOOK_URL geçerli URL olmalı/);
   assert.match(result.stdout, /Growth\/Laya danışmanı: URL\/token birlikte/);
   assert.match(result.stdout, /Yasal e-posta: LEGAL_EMAIL geçerli e-posta olmalı/);
+});
+
+test("launch check isteğe bağlı runtime route doğrulaması yapar", async () => {
+  const server = createServer((request, response) => {
+    if (request.url === "/api/health") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: true }));
+      return;
+    }
+    if (request.url === "/api/ready") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: true, checks: { database: "ok" } }));
+      return;
+    }
+    if (request.url === "/yonetim/veriler") {
+      response.writeHead(307, { location: "/giris" });
+      response.end();
+      return;
+    }
+    if (request.url === "/giris" || request.url === "/kayit") {
+      response.writeHead(200);
+      response.end("ok");
+      return;
+    }
+    response.writeHead(401);
+    response.end("unauthorized");
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.equal(typeof address, "object");
+  const result = await runAsync({ NODE_ENV: "test", APP_URL: `http://127.0.0.1:${(address as { port: number }).port}`, LAUNCH_RUNTIME_CHECK: "1" });
+  await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /Runtime route doğrulaması: health\/ready/);
 });

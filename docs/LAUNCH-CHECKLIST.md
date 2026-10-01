@@ -43,8 +43,9 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [ ] İlk müşteride en az 3 iş günü hata/alert takibi
 
 `LAUNCH_ENV=production npm run launch:check` eksik ayarları kontrol eder; değerleri
-ekrana basmaz. Bu komut yalnız yapılandırmayı kontrol eder, servislerin gerçekten
-çalıştığını kanıtlamaz.
+ekrana basmaz. Deployment rotalarını da doğrulamak için `APP_URL` tanımlı olarak
+`LAUNCH_RUNTIME_CHECK=1` eklenir; bu varyant health/ready ve korumalı Growth
+rotalarının 404 yerine beklenen auth yanıtını verdiğini test eder.
 
 ## Yayına alma sırası
 
