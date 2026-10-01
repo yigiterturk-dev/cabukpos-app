@@ -75,6 +75,14 @@ const checks = [
     expectedText: "401",
   },
   {
+    name: "anonymous growth signed webhook protection",
+    path: "/api/growth/webhooks/events",
+    method: "POST",
+    body: JSON.stringify({ campaignId: "00000000-0000-0000-0000-000000000000", type: "sent", externalId: "runtime-audit" }),
+    expected: async (response) => response.status === 401,
+    expectedText: "401",
+  },
+  {
     name: "fiscal cron protection",
     path: "/api/cron/fiscal",
     expected: async (response) => response.status === 401,

@@ -43,6 +43,39 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '429': { $ref: '#/components/responses/RateLimited' }
+  /api/growth/webhooks/events:
+    post:
+      summary: Record a signed provider measurement event
+      security:
+        - GrowthBearer: []
+      parameters:
+        - name: x-cabukpos-timestamp
+          in: header
+          required: true
+          schema: { type: string, pattern: '^[0-9]+$' }
+        - name: x-cabukpos-signature
+          in: header
+          required: true
+          schema: { type: string, pattern: '^[a-fA-F0-9]{64}$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignedWebhookEventRequest' }
+      responses:
+        '201':
+          description: New signed event recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventCreatedResponse' }
+        '200':
+          description: Duplicate externalId; no second event was written
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { description: Payload too large }
+        '429': { $ref: '#/components/responses/RateLimited' }
   /api/growth/campaigns:
     get:
       summary: List recent PII-free campaign statuses
@@ -275,6 +308,16 @@ components:
       required: [type, externalId]
       additionalProperties: false
       properties:
+        type: { enum: [sent, delivered, converted, opt_out, failed] }
+        externalId: { type: string, minLength: 1, maxLength: 200 }
+        amount: { type: integer, minimum: 0, maximum: 1000000000, description: Kuruş; yalnız converted için kullanılır }
+        customerId: { type: string, format: uuid, description: Yalnız opt_out için tenant içi UUID }
+    SignedWebhookEventRequest:
+      type: object
+      required: [campaignId, type, externalId]
+      additionalProperties: false
+      properties:
+        campaignId: { type: string, format: uuid }
         type: { enum: [sent, delivered, converted, opt_out, failed] }
         externalId: { type: string, minLength: 1, maxLength: 200 }
         amount: { type: integer, minimum: 0, maximum: 1000000000, description: Kuruş; yalnız converted için kullanılır }

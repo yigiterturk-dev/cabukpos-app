@@ -109,6 +109,16 @@ Bu olay müşterinin pazarlama iznini kapatır ve `provider_opt_out` kaynağıyl
 kaydeder. Diğer event türlerinde `customerId` kabul edilmez. Kampanya tenant'a
 ait değilse veya opt-out müşteri tenant'a ait değilse kayıt yapılmaz.
 
+## Sağlayıcı webhook'u
+
+POST /api/growth/webhooks/events
+
+Sağlayıcı bu uçta aynı growth anahtarını Bearer olarak ve
+x-cabukpos-timestamp (Unix saniye) ile x-cabukpos-signature (hex HMAC-SHA256)
+başlıklarını gönderir. İmza, timestamp + "." + ham gövde metninin growth
+anahtarıyla imzalanmış halidir. Timestamp beş dakikadan eski/yeni ise istek
+reddedilir. Gövde 64 KB ile sınırlıdır ve olay externalId ile idempotenttir.
+
 ## Veri ve operasyon sınırları
 
 - ÇabukPOS gönderim sağlayıcısı değildir; SMS/WhatsApp/e-posta yollamaz.
