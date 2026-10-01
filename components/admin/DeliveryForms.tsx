@@ -25,12 +25,13 @@ export function ZoneForm({ initial }: { initial?: { id: string; name: string; fe
   );
 }
 
-export function CustomerForm({ initial }: { initial: { id: string; name: string; note: string | null } }) {
+export function CustomerForm({ initial }: { initial: { id: string; name: string; note: string | null; marketingConsent: boolean } }) {
   const { state, pending, onSubmit } = useFormAction(saveCustomer.bind(null, initial.id), {} as DeliveryState);
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
       <div><Field label="Ad"><Input name="name" defaultValue={initial.name} className="w-56" required /></Field><Err s={state} f="name" /></div>
       <Field label="Not"><Input name="note" defaultValue={initial.note ?? ""} placeholder="ör. zili çalmayın" className="w-72" /></Field>
+      <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="marketingConsent" defaultChecked={initial.marketingConsent} className="size-4 accent-[var(--color-brand)]" />Pazarlama iletişimi için açık izin var</label>
       <Button type="submit" variant="secondary" disabled={pending}>Kaydet</Button>
       <Saved s={state} /><Err s={state} />
     </form>

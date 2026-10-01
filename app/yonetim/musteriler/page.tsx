@@ -55,6 +55,7 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
               <div className="flex flex-wrap items-baseline gap-3">
                 <span className="font-medium">{c.name}</span>
                 <span className="tabular text-sm text-muted">{formatPhone(c.phone)}</span>
+                {c.marketingConsent && <span className="rounded-md bg-ok-soft px-2 py-0.5 text-xs text-ok">iletişim izni</span>}
                 {c.lastOrderAt && <span className="text-xs text-muted">son sipariş {c.lastOrderAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>}
                 <Link href={id === c.id ? `/yonetim/musteriler?q=${encodeURIComponent(q)}` : `/yonetim/musteriler?q=${encodeURIComponent(q)}&id=${c.id}`} className="ml-auto text-sm text-brand underline">{id === c.id ? "Kapat" : "Düzenle"}</Link>
               </div>

@@ -328,6 +328,9 @@ export const customers = pgTable("customers", {
   phone: text("phone").notNull(),
   name: text("name").notNull(),
   note: text("note"),
+  marketingConsent: boolean("marketing_consent").notNull().default(false),
+  marketingConsentAt: ts("marketing_consent_at"),
+  marketingConsentSource: text("marketing_consent_source"),
   lastOrderAt: ts("last_order_at"),
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("customers_phone_uq").on(t.tenantId, t.phone)]);

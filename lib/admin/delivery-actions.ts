@@ -63,8 +63,9 @@ export async function saveCustomer(id: string, _: DeliveryState, form: FormData)
   const name = str(form, "name");
   if (name.length < 1 || name.length > 120) return { error: "Ad 1-120 karakter.", field: "name" };
   const note = str(form, "note").slice(0, 300) || null;
+  const marketingConsent = form.get("marketingConsent") === "on";
   await withTenant(a.tenantId, async (tx) => {
-    await tx.update(schema.customers).set({ name, note }).where(eq(schema.customers.id, id));
+    await tx.update(schema.customers).set({ name, note, marketingConsent, marketingConsentAt: marketingConsent ? new Date() : null, marketingConsentSource: marketingConsent ? "manual" : null }).where(eq(schema.customers.id, id));
     await audit(tx, a.tenantId, `user:${a.id}`, "customer.update", { id });
   });
   revalidatePath("/yonetim/musteriler");
