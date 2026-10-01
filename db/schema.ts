@@ -335,7 +335,11 @@ export const customers = pgTable("customers", {
   marketingConsentSource: text("marketing_consent_source"),
   lastOrderAt: ts("last_order_at"),
   createdAt: ts("created_at").notNull().defaultNow(),
-}, (t) => [uniqueIndex("customers_phone_uq").on(t.tenantId, t.phone)]);
+}, (t) => [
+  uniqueIndex("customers_phone_uq").on(t.tenantId, t.phone),
+  index("customers_growth_audience_idx").on(t.tenantId, t.marketingConsent, t.lastOrderAt, t.id),
+  index("customers_growth_created_idx").on(t.tenantId, t.createdAt),
+]);
 
 /** Büyüme Merkezi: gönderim yapmayan, tenant içi kampanya taslakları. */
 export const growthCampaigns = pgTable("growth_campaigns", {
