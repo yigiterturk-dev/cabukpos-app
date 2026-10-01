@@ -85,6 +85,9 @@ Tenantlar arası karşılaştırma yapılacaksa ayrıca opt-in, anonimleştirme 
 incelemesi gerekir. Tutarlar kuruş cinsindedir. İlk MVP yalnız `restoran`
 tenant'larında açıktır;
 başka dikeyler `403 unsupported_vertical` alır.
+`sent`, `delivered`, `converted` ve recipientRef taşıyan `optOut` sayaçları
+recipient bazında tekilleştirilir; `revenue` geçerli converted olaylarının kuruş
+toplamıdır.
 
 ## İçgörüler
 

@@ -18,6 +18,20 @@ test("olay yokken oranlar null, ciro sıfırdır", () => {
   assert.deepEqual(campaignMetrics([]), { sent: 0, delivered: 0, converted: 0, optOut: 0, failed: 0, revenue: 0, deliveryRate: null, conversionRate: null, optOutRate: null });
 });
 
+test("aynı recipient için farklı provider event id'leri sayaçları şişirmez, ciro korunur", () => {
+  const ref = "hmac-sha256:" + "e".repeat(64);
+  assert.deepEqual(campaignMetrics([
+    { type: "sent", recipientRef: ref },
+    { type: "delivered", recipientRef: ref },
+    { type: "delivered", recipientRef: ref },
+    { type: "converted", recipientRef: ref, amount: 12500 },
+    { type: "converted", recipientRef: ref, amount: 500 },
+  ]), {
+    sent: 1, delivered: 1, converted: 1, optOut: 0, failed: 0, revenue: 13000,
+    deliveryRate: 1, conversionRate: 1, optOutRate: null,
+  });
+});
+
 test("ölçüm olayı düz hash veya recipientRef olmadan kabul edilmez", () => {
   const base = { type: "converted", externalId: "evt-1", amount: 1000 };
   assert.equal(growthEventInput.safeParse({ ...base, recipientRef: "sha256:" + "a".repeat(64) }).success, false);
