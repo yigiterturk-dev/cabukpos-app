@@ -24,6 +24,7 @@
     "db:backup": "node --env-file-if-exists=.env.local scripts/backup-db.mjs",
     "db:backup:verify": "node scripts/verify-backup.mjs",
     "audit:runtime": "node scripts/runtime-audit.mjs",
+    "launch:check": "node --env-file-if-exists=.env.local scripts/launch-check.mjs",
     "db:push": "sh -c 'DATABASE_URL=$(grep ^MIGRATE_DATABASE_URL .env.local | cut -d= -f2-) node node_modules/drizzle-kit/bin.cjs push --force' && npm run db:rls",
     "db:rls": "node --env-file=.env.local scripts/db-rls.mjs",
     "db:push:test": "DATABASE_URL=${TEST_DATABASE_URL:-postgres://yigiterturk@localhost:5432/cabukpos_test} node node_modules/drizzle-kit/bin.cjs push --force && npm run db:rls:test",

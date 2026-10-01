@@ -16,6 +16,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [x] Neon migration ve FORCE RLS doğrulaması
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
+- [x] `npm run launch:check` ile sırları göstermeden production ayar kontrolü
 
 ### Canlı işletme kapısı — açılıştan önce zorunlu
 
@@ -38,6 +39,10 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [ ] Aynı mağazada ikinci kasa/garson cihazı ve LAN merkez akışı
 - [ ] Gün sonu, vardiya farkı, rapor ve veri export
 - [ ] İlk müşteride en az 3 iş günü hata/alert takibi
+
+`LAUNCH_ENV=production npm run launch:check` eksik ayarları kontrol eder; değerleri
+ekrana basmaz. Bu komut yalnız yapılandırmayı kontrol eder, servislerin gerçekten
+çalıştığını kanıtlamaz.
 
 ## Yayına alma sırası
 
