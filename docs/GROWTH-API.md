@@ -111,14 +111,18 @@ token loglanmaz.
 kayıt `200 { "duplicate": true }` döner. `amount` yalnız `converted` için
 ölçülür ve kuruştur; diğer event'lerde sıfırlanır.
 
-`opt_out` için tenant içi müşteri UUID'si zorunludur:
+`opt_out` için sağlayıcının audience yanıtından aldığı `recipientRef` veya tenant içi
+müşteri UUID'si kullanılabilir. Üretim sağlayıcısında `recipientRef` tercih edilir;
+UUID dışarı açılmadan POS, tenant içindeki eşleme tablosundan müşteriyi bulur:
 
 ```json
-{ "type": "opt_out", "externalId": "provider-optout-123", "customerId": "<tenant-ici-uuid>" }
+{ "type": "opt_out", "externalId": "provider-optout-123", "recipientRef": "hmac-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
 ```
 
 Bu olay müşterinin pazarlama iznini kapatır ve `provider_opt_out` kaynağıyla
-kaydeder. Diğer event türlerinde `customerId` kabul edilmez. Kampanya tenant'a
+kaydeder. `recipientRef` eşlemesi daha önce audience endpoint'inden okunmuş
+olmalıdır; eşleşme yoksa olay uygulanmadan `customer_not_found` döner. Diğer event
+türlerinde `customerId` kabul edilmez. Kampanya tenant'a
 ait değilse veya opt-out müşteri tenant'a ait değilse kayıt yapılmaz.
 
 ## İzinli hedef referansları

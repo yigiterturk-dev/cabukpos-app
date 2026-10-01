@@ -357,6 +357,18 @@ export const growthCampaigns = pgTable("growth_campaigns", {
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [index("growth_campaigns_tenant_idx").on(t.tenantId, t.createdAt)]);
 
+/** Sağlayıcıdaki HMAC alıcısını tenant içindeki müşteriye bağlar; dışarıya müşteri kimliği çıkmaz. */
+export const growthRecipientRefs = pgTable("growth_recipient_refs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  recipientRef: text("recipient_ref").notNull(),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("growth_recipient_refs_uq").on(t.tenantId, t.recipientRef),
+  index("growth_recipient_refs_customer_idx").on(t.tenantId, t.customerId),
+]);
+
 /** Büyüme Merkezi ölçüm günlüğü: sağlayıcı olayları ve dönüşümler; iletişim göndermez. */
 export const growthCampaignEvents = pgTable("growth_campaign_events", {
   id: uuid("id").primaryKey().defaultRandom(),

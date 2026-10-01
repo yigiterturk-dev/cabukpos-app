@@ -34,6 +34,11 @@ export async function loadGrowthCampaignAudience(tx: Tx, input: {
   const rows = await tx.select({ id: schema.customers.id, phone: schema.customers.phone })
     .from(schema.customers).where(where).orderBy(schema.customers.id).limit(limit + 1);
   const page = rows.slice(0, limit);
+  for (const row of page) {
+    const ref = recipientRef(input.secret, row.phone);
+    await tx.insert(schema.growthRecipientRefs).values({ tenantId: input.tenantId, recipientRef: ref, customerId: row.id })
+      .onConflictDoUpdate({ target: [schema.growthRecipientRefs.tenantId, schema.growthRecipientRefs.recipientRef], set: { customerId: row.id } });
+  }
   const nextCursor = rows.length > limit ? encodeAudienceCursor(page[page.length - 1].id) : null;
   await audit(tx, input.tenantId, input.actor, "growth.campaign.audience", { campaignId: input.campaignId, count: page.length, hasNext: Boolean(nextCursor), pii: false });
   return {

@@ -154,7 +154,7 @@ test("growth event intake: tenant sınırı ve externalId idempotency", async ()
 });
 
 test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", async () => {
-  await withTenant(t.id, (tx) => tx.insert(schema.customers).values({ tenantId: t.id, phone: "905550000002", name: "İzinli hedef", marketingConsent: true, lastOrderAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) }));
+  const [audienceCustomer] = await withTenant(t.id, (tx) => tx.insert(schema.customers).values({ tenantId: t.id, phone: "905550000002", name: "İzinli hedef", marketingConsent: true, lastOrderAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) }).returning({ id: schema.customers.id }));
   const draft = await withTenant(t.id, (tx) => createGrowthCampaignDraft(tx, { tenantId: t.id, name: "Geri kazanım", message: "Sizi özledik", segment: "dormant_30", actor: "integration:test" }));
   assert.equal(draft.audienceCount, 1);
   const [row] = await withTenant(t.id, (tx) => tx.select({ status: schema.growthCampaigns.status, channel: schema.growthCampaigns.channel }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.id, draft.id)));
@@ -172,6 +172,10 @@ test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", asy
     assert.equal(audience.recipients.length, 1);
     assert.match(audience.recipients[0].recipientRef, /^hmac-sha256:[a-f0-9]{64}$/);
     assert.equal("phone" in audience.recipients[0], false);
+    const mappedOptOut = await withTenant(t.id, (tx) => recordCampaignEvent(tx, { tenantId: t.id, campaignId: draft.id, type: "opt_out", externalId: "provider-ref-optout-1", recipientRef: audience.recipients[0].recipientRef, actor: "integration:test" }));
+    assert.equal("error" in mappedOptOut, false);
+    const [optedOut] = await withTenant(t.id, (tx) => tx.select({ consent: schema.customers.marketingConsent }).from(schema.customers).where(eq(schema.customers.id, audienceCustomer.id)));
+    assert.equal(optedOut?.consent, false);
   }
   assert.equal(await withTenant(t2.id, (tx) => loadGrowthCampaignAudience(tx, { tenantId: t2.id, campaignId: draft.id, secret: "other-key", actor: "integration:test" })), null);
 });

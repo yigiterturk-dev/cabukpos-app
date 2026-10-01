@@ -12,7 +12,7 @@ for (const required of [
   ["growth_campaigns", "approved_by"],
 ]) checks.push({ ok: columns.some((column) => column.table_name === required[0] && column.column_name === required[1]), label: required[0] + "." + required[1] });
 
-const tables = await sql.unsafe("select c.relname, c.relrowsecurity, c.relforcerowsecurity, exists (select 1 from pg_policies p where p.schemaname = 'public' and p.tablename = c.relname and p.policyname = 'tenant_isolation') as has_tenant_policy from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname in ('growth_campaigns', 'growth_campaign_events') order by c.relname");
+const tables = await sql.unsafe("select c.relname, c.relrowsecurity, c.relforcerowsecurity, exists (select 1 from pg_policies p where p.schemaname = 'public' and p.tablename = c.relname and p.policyname = 'tenant_isolation') as has_tenant_policy from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname in ('growth_campaigns', 'growth_campaign_events', 'growth_recipient_refs') order by c.relname");
 for (const table of tables) checks.push({
   ok: table.relrowsecurity && table.relforcerowsecurity && table.has_tenant_policy,
   label: table.relname + " RLS + tenant_isolation",

@@ -23,4 +23,6 @@ test("ölçüm olayı düz hash veya recipientRef olmadan kabul edilmez", () => 
   assert.equal(growthEventInput.safeParse({ ...base, recipientRef: "sha256:" + "a".repeat(64) }).success, false);
   assert.equal(growthEventInput.safeParse(base).success, false);
   assert.equal(growthEventInput.safeParse({ ...base, recipientRef: "hmac-sha256:" + "a".repeat(64) }).success, true);
+  assert.equal(growthEventInput.safeParse({ type: "opt_out", externalId: "optout-1", recipientRef: "hmac-sha256:" + "b".repeat(64) }).success, true);
+  assert.equal(growthEventInput.safeParse({ type: "opt_out", externalId: "optout-2" }).success, false);
 });

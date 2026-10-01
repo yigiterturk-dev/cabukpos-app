@@ -375,10 +375,13 @@ components:
         externalId: { type: string, minLength: 1, maxLength: 200 }
         recipientRef: { type: string, pattern: '^hmac-sha256:[a-f0-9]{64}$', description: Growth anahtarıyla üretilmiş PII içermeyen sabit alıcı referansı; oran hesabı için sent/delivered/converted olaylarında zorunlu }
         amount: { type: integer, minimum: 0, maximum: 1000000000, description: Kuruş; yalnız converted için kullanılır }
-        customerId: { type: string, format: uuid, description: Yalnız opt_out için tenant içi UUID }
+        customerId: { type: string, format: uuid, description: Yalnız opt_out için tenant içi UUID; sağlayıcı akışında tercih edilmez }
       oneOf:
         - required: [recipientRef]
           properties: { type: { enum: [sent, delivered, converted] } }
+          not: { required: [customerId] }
+        - required: [recipientRef]
+          properties: { type: { const: opt_out } }
           not: { required: [customerId] }
         - required: [customerId]
           properties: { type: { const: opt_out } }
@@ -395,10 +398,13 @@ components:
         externalId: { type: string, minLength: 1, maxLength: 200 }
         recipientRef: { type: string, pattern: '^hmac-sha256:[a-f0-9]{64}$', description: Growth anahtarıyla üretilmiş PII içermeyen sabit alıcı referansı; oran hesabı için sent/delivered/converted olaylarında zorunlu }
         amount: { type: integer, minimum: 0, maximum: 1000000000, description: Kuruş; yalnız converted için kullanılır }
-        customerId: { type: string, format: uuid, description: Yalnız opt_out için tenant içi UUID }
+        customerId: { type: string, format: uuid, description: Yalnız opt_out için tenant içi UUID; sağlayıcı akışında tercih edilmez }
       oneOf:
         - required: [recipientRef]
           properties: { type: { enum: [sent, delivered, converted] } }
+          not: { required: [customerId] }
+        - required: [recipientRef]
+          properties: { type: { const: opt_out } }
           not: { required: [customerId] }
         - required: [customerId]
           properties: { type: { const: opt_out } }
