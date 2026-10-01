@@ -18,7 +18,7 @@ export async function recordCampaignEvent(tx: Tx, input: GrowthEventInput): Prom
       .where(and(eq(schema.customers.id, input.customerId), eq(schema.customers.tenantId, input.tenantId))).limit(1);
     if (!customer) return { error: "customer_not_found" };
   }
-  const amount = input.type === "converted" ? input.amount ?? 0 : 0;
+  const amount = input.type === "converted" ? Math.max(0, input.amount ?? 0) : 0;
   const [inserted] = await tx.insert(schema.growthCampaignEvents).values({
     tenantId: input.tenantId, campaignId: input.campaignId, customerId: input.customerId ?? null, type: input.type, externalId: input.externalId, recipientRef: input.recipientRef ?? null, amount,
   }).onConflictDoNothing({ target: [schema.growthCampaignEvents.campaignId, schema.growthCampaignEvents.externalId] }).returning({ id: schema.growthCampaignEvents.id });
