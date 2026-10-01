@@ -7,6 +7,7 @@ const { getDb, withTenant, closeDb, schema } = await import("@/db");
 const { applyDoc } = await import("@/lib/sync/apply");
 const { createKey, findKey, listKeys, revokeKey } = await import("@/lib/integrations/keys");
 const { dailyStatsData } = await import("@/lib/admin/report");
+const { loadFeaturePack } = await import("@/lib/growth/feature-pack-data");
 const { istToday } = await import("@/lib/core/report");
 const { GET } = await import("@/app/api/v1/stats/daily/route");
 const { eq, like } = await import("drizzle-orm");
@@ -94,4 +95,12 @@ test("uç: anahtar başına dakikada 60 istek → 429", async () => {
   const k = await createKey(t.id, "Hızlı ajans");
   await getDb().insert(schema.loginAttempts).values({ key: `apikey:${k.id}`, n: 60 });
   assert.equal((await call(k.key)).status, 429);
+});
+
+test("growth feature-pack: tenant özeti PII ve kimlik döndürmez", async () => {
+  const p = await loadFeaturePack(t.id, "restoran");
+  assert.equal(p.privacy.pii, false);
+  assert.equal("tenantId" in p, false);
+  assert.equal("phone" in p, false);
+  assert.equal(p.vertical, "restoran");
 });

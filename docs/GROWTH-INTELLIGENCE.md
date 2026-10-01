@@ -24,6 +24,9 @@ oturumu veya ÇabukPOS entegrasyon anahtarıyla kullanılabilir, anahtar başın
 dakikada 60 istek sınırı vardır, `Cache-Control: no-store` döner ve PII yerine
 sayısal tenant özeti verir. Harici Laya adaptörü bu uçtan aldığı veriyi başka
 tenantlarla birleştirmeden önce ayrıca anonim/toplu benchmark kurallarını uygular.
+`GET /api/growth/insights` aynı erişim sınırıyla kanıtlı fallback içgörüleri döndürür;
+Laya bağlandığında `provider` alanı ve içgörü kaynağı değişir, tenant sözleşmesi
+değişmez.
 
 ## İlk sürümde yapılmayacaklar
 
