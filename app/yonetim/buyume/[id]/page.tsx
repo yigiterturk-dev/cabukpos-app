@@ -12,6 +12,7 @@ const pct = (n: number | null) => n === null ? "—" : `${(n * 100).toFixed(1).r
 
 export default async function CampaignDetail({ params }: { params: Promise<{ id: string }> }) {
   const a = await requireAdmin();
+  if (a.vertical !== "restoran") notFound();
   const { id } = await params;
   const data = await withTenant(a.tenantId, async (tx) => {
     const [campaign] = await tx.select({ id: schema.growthCampaigns.id, name: schema.growthCampaigns.name, segment: schema.growthCampaigns.segment, message: schema.growthCampaigns.message, audienceCount: schema.growthCampaigns.audienceCount, createdAt: schema.growthCampaigns.createdAt }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.id, id)).limit(1);

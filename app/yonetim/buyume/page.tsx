@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ArrowRight, MessageCircle, Repeat2, Target, TrendingUp } from "lucide-react";
 import { and, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
@@ -23,6 +24,7 @@ const modules = [
 
 export default async function Buyume({ searchParams }: { searchParams: Promise<{ olusturuldu?: string; hata?: string; segment?: string }> }) {
   const a = await requireAdmin();
+  if (a.vertical !== "restoran") notFound();
   const sp = await searchParams;
   const contact = salesContact();
   const segment: GrowthSegment = sp.segment && isGrowthSegment(sp.segment) ? sp.segment : "dormant_30";

@@ -11,6 +11,7 @@ const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim()
 /** Sadece taslak oluşturur; hiçbir iletişim sağlayıcısına gönderim yapmaz. */
 export async function createCampaignDraft(form: FormData) {
   const a = await requireWriter();
+  if (a.vertical !== "restoran") redirect("/yonetim");
   const name = text(form, "name").slice(0, 80);
   const message = text(form, "message").slice(0, 500);
   const segment = text(form, "segment");
