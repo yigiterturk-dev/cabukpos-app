@@ -57,7 +57,9 @@ yalnız gözlenen metriklerden içgörü üretir. Bu fallback hiçbir dönüşü
 ciro vaadi uydurmaz; amaç Laya sözleşmesini gerçek sonuç verisi gelene kadar
 güvenli biçimde çalışır tutmaktır.
 
-Laya sağlayıcısı `GROWTH_ADVISOR_URL` ve `GROWTH_ADVISOR_TOKEN` ile açılır.
+Feature pack'teki `privacy.scope` değeri `tenant_only`dir; `minCohortSize` tenant
+içi içgörüyü değil, ileride kurulabilecek tenantlar arası benchmark kapısını
+sınırlar. Laya sağlayıcısı `GROWTH_ADVISOR_URL` ve `GROWTH_ADVISOR_TOKEN` ile açılır.
 Production’da yalnız HTTPS kabul edilir; istek 5 saniyede zaman aşımına uğrar,
 cevap şeması doğrulanır ve başarısızlıkta baseline advisor çalışır. Token ve
 ham yanıt loglanmaz.

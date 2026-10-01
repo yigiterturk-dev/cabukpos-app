@@ -11,7 +11,7 @@ export function buildFeaturePack(input: FeaturePackInput) {
   return {
     schemaVersion: 1 as const,
     generatedAt: input.generatedAt,
-    privacy: { pii: false as const, minCohortSize: 10 },
+    privacy: { pii: false as const, minCohortSize: 10, scope: "tenant_only" as const },
     vertical: input.vertical,
     customer: input.customer,
     package90: input.package90,

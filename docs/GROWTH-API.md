@@ -25,7 +25,7 @@ ID'si ve ham sipariş satırı içermez.
 {
   "schemaVersion": 1,
   "generatedAt": "2026-10-01T12:00:00.000Z",
-  "privacy": { "pii": false, "minCohortSize": 10 },
+  "privacy": { "pii": false, "minCohortSize": 10, "scope": "tenant_only" },
   "vertical": "restoran",
   "customer": { "total": 120, "consented": 84, "active30": 51, "dormant30": 33, "new30": 9 },
   "package90": { "orders": 240, "gross": 1845000, "avgBasket": 7688 },
@@ -33,7 +33,11 @@ ID'si ve ham sipariş satırı içermez.
 }
 ```
 
-Tutarlar kuruş cinsindedir. İlk MVP yalnız `restoran` tenant'larında açıktır;
+`minCohortSize`, tenantlar arası benchmark için alt sınırdır; `scope: tenant_only`
+nedeniyle işletme kendi küçük cohort verisini kendi içgörüsü için kullanabilir.
+Tenantlar arası karşılaştırma yapılacaksa ayrıca opt-in, anonimleştirme ve hukuk
+incelemesi gerekir. Tutarlar kuruş cinsindedir. İlk MVP yalnız `restoran`
+tenant'larında açıktır;
 başka dikeyler `403 unsupported_vertical` alır.
 
 ## İçgörüler
