@@ -15,6 +15,10 @@ Piyasaya çıkıştaki tüm teknik/işletme onay kutuları için ayrıca `docs/L
 7. Canlıda `DATABASE_URL` uygulama rolü, `MIGRATE_DATABASE_URL` ise yalnız
    migration sahibi rolü olmalıdır. Uygulama rolü `BYPASSRLS` olmamalıdır.
 
+Growth şeması değiştiyse migration sahibi bağlantısıyla db:growth:verify
+çalıştırılmalı; recipient_ref kolonu, iki growth tablosunun FORCE RLS/policy
+durumu ve cabukpos_app BYPASSRLS durumu birlikte doğrulanmalıdır.
+
 ## Yedekleme
 
 - `MIGRATE_DATABASE_URL` ile `npm run db:backup` çalıştırın. Komut custom-format
