@@ -153,6 +153,25 @@ test("growth event intake: tenant sınırı ve externalId idempotency", async ()
   assert.equal((await withTenant(t2.id, (tx) => listGrowthCampaigns(tx, { tenantId: t2.id, actor: "integration:test" }))).some((item) => item.id === campaign.id), false);
 });
 
+test("growth campaign list SQL toplulaştırması recipient tekrarlarını tek sayar", async () => {
+  const [campaign] = await withTenant(t.id, (tx) => tx.insert(schema.growthCampaigns).values({ tenantId: t.id, name: "Ölçüm", message: "Merhaba" }).returning({ id: schema.growthCampaigns.id }));
+  const ref = "hmac-sha256:" + "e".repeat(64);
+  await withTenant(t.id, (tx) => tx.insert(schema.growthCampaignEvents).values([
+    { tenantId: t.id, campaignId: campaign.id, type: "sent", externalId: "metric-sent", recipientRef: ref },
+    { tenantId: t.id, campaignId: campaign.id, type: "delivered", externalId: "metric-delivered-1", recipientRef: ref },
+    { tenantId: t.id, campaignId: campaign.id, type: "delivered", externalId: "metric-delivered-2", recipientRef: ref },
+    { tenantId: t.id, campaignId: campaign.id, type: "converted", externalId: "metric-converted-1", recipientRef: ref, amount: 12500 },
+    { tenantId: t.id, campaignId: campaign.id, type: "converted", externalId: "metric-converted-2", recipientRef: ref, amount: 500 },
+    { tenantId: t.id, campaignId: campaign.id, type: "opt_out", externalId: "metric-optout", recipientRef: ref },
+    { tenantId: t.id, campaignId: campaign.id, type: "failed", externalId: "metric-failed", recipientRef: ref },
+  ]));
+  const listed = await withTenant(t.id, (tx) => listGrowthCampaigns(tx, { tenantId: t.id, actor: "integration:test" }));
+  assert.deepEqual(listed.find((item) => item.id === campaign.id)?.metrics, {
+    sent: 1, delivered: 1, converted: 1, optOut: 1, failed: 1, revenue: 13000,
+    deliveryRate: 1, conversionRate: 1, optOutRate: 1,
+  });
+});
+
 test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", async () => {
   const [audienceCustomer] = await withTenant(t.id, (tx) => tx.insert(schema.customers).values({ tenantId: t.id, phone: "905550000002", name: "İzinli hedef", marketingConsent: true, lastOrderAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) }).returning({ id: schema.customers.id }));
   const draft = await withTenant(t.id, (tx) => createGrowthCampaignDraft(tx, { tenantId: t.id, name: "Geri kazanım", message: "Sizi özledik", segment: "dormant_30", actor: "integration:test" }));
