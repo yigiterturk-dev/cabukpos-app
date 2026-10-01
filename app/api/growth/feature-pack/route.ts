@@ -15,6 +15,7 @@ export async function GET(req: Request) {
   const a = await getAdmin();
   const key = a ? null : await keyFromRequest(req);
   if (!a && !key) return Response.json({ error: "Kimlik doğrulama gerekli." }, { status: 401 });
+  if (key && key.scope !== "growth") return Response.json({ error: "forbidden_scope" }, { status: 403 });
   if (key && (await hit(`apikey:growth:${key.id}`, 1)) > 60) return Response.json({ error: "rate_limited" }, { status: 429 });
   const tenantId = a?.tenantId ?? key!.tenantId;
   const vertical = a?.vertical ?? (await getDb().select({ vertical: schema.tenants.vertical }).from(schema.tenants).where(eq(schema.tenants.id, tenantId)).limit(1))[0]?.vertical;

@@ -7,14 +7,16 @@ import { newDeviceToken, sha256 } from "@/lib/auth/tokens";
 const K = schema.integrationKeys;
 export const KEY_PREFIX = "cpk_";
 
-export async function createKey(tenantId: string, name: string): Promise<{ id: string; key: string }> {
+export type IntegrationScope = "stats" | "growth";
+
+export async function createKey(tenantId: string, name: string, scope: IntegrationScope = "stats"): Promise<{ id: string; key: string }> {
   const key = KEY_PREFIX + newDeviceToken();
-  const [row] = await getDb().insert(K).values({ tenantId, name, prefix: key.slice(0, 8), keyHash: await sha256(key) }).returning({ id: K.id });
+  const [row] = await getDb().insert(K).values({ tenantId, name, scope, prefix: key.slice(0, 8), keyHash: await sha256(key) }).returning({ id: K.id });
   return { id: row.id, key };
 }
 
 export function listKeys(tenantId: string) {
-  return getDb().select({ id: K.id, name: K.name, prefix: K.prefix, createdAt: K.createdAt, lastUsedAt: K.lastUsedAt, revokedAt: K.revokedAt })
+  return getDb().select({ id: K.id, name: K.name, scope: K.scope, prefix: K.prefix, createdAt: K.createdAt, lastUsedAt: K.lastUsedAt, revokedAt: K.revokedAt })
     .from(K).where(eq(K.tenantId, tenantId)).orderBy(desc(K.createdAt));
 }
 
@@ -25,9 +27,9 @@ export async function revokeKey(tenantId: string, id: string): Promise<boolean> 
 }
 
 /** Etkin anahtar → kiracı. Son kullanım en fazla dakikada bir yazılır. */
-export async function findKey(key: string): Promise<{ id: string; tenantId: string; tenantName: string } | null> {
+export async function findKey(key: string): Promise<{ id: string; tenantId: string; tenantName: string; scope: string } | null> {
   if (!key.startsWith(KEY_PREFIX) || key.length > 100) return null;
-  const [row] = await getDb().select({ id: K.id, tenantId: K.tenantId, tenantName: schema.tenants.name })
+  const [row] = await getDb().select({ id: K.id, tenantId: K.tenantId, tenantName: schema.tenants.name, scope: K.scope })
     .from(K).innerJoin(schema.tenants, eq(schema.tenants.id, K.tenantId))
     .where(and(eq(K.keyHash, await sha256(key)), isNull(K.revokedAt)));
   if (!row) return null;

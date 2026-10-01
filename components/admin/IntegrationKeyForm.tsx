@@ -4,7 +4,7 @@ import { createIntegrationKey, type KeyState } from "@/lib/admin/integration-act
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input } from "@/components/ui";
 
-function KeyBox({ s }: { s: KeyState }) {
+function KeyBox({ s, scope }: { s: KeyState; scope: "stats" | "growth" }) {
   const [copied, setCopied] = useState(false);
   if (!s.key) return s.error && !s.field ? <p className="mt-2 text-sm text-bad">{s.error}</p> : null;
   return (
@@ -14,23 +14,24 @@ function KeyBox({ s }: { s: KeyState }) {
         <code data-testid="integration-key" className="break-all rounded bg-white px-2 py-1 font-mono text-sm">{s.key}</code>
         <button type="button" className="text-sm text-brand underline" onClick={() => navigator.clipboard.writeText(s.key!).then(() => setCopied(true))}>{copied ? "Kopyalandı" : "Kopyala"}</button>
       </div>
-      <p className="mt-2 text-sm text-ink-2">Ajans panelinde Bağlantılar → ÇabukPOS alanına yapıştırılır. Anahtar yalnız günlük satış özetini okur; hiçbir şeyi değiştiremez.</p>
+      <p className="mt-2 text-sm text-ink-2">{scope === "growth" ? "Büyüme Merkezi/Laya bağlantısında kullanılır. Yalnız toplu, PII'siz büyüme özelliklerini okur; hiçbir şeyi değiştiremez." : "Ajans panelinde Bağlantılar → ÇabukPOS alanına yapıştırılır. Anahtar yalnız günlük satış özetini okur; hiçbir şeyi değiştiremez."}</p>
     </div>
   );
 }
 
-export function IntegrationKeyForm() {
+export function IntegrationKeyForm({ scope = "stats" }: { scope?: "stats" | "growth" }) {
   const { state, pending, onSubmit } = useFormAction(createIntegrationKey, {} as KeyState);
   return (
     <form onSubmit={onSubmit}>
+      <input type="hidden" name="scope" value={scope} />
       <div className="flex flex-wrap items-start gap-3">
         <div>
-          <Field label="Ajans adı"><Input name="name" placeholder="Zirve Ajans" maxLength={40} required /></Field>
+          <Field label={scope === "growth" ? "Büyüme bağlantısı adı" : "Ajans adı"}><Input name="name" placeholder={scope === "growth" ? "Laya Büyüme" : "Zirve Ajans"} maxLength={40} required /></Field>
           {state.field === "name" && state.error && <p className="mt-1 text-sm text-bad">{state.error}</p>}
         </div>
-        <Button type="submit" disabled={pending} className="mt-6">{pending ? "Oluşturuluyor…" : "Ajans erişimi oluştur"}</Button>
+        <Button type="submit" disabled={pending} className="mt-6">{pending ? "Oluşturuluyor…" : scope === "growth" ? "Büyüme erişimi oluştur" : "Ajans erişimi oluştur"}</Button>
       </div>
-      <KeyBox s={state} />
+      <KeyBox s={state} scope={scope} />
     </form>
   );
 }

@@ -62,7 +62,7 @@ test("anahtar: üret → bul (son kullanım yazılır) → listede önek → ipt
   const k = await createKey(t.id, "Zirve Ajans");
   assert.match(k.key, /^cpk_[A-Za-z0-9_-]{43}$/);
   const f = await findKey(k.key);
-  assert.deepEqual(f, { id: k.id, tenantId: t.id, tenantName: "M9C-T" });
+  assert.deepEqual(f, { id: k.id, tenantId: t.id, tenantName: "M9C-T", scope: "stats" });
   const [l] = await listKeys(t.id);
   assert.equal(l.prefix, k.key.slice(0, 8));
   assert.ok(l.lastUsedAt);
@@ -86,6 +86,8 @@ test("uç: 401 / 400 / 200 ve kiracı ayrımı", async () => {
   assert.equal(body.days[0].orderCount, 2);
   const r2 = await (await call(k2.key)).json();
   assert.deepEqual(r2, { business: { name: "M9C-T2" }, days: [] });
+  const g = await createKey(t.id, "Laya", "growth");
+  assert.equal((await findKey(g.key))?.scope, "growth");
 });
 
 test("uç: anahtar başına dakikada 60 istek → 429", async () => {

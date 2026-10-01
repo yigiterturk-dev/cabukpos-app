@@ -552,6 +552,7 @@ export const integrationKeys = pgTable("integration_keys", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: tenantRef(),
   name: text("name").notNull(),
+  scope: text("scope").notNull().default("stats"), // stats | growth
   prefix: text("prefix").notNull(),
   keyHash: text("key_hash").notNull().unique(),
   createdAt: ts("created_at").notNull().defaultNow(),
