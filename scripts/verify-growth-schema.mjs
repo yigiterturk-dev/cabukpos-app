@@ -5,11 +5,13 @@ if (!url) throw new Error("MIGRATE_DATABASE_URL gerekli");
 
 const sql = postgres(url, { max: 1, onnotice: () => {} });
 const checks = [];
-const columns = await sql.unsafe("select table_name, column_name from information_schema.columns where table_schema = 'public' and ((table_name = 'growth_campaign_events' and column_name = 'recipient_ref') or (table_name = 'growth_campaigns' and column_name in ('approved_at', 'approved_by')))");
+const columns = await sql.unsafe("select table_name, column_name from information_schema.columns where table_schema = 'public' and ((table_name = 'growth_campaign_events' and column_name = 'recipient_ref') or (table_name = 'growth_campaigns' and column_name in ('approved_at', 'approved_by')) or (table_name = 'growth_recipient_refs' and column_name in ('recipient_ref', 'customer_id')))");
 for (const required of [
   ["growth_campaign_events", "recipient_ref"],
   ["growth_campaigns", "approved_at"],
   ["growth_campaigns", "approved_by"],
+  ["growth_recipient_refs", "recipient_ref"],
+  ["growth_recipient_refs", "customer_id"],
 ]) checks.push({ ok: columns.some((column) => column.table_name === required[0] && column.column_name === required[1]), label: required[0] + "." + required[1] });
 
 const tables = await sql.unsafe("select c.relname, c.relrowsecurity, c.relforcerowsecurity, exists (select 1 from pg_policies p where p.schemaname = 'public' and p.tablename = c.relname and p.policyname = 'tenant_isolation') as has_tenant_policy from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname in ('growth_campaigns', 'growth_campaign_events', 'growth_recipient_refs') order by c.relname");

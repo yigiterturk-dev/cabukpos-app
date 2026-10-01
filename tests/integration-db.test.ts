@@ -172,7 +172,10 @@ test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", asy
     assert.equal(audience.recipients.length, 1);
     assert.match(audience.recipients[0].recipientRef, /^hmac-sha256:[a-f0-9]{64}$/);
     assert.equal("phone" in audience.recipients[0], false);
-    const mappedOptOut = await withTenant(t.id, (tx) => recordCampaignEvent(tx, { tenantId: t.id, campaignId: draft.id, type: "opt_out", externalId: "provider-ref-optout-1", recipientRef: audience.recipients[0].recipientRef, actor: "integration:test" }));
+    const ref = audience.recipients[0].recipientRef;
+    const hiddenFromOtherTenant = await withTenant(t2.id, (tx) => tx.select({ id: schema.growthRecipientRefs.id }).from(schema.growthRecipientRefs).where(eq(schema.growthRecipientRefs.recipientRef, ref)));
+    assert.equal(hiddenFromOtherTenant.length, 0);
+    const mappedOptOut = await withTenant(t.id, (tx) => recordCampaignEvent(tx, { tenantId: t.id, campaignId: draft.id, type: "opt_out", externalId: "provider-ref-optout-1", recipientRef: ref, actor: "integration:test" }));
     assert.equal("error" in mappedOptOut, false);
     const [optedOut] = await withTenant(t.id, (tx) => tx.select({ consent: schema.customers.marketingConsent }).from(schema.customers).where(eq(schema.customers.id, audienceCustomer.id)));
     assert.equal(optedOut?.consent, false);
