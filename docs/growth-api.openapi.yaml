@@ -135,6 +135,38 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
+  /api/growth/campaigns/{campaignId}/audience:
+    get:
+      summary: Get consented audience as keyed recipient references
+      security:
+        - GrowthBearer: []
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string, maxLength: 100 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        '200':
+          description: Consent-filtered keyed recipient references without PII
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AudienceResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
   /api/growth/campaigns/{campaignId}/events:
     post:
       summary: Record an idempotent campaign measurement event
@@ -289,6 +321,29 @@ components:
             status: { enum: [taslak, arsiv] }
             createdAt: { type: string, format: date-time }
         metrics: { $ref: '#/components/schemas/CampaignMetrics' }
+    AudienceResponse:
+      type: object
+      required: [schemaVersion, campaignId, segment, recipients, nextCursor, privacy]
+      properties:
+        schemaVersion: { const: 1 }
+        campaignId: { type: string, format: uuid }
+        segment: { type: string, enum: [dormant_30, active_30, all_consented] }
+        recipients:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [recipientRef]
+            properties:
+              recipientRef: { type: string, pattern: '^hmac-sha256:[a-f0-9]{64}$' }
+        nextCursor: { type: [string, 'null'], maxLength: 100 }
+        privacy:
+          type: object
+          required: [pii, reference, scope]
+          properties:
+            pii: { const: false }
+            reference: { const: hmac-sha256 }
+            scope: { const: tenant_only }
     CampaignMetrics:
       type: object
       required: [sent, delivered, converted, optOut, failed, revenue, deliveryRate, conversionRate, optOutRate]

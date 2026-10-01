@@ -14,6 +14,7 @@ const { recordCampaignEvent } = await import("@/lib/growth/events");
 const { createGrowthCampaignDraft } = await import("@/lib/growth/campaigns");
 const { loadGrowthCampaignStatus } = await import("@/lib/growth/campaign-status");
 const { listGrowthCampaigns } = await import("@/lib/growth/campaign-list");
+const { loadGrowthCampaignAudience } = await import("@/lib/growth/audience");
 const { eq, like, sql } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "M9C-T", vertical: "restoran" }).returning();
@@ -146,4 +147,12 @@ test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", asy
   assert.equal(draft.audienceCount, 1);
   const [row] = await withTenant(t.id, (tx) => tx.select({ status: schema.growthCampaigns.status, channel: schema.growthCampaigns.channel }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.id, draft.id)));
   assert.deepEqual(row, { status: "taslak", channel: "manual" });
+  const audience = await withTenant(t.id, (tx) => loadGrowthCampaignAudience(tx, { tenantId: t.id, campaignId: draft.id, secret: "test-growth-key", limit: 1, actor: "integration:test" }));
+  assert.equal("error" in (audience ?? {}), false);
+  if (audience && !("error" in audience)) {
+    assert.equal(audience.recipients.length, 1);
+    assert.match(audience.recipients[0].recipientRef, /^hmac-sha256:[a-f0-9]{64}$/);
+    assert.equal("phone" in audience.recipients[0], false);
+  }
+  assert.equal(await withTenant(t2.id, (tx) => loadGrowthCampaignAudience(tx, { tenantId: t2.id, campaignId: draft.id, secret: "other-key", actor: "integration:test" })), null);
 });

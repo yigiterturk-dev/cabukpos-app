@@ -109,6 +109,16 @@ Bu olay müşterinin pazarlama iznini kapatır ve `provider_opt_out` kaynağıyl
 kaydeder. Diğer event türlerinde `customerId` kabul edilmez. Kampanya tenant'a
 ait değilse veya opt-out müşteri tenant'a ait değilse kayıt yapılmaz.
 
+## İzinli hedef referansları
+
+GET /api/growth/campaigns/:campaignId/audience
+
+Growth anahtarı sahibi, kampanyanın izinli hedeflerini sayfalı olarak yalnız
+hmac-sha256 recipientRef değerleri halinde okuyabilir. Telefon, ad, müşteri UUID'si
+ve mesaj dönmez. recipientRef, aynı growth anahtarıyla sağlayıcının kendi
+normalize telefonundan ürettiği referansla eşleştirilir. limit en fazla 500'dür;
+nextCursor ile devam edilir.
+
 ## Sağlayıcı webhook'u
 
 sent, delivered ve converted olaylarında recipientRef alanı zorunludur:
