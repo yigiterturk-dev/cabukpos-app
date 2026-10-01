@@ -19,6 +19,7 @@ export const purchaseStatus = pgEnum("purchase_status", ["kayitli", "iptal"]);
 export const fiscalDocStatus = pgEnum("fiscal_doc_status", ["pending", "issued", "error", "cancelled", "cancel_rejected"]);
 export const supplierPayMethod = pgEnum("supplier_pay_method", ["nakit", "havale", "kart"]);
 export const growthCampaignStatus = pgEnum("growth_campaign_status", ["taslak", "arsiv"]);
+export const growthCampaignEventType = pgEnum("growth_campaign_event_type", ["sent", "delivered", "converted", "opt_out", "failed"]);
 
 const ts = (n: string) => timestamp(n, { withTimezone: true });
 const tenantRef = () => uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" });
@@ -349,6 +350,19 @@ export const growthCampaigns = pgTable("growth_campaigns", {
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [index("growth_campaigns_tenant_idx").on(t.tenantId, t.createdAt)]);
+
+/** Büyüme Merkezi ölçüm günlüğü: sağlayıcı olayları ve dönüşümler; iletişim göndermez. */
+export const growthCampaignEvents = pgTable("growth_campaign_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  campaignId: uuid("campaign_id").notNull().references(() => growthCampaigns.id, { onDelete: "cascade" }),
+  customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
+  type: growthCampaignEventType("type").notNull(),
+  externalId: text("external_id"),
+  amount: integer("amount").notNull().default(0),
+  at: ts("at").notNull().defaultNow(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("growth_campaign_events_campaign_idx").on(t.tenantId, t.campaignId, t.at), uniqueIndex("growth_campaign_events_external_uq").on(t.campaignId, t.externalId)]);
 
 export const customerAddresses = pgTable("customer_addresses", {
   id: uuid("id").primaryKey().defaultRandom(),
