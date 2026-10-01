@@ -18,7 +18,7 @@ export function loadFeaturePack(tenantId: string, vertical: FeaturePackInput["ve
       ]),
       tx.select({ orders: count(), gross: sql<number>`coalesce(sum(${S.total}), 0)::int`, avgBasket: sql<number>`coalesce(avg(${S.total}), 0)::int` }).from(S)
         .where(and(eq(S.tenantId, tenantId), eq(S.channel, "paket"), eq(S.status, "kapandi"), gte(S.createdAt, d90))),
-      tx.select({ n: count() }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.tenantId, tenantId)),
+      tx.select({ n: count() }).from(schema.growthCampaigns).where(and(eq(schema.growthCampaigns.tenantId, tenantId), eq(schema.growthCampaigns.status, "taslak"))),
       tx.select({ sent: sql<number>`count(*) filter (where ${E.type} = 'sent')::int`, delivered: sql<number>`count(*) filter (where ${E.type} = 'delivered')::int`, converted: sql<number>`count(*) filter (where ${E.type} = 'converted')::int`, revenue: sql<number>`coalesce(sum(${E.amount}) filter (where ${E.type} = 'converted'), 0)::int` }).from(E).where(eq(E.tenantId, tenantId)),
     ]);
     return buildFeaturePack({

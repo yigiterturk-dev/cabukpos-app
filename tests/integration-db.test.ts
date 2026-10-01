@@ -109,6 +109,9 @@ test("growth feature-pack: tenant özeti PII ve kimlik döndürmez", async () =>
     await tx.insert(schema.customers).values({ tenantId: t2.id, phone: "905550000099", name: "Başka kiracı", marketingConsent: true });
     await tx.insert(schema.growthCampaigns).values({ tenantId: t2.id, name: "Başka kampanya", message: "Merhaba" });
   });
+  await withTenant(t.id, async (tx) => {
+    await tx.insert(schema.growthCampaigns).values({ tenantId: t.id, name: "Arşiv", message: "Eski", status: "arsiv" });
+  });
   const p = await loadFeaturePack(t.id, "restoran");
   assert.deepEqual({ customer: p.customer, package90: p.package90, campaigns: p.campaigns }, { customer: before.customer, package90: before.package90, campaigns: before.campaigns });
   assert.equal(p.privacy.pii, false);
