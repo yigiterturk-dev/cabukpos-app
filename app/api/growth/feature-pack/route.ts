@@ -1,6 +1,7 @@
 import { and, count, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { getAdmin } from "@/lib/auth/session";
+import { buildFeaturePack } from "@/lib/growth/feature-pack";
 
 export const dynamic = "force-dynamic";
 
@@ -34,5 +35,5 @@ export async function GET() {
       campaigns: { drafts: campaigns[0]?.n ?? 0, events: { sent: events[0]?.sent ?? 0, delivered: events[0]?.delivered ?? 0, converted: events[0]?.converted ?? 0, revenue: events[0]?.revenue ?? 0 } },
     };
   });
-  return Response.json({ schemaVersion: 1, generatedAt: new Date().toISOString(), privacy: { pii: false, minCohortSize: 10 }, vertical: a.vertical, ...result }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json(buildFeaturePack({ generatedAt: new Date().toISOString(), vertical: a.vertical, ...result }), { headers: { "Cache-Control": "no-store" } });
 }
