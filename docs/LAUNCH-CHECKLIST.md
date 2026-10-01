@@ -8,11 +8,12 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 ### Teknik kapı — mevcut durum
 
 - [x] `npm ci` temiz kurulum: 0 vulnerability
-- [x] `npm test`: 148/148
+- [x] `npm test`: 156/156
 - [x] `npm run qa:static`: lint + typecheck
 - [x] `npm run build`: Webpack production build
 - [x] Production `/api/health` ve `/api/ready`: 200
-- [x] Production kritik anonim/korumalı uçlar: runtime audit 8/8
+- [x] Growth feature-pack, insights ve event intake tenant/scope sınırları
+- [x] Production kritik anonim/korumalı uçlar: runtime audit 11/11 kontrol tanımı
 - [x] Neon migration ve FORCE RLS doğrulaması
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
