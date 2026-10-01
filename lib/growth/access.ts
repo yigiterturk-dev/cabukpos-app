@@ -15,5 +15,7 @@ export async function growthAccess(req: Request): Promise<GrowthAccess | Respons
   if (key && (await hit(`apikey:growth:${key.id}`, 1)) > 60) return Response.json({ error: "rate_limited" }, { status: 429 });
   const tenantId = a?.tenantId ?? key!.tenantId;
   const vertical = a?.vertical ?? (await getDb().select({ vertical: schema.tenants.vertical }).from(schema.tenants).where(eq(schema.tenants.id, tenantId)).limit(1))[0]?.vertical;
-  return vertical ? { tenantId, vertical } : Response.json({ error: "tenant_not_found" }, { status: 401 });
+  if (!vertical) return Response.json({ error: "tenant_not_found" }, { status: 401 });
+  if (vertical !== "restoran") return Response.json({ error: "unsupported_vertical" }, { status: 403 });
+  return { tenantId, vertical };
 }

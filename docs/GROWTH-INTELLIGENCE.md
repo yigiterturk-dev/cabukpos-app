@@ -54,3 +54,7 @@ Laya sağlayıcısı `GROWTH_ADVISOR_URL` ve `GROWTH_ADVISOR_TOKEN` ile açılı
 Production’da yalnız HTTPS kabul edilir; istek 5 saniyede zaman aşımına uğrar,
 cevap şeması doğrulanır ve başarısızlıkta baseline advisor çalışır. Token ve
 ham yanıt loglanmaz.
+
+İlk MVP yalnız `restoran` tenant’larında açıktır; market tenant’ları endpoint’ten
+`403 unsupported_vertical` alır. Laya’nın kanıt değerleri sonlu, pozitif ve
+sınırlandırılmış sayılar olmalıdır.

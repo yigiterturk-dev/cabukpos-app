@@ -8,7 +8,7 @@ const Insight = z.object({
   title: z.string().min(1).max(160),
   body: z.string().min(1).max(1000),
   confidence: z.enum(["observed", "insufficient_data"]),
-  evidence: z.record(z.string(), z.number()).default({}),
+  evidence: z.record(z.string(), z.number().finite().min(0).max(1_000_000_000)).default({}),
 });
 const Remote = z.object({ insights: z.array(Insight).max(20) });
 
