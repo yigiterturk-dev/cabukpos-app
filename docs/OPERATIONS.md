@@ -35,6 +35,9 @@ durumu ve cabukpos_app BYPASSRLS durumu birlikte doğrulanmalıdır.
 - Deploy sonrası anonim ve korumalı kritik uçları tek komutla kontrol etmek için
   `npm run audit:runtime` çalıştırın. Başka bir ortamı kontrol etmek için
   `BASE=https://staging.example.com npm run audit:runtime` kullanabilirsiniz.
+- Growth anahtarı hazırsa yalnız okuma sözleşmesini de doğrulamak için komuta
+  `RUNTIME_GROWTH_KEY=<growth-key>` ekleyin; feature-pack, insights ve kampanya
+  listesi 200/schema/PII kontrollerinden geçer. Anahtar değeri çıktıya yazılmaz.
 - Vercel deployment'ın Ready durumunu ve build logunu doğrulayın.
 - Liveness için `/api/health`, veritabanı dahil trafik hazırlığı için `/api/ready`
   uçlarının sırasıyla `200` ve `200` dönmesini kontrol edin. `/api/ready` `503`

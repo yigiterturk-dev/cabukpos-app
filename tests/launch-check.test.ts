@@ -85,3 +85,38 @@ test("launch check isteğe bağlı runtime route doğrulaması yapar", async () 
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.match(result.stdout, /Runtime route doğrulaması: health\/ready/);
 });
+
+test("runtime audit isteğe bağlı authenticated Growth sözleşmesini doğrular", async () => {
+  const server = createServer((request, response) => {
+    const growth = request.headers.authorization === "Bearer runtime-key";
+    response.setHeader("content-type", "application/json");
+    if (request.url === "/api/health") return response.end(JSON.stringify({ ok: true }));
+    if (request.url === "/api/ready") return response.end(JSON.stringify({ ok: true, checks: { database: "ok" } }));
+    if (request.url === "/yonetim/veriler") { response.writeHead(307, { location: "/giris" }); return response.end(); }
+    if (request.url === "/giris" || request.url === "/kayit") { response.writeHead(200); return response.end("ok"); }
+    if (request.url === "/api/growth/feature-pack" && growth) return response.end(JSON.stringify({ schemaVersion: 1, privacy: { pii: false, scope: "tenant_only" } }));
+    if (request.url === "/api/growth/insights" && growth) return response.end(JSON.stringify({ schemaVersion: 1, insights: [] }));
+    if (request.url === "/api/growth/campaigns" && growth) return response.end(JSON.stringify({ schemaVersion: 1, campaigns: [] }));
+    response.writeHead(401);
+    response.end("unauthorized");
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.equal(typeof address, "object");
+  const result = await new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve) => {
+    const child = spawn(process.execPath, ["scripts/runtime-audit.mjs"], {
+      cwd: process.cwd(),
+      env: { ...process.env, BASE: `http://127.0.0.1:${(address as { port: number }).port}`, RUNTIME_GROWTH_KEY: "runtime-key" },
+    });
+    let stdout = "", stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
+    child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+    child.on("close", (status: number | null) => resolve({ status, stdout, stderr }));
+  });
+  server.closeAllConnections();
+  await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /PASS  authenticated growth feature-pack contract/);
+  assert.match(result.stdout, /PASS  authenticated growth insights contract/);
+  assert.match(result.stdout, /PASS  authenticated growth campaign list contract/);
+});

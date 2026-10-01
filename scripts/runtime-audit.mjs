@@ -114,6 +114,42 @@ const checks = [
   },
 ];
 
+const growthKey = process.env.RUNTIME_GROWTH_KEY?.trim();
+if (growthKey) {
+  checks.push(
+    {
+      name: "authenticated growth feature-pack contract",
+      path: "/api/growth/feature-pack",
+      headers: { authorization: `Bearer ${growthKey}` },
+      expected: async (response) => {
+        const body = await response.json();
+        return response.status === 200 && body.schemaVersion === 1 && body.privacy?.pii === false && body.privacy?.scope === "tenant_only";
+      },
+      expectedText: "200 + schemaVersion=1 + pii=false + tenant_only",
+    },
+    {
+      name: "authenticated growth insights contract",
+      path: "/api/growth/insights",
+      headers: { authorization: `Bearer ${growthKey}` },
+      expected: async (response) => {
+        const body = await response.json();
+        return response.status === 200 && body.schemaVersion === 1 && Array.isArray(body.insights);
+      },
+      expectedText: "200 + schemaVersion=1 + insights[]",
+    },
+    {
+      name: "authenticated growth campaign list contract",
+      path: "/api/growth/campaigns",
+      headers: { authorization: `Bearer ${growthKey}` },
+      expected: async (response) => {
+        const body = await response.json();
+        return response.status === 200 && body.schemaVersion === 1 && Array.isArray(body.campaigns);
+      },
+      expectedText: "200 + schemaVersion=1 + campaigns[]",
+    },
+  );
+}
+
 let failures = 0;
 console.log(`Runtime audit: ${baseUrl}`);
 
@@ -124,7 +160,7 @@ for (const check of checks) {
       body: check.body,
       redirect: check.redirect || "follow",
       signal: AbortSignal.timeout(10_000),
-      headers: { "user-agent": "cabukpos-runtime-audit/1.0", ...(check.body ? { "content-type": "application/json" } : {}) },
+      headers: { "user-agent": "cabukpos-runtime-audit/1.0", ...(check.body ? { "content-type": "application/json" } : {}), ...(check.headers || {}) },
     });
     const passed = await check.expected(response);
     if (passed) {
