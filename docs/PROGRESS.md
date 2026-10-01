@@ -8,7 +8,7 @@
 - Audience yanıtındaki recipientRef tenant içi eşleme tablosuna yazılır; sağlayıcı opt-out olayını yalnız recipientRef ile gönderdiğinde POS doğru müşterinin iznini kapatır, UUID paylaşımı gerekmez.
 - Kampanya taslağı işletme sahibi onaylamadan audience endpoint'i 403 döner; onay aktörü/zamanı audit edilir ve yalnız onay sonrası hedef referansları açılır.
 - API sözleşmesi docs/growth-api.openapi.yaml; operasyon/kullanım sınırları docs/GROWTH-API.md ve docs/GROWTH-SERVICE.md.
-- Kanıt: 164/164 test, lint/typecheck, production build, webhook imza testleri, DB tenant/idempotency/audience testleri ve runtime audit'te 16 anonim/korumalı kontrol tanımı.
+- Kanıt: 167/167 test, lint/typecheck, production build, webhook imza testleri, DB tenant/idempotency/audience/recipient-dedupe testleri ve runtime audit'te 16 anonim/korumalı kontrol tanımı.
 - Açık canlı kapılar: gerçek deployment doğrulaması (şema + RLS + yeni recipient-ref tablosu), provider sandbox teslimat/opt-out provası, backup-restore provası ve hukuki/mali müşavir onayı. Bunlar repo testiyle kanıtlanmış sayılmaz.
 - Canlı alias kontrolü (2026-10-01): health/ready 200 ve mevcut korumalı uçlar geçiyor; Growth feature-pack, insights, campaign, audience, event ve signed webhook uçları 404. Branch deploy edilmediği için canlı alias eski deployment'ı gösteriyor; Growth canlı kabulü yapılmadı.
 
