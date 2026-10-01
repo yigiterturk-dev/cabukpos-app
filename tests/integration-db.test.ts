@@ -170,6 +170,8 @@ test("growth campaign list SQL toplulaştırması recipient tekrarlarını tek s
     sent: 1, delivered: 1, converted: 1, optOut: 1, failed: 1, revenue: 13000,
     deliveryRate: 1, conversionRate: 1, optOutRate: 1,
   });
+  const pack = await loadFeaturePack(t.id, "restoran");
+  assert.deepEqual(pack.campaigns.events, { sent: 1, delivered: 1, converted: 2, revenue: 25500 });
 });
 
 test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", async () => {
