@@ -5,6 +5,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { createCampaignDraft } from "@/lib/admin/growth-actions";
 import { salesContact } from "@/lib/billing/plans";
+import { GROWTH_SEGMENTS, isGrowthSegment, type GrowthSegment } from "@/lib/growth/segments";
 import { Badge, buttonClass, Card, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -18,15 +19,21 @@ const modules = [
   { icon: Target, title: "Dönüşüm takibi", text: "Hangi kampanya kaç sipariş ve ne kadar ciro getirdiğini ölç." },
 ];
 
-export default async function Buyume({ searchParams }: { searchParams: Promise<{ olusturuldu?: string; hata?: string }> }) {
+export default async function Buyume({ searchParams }: { searchParams: Promise<{ olusturuldu?: string; hata?: string; segment?: string }> }) {
   const a = await requireAdmin();
   const sp = await searchParams;
   const contact = salesContact();
+  const segment: GrowthSegment = sp.segment && isGrowthSegment(sp.segment) ? sp.segment : "dormant_30";
   const { campaigns, targetCount, targetPreview, avgPackage } = await withTenant(a.tenantId, async (tx) => {
+    const audienceWhere = segment === "dormant_30"
+      ? and(eq(schema.customers.marketingConsent, true), isNotNull(schema.customers.lastOrderAt), lt(schema.customers.lastOrderAt, dormantSince))
+      : segment === "active_30"
+        ? and(eq(schema.customers.marketingConsent, true), gte(schema.customers.lastOrderAt, dormantSince))
+        : eq(schema.customers.marketingConsent, true);
     const [campaigns, targets, preview, average] = await Promise.all([
       tx.select({ id: schema.growthCampaigns.id, name: schema.growthCampaigns.name, message: schema.growthCampaigns.message, audienceCount: schema.growthCampaigns.audienceCount, createdAt: schema.growthCampaigns.createdAt }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.status, "taslak")).orderBy(desc(schema.growthCampaigns.createdAt)).limit(10),
-      tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(and(eq(schema.customers.marketingConsent, true), isNotNull(schema.customers.lastOrderAt), lt(schema.customers.lastOrderAt, dormantSince))),
-      tx.select({ name: schema.customers.name, phone: schema.customers.phone, lastOrderAt: schema.customers.lastOrderAt }).from(schema.customers).where(and(eq(schema.customers.marketingConsent, true), isNotNull(schema.customers.lastOrderAt), lt(schema.customers.lastOrderAt, dormantSince))).orderBy(schema.customers.lastOrderAt).limit(8),
+      tx.select({ n: sql<number>`count(*)::int` }).from(schema.customers).where(audienceWhere),
+      tx.select({ name: schema.customers.name, phone: schema.customers.phone, lastOrderAt: schema.customers.lastOrderAt }).from(schema.customers).where(audienceWhere).orderBy(schema.customers.lastOrderAt).limit(8),
       tx.select({ value: sql<number>`coalesce(avg(${schema.sales.total}), 0)::int` }).from(schema.sales).where(and(eq(schema.sales.channel, "paket"), eq(schema.sales.status, "kapandi"), gte(schema.sales.createdAt, sql`now() - interval '90 days'`))),
     ]);
     return { campaigns, targetCount: targets[0]?.n ?? 0, targetPreview: preview, avgPackage: average[0]?.value ?? 0 };
@@ -55,15 +62,17 @@ export default async function Buyume({ searchParams }: { searchParams: Promise<{
       {sp.olusturuldu && <Card className="mt-6 border-emerald-200 bg-ok-soft p-4 text-sm text-ok" role="status">Kampanya taslağı kaydedildi. Henüz hiçbir mesaj gönderilmedi.</Card>}
       {sp.hata && <Card className="mt-6 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Kampanya adı en az 2, mesajı en az 5 karakter olmalı.</Card>}
       <Card className="mt-6 p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2"><div><h2 className="font-semibold">İlk kampanya taslağı</h2><p className="mt-1 text-sm text-muted">30 gündür gelmeyen ve iletişim izni bulunan müşteriler için hazırlanır.</p></div><Badge tone="warn">Gönderim kapalı</Badge></div>
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><div><h2 className="font-semibold">İlk kampanya taslağı</h2><p className="mt-1 text-sm text-muted">Seçtiğin segment ve iletişim iznine göre hazırlanır.</p></div><Badge tone="warn">Gönderim kapalı</Badge></div>
         <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.4fr]">
           <form action={createCampaignDraft} className="grid gap-3 content-start md:grid-cols-[1fr_2fr_auto] lg:grid-cols-1">
+          <input type="hidden" name="segment" value={segment} />
           <label className="text-sm"><span className="mb-1.5 block font-medium">Kampanya adı</span><input name="name" required minLength={2} maxLength={80} placeholder="30 gün geri kazanım" className="min-h-11 w-full rounded-[10px] border border-line px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
           <label className="text-sm"><span className="mb-1.5 block font-medium">Mesaj taslağı</span><input name="message" required minLength={5} maxLength={500} placeholder="Sizi özledik…" className="min-h-11 w-full rounded-[10px] border border-line px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
           <button className={buttonClass("primary")}>Taslağı kaydet</button>
           </form>
           <div className="rounded-xl border border-line bg-surface-2 p-4 text-sm">
-            <div className="flex flex-wrap items-baseline justify-between gap-2"><b>Hedef önizleme</b><span className="text-muted">{targetCount} izinli müşteri</span></div>
+            <div className="mb-3 flex flex-wrap gap-2">{Object.entries(GROWTH_SEGMENTS).map(([key, value]) => <a key={key} href={`/yonetim/buyume?segment=${key}`} className={`rounded-lg border px-3 py-2 text-xs ${segment === key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white text-ink-2 hover:bg-surface-3"}`}>{value.label}</a>)}</div>
+            <div className="flex flex-wrap items-baseline justify-between gap-2"><b>Hedef önizleme</b><span className="text-muted">{GROWTH_SEGMENTS[segment].label} · {targetCount} kişi</span></div>
             {targetPreview.length > 0 ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{targetPreview.map((c) => <div key={c.phone} className="rounded-lg border border-line bg-white px-3 py-2"><div className="font-medium">{c.name}</div><div className="text-xs text-muted">{maskPhone(c.phone)} · son sipariş {c.lastOrderAt?.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</div></div>)}</div> : <p className="mt-3 text-muted">Henüz izinli ve 30 gündür gelmeyen müşteri yok.</p>}
             <div className="mt-4 border-t border-line pt-3 text-xs text-muted">Gözlenen veri: son 90 gün paket ortalaması <b className="text-ink-2">{tl(avgPackage)}</b>, izinli hedef <b className="text-ink-2">{targetCount}</b>. Henüz kampanya sonucu olmadığı için ek ciro vaadi üretilmiyor; yeterli sonuç birikince Laya kanıtlı bir tahmin aralığı çıkaracak.</div>
           </div>
