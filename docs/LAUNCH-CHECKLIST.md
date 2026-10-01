@@ -1,0 +1,60 @@
+# ÇabukPOS piyasaya çıkış kapısı
+
+Bu liste, uygulamanın teknik olarak hazır olmasını gerçek mağaza açılışından ayırır.
+Her kutu kanıtla kapatılmadan genel satışa geçilmez.
+
+## Go / no-go
+
+### Teknik kapı — mevcut durum
+
+- [x] `npm ci` temiz kurulum: 0 vulnerability
+- [x] `npm test`: 148/148
+- [x] `npm run qa:static`: lint + typecheck
+- [x] `npm run build`: Webpack production build
+- [x] Production `/api/health` ve `/api/ready`: 200
+- [x] Production kritik anonim/korumalı uçlar: runtime audit 8/8
+- [x] Neon migration ve FORCE RLS doğrulaması
+- [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
+- [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
+
+### Canlı işletme kapısı — açılıştan önce zorunlu
+
+- [ ] Production `AGENT_ALERT_WEBHOOK_URL` tanımlandı; başarısız heartbeat alarmı görüldü
+- [ ] Günlük backup scheduler çalışıyor; son dump `npm run db:backup:verify` ile doğrulandı
+- [ ] İzole staging veritabanına gerçek restore yapıldı ve uygulama açıldı
+- [ ] `BILLING_PROVIDER=paytr` için canlı PayTR anahtarları ve bildirim URL'si doğrulandı
+- [ ] Gerçek e-Arşiv entegratörü seçildi; sandbox kesim, iptal ve e-posta testleri tamamlandı
+- [ ] Bilgi fişi ile mali belge ayrımı mali müşavir tarafından onaylandı
+- [ ] ÖKC kullanım/entegrasyon sorumluluğu işletme bazında yazılı olarak netleştirildi
+- [ ] `cabukpos.com` DNS, SSL, e-posta ve yasal iletişim adresleri doğrulandı
+- [ ] KVKK, kullanım şartları, mesafeli satış ve iade metinleri onaylandı
+
+### Mağaza pilot kapısı — ilk müşteriyle
+
+- [ ] Windows cihazda agent kurulumu ve otomatik başlatma
+- [ ] Termal yazıcıdan bilgi fişi ve iade tutanağı çıktısı
+- [ ] Barkod okuyucu, para çekmecesi ve terazi
+- [ ] İnternet kesintisi → satış → bağlantı dönüşü → eşitleme
+- [ ] Aynı mağazada ikinci kasa/garson cihazı ve LAN merkez akışı
+- [ ] Gün sonu, vardiya farkı, rapor ve veri export
+- [ ] İlk müşteride en az 3 iş günü hata/alert takibi
+
+## Yayına alma sırası
+
+1. Staging restore ve donanım provası.
+2. PayTR/e-Arşiv sandbox doğrulaması.
+3. Tek pilot işletme ile sınırlı açılış.
+4. Pilot sonunda backup, audit log, bekleyen offline kuyruk ve ödeme mutabakatı kontrolü.
+5. Kritik hata yoksa satışa açılış; ilk hafta günlük operasyon gözden geçirmesi.
+
+## Go kararı için saklanacak kanıt
+
+- deployment URL'si ve Ready kaydı
+- `npm run audit:runtime` çıktısı
+- backup dosyası, restore sonucu ve tarih
+- PayTR/e-Arşiv test numaraları
+- donanım test formu ve pilot işletme kabulü
+- mali müşavir/hukuk onayı
+
+Production sırları repoya veya bu belgeye yazılmaz; yalnız Vercel/Neon ve güvenli
+operasyon kasasında tutulur.

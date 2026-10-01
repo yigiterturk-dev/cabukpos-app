@@ -1,6 +1,7 @@
 # ÇabukPOS operasyon notları
 
 Bu belge canlı çalıştırma sınırlarını ve geri dönüş adımlarını tek yerde tutar.
+Piyasaya çıkıştaki tüm teknik/işletme onay kutuları için ayrıca `docs/LAUNCH-CHECKLIST.md` kullanılır.
 
 ## Dağıtım öncesi kapı
 
