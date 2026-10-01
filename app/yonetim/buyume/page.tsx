@@ -78,7 +78,7 @@ export default async function Buyume({ searchParams }: { searchParams: Promise<{
           </div>
         </div>
       </Card>
-      {campaigns.length > 0 && <Card className="mt-6 overflow-hidden"><div className="border-b border-line px-5 py-4"><h2 className="font-semibold">Taslaklar</h2></div><div className="divide-y divide-line">{campaigns.map((c) => <div key={c.id} className="flex flex-wrap items-baseline gap-3 px-5 py-4 text-sm"><span className="font-medium">{c.name}</span><span className="text-muted">{c.message}</span><span className="ml-auto text-xs text-muted">Hedef: {c.audienceCount} · {c.createdAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span></div>)}</div></Card>}
+      {campaigns.length > 0 && <Card className="mt-6 overflow-hidden"><div className="border-b border-line px-5 py-4"><h2 className="font-semibold">Taslaklar</h2></div><div className="divide-y divide-line">{campaigns.map((c) => <Link key={c.id} href={`/yonetim/buyume/${c.id}`} className="flex flex-wrap items-baseline gap-3 px-5 py-4 text-sm hover:bg-surface-2"><span className="font-medium">{c.name}</span><span className="text-muted">{c.message}</span><span className="ml-auto text-xs text-muted">Hedef: {c.audienceCount} · {c.createdAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span></Link>)}</div></Card>}
       <div className="mt-6 rounded-[14px] border border-line bg-surface-2 p-4 text-sm text-ink-2"><b>İlk fırsat:</b> Müşteriler ekranındaki 30 gündür gelmeyen müşteri sayısından başlayabilirsin. Tam kampanya ve gönderim özellikleri ayrı Büyüme Merkezi hizmeti olarak açılacak.<ArrowRight aria-hidden className="ml-1 inline size-4" /></div>
     </>
   );
