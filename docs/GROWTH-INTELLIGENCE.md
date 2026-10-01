@@ -41,3 +41,8 @@ aralık ve güven skoru ancak ölçülen sonuçlardan hesaplanır.
 
 Laya entegrasyonu ayrı bir adaptör olarak tasarlanır. Sağlayıcı yoksa Büyüme
 Merkezi segment, kanıt ve taslak üretmeye devam eder; satış akışı etkilenmez.
+
+Laya bağlantısı hazır olana kadar `lib/growth/advisor.ts` içindeki baseline advisor
+yalnız gözlenen metriklerden içgörü üretir. Bu fallback hiçbir dönüşüm yüzdesi veya
+ciro vaadi uydurmaz; amaç Laya sözleşmesini gerçek sonuç verisi gelene kadar
+güvenli biçimde çalışır tutmaktır.
