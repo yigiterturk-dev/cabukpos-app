@@ -9,17 +9,17 @@ export function loadFeaturePack(tenantId: string, vertical: FeaturePackInput["ve
     const d90 = sql<Date>`now() - interval '90 days'`;
     const [customers, packageSales, campaigns, events] = await Promise.all([
       Promise.all([
-        tx.select({ n: count() }).from(C),
-        tx.select({ n: count() }).from(C).where(eq(C.marketingConsent, true)),
-        tx.select({ n: count() }).from(C).where(gte(C.lastOrderAt, d30)),
-        tx.select({ n: count() }).from(C).where(and(isNotNull(C.lastOrderAt), lt(C.lastOrderAt, d30))),
-        tx.select({ n: count() }).from(C).where(and(eq(C.marketingConsent, true), isNotNull(C.lastOrderAt), lt(C.lastOrderAt, d30))),
-        tx.select({ n: count() }).from(C).where(gte(C.createdAt, d30)),
+        tx.select({ n: count() }).from(C).where(eq(C.tenantId, tenantId)),
+        tx.select({ n: count() }).from(C).where(and(eq(C.tenantId, tenantId), eq(C.marketingConsent, true))),
+        tx.select({ n: count() }).from(C).where(and(eq(C.tenantId, tenantId), gte(C.lastOrderAt, d30))),
+        tx.select({ n: count() }).from(C).where(and(eq(C.tenantId, tenantId), isNotNull(C.lastOrderAt), lt(C.lastOrderAt, d30))),
+        tx.select({ n: count() }).from(C).where(and(eq(C.tenantId, tenantId), eq(C.marketingConsent, true), isNotNull(C.lastOrderAt), lt(C.lastOrderAt, d30))),
+        tx.select({ n: count() }).from(C).where(and(eq(C.tenantId, tenantId), gte(C.createdAt, d30))),
       ]),
       tx.select({ orders: count(), gross: sql<number>`coalesce(sum(${S.total}), 0)::int`, avgBasket: sql<number>`coalesce(avg(${S.total}), 0)::int` }).from(S)
-        .where(and(eq(S.channel, "paket"), eq(S.status, "kapandi"), gte(S.createdAt, d90))),
-      tx.select({ n: count() }).from(schema.growthCampaigns),
-      tx.select({ sent: sql<number>`count(*) filter (where ${E.type} = 'sent')::int`, delivered: sql<number>`count(*) filter (where ${E.type} = 'delivered')::int`, converted: sql<number>`count(*) filter (where ${E.type} = 'converted')::int`, revenue: sql<number>`coalesce(sum(${E.amount}) filter (where ${E.type} = 'converted'), 0)::int` }).from(E),
+        .where(and(eq(S.tenantId, tenantId), eq(S.channel, "paket"), eq(S.status, "kapandi"), gte(S.createdAt, d90))),
+      tx.select({ n: count() }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.tenantId, tenantId)),
+      tx.select({ sent: sql<number>`count(*) filter (where ${E.type} = 'sent')::int`, delivered: sql<number>`count(*) filter (where ${E.type} = 'delivered')::int`, converted: sql<number>`count(*) filter (where ${E.type} = 'converted')::int`, revenue: sql<number>`coalesce(sum(${E.amount}) filter (where ${E.type} = 'converted'), 0)::int` }).from(E).where(eq(E.tenantId, tenantId)),
     ]);
     return buildFeaturePack({
       generatedAt: new Date().toISOString(), vertical,
