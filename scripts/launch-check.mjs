@@ -29,6 +29,21 @@ if (billing === "paytr") {
   checks.push({ ok: false, label: "Abonelik sağlayıcısı", detail: `desteklenmeyen değer: ${billing}` });
 }
 
+const advisorUrl = process.env.GROWTH_ADVISOR_URL?.trim();
+const advisorToken = process.env.GROWTH_ADVISOR_TOKEN?.trim();
+if (advisorUrl || advisorToken) {
+  let ok = Boolean(advisorUrl && advisorToken);
+  if (ok) {
+    try {
+      const parsed = new URL(advisorUrl);
+      ok = !production || parsed.protocol === "https:";
+    } catch {
+      ok = false;
+    }
+  }
+  checks.push({ ok, label: "Growth/Laya danışmanı", detail: ok ? "URL + token tanımlı" : "URL/token birlikte ve production'da HTTPS olmalı" });
+}
+
 const failed = checks.filter((check) => !check.ok);
 for (const check of checks) console.log(`${check.ok ? "OK" : "MISS"} ${check.label}: ${check.detail}`);
 
