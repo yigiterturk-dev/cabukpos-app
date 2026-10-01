@@ -309,7 +309,7 @@ components:
       properties:
         type: { enum: [sent, delivered, converted, opt_out, failed] }
         externalId: { type: string, minLength: 1, maxLength: 200 }
-        recipientRef: { type: string, pattern: '^sha256:[a-f0-9]{64}$', description: PII içermeyen sabit alıcı referansı; oran hesabı için sent/delivered/converted olaylarında zorunlu }
+        recipientRef: { type: string, pattern: '^hmac-sha256:[a-f0-9]{64}$', description: Growth anahtarıyla üretilmiş PII içermeyen sabit alıcı referansı; oran hesabı için sent/delivered/converted olaylarında zorunlu }
         amount: { type: integer, minimum: 0, maximum: 1000000000, description: Kuruş; yalnız converted için kullanılır }
         customerId: { type: string, format: uuid, description: Yalnız opt_out için tenant içi UUID }
     SignedWebhookEventRequest:
@@ -320,7 +320,7 @@ components:
         campaignId: { type: string, format: uuid }
         type: { enum: [sent, delivered, converted, opt_out, failed] }
         externalId: { type: string, minLength: 1, maxLength: 200 }
-        recipientRef: { type: string, pattern: '^sha256:[a-f0-9]{64}$', description: PII içermeyen sabit alıcı referansı; oran hesabı için sent/delivered/converted olaylarında zorunlu }
+        recipientRef: { type: string, pattern: '^hmac-sha256:[a-f0-9]{64}$', description: Growth anahtarıyla üretilmiş PII içermeyen sabit alıcı referansı; oran hesabı için sent/delivered/converted olaylarında zorunlu }
         amount: { type: integer, minimum: 0, maximum: 1000000000, description: Kuruş; yalnız converted için kullanılır }
         customerId: { type: string, format: uuid, description: Yalnız opt_out için tenant içi UUID }
     EventCreatedResponse:

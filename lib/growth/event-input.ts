@@ -3,7 +3,7 @@ import { z } from "zod";
 export const growthEventInput = z.object({
   type: z.enum(["sent", "delivered", "converted", "opt_out", "failed"]),
   externalId: z.string().trim().min(1).max(200),
-  recipientRef: z.string().regex(/^sha256:[a-f0-9]{64}$/, "recipientRef sha256 referansı olmalı").optional(),
+  recipientRef: z.string().regex(/^hmac-sha256:[a-f0-9]{64}$/, "recipientRef hmac-sha256 referansı olmalı").optional(),
   amount: z.number().int().min(0).max(1_000_000_000).optional(),
   customerId: z.string().uuid().optional(),
 }).superRefine((value, ctx) => {

@@ -13,7 +13,8 @@ if (target.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(target.
 if (target.hostname === "cabukpos-app.vercel.app") throw new Error("Smoke testi production alias'ında çalıştırılamaz.");
 if (!/^[-0-9a-f]{36}$/i.test(campaignId)) throw new Error("GROWTH_SMOKE_CAMPAIGN_ID UUID olmalı.");
 
-const body = JSON.stringify({ campaignId, type: "delivered", externalId: "smoke-" + Date.now() });
+const recipientRef = "hmac-sha256:" + createHmac("sha256", key).update("smoke-recipient").digest("hex");
+const body = JSON.stringify({ campaignId, type: "delivered", externalId: "smoke-" + Date.now(), recipientRef });
 const timestamp = String(Math.floor(Date.now() / 1000));
 const signature = createHmac("sha256", key).update(timestamp + "." + body).digest("hex");
 const request = () => fetch(target, {
