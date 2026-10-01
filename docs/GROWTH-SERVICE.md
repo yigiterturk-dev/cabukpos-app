@@ -9,20 +9,26 @@ hizmettir: bu veriyi müşteri geri kazanımı ve ciro artışı için aksiyona 
 POS içindeki `/yonetim/buyume` sayfası ürünün teaser ve aktivasyon kapısıdır.
 Kasiyer ekranına kampanya karmaşası eklenmez.
 
-## İlk ücretli paket
+## İlk ücretli paket — doğrulanmış MVP kapsamı
 
-- **Geri kazanım:** 30/60/90 gündür sipariş vermeyen müşteri segmentleri.
-- **Kampanya:** tek kullanımlık teklif, kanal, başlangıç/bitiş ve izin kaydı.
-- **Gönderim:** WhatsApp/SMS/e-posta sağlayıcısı adaptörleri; sağlayıcı yoksa gönderim yok.
-- **Ölçüm:** kampanya kodu veya takip bağlantısıyla sipariş, ciro ve maliyet.
-- **Öneri:** tekrar sipariş, sepet büyütme ve düşük performanslı ürün fırsatları.
+- **Geri kazanım:** 30 gündür gelmeyenler, son 30 günde aktif olanlar ve tüm izinli
+  müşteriler. 60/90 gün segmentleri sonraki ürün kapısıdır.
+- **Kampanya:** tenant içinde taslak adı, mesajı ve segmenti; gönderim kapalıdır.
+  Kanal, başlangıç/bitiş ve otomatik zamanlama henüz satış vaadi değildir.
+- **Gönderim:** signed webhook ve provider sözleşmesi hazırdır; WhatsApp/SMS/e-posta
+  adaptörü, sandbox provası ve açık işletme onayı olmadan hiçbir mesaj gönderilmez.
+- **Ölçüm:** idempotent sent/delivered/converted/failed/opt_out olayları,
+  anahtarlı recipientRef ve kampanya ciro metrikleri.
+- **Öneri:** yalnız gözlenen feature-pack verisine dayalı baseline/Laya içgörüsü;
+  kanıtsız ek ciro veya dönüşüm garantisi verilmez.
 
 ## Mimari sözleşme
 
 - Kaynak gerçeklik ÇabukPOS veritabanıdır; Büyüme Merkezi tenant kimliğini
   kendisi üretmez.
-- Büyüme servisi yalnız gerekli alanları alır: müşteri kimliği, izin durumu,
-  telefon/e-posta, son sipariş zamanı, sipariş toplamı ve kampanya sonucu.
+- Büyüme API'si yalnız gerekli PII'siz özetleri ve sağlayıcı eşleştirmesi için
+  growth anahtarıyla üretilmiş hmac-sha256 recipientRef değerlerini alır; ham
+  telefon, e-posta, ad ve müşteri UUID'si harici API'ye çıkmaz.
 - Her sorgu ve gönderim tenant sınırıyla korunur; müşteri verisi tenantlar
   arasında karşılaştırılmaz.
 - Gönderimler idempotent, rate-limit'li ve audit log'ludur.
@@ -39,4 +45,5 @@ Kasiyer ekranına kampanya karmaşası eklenmez.
 - Gönderim başına maliyet ve opt-out oranı
 
 İlk sürümde tam otomatik kampanya göndermek yerine segment + taslak + ölçüm
-ile başlanır. Gerçek gönderim sağlayıcısı ve yasal izin doğrulanmadan açılmaz.
+ile başlanır. Gerçek gönderim sağlayıcısı, staging smoke kanıtı, açık işletme
+onayı ve yasal izin doğrulanmadan açılmaz.
