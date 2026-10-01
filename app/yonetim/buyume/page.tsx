@@ -65,7 +65,7 @@ export default async function Buyume({ searchParams }: { searchParams: Promise<{
           <div className="rounded-xl border border-line bg-surface-2 p-4 text-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-2"><b>Hedef önizleme</b><span className="text-muted">{targetCount} izinli müşteri</span></div>
             {targetPreview.length > 0 ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{targetPreview.map((c) => <div key={c.phone} className="rounded-lg border border-line bg-white px-3 py-2"><div className="font-medium">{c.name}</div><div className="text-xs text-muted">{maskPhone(c.phone)} · son sipariş {c.lastOrderAt?.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</div></div>)}</div> : <p className="mt-3 text-muted">Henüz izinli ve 30 gündür gelmeyen müşteri yok.</p>}
-            <div className="mt-4 border-t border-line pt-3 text-xs text-muted">Son 90 gün paket ortalaması: <b className="text-ink-2">{tl(avgPackage)}</b>. Dönüşüm senaryosu: %5 → <b className="text-ink-2">{tl(Math.round(targetCount * avgPackage * 0.05))}</b>, %10 → <b className="text-ink-2">{tl(Math.round(targetCount * avgPackage * 0.10))}</b> tahmini ek ciro.</div>
+            <div className="mt-4 border-t border-line pt-3 text-xs text-muted">Gözlenen veri: son 90 gün paket ortalaması <b className="text-ink-2">{tl(avgPackage)}</b>, izinli hedef <b className="text-ink-2">{targetCount}</b>. Henüz kampanya sonucu olmadığı için ek ciro vaadi üretilmiyor; yeterli sonuç birikince Laya kanıtlı bir tahmin aralığı çıkaracak.</div>
           </div>
         </div>
       </Card>
