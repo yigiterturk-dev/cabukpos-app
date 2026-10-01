@@ -21,6 +21,22 @@ tenant ve rate-limit hataları sırasıyla `401`, `403`, `403` ve `429` olabilir
 Tenant'a ait toplu sayıları döndürür. `tenantId`, ad, telefon, e-posta, müşteri
 ID'si ve ham sipariş satırı içermez.
 
+## Kampanya taslağı
+
+`POST /api/growth/campaigns`
+
+Harici Büyüme Merkezi'nin ÇabukPOS içinde PII taşımadan taslak oluşturmasını
+sağlar. Gönderim yapmaz; hedef sayısını tenant içinde, yalnız iletişim izni olan
+segmentten hesaplar.
+
+```json
+{ "name": "30 gün geri kazanım", "message": "Sizi özledik…", "segment": "dormant_30" }
+```
+
+Başarı `201` ile `{ "id": "<uuid>", "audienceCount": 12, "status": "taslak" }`
+döner. Segmentler `dormant_30`, `active_30`, `all_consented` değerleridir.
+Mesaj gönderimi ve sağlayıcı bağlantısı bu uçta yoktur.
+
 ```json
 {
   "schemaVersion": 1,

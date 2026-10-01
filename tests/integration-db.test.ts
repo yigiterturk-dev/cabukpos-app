@@ -11,6 +11,7 @@ const { loadFeaturePack } = await import("@/lib/growth/feature-pack-data");
 const { istToday } = await import("@/lib/core/report");
 const { GET } = await import("@/app/api/v1/stats/daily/route");
 const { recordCampaignEvent } = await import("@/lib/growth/events");
+const { createGrowthCampaignDraft } = await import("@/lib/growth/campaigns");
 const { eq, like, sql } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "M9C-T", vertical: "restoran" }).returning();
@@ -124,4 +125,12 @@ test("growth event intake: tenant sınırı ve externalId idempotency", async ()
   assert.deepEqual(updatedCustomer, { consent: false, source: "provider_opt_out" });
   const [count] = await withTenant(t.id, (tx) => tx.select({ n: sql<number>`count(*)::int` }).from(schema.growthCampaignEvents).where(eq(schema.growthCampaignEvents.campaignId, campaign.id)));
   assert.equal(count.n, 2);
+});
+
+test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", async () => {
+  await withTenant(t.id, (tx) => tx.insert(schema.customers).values({ tenantId: t.id, phone: "905550000002", name: "İzinli hedef", marketingConsent: true, lastOrderAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) }));
+  const draft = await withTenant(t.id, (tx) => createGrowthCampaignDraft(tx, { tenantId: t.id, name: "Geri kazanım", message: "Sizi özledik", segment: "dormant_30", actor: "integration:test" }));
+  assert.equal(draft.audienceCount, 1);
+  const [row] = await withTenant(t.id, (tx) => tx.select({ status: schema.growthCampaigns.status, channel: schema.growthCampaigns.channel }).from(schema.growthCampaigns).where(eq(schema.growthCampaigns.id, draft.id)));
+  assert.deepEqual(row, { status: "taslak", channel: "manual" });
 });

@@ -47,6 +47,14 @@ const checks = [
     expectedText: "401",
   },
   {
+    name: "anonymous growth campaign protection",
+    path: "/api/growth/campaigns",
+    method: "POST",
+    body: JSON.stringify({ name: "runtime-audit", message: "audit", segment: "dormant_30" }),
+    expected: async (response) => response.status === 401,
+    expectedText: "401",
+  },
+  {
     name: "anonymous growth event protection",
     path: "/api/growth/campaigns/00000000-0000-0000-0000-000000000000/events",
     method: "POST",
