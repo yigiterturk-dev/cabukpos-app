@@ -178,3 +178,18 @@ Staging üzerinde imza, ilk kabul ve duplicate idempotency için şu komut
 Komut production alias'ını reddeder, anahtarı ekrana yazmaz ve yalnızca
 staging/localhost hedeflerine izin verir. Smoke testi iki ölçüm isteği yazdığı
 için production veritabanında çalıştırılmamalıdır.
+
+RecipientRef ile opt-out akışını da staging’de doğrulamak için kampanya sahibi
+onaylı ve en az bir izinli hedefi olan kampanyada ayrıca iki açık onay ver:
+
+    ALLOW_GROWTH_SMOKE=1 \
+    ALLOW_GROWTH_OPT_OUT_SMOKE=1 \
+    GROWTH_SMOKE_OPT_OUT=1 \
+    GROWTH_SMOKE_BASE=https://staging.example.com \
+    GROWTH_SMOKE_KEY=cpk_... \
+    GROWTH_SMOKE_CAMPAIGN_ID=staging-kampanya-uuid \
+    npm run growth:webhook:smoke
+
+Bu varyant audience yanıtında PII/UUID bulunmadığını ve recipientRef ile opt-out
+olayının `201` döndüğünü kontrol eder; staging hedef müşterisinin iznini bilerek
+kapatır.
