@@ -1,4 +1,4 @@
-const baseUrl = (process.env.BASE || "https://cabukpos-app.vercel.app").replace(/\/$/, "");
+const baseUrl = (process.env.BASE || "http://localhost:3800").replace(/\/$/, "");
 
 const checks = [
   {
