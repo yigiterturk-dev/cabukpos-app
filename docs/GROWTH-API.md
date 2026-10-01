@@ -117,7 +117,10 @@ Growth anahtarı sahibi, kampanyanın izinli hedeflerini sayfalı olarak yalnız
 hmac-sha256 recipientRef değerleri halinde okuyabilir. Telefon, ad, müşteri UUID'si
 ve mesaj dönmez. recipientRef, aynı growth anahtarıyla sağlayıcının kendi
 normalize telefonundan ürettiği referansla eşleştirilir. limit en fazla 500'dür;
-nextCursor ile devam edilir.
+nextCursor ile devam edilir. Normalizasyon: rakam olmayan karakterleri sil;
+10 haneli ve 0 ile başlamayan numaraya 90 ekle; 0 ile başlayan 11 haneli
+numarada ilk 0'ı 90 ile değiştir; 90 ile başlayan 12 haneli numarayı olduğu
+gibi kullan. Diğer biçimler reddedilir.
 
 ## Sağlayıcı webhook'u
 
