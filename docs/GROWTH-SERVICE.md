@@ -27,6 +27,7 @@ Kasiyer ekranına kampanya karmaşası eklenmez.
   arasında karşılaştırılmaz.
 - Gönderimler idempotent, rate-limit'li ve audit log'ludur.
 - KVKK iletişim izni yoksa pazarlama gönderimi yapılmaz; opt-out kalıcıdır.
+- İzin değişiklikleri eski/yeni durum, kaynak ve aktörle tenant audit log'una yazılır.
 - POS bağlantısı kesilse bile satış sürer; Büyüme Merkezi senkronizasyonu
   gecikir, satış akışını kilitlemez.
 

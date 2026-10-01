@@ -65,8 +65,10 @@ export async function saveCustomer(id: string, _: DeliveryState, form: FormData)
   const note = str(form, "note").slice(0, 300) || null;
   const marketingConsent = form.get("marketingConsent") === "on";
   await withTenant(a.tenantId, async (tx) => {
+    const [before] = await tx.select({ marketingConsent: schema.customers.marketingConsent, marketingConsentAt: schema.customers.marketingConsentAt, marketingConsentSource: schema.customers.marketingConsentSource }).from(schema.customers).where(eq(schema.customers.id, id)).limit(1);
+    if (!before) throw new Error("Müşteri bulunamadı.");
     await tx.update(schema.customers).set({ name, note, marketingConsent, marketingConsentAt: marketingConsent ? new Date() : null, marketingConsentSource: marketingConsent ? "manual" : null }).where(eq(schema.customers.id, id));
-    await audit(tx, a.tenantId, `user:${a.id}`, "customer.update", { id });
+    await audit(tx, a.tenantId, `user:${a.id}`, "customer.update", { id, marketingConsentBefore: before.marketingConsent, marketingConsentAfter: marketingConsent, consentChanged: before.marketingConsent !== marketingConsent, consentSourceBefore: before.marketingConsentSource, consentSourceAfter: marketingConsent ? "manual" : null });
   });
   revalidatePath("/yonetim/musteriler");
   return { savedAt: Date.now() };
