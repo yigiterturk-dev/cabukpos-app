@@ -18,7 +18,7 @@ const tl = (k: number) => `${(k / 100).toLocaleString("tr-TR", { minimumFraction
 
 const modules = [
   { icon: Repeat2, title: "Geri kazanım listeleri", text: "30 gündür gelmeyen müşterileri bul, doğru zamanda tekrar davet et." },
-  { icon: MessageCircle, title: "Kampanya gönderimi", text: "Hazır mesaj şablonlarıyla WhatsApp, SMS veya e-posta kampanyaları oluştur." },
+  { icon: MessageCircle, title: "Kampanya taslakları", text: "Hazır mesaj taslaklarını planla; gönderim ayrı Büyüme Merkezi hizmeti olarak açılır." },
   { icon: Target, title: "Dönüşüm takibi", text: "Hangi kampanya kaç sipariş ve ne kadar ciro getirdiğini ölç." },
 ];
 
