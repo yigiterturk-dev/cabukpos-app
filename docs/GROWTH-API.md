@@ -126,3 +126,18 @@ reddedilir. Gövde 64 KB ile sınırlıdır ve olay externalId ile idempotenttir
 - Feature pack ve advisor okumaları tenant audit log'una yazılır.
 - Event yazımları tenant audit log'una yazılır; token, ham yanıt ve müşteri telefonu yazılmaz.
 - Tenantlar arası benchmark veya ham veri paylaşımı bu MVP'nin dışındadır.
+
+## Sandbox smoke provası
+
+Staging üzerinde imza, ilk kabul ve duplicate idempotency için şu komut
+çalıştırılabilir:
+
+    ALLOW_GROWTH_SMOKE=1 \
+    GROWTH_SMOKE_BASE=https://staging.example.com \
+    GROWTH_SMOKE_KEY=cpk_... \
+    GROWTH_SMOKE_CAMPAIGN_ID=staging-kampanya-uuid \
+    npm run growth:webhook:smoke
+
+Komut production alias'ını reddeder, anahtarı ekrana yazmaz ve yalnızca
+staging/localhost hedeflerine izin verir. Smoke testi iki ölçüm isteği yazdığı
+için production veritabanında çalıştırılmamalıdır.
