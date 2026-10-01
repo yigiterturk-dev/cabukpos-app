@@ -25,6 +25,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [ ] Günlük backup scheduler çalışıyor; son dump `npm run db:backup:verify` ile doğrulandı
 - [ ] İzole staging veritabanına gerçek restore yapıldı ve uygulama açıldı
 - [ ] Growth recipient_ref/approval şeması production'a uygulandı; db:growth:verify, owner approval 403/200 akışı ve signed webhook staging'de doğrulandı
+- [ ] Growth scope'lu key ile `RUNTIME_GROWTH_KEY=... BASE=<production> npm run audit:runtime` authenticated feature-pack/insights/campaign contract'ı geçti
 - [ ] `BILLING_PROVIDER=paytr` için canlı PayTR anahtarları ve bildirim URL'si doğrulandı
 - [ ] Gerçek e-Arşiv entegratörü seçildi; sandbox kesim, iptal ve e-posta testleri tamamlandı
 - [ ] Bilgi fişi ile mali belge ayrımı mali müşavir tarafından onaylandı
