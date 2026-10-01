@@ -8,6 +8,7 @@
 - API sözleşmesi docs/growth-api.openapi.yaml; operasyon/kullanım sınırları docs/GROWTH-API.md ve docs/GROWTH-SERVICE.md.
 - Kanıt: 162/162 test, lint/typecheck, production build, webhook imza testleri, DB tenant/idempotency/audience testleri ve runtime audit'te 16 anonim/korumalı kontrol tanımı.
 - Açık canlı kapılar: gerçek deployment doğrulaması, provider sandbox teslimat/opt-out provası, backup-restore provası ve hukuki/mali müşavir onayı. Bunlar repo testiyle kanıtlanmış sayılmaz.
+- Canlı alias kontrolü (2026-10-01): health/ready 200 ve mevcut korumalı uçlar geçiyor; Growth feature-pack, insights, campaign, audience, event ve signed webhook uçları 404. Branch deploy edilmediği için canlı alias eski deployment'ı gösteriyor; Growth canlı kabulü yapılmadı.
 
 Spec: docs/superpowers/specs/2026-09-28-cabukpos-pos-design.md · Planlar: docs/superpowers/plans/2026-09-28-cabukpos-m1-cekirdek-kasa.md, …-m2-cevrimdisi.md, …-m3-market.md
 Eski (YanındaPOS tabanlı) kod: git etiketi `yanindapos-tabanli-v0`. Bu dal (`pos-cekirdek`) main'e, production kurulumu (Neon rolü + env) kararlaştırılınca birleşir.
