@@ -162,6 +162,8 @@ test("growth campaign draft: yalnız izinli hedefleri tenant içinde sayar", asy
   const pendingAudience = await withTenant(t.id, (tx) => loadGrowthCampaignAudience(tx, { tenantId: t.id, campaignId: draft.id, secret: "test-growth-key", limit: 1, actor: "integration:test" }));
   assert.deepEqual(pendingAudience, { error: "campaign_not_approved" });
   const [owner] = await withTenant(t.id, (tx) => tx.insert(schema.users).values({ tenantId: t.id, email: "growth-owner-" + crypto.randomUUID() + "@test", name: "Growth Owner", passwordHash: "x" }).returning({ id: schema.users.id }));
+  const [otherTenantOwner] = await withTenant(t2.id, (tx) => tx.insert(schema.users).values({ tenantId: t2.id, email: "growth-other-owner-" + crypto.randomUUID() + "@test", name: "Other Owner", passwordHash: "x" }).returning({ id: schema.users.id }));
+  assert.equal(await withTenant(t.id, (tx) => approveGrowthCampaign(tx, { tenantId: t.id, campaignId: draft.id, approvedBy: otherTenantOwner.id, actor: "integration:test" })), null);
   assert.ok(await withTenant(t.id, (tx) => approveGrowthCampaign(tx, { tenantId: t.id, campaignId: draft.id, approvedBy: owner.id, actor: "user:" + owner.id })));
   assert.equal(await withTenant(t.id, (tx) => approveGrowthCampaign(tx, { tenantId: t.id, campaignId: draft.id, approvedBy: owner.id, actor: "user:" + owner.id })), null);
   const audience = await withTenant(t.id, (tx) => loadGrowthCampaignAudience(tx, { tenantId: t.id, campaignId: draft.id, secret: "test-growth-key", limit: 1, actor: "integration:test" }));
