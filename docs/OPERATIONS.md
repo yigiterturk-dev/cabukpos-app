@@ -6,9 +6,8 @@ Bu belge canlı çalıştırma sınırlarını ve geri dönüş adımlarını te
 
 1. `npm ci`
 2. `npm test`
-3. `npm run lint`
-4. `npx tsc --noEmit`
-5. `npm run build`
+3. `npm run qa:static`
+4. `npm run build`
 6. Şema değiştiyse önce staging/test veritabanında `npm run db:push` ve
    `npm run db:rls` çalıştırın; ardından RLS kontrolünü yapın.
 7. Canlıda `DATABASE_URL` uygulama rolü, `MIGRATE_DATABASE_URL` ise yalnız

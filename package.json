@@ -9,9 +9,11 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "npm run agent:build && next build",
+    "build": "npm run agent:build && next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "qa:static": "npm run lint && npm run typecheck",
     "test": "node --import ./tests/ts-resolve.mjs --test \"tests/*.test.ts\"",
     "e2e:m9a": "node --env-file-if-exists=.env.local e2e/m9a.mjs",
     "e2e:m8": "node --env-file-if-exists=.env.local e2e/m8.mjs",
@@ -28,6 +30,9 @@
     "db:rls:test": "MIGRATE_DATABASE_URL=${TEST_DATABASE_URL:-postgres://yigiterturk@localhost:5432/cabukpos_test} node scripts/db-rls.mjs",
     "agent:build": "esbuild agent/src/main.ts --bundle --platform=node --target=node20 --format=cjs --minify --legal-comments=none --outfile=public/indir/cabukpos-agent.cjs --alias:@=.",
     "agent:dev": "node --import ./tests/ts-resolve.mjs agent/src/main.ts"
+  },
+  "engines": {
+    "node": ">=20 <23"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

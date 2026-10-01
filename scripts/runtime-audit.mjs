@@ -67,6 +67,7 @@ for (const check of checks) {
   try {
     const response = await fetch(`${baseUrl}${check.path}`, {
       redirect: check.redirect || "follow",
+      signal: AbortSignal.timeout(10_000),
       headers: { "user-agent": "cabukpos-runtime-audit/1.0" },
     });
     const passed = await check.expected(response);
