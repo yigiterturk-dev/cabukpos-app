@@ -1,7 +1,9 @@
 import { and, count, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
-import { schema, withTenant } from "@/db";
+import { schema, getDb, withTenant } from "@/db";
 import { getAdmin } from "@/lib/auth/session";
 import { buildFeaturePack } from "@/lib/growth/feature-pack";
+import { keyFromRequest } from "@/lib/integrations/keys";
+import { hit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,10 +11,15 @@ export const dynamic = "force-dynamic";
  * Laya/harici Büyüme Merkezi adaptörü için PII'siz tenant özeti.
  * İsim, telefon, müşteri/satış/campaign kimliği ve satır detayı döndürmez.
  */
-export async function GET() {
+export async function GET(req: Request) {
   const a = await getAdmin();
-  if (!a) return Response.json({ error: "Kimlik doğrulama gerekli." }, { status: 401 });
-  const result = await withTenant(a.tenantId, async (tx) => {
+  const key = a ? null : await keyFromRequest(req);
+  if (!a && !key) return Response.json({ error: "Kimlik doğrulama gerekli." }, { status: 401 });
+  if (key && (await hit(`apikey:growth:${key.id}`, 1)) > 60) return Response.json({ error: "rate_limited" }, { status: 429 });
+  const tenantId = a?.tenantId ?? key!.tenantId;
+  const vertical = a?.vertical ?? (await getDb().select({ vertical: schema.tenants.vertical }).from(schema.tenants).where(eq(schema.tenants.id, tenantId)).limit(1))[0]?.vertical;
+  if (!vertical) return Response.json({ error: "tenant_not_found" }, { status: 401 });
+  const result = await withTenant(tenantId, async (tx) => {
     const C = schema.customers, S = schema.sales, E = schema.growthCampaignEvents;
     const d30 = sql<Date>`now() - interval '30 days'`;
     const d90 = sql<Date>`now() - interval '90 days'`;
@@ -35,5 +42,5 @@ export async function GET() {
       campaigns: { drafts: campaigns[0]?.n ?? 0, events: { sent: events[0]?.sent ?? 0, delivered: events[0]?.delivered ?? 0, converted: events[0]?.converted ?? 0, revenue: events[0]?.revenue ?? 0 } },
     };
   });
-  return Response.json(buildFeaturePack({ generatedAt: new Date().toISOString(), vertical: a.vertical, ...result }), { headers: { "Cache-Control": "no-store" } });
+  return Response.json(buildFeaturePack({ generatedAt: new Date().toISOString(), vertical, ...result }), { headers: { "Cache-Control": "no-store" } });
 }
