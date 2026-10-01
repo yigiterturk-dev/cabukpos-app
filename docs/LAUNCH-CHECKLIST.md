@@ -8,7 +8,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 ### Teknik kapı — mevcut durum
 
 - [x] `npm ci` temiz kurulum: 0 vulnerability
-- [x] `npm test`: 167/167
+- [x] `npm test`: 168/168
 - [x] `npm run qa:static`: lint + typecheck
 - [x] `npm run build`: Webpack production build
 - [x] Production `/api/health` ve `/api/ready`: 200
@@ -46,7 +46,8 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 `LAUNCH_ENV=production npm run launch:check` eksik ayarları kontrol eder; değerleri
 ekrana basmaz. Deployment rotalarını da doğrulamak için `APP_URL` tanımlı olarak
 `LAUNCH_RUNTIME_CHECK=1` eklenir; bu varyant health/ready ve korumalı Growth
-rotalarının 404 yerine beklenen auth yanıtını verdiğini test eder.
+rotalarının 404 yerine beklenen auth yanıtını verdiğini test eder. `RUNTIME_GROWTH_KEY`
+verilirse üç authenticated Growth contract kontrolü de eklenir.
 
 ## Yayına alma sırası
 
