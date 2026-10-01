@@ -28,6 +28,10 @@ tenantlarla birleştirmeden önce ayrıca anonim/toplu benchmark kurallarını u
 Laya bağlandığında `provider` alanı ve içgörü kaynağı değişir, tenant sözleşmesi
 değişmez. Her iki okuma da tenant audit log'una aktör, şema sürümü ve sağlayıcı/
 fallback bilgisiyle yazılır; token, ham yanıt ve PII yazılmaz.
+Harici gönderim sağlayıcısı mesajı kendisi gönderir; sonuçları yalnızca
+`POST /api/growth/campaigns/:id/events` ile growth anahtarı üzerinden ölçüm olayı
+olarak geri yazar. `externalId` kampanya içinde idempotenttir; müşteri kimliği
+almayan bu uç yalnızca izinli kampanya ölçümünü kabul eder.
 
 ## İlk sürümde yapılmayacaklar
 

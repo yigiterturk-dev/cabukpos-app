@@ -47,6 +47,14 @@ const checks = [
     expectedText: "401",
   },
   {
+    name: "anonymous growth event protection",
+    path: "/api/growth/campaigns/00000000-0000-0000-0000-000000000000/events",
+    method: "POST",
+    body: JSON.stringify({ type: "sent", externalId: "runtime-audit" }),
+    expected: async (response) => response.status === 401,
+    expectedText: "401",
+  },
+  {
     name: "fiscal cron protection",
     path: "/api/cron/fiscal",
     expected: async (response) => response.status === 401,
@@ -78,9 +86,11 @@ console.log(`Runtime audit: ${baseUrl}`);
 for (const check of checks) {
   try {
     const response = await fetch(`${baseUrl}${check.path}`, {
+      method: check.method || "GET",
+      body: check.body,
       redirect: check.redirect || "follow",
       signal: AbortSignal.timeout(10_000),
-      headers: { "user-agent": "cabukpos-runtime-audit/1.0" },
+      headers: { "user-agent": "cabukpos-runtime-audit/1.0", ...(check.body ? { "content-type": "application/json" } : {}) },
     });
     const passed = await check.expected(response);
     if (passed) {
