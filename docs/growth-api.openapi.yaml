@@ -63,6 +63,29 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '429': { $ref: '#/components/responses/RateLimited' }
+  /api/growth/campaigns/{campaignId}:
+    get:
+      summary: Get a PII-free campaign status and metrics
+      security:
+        - GrowthBearer: []
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Campaign metadata and measured rates
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CampaignStatusResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
   /api/growth/campaigns/{campaignId}/events:
     post:
       summary: Record an idempotent campaign measurement event
@@ -184,6 +207,33 @@ components:
         id: { type: string, format: uuid }
         audienceCount: { type: integer, minimum: 0 }
         status: { const: taslak }
+    CampaignStatusResponse:
+      type: object
+      required: [campaign, metrics]
+      properties:
+        campaign:
+          type: object
+          required: [id, segment, audienceCount, status, createdAt]
+          properties:
+            id: { type: string, format: uuid }
+            segment: { type: string }
+            audienceCount: { type: integer, minimum: 0 }
+            status: { enum: [taslak, arsiv] }
+            createdAt: { type: string, format: date-time }
+        metrics: { $ref: '#/components/schemas/CampaignMetrics' }
+    CampaignMetrics:
+      type: object
+      required: [sent, delivered, converted, optOut, failed, revenue, deliveryRate, conversionRate, optOutRate]
+      properties:
+        sent: { type: integer, minimum: 0 }
+        delivered: { type: integer, minimum: 0 }
+        converted: { type: integer, minimum: 0 }
+        optOut: { type: integer, minimum: 0 }
+        failed: { type: integer, minimum: 0 }
+        revenue: { type: integer, minimum: 0, description: Kuruş }
+        deliveryRate: { type: [number, 'null'], minimum: 0, maximum: 1 }
+        conversionRate: { type: [number, 'null'], minimum: 0, maximum: 1 }
+        optOutRate: { type: [number, 'null'], minimum: 0, maximum: 1 }
     CampaignEventRequest:
       type: object
       required: [type, externalId]

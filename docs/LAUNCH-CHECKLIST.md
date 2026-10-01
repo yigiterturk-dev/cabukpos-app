@@ -13,7 +13,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [x] `npm run build`: Webpack production build
 - [x] Production `/api/health` ve `/api/ready`: 200
 - [x] Growth feature-pack, insights ve event intake tenant/scope sınırları
-- [x] Production kritik anonim/korumalı uçlar: runtime audit 12/12 kontrol tanımı
+- [x] Production kritik anonim/korumalı uçlar: runtime audit 13/13 kontrol tanımı
 - [x] Neon migration ve FORCE RLS doğrulaması
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş

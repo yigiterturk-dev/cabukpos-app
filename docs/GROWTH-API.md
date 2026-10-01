@@ -39,6 +39,13 @@ Başarı `201` ile `{ "id": "<uuid>", "audienceCount": 12, "status": "taslak" }`
 döner. Segmentler `dormant_30`, `active_30`, `all_consented` değerleridir.
 Mesaj gönderimi ve sağlayıcı bağlantısı bu uçta yoktur.
 
+## Kampanya durumu
+
+`GET /api/growth/campaigns/:campaignId`
+
+Tenant'a ait kampanyanın PII'siz durumu, hedef sayısı ve ölçüm oranlarını döndürür.
+Mesaj metni, müşteri kimliği ve müşteri iletişim bilgileri dönmez.
+
 ```json
 {
   "schemaVersion": 1,
