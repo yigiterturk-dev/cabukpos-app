@@ -1,5 +1,13 @@
 # İlerleme — ÇabukPOS
 
+## Büyüme Merkezi / M9d (2026-10-01)
+- Tenant içi ve yalnız restoran dikeyinde feature-pack, baseline/Laya advisor, kampanya taslağı, kampanya listesi/durumu ve idempotent ölçüm olayları tamamlandı.
+- İletişim izni değişimleri audit edilir; kampanya hedefi yalnız açık izinli müşterilerden hesaplanır; ham müşteri PII'si harici API'ye çıkmaz.
+- Harici servis erişimi growth kapsamlı anahtarla, dakikada 60 istekle sınırlıdır. Sağlayıcı webhook'u Bearer + timestamp/HMAC imzası, 5 dakika replay penceresi ve 64 KB gövde sınırı kullanır.
+- API sözleşmesi docs/growth-api.openapi.yaml; operasyon/kullanım sınırları docs/GROWTH-API.md ve docs/GROWTH-SERVICE.md.
+- Kanıt: 162/162 test, lint/typecheck, production build, webhook imza testleri, DB tenant/idempotency testleri ve runtime audit'te 15 anonim/korumalı kontrol tanımı.
+- Açık canlı kapılar: gerçek deployment doğrulaması, provider sandbox teslimat/opt-out provası, backup-restore provası ve hukuki/mali müşavir onayı. Bunlar repo testiyle kanıtlanmış sayılmaz.
+
 Spec: docs/superpowers/specs/2026-09-28-cabukpos-pos-design.md · Planlar: docs/superpowers/plans/2026-09-28-cabukpos-m1-cekirdek-kasa.md, …-m2-cevrimdisi.md, …-m3-market.md
 Eski (YanındaPOS tabanlı) kod: git etiketi `yanindapos-tabanli-v0`. Bu dal (`pos-cekirdek`) main'e, production kurulumu (Neon rolü + env) kararlaştırılınca birleşir.
 
