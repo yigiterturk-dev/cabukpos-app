@@ -57,13 +57,25 @@ Mesaj metni, müşteri kimliği ve müşteri iletişim bilgileri dönmez.
 
 ```json
 {
-  "schemaVersion": 1,
-  "generatedAt": "2026-10-01T12:00:00.000Z",
-  "privacy": { "pii": false, "minCohortSize": 10, "scope": "tenant_only" },
-  "vertical": "restoran",
-  "customer": { "total": 120, "consented": 84, "active30": 51, "dormant30": 33, "new30": 9 },
-  "package90": { "orders": 240, "gross": 1845000, "avgBasket": 7688 },
-  "campaigns": { "drafts": 2, "events": { "sent": 80, "delivered": 74, "converted": 11, "revenue": 126000 } }
+  "campaign": {
+    "id": "7d8d8f8c-7f0f-4f0c-9d52-2f6eaa5a3b42",
+    "segment": "dormant_30",
+    "audienceCount": 120,
+    "status": "taslak",
+    "approvedAt": null,
+    "createdAt": "2026-10-01T12:00:00.000Z"
+  },
+  "metrics": {
+    "sent": 0,
+    "delivered": 0,
+    "converted": 0,
+    "optOut": 0,
+    "failed": 0,
+    "revenue": 0,
+    "deliveryRate": null,
+    "conversionRate": null,
+    "optOutRate": null
+  }
 }
 ```
 
