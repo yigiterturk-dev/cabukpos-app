@@ -19,6 +19,11 @@ paketine, zaman aralığına ve kanıta bağlanır.
 5. Gönderim ve sipariş sonucu kampanya olayları olarak geri yazılır; sonraki
    tahminler gerçek işletme verisiyle güncellenir.
 
+İlk entegrasyon yüzeyi `GET /api/growth/feature-pack` uç noktasıdır. Bu uç yalnız
+oturumlu yöneticiye açıktır, `Cache-Control: no-store` döner ve PII yerine sayısal
+tenant özeti verir. Harici Laya adaptörü bu uçtan aldığı veriyi başka tenantlarla
+birleştirmeden önce ayrıca anonim/toplu benchmark kurallarını uygular.
+
 ## İlk sürümde yapılmayacaklar
 
 - Kafadan sabit dönüşüm yüzdesiyle ciro vaadi
