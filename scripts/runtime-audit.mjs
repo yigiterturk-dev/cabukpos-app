@@ -35,6 +35,12 @@ const checks = [
     expectedText: "401",
   },
   {
+    name: "anonymous growth feature-pack protection",
+    path: "/api/growth/feature-pack",
+    expected: async (response) => response.status === 401,
+    expectedText: "401",
+  },
+  {
     name: "fiscal cron protection",
     path: "/api/cron/fiscal",
     expected: async (response) => response.status === 401,
