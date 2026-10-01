@@ -5,16 +5,31 @@ function required(name, label = name) {
   checks.push({ ok: Boolean(value), label, detail: value ? "tanımlı" : `${name} eksik` });
 }
 
+function requiredUrl(name, label, httpsInProduction = false) {
+  const value = process.env[name]?.trim();
+  let ok = Boolean(value);
+  if (ok) {
+    try {
+      const parsed = new URL(value);
+      ok = parsed.protocol === "http:" || parsed.protocol === "https:";
+      if (ok && httpsInProduction && production) ok = parsed.protocol === "https:";
+    } catch {
+      ok = false;
+    }
+  }
+  checks.push({ ok, label, detail: ok ? "tanımlı" : `${name} geçerli URL olmalı${httpsInProduction && production ? " ve HTTPS kullanmalı" : ""}` });
+}
+
 const production = process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production";
 const billing = (process.env.BILLING_PROVIDER || "").trim().toLowerCase();
 
-required("APP_URL", "Uygulama URL'si");
+requiredUrl("APP_URL", "Uygulama URL'si", true);
 required("DATABASE_URL", "Uygulama veritabanı");
 required("AUTH_SECRET", "Oturum sırrı");
 required("CRON_SECRET", "Cron sırrı");
 
 if (production) {
-  required("AGENT_ALERT_WEBHOOK_URL", "Agent alarm webhook'u");
+  requiredUrl("AGENT_ALERT_WEBHOOK_URL", "Agent alarm webhook'u", true);
   required("LEGAL_NAME", "Yasal unvan");
   required("LEGAL_ADDRESS", "Yasal adres");
   required("LEGAL_EMAIL", "Yasal e-posta");
