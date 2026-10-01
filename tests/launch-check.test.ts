@@ -30,9 +30,10 @@ test("launch check production HTTPS ayarlarını kabul eder", () => {
 });
 
 test("launch check HTTP veya bozuk URL'yi reddeder", () => {
-  const result = run({ APP_URL: "not-a-url", AGENT_ALERT_WEBHOOK_URL: "http://alerts.test/hook", GROWTH_ADVISOR_URL: "http://laya.test/advise", GROWTH_ADVISOR_TOKEN: "test-token" });
+  const result = run({ APP_URL: "not-a-url", AGENT_ALERT_WEBHOOK_URL: "http://alerts.test/hook", GROWTH_ADVISOR_URL: "http://laya.test/advise", GROWTH_ADVISOR_TOKEN: "test-token", LEGAL_EMAIL: "not-an-email" });
   assert.equal(result.status, 1);
   assert.match(result.stdout, /Uygulama URL'si: APP_URL geçerli URL olmalı/);
   assert.match(result.stdout, /Agent alarm webhook'u: AGENT_ALERT_WEBHOOK_URL geçerli URL olmalı/);
   assert.match(result.stdout, /Growth\/Laya danışmanı: URL\/token birlikte/);
+  assert.match(result.stdout, /Yasal e-posta: LEGAL_EMAIL geçerli e-posta olmalı/);
 });

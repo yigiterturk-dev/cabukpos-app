@@ -20,6 +20,12 @@ function requiredUrl(name, label, httpsInProduction = false) {
   checks.push({ ok, label, detail: ok ? "tanımlı" : `${name} geçerli URL olmalı${httpsInProduction && production ? " ve HTTPS kullanmalı" : ""}` });
 }
 
+function requiredEmail(name, label = name) {
+  const value = process.env[name]?.trim();
+  const ok = Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
+  checks.push({ ok, label, detail: ok ? "tanımlı" : `${name} geçerli e-posta olmalı` });
+}
+
 const production = process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production";
 const billing = (process.env.BILLING_PROVIDER || "").trim().toLowerCase();
 
@@ -32,7 +38,7 @@ if (production) {
   requiredUrl("AGENT_ALERT_WEBHOOK_URL", "Agent alarm webhook'u", true);
   required("LEGAL_NAME", "Yasal unvan");
   required("LEGAL_ADDRESS", "Yasal adres");
-  required("LEGAL_EMAIL", "Yasal e-posta");
+  requiredEmail("LEGAL_EMAIL", "Yasal e-posta");
   required("LEGAL_PHONE", "Yasal telefon");
 }
 
