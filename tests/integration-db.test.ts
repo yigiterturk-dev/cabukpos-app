@@ -117,6 +117,11 @@ test("growth event intake: tenant sınırı ve externalId idempotency", async ()
   assert.deepEqual(await request(), { duplicate: true });
   const otherTenant = await withTenant(t2.id, (tx) => recordCampaignEvent(tx, { tenantId: t2.id, campaignId: campaign.id, type: "sent", externalId: "other-tenant", actor: "integration:test" }));
   assert.deepEqual(otherTenant, { error: "campaign_not_found" });
+  const [customer] = await withTenant(t.id, (tx) => tx.insert(schema.customers).values({ tenantId: t.id, phone: "905550000001", name: "Opt-out", marketingConsent: true }).returning({ id: schema.customers.id }));
+  const optOut = await withTenant(t.id, (tx) => recordCampaignEvent(tx, { tenantId: t.id, campaignId: campaign.id, type: "opt_out", externalId: "provider-optout-1", customerId: customer.id, actor: "integration:test" }));
+  assert.equal("error" in optOut, false);
+  const [updatedCustomer] = await withTenant(t.id, (tx) => tx.select({ consent: schema.customers.marketingConsent, source: schema.customers.marketingConsentSource }).from(schema.customers).where(eq(schema.customers.id, customer.id)));
+  assert.deepEqual(updatedCustomer, { consent: false, source: "provider_opt_out" });
   const [count] = await withTenant(t.id, (tx) => tx.select({ n: sql<number>`count(*)::int` }).from(schema.growthCampaignEvents).where(eq(schema.growthCampaignEvents.campaignId, campaign.id)));
-  assert.equal(count.n, 1);
+  assert.equal(count.n, 2);
 });

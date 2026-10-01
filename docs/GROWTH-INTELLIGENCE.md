@@ -30,8 +30,9 @@ değişmez. Her iki okuma da tenant audit log'una aktör, şema sürümü ve sa�
 fallback bilgisiyle yazılır; token, ham yanıt ve PII yazılmaz.
 Harici gönderim sağlayıcısı mesajı kendisi gönderir; sonuçları yalnızca
 `POST /api/growth/campaigns/:id/events` ile growth anahtarı üzerinden ölçüm olayı
-olarak geri yazar. `externalId` kampanya içinde idempotenttir; müşteri kimliği
-almayan bu uç yalnızca izinli kampanya ölçümünü kabul eder.
+olarak geri yazar. `externalId` kampanya içinde idempotenttir. `opt_out` olayı
+yalnız tenant içi müşteri UUID’siyle kabul edilir ve pazarlama iznini kalıcı olarak
+kapatır; diğer olaylarda müşteri kimliği kabul edilmez.
 
 ## İlk sürümde yapılmayacaklar
 
