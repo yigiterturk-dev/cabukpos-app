@@ -9,6 +9,7 @@ Piyasaya çıkıştaki tüm teknik/işletme onay kutuları için ayrıca `docs/L
 2. `npm test`
 3. `npm run qa:static`
 4. `npm run build`
+5. `BASE=<staging-or-local-url> npm run audit:runtime`
 6. Şema değiştiyse önce staging/test veritabanında `npm run db:push` ve
    `npm run db:rls` çalıştırın; ardından RLS kontrolünü yapın.
 7. Canlıda `DATABASE_URL` uygulama rolü, `MIGRATE_DATABASE_URL` ise yalnız

@@ -60,6 +60,10 @@ jobs:
         run: |
           curl --fail --silent http://127.0.0.1:3810/api/health
           curl --fail --silent http://127.0.0.1:3810/api/ready
+      - name: Runtime protection audit
+        env:
+          BASE: http://127.0.0.1:3810
+        run: npm run audit:runtime
       - name: Browser regression flows
         env:
           BASE: http://127.0.0.1:3810
