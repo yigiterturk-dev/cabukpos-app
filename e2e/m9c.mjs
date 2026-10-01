@@ -15,7 +15,7 @@ const api = (key, q = `from=${day}&to=${day}`) => fetch(`${BASE}/api/v1/stats/da
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const errors = [];
 try {
-  const admin = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-forwarded-for": testIp } })).newPage();
+  const admin = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-vercel-forwarded-for": testIp } })).newPage();
   admin.on("pageerror", (e) => errors.push(e.message));
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);
@@ -28,9 +28,12 @@ try {
 
   await admin.goto(`${BASE}/yonetim/veriler`);
   await admin.getByRole("link", { name: "Veri kopyasını indir" }).waitFor();
-  const exported = await admin.request.get(`${BASE}/api/yonetim/veri-export`);
-  expect(exported.status(), 200, "veri dışa aktarma");
-  const exportBody = await exported.text();
+  const exportResult = await admin.evaluate(async (exportUrl) => {
+    const res = await fetch(exportUrl);
+    return { status: res.status, text: await res.text() };
+  }, `${BASE}/api/yonetim/veri-export`);
+  expect(exportResult.status, 200, "veri dışa aktarma");
+  const exportBody = exportResult.text;
   if (!exportBody.includes('"exportVersion":1') || !exportBody.includes(tenant)) throw new Error("veri dışa aktarma gövdesi eksik");
   for (const secret of ["passwordHash", "keyHash", "tokenHash", "webhookSecret", "hubKeyEnc"]) {
     if (exportBody.includes(secret)) throw new Error(`veri dışa aktarmada gizli alan: ${secret}`);

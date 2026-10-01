@@ -25,7 +25,7 @@ const addProduct = async (p, name) => {
 };
 
 try {
-  const admin = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-forwarded-for": testIp } })).newPage();
+  const admin = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-vercel-forwarded-for": testIp } })).newPage();
   admin.on("pageerror", (e) => errors.push(e.message));
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);

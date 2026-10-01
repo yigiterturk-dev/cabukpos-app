@@ -14,7 +14,7 @@ const expect = (got, want, what) => { if (got !== want) throw new Error(`${what}
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const errors = [];
 const page = async () => {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-forwarded-for": testIp } })).newPage();
+  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-vercel-forwarded-for": testIp } })).newPage();
   p.on("pageerror", (e) => errors.push(e.message));
   return p;
 };
@@ -108,9 +108,14 @@ try {
   step("Personel: silme 3 · 650, iade 1 · 50, olay listesi");
 
   const url = new URL(admin.url());
-  const res = await admin.request.get(`${BASE}/yonetim/raporlar/csv?sekme=personel&bas=${url.searchParams.get("bas")}&bit=${url.searchParams.get("bit")}`);
-  expect(res.status(), 200, "CSV durum");
-  const csv = await res.text();
+  const csvResult = await admin.evaluate(async (csvUrl) => {
+    const res = await fetch(csvUrl);
+    return { status: res.status, bytes: Array.from(new Uint8Array(await (await res.blob()).arrayBuffer())) };
+  }, `${BASE}/yonetim/raporlar/csv?sekme=personel&bas=${url.searchParams.get("bas")}&bit=${url.searchParams.get("bit")}`);
+  expect(csvResult.status, 200, "CSV durum");
+  const csvBytes = Buffer.from(csvResult.bytes);
+  if (!csvBytes.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf]))) throw new Error(`CSV BOM eksik: ${JSON.stringify(csvBytes.subarray(0, 8))}`);
+  const csv = csvBytes.toString("utf8");
   if (!csv.startsWith("﻿Personel;")) throw new Error(`CSV başı: ${JSON.stringify(csv.slice(0, 30))}`);
   if (!/Ayşe Kasiyer;350,00;1;1;50,00;.*;3;650,00\r\n/.test(csv)) throw new Error(`CSV satırı: ${csv}`);
   const anon = await (await browser.newContext()).request.get(`${BASE}/yonetim/raporlar/csv?sekme=personel`, { maxRedirects: 0 });
@@ -123,9 +128,15 @@ try {
   step("Vardiyalar sekmesi");
 
   // İncelenecek: biçimi bozuk belge reddedilir → yönetimde "Reddedildi" satırı
-  const cat = await (await kasa.request.get(`${BASE}/api/sync/catalog`)).json();
+  const cat = await kasa.evaluate(async (catalogUrl) => {
+    const res = await fetch(catalogUrl);
+    return await res.json();
+  }, `${BASE}/api/sync/catalog`);
   const bad = { id: "00000000-0000-4000-8000-000000000001", kind: "sale" };
-  const pr = await (await kasa.request.post(`${BASE}/api/sync/push`, { data: { deviceId: cat.device.id, docs: [bad] } })).json();
+  const pr = await kasa.evaluate(async ({ pushUrl, deviceId, document }) => {
+    const res = await fetch(pushUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ deviceId, docs: [document] }) });
+    return await res.json();
+  }, { pushUrl: `${BASE}/api/sync/push`, deviceId: cat.device.id, document: bad });
   if (pr.results?.[0]?.ok !== false) throw new Error(`bozuk belge reddedilmedi: ${JSON.stringify(pr)}`);
   await admin.getByRole("tab", { name: "İncelenecek" }).click();
   await admin.getByTestId("review-list").getByText("Reddedildi · sale").waitFor();

@@ -17,7 +17,7 @@ const browser = await chromium.launch({ channel: "chrome", headless: true });
 const sql = postgres(process.env.MIGRATE_DATABASE_URL ?? process.env.DATABASE_URL, { max: 1 });
 const errors = [];
 const page = async () => {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-forwarded-for": testIp } })).newPage();
+const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: { "x-vercel-forwarded-for": testIp } })).newPage();
   p.on("pageerror", (e) => errors.push(e.message));
   return p;
 };
