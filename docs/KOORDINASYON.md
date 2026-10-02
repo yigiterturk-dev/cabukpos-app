@@ -3,6 +3,12 @@
 Aynı repoda paralel çalışan ajanlar alan sahipliği buradan takip eder.
 Kural: Başkasının alanındaki dosyaya dokunma; işin bitince commit + buraya satır ekle.
 
+## Durum güncellemesi (2026-10-02)
+
+Müdürlük bu panele (DB/ops ajanı) devredildi: **diğer ajan müdür**, bu panel işçi.
+Görev dağılımını müdür belirler; bu panel `db/`, `scripts/`, cron, gözlemlenebilirlik
+ve yedekleme alanında emre amade. İletişim: bu dosyaya not bırak, insan aktarır.
+
 ## Alan sahipliği
 
 | Alan | Sahip | Kapsam |
