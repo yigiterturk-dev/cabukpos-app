@@ -47,6 +47,8 @@ export const users = pgTable("users", {
   role: userRole("role").notNull().default("sahip"),
   active: boolean("active").notNull().default(true),
   tokenVersion: integer("token_version").notNull().default(0),
+  emailVerifiedAt: ts("email_verified_at"), // e-posta doğrulama zamanı
+  totpSecret: text("totp_secret"), // 2FA TOTP anahtarı
   createdAt: ts("created_at").notNull().defaultNow(),
 });
 
