@@ -12,7 +12,8 @@ import { failKey, shouldLock } from "./lockout";
 import { newTotpSecret, otpauthUrl, verifyTotp } from "./totp";
 import { checkReset, resetToken } from "./reset";
 import { dogrulaToken } from "./verify-email";
-import { clearAdminSession, getAdmin, setAdminSession } from "./session";
+import { clearAdminSession, getAdmin, revokeCurrentSession, revokeOtherSessions, setAdminSession } from "./session";
+import { revokeAllSessions } from "./sessions";
 import { checkReauth } from "./reauth";
 
 export type AuthState = { error?: string; field?: string; values?: Record<string, string>; ok?: string };
@@ -132,6 +133,38 @@ export async function emailDogrulamaGonderAction(): Promise<void> {
 }
 
 export async function logout() {
+  await revokeCurrentSession();
+  await clearAdminSession();
+  redirect("/giris");
+}
+
+export type SessionState = { error?: string; ok?: string };
+
+/** #9: diğer cihazların oturumlarını düşür (bu cihaz kalır). */
+export async function digerOturumlariKapat(_: SessionState, form: FormData): Promise<SessionState> {
+  const a = await getAdmin();
+  if (!a) return { error: "Oturum gerekli." };
+  const re = await checkReauth(a.id, form);
+  if (re) return { error: re };
+  const n = await revokeOtherSessions(a.id);
+  await getDb().transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.tenant_id', ${a.tenantId}, true)`);
+    await audit(tx, a.tenantId, `user:${a.id}`, "user.sessions_revoke_others", { count: n });
+  });
+  return { ok: n ? `${n} diğer oturum kapatıldı; o cihazlarda yeniden giriş gerekir.` : "Diğer açık oturum yoktu." };
+}
+
+/** #9: tüm cihazlardan çıkış (bu cihaz dahil) → giriş ekranı. */
+export async function tumCihazlardanCik(_: SessionState, form: FormData): Promise<SessionState> {
+  const a = await getAdmin();
+  if (!a) return { error: "Oturum gerekli." };
+  const re = await checkReauth(a.id, form);
+  if (re) return { error: re };
+  const n = await revokeAllSessions(a.id);
+  await getDb().transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.tenant_id', ${a.tenantId}, true)`);
+    await audit(tx, a.tenantId, `user:${a.id}`, "user.sessions_revoke_all", { count: n });
+  });
   await clearAdminSession();
   redirect("/giris");
 }

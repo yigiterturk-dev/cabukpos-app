@@ -4,7 +4,7 @@
 import type { KasaAgent } from "@/lib/agent/config";
 import { renderDeliverySlip, type SlipData } from "@/lib/core/delivery";
 import { renderKitchenTicket, type KitchenTicketData } from "@/lib/core/kitchen";
-import { toBase64, fromBase64 } from "@/lib/core/escpos";
+import { toBase64 } from "@/lib/core/escpos";
 import { renderReceipt, renderShiftReport, type ReceiptSale, type ShiftPrint } from "@/lib/core/receipt";
 import type { Meta } from "./state";
 

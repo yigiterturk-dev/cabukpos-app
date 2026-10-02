@@ -100,6 +100,19 @@ export const loginAttempts = pgTable("login_attempts", {
   since: ts("since").notNull().defaultNow(),
 });
 
+/** #9: yönetici oturumları (cz_session JWT'sinin hash'i); listeleme + cihaz bazlı düşme. RLS dışı kimlik tablosu (users gibi); her sorguda userId koşulu. */
+export const sessions = pgTable("sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tenantId: tenantRef(),
+  tokenHash: text("token_hash").notNull().unique(), // cz_session değerinin sha256'sı
+  ua: text("ua"), // user-agent özeti (200)
+  ip: text("ip"), // x-forwarded-for ilk aday (45)
+  createdAt: ts("created_at").notNull().defaultNow(),
+  lastSeenAt: ts("last_seen_at").notNull().defaultNow(),
+  revokedAt: ts("revoked_at"),
+}, (t) => [index("sessions_user_idx").on(t.userId)]);
+
 // — İş tabloları (RLS: tenant_id = app.tenant_id) —
 export const stores = pgTable("stores", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -4,7 +4,7 @@ import { PAY_METHODS, shownMethods } from "./payment";
 import type { Payment } from "./payment";
 import type { VatLine } from "./cart";
 import type { summarizeShift } from "./shift";
-import { EscPos, BRANDS, fromBase64, type Codepage, type PaperWidth, type PrinterBrand } from "./escpos";
+import { EscPos, fromBase64, type Codepage, type PaperWidth, type PrinterBrand } from "./escpos";
 import type { LogoImg } from "./png";
 import { refundNote, type RefundFiscal } from "./refundNote";
 
