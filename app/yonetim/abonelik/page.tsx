@@ -62,9 +62,9 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
       {pays.length > 0 && (
         <Card className="mt-6 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr>{["Tarih", "Dönem", "Tutar", "Birimler", "Durum", "Dönem sonu"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
-            <tbody className="divide-y divide-line">{pays.map((p) => (
-              <tr key={p.id}><td className="px-4 py-2.5">{day(p.createdAt)}</td><td className="px-4 py-2.5">{p.period === "yillik" ? "Yıllık" : "Aylık"}</td><td className="px-4 py-2.5 tabular-nums">{formatTL(p.amount)}</td><td className="px-4 py-2.5">{p.stores > 0 || p.devices > 0 ? `${p.stores} şube · ${p.devices} terminal` : "—"}</td><td className="px-4 py-2.5">{STATUS[p.status] ?? p.status}</td><td className="px-4 py-2.5">{p.periodEnd ? day(p.periodEnd) : "—"}</td></tr>
+            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr>{["Tarih", "Dönem", "Tutar", "Birimler", "Durum", "Fatura", "Dönem sonu"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
+            <tbody className="divide-y divide-line">{pays.map(({ p, invoice }) => (
+              <tr key={p.id}><td className="px-4 py-2.5">{day(p.createdAt)}</td><td className="px-4 py-2.5">{p.period === "yillik" ? "Yıllık" : "Aylık"}</td><td className="px-4 py-2.5 tabular-nums">{formatTL(p.amount)}</td><td className="px-4 py-2.5">{p.stores > 0 || p.devices > 0 ? `${p.stores} şube · ${p.devices} terminal` : "—"}</td><td className="px-4 py-2.5">{STATUS[p.status] ?? p.status}</td><td className="px-4 py-2.5">{invoice?.token ? (invoice.status === "issued" ? <Link href={`/fatura/${invoice.token}`} className="underline" data-testid="invoice-link">Görüntüle</Link> : <span className="text-muted">Hazırlanıyor</span>) : "—"}</td><td className="px-4 py-2.5">{p.periodEnd ? day(p.periodEnd) : "—"}</td></tr>
             ))}</tbody>
           </table>
         </Card>

@@ -2,8 +2,9 @@
 import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { extendFrom, type BillingPeriod, type UnitCounts } from "@/lib/core/billing";
+import { openSubscriptionInvoice } from "./invoice";
 
-const T = schema.tenants, P = schema.billingPayments, S = schema.stores, D = schema.devices;
+const T = schema.tenants, P = schema.billingPayments, S = schema.stores, D = schema.devices, I = schema.billingInvoices;
 
 export async function tenantBilling(tenantId: string) {
   const [t] = await getDb().select({ trialEndsAt: T.trialEndsAt, paidUntil: T.paidUntil, address: T.address }).from(T).where(eq(T.id, tenantId));
@@ -31,7 +32,9 @@ export async function paymentOf(tenantId: string, id: string) {
   return p ?? null;
 }
 
-export const paymentsOf = (tenantId: string) => getDb().select().from(P).where(eq(P.tenantId, tenantId)).orderBy(desc(P.createdAt)).limit(20);
+export const paymentsOf = (tenantId: string) =>
+  getDb().select({ p: P, invoice: { token: I.token, status: I.status } }).from(P)
+    .leftJoin(I, eq(I.paymentId, P.id)).where(eq(P.tenantId, tenantId)).orderBy(desc(P.createdAt)).limit(20);
 
 /** Sağlayıcı sonucu. Satır kilidiyle idempotent: yalnız bekleyen ödeme işlenir; başarılıysa dönem uzar. */
 export async function completePayment(id: string, ok: boolean, providerRef: string, now = new Date()): Promise<"odendi" | "basarisiz" | "zaten"> {
@@ -46,6 +49,7 @@ export async function completePayment(id: string, ok: boolean, providerRef: stri
     const until = extendFrom(t, p.period as BillingPeriod, now);
     await tx.update(T).set({ paidUntil: until }).where(eq(T.id, p.tenantId));
     await tx.update(P).set({ status: "odendi", providerRef, paidAt: now, periodEnd: until }).where(eq(P.id, id));
+    await openSubscriptionInvoice(tx, p.tenantId, p.id); // #14: SaaS abonelik e-Arşiv faturası (bekleyen; cron keser)
     return "odendi";
   });
 }

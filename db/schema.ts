@@ -570,6 +570,30 @@ export const billingPayments = pgTable("billing_payments", {
   paidAt: ts("paid_at"),
 }, (t) => [index("billing_payments_tenant_idx").on(t.tenantId, t.createdAt)]);
 
+// — #14: SaaS'ın kendi abonelik e-Arşiv faturaları (satıcı ÇabukPOS, alıcı kiracı). RLS yok (geri bildirim kiracı bağlamsız); yalnız lib/billing erişir. —
+export const billingInvoices = pgTable("billing_invoices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  paymentId: uuid("payment_id").notNull().unique().references(() => billingPayments.id, { onDelete: "cascade" }),
+  tenantId: tenantRef(),
+  provider: text("provider").notNull().default("fake-earsiv"),
+  status: text("status").notNull().default("pending"), // pending | issued | error
+  buyer: jsonb("buyer").notNull(), // Buyer (core/fiscal)
+  token: text("token").notNull().unique(),
+  ettn: text("ettn"),
+  number: text("number"),
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error"),
+  lastTryAt: ts("last_try_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  issuedAt: ts("issued_at"),
+});
+
+// — #14: SaaS e-Arşiv sayaç (yıl başına sıra; numara yalnız başarılı kesimde yanar). —
+export const billingInvoiceCounters = pgTable("billing_invoice_counters", {
+  year: integer("year").primaryKey(),
+  counter: integer("counter").notNull().default(0),
+});
+
 // — M9c: ajans erişim anahtarları. RLS yok (anahtar kiracı bilinmeden hash ile aranır, devices gibi); yalnız lib/integrations/keys erişir, her sorguda tenantId. —
 export const integrationKeys = pgTable("integration_keys", {
   id: uuid("id").primaryKey().defaultRandom(),

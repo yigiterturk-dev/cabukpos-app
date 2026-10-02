@@ -5,10 +5,12 @@ process.env.DATABASE_URL = "postgres://cabukpos_app:dev-app-pass@localhost:5432/
 process.env.MIGRATE_DATABASE_URL = "postgres://yigiterturk@localhost:5432/cabukpos_test";
 const { getDb, closeDb, schema, withTenant } = await import("@/db");
 const { createPayment, completePayment, tenantBilling, tenantUnits } = await import("@/lib/billing/service");
+const { issueSubscriptionInvoice } = await import("@/lib/billing/invoice");
 const { eq } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "ABONE-T", vertical: "market" }).returning();
 after(async () => {
+  await getDb().delete(schema.billingInvoiceCounters);
   await getDb().delete(schema.tenants).where(eq(schema.tenants.id, t.id));
   await closeDb();
 });
@@ -44,4 +46,23 @@ test("birim sayısı ve ödeme fotoğrafı: şube/terminal ödeme satırına yaz
   const p = await createPayment(t.id, "fake", "aylik", 60_000, u);
   assert.equal(p.stores, 2);
   assert.equal(p.devices, 1);
+});
+
+test("abonelik faturası: ödeme sonrası açılır, sağlayıcı keser, ikinci deneme idempotent", async () => {
+  const p = await createPayment(t.id, "fake", "aylik", 50_000, { stores: 1, devices: 1 });
+  assert.equal(await completePayment(p.id, true, "ok"), "odendi");
+  const [inv] = await getDb().select().from(schema.billingInvoices).where(eq(schema.billingInvoices.paymentId, p.id));
+  assert.ok(inv, "fatura kaydı açılmalı");
+  assert.equal(inv.status, "pending");
+  assert.equal((inv.buyer as { taxId: string }).taxId, "11111111111"); // kiracının vergi bilgisi yok → nihai tüketici
+  assert.equal(inv.token.length, 24);
+  process.env.SAAS_NAME = "ÇabukPOS";
+  process.env.SAAS_TAX_ID = "1234567801";
+  process.env.SAAS_ADDRESS = "Test Mah. 1";
+  assert.equal(await issueSubscriptionInvoice(inv.id), true);
+  const [done] = await getDb().select().from(schema.billingInvoices).where(eq(schema.billingInvoices.paymentId, p.id));
+  assert.equal(done.status, "issued");
+  assert.match(done.number!, /^CBP\d{4}\d{9}$/);
+  assert.ok(done.ettn);
+  assert.equal(await issueSubscriptionInvoice(inv.id), false); // zaten kesildi, numara yanmaz
 });

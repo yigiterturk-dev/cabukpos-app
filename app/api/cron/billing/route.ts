@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { billingInfo, reminderDue } from "@/lib/core/billing";
 import { dunningIcerik, dunningStage } from "@/lib/billing/dunning";
+import { dueSubscriptionInvoices, issueSubscriptionInvoice } from "@/lib/billing/invoice";
 import { hit } from "@/lib/ratelimit";
 import { appUrl, esc, mailReady, sendEmail } from "@/lib/mail";
 
@@ -12,7 +13,11 @@ export const maxDuration = 60;
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return new Response("yetkisiz", { status: 401 });
-  if (!mailReady()) return Response.json({ skipped: "mail" });
+  // #14: kesilememiş abonelik e-Arşiv faturaları (posta anahtarından bağımsız).
+  const invs = await dueSubscriptionInvoices();
+  let invoices = 0;
+  for (const i of invs) if (await issueSubscriptionInvoice(i.id)) invoices++;
+  if (!mailReady()) return Response.json({ invoices, skipped: "mail" });
   const T = schema.tenants, U = schema.users;
   const rows = await getDb().select({ id: T.id, name: T.name, trialEndsAt: T.trialEndsAt, paidUntil: T.paidUntil, remindedEnd: T.billingRemindedEnd }).from(T);
   let sent = 0;
@@ -46,5 +51,5 @@ export async function GET(req: Request) {
     });
     if (ok) sent++;
   }
-  return Response.json({ sent });
+  return Response.json({ invoices, sent });
 }
