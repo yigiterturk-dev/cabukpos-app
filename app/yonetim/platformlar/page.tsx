@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { and, asc, eq } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
-import { deleteCode } from "@/lib/admin/delivery-actions";
+import { acceptPlatformOrder, deleteCode } from "@/lib/admin/delivery-actions";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
 import { SUPPORTED_PLATFORMS } from "@/lib/platform";
 import { foldTabs, type TabState } from "@/lib/core/tab";
@@ -53,7 +53,7 @@ function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
             <thead><tr className="border-b border-line bg-surface-3 text-left text-muted">
               <th className="px-3 py-2 font-medium">Platform</th><th className="px-3 py-2 font-medium">Müşteri</th>
               <th className="px-3 py-2 font-medium">Sipariş</th><th className="px-3 py-2 font-medium">Tutar</th>
-              <th className="px-3 py-2 font-medium">Durum</th><th className="px-3 py-2 font-medium">Süre</th>
+              <th className="px-3 py-2 font-medium">Durum</th><th className="px-3 py-2 font-medium">Süre</th><th className="px-3 py-2 font-medium">İşlem</th>
             </tr></thead>
             <tbody className="divide-y divide-line">
               {acik.map((t) => {
@@ -66,6 +66,13 @@ function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
                     <td className="px-3 py-2 tabular font-semibold">{formatTL(t.total)}</td>
                     <td className="px-3 py-2"><span className={`rounded px-1.5 py-0.5 text-xs font-medium ${DURUM(t).cls}`}>{DURUM(t).label}</span></td>
                     <td className="px-3 py-2 text-muted">{dk} dk</td>
+                    <td className="px-3 py-2">
+                      {!t.closed && !t.delivery.acceptedAt && !t.delivery.rejected && !t.delivery.cancelled ? (
+                        <form action={acceptPlatformOrder.bind(null, t.id)}>
+                          <button className="text-sm font-medium text-brand hover:underline">Onayla</button>
+                        </form>
+                      ) : null}
+                    </td>
                   </tr>
                 );
               })}

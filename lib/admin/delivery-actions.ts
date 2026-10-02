@@ -11,6 +11,7 @@ import { parseTL } from "@/lib/core/money";
 import type { IncomingOrder } from "@/lib/core/platform";
 import { SUPPORTED_PLATFORMS } from "@/lib/platform";
 import { ingestOrders } from "@/lib/platform/ingest";
+import { applyDoc } from "@/lib/sync/apply";
 
 export type DeliveryState = { error?: string; field?: string; savedAt?: number; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -168,4 +169,20 @@ export async function sendTestOrder(connectionId: string): Promise<DeliveryState
   };
   const r = await ingestOrders({ id: conn.id, tenantId: conn.tenantId, storeId: conn.storeId, platform: conn.platform, credentials: conn.credentials, webhookSecret: conn.webhookSecret, autoAccept: conn.autoAccept }, [order]);
   return { savedAt: Date.now(), info: r.unmapped ? "Sipariş gönderildi (ürün kodu eşlenmemiş, serbest satır düştü)." : "Sipariş gönderildi; kasada Paket sekmesine düştü." };
+}
+
+/** Yönetimden tek tıkla platform/paket siparişi onaylama: kasada accept olayıyla aynı akış (15 dk hazırlık). */
+export async function acceptPlatformOrder(tabId: string): Promise<void> {
+  const a = await requireWriter();
+  if (!UUID.test(tabId)) return;
+  const storeId = await firstStore(a.tenantId);
+  const [device] = await getDb().select({ id: schema.devices.id, receiptPrefix: schema.devices.receiptPrefix }).from(schema.devices)
+    .where(and(eq(schema.devices.tenantId, a.tenantId), eq(schema.devices.role, "kasa"))).limit(1);
+  const [staff] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.active, true)).limit(1));
+  if (!device || !staff) return;
+  const r = await applyDoc({ tenantId: a.tenantId, storeId, deviceId: device.id, receiptPrefix: device.receiptPrefix },
+    { kind: "tab", id: crypto.randomUUID(), tabId, tableId: null, at: new Date().toISOString(), staffId: staff.id, approvedBy: null, ev: { type: "accept", prepMin: 15 } });
+  if (!r.ok) return;
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.accept", { tabId }));
+  revalidatePath("/yonetim/platformlar");
 }
