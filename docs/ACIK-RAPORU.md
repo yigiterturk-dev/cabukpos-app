@@ -31,7 +31,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 10 | Güvenlik | API rotaları için merkezi auth guard (middleware genişletme) | Lead
 - [ ] 16 | Faturalama | Çoklu para birimi altyapısı | Lead
 - [ ] 19 | Mali | B2B e-Fatura zarf akışı + GİB durum sorgulama | Lead
-- [ ] 20 | Mali | Logo/Mikro/Paraşüt muhasebe export + e-Defter | Ajan-1
+- [x] 20 | Mali | Logo/Mikro/Paraşüt muhasebe export + e-Defter ✅ (aylık yevmiye + 4 format CSV, `07b46a9`) | Ajan-1
 - [ ] 21 | Ops | ~~Fiscal backlog escalation~~ ✅ (cron 6 saate çekildi)
 - [x] 22 | Offline | Yönetim paneli offline + Background Sync ✅ (SW `/yonetim` önbelleği + SyncManager köprüsü, `d33e9e3`) | Ajan-1
 - [ ] 23 | Offline | Sekme kapalıyken outbox boşaltımı (periodic wake) | Lead
