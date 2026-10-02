@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { LogOut, Monitor } from "lucide-react";
-import { asc } from "drizzle-orm";
-import { schema, withTenant } from "@/db";
+import { withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { bannerText } from "@/lib/core/billing";
 import { bildirimler } from "@/lib/admin/bildirim";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { logout } from "@/lib/auth/actions";
 import { LogoMark } from "@/components/ui";
 import { MobileNav, Nav } from "./Nav";
 
 export default async function YonetimLayout({ children }: { children: React.ReactNode }) {
   const a = await requireAdmin();
-  const [store] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
-  const bildirim = store ? (await bildirimler(a.tenantId, store.id)).length : 0;
+  const scoped = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const bildirim = scoped ? (await bildirimler(a.tenantId, scoped)).length : 0;
   const brand = (dark: boolean) => (
     <Link href="/yonetim" className="flex items-center gap-2.5 px-1">
       <LogoMark size="sm" />

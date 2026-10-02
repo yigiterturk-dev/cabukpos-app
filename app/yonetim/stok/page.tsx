@@ -2,7 +2,8 @@ import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
-import { firstStoreId, stockLevels } from "@/lib/admin/stock";
+import { stockLevels } from "@/lib/admin/stock";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { formatQty, isCriticalRow, stockUnitOf } from "@/lib/admin/stock-view";
 import { formatTL } from "@/lib/core/money";
 import { StockForm } from "@/components/admin/StockForm";
@@ -17,7 +18,7 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
   const { urun, q = "", kritik } = await searchParams;
   const M = schema.stockMovements;
   const { rows, moves } = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await firstStoreId(tx);
+    const storeId = await scopedStoreId(tx, a.tenantId);
     if (!storeId) return { rows: [], moves: [] };
     const [rows, moves] = await Promise.all([
       stockLevels(tx, storeId),

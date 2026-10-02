@@ -7,7 +7,7 @@ import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { batchCost, productionMoves, recipeError } from "@/lib/core/recipe";
 import { stockUnitOf } from "@/lib/core/stock";
-import { firstStoreId } from "./stock";
+import { scopedStoreId } from "./store-scope";
 import { parseRecipeQty } from "./recipe";
 
 export type RecipeState = { error?: string; field?: string; savedAt?: number };
@@ -75,7 +75,7 @@ export async function produce(_: RecipeState, form: FormData): Promise<RecipeSta
     if (!p || p.sellable || !p.yieldMilli) return { error: "Ara ürün bulunamadı (parti miktarı olan satılmaz ürün).", field: "productId" };
     const items = await tx.select({ ingredientId: R.ingredientId, qtyMilli: R.qtyMilli }).from(R).where(eq(R.productId, productId));
     if (!items.length) return { error: "Ara ürünün reçetesi yok.", field: "productId" };
-    const storeId = await firstStoreId(tx);
+    const storeId = await scopedStoreId(tx, a.tenantId);
     if (!storeId) return { error: "Şube yok." };
     const [prod] = await tx.insert(schema.productions).values({ tenantId: a.tenantId, storeId, productId, batchesMilli, note, createdBy: a.id }).returning({ id: schema.productions.id });
     const actor = `user:${a.id}`;

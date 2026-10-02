@@ -34,6 +34,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 3. [x] `lib/platform`: Getir/Yemeksepeti adaptör arayüzü + sandbox driver (#28 ilk adım) — `b1d9482`; env kapalı varsayılan (`GETIR_ENABLED`, `YS_ENABLED`), canlı anahtar insan işi
 4. [x] Kurye akışına durum zaman damgası + gecikme uyarısı (#39 kolay kısmı) — paket hattında kabul/yolda/teslim saatleri + "Gecikti" rozeti (prepMin aşımı)
 5. [x] #33 sadakat/hediye kartı/kupon (şema+UI): 6 RLS'li tablo + `lib/loyalty.ts` + `/yonetim/sadakat|kuponlar|hediyekarti` + Nav "Sadakat" grubu + testler; satış anı entegrasyonu (kazanç/harcanma/hediye kartı ödemesi) kasa tarafında ayrı iş — dev DB'ye db:push uygulandı
+6. [x] #44 şube UI + kapsam: `/yonetim/subeler` + `cz_sube` çerezi + `lib/admin/store-scope.ts`; bugün/raporlar/stok/platformlar + ilgili aksiyonlar seçili şubeye bakıyor; `delivery-actions` platform kabulü cihazı şubeye göre seçiyor (sıradaki: #37 QR menü/kiosko)
 
 ### Müdür ajan (DB/ops)
 1. Sentry/APM iskeleti + uptime kontrolü — `lib/observability` (#57)

@@ -8,7 +8,7 @@ import { audit } from "@/lib/audit";
 import { parseTL } from "@/lib/core/money";
 import { parseQty, stockUnitOf } from "@/lib/core/stock";
 import { cancelPurchase as cancelTx, recordPurchase } from "./purchase";
-import { firstStoreId } from "./stock";
+import { scopedStoreId } from "./store-scope";
 
 export type PurchaseState = { error?: string; field?: string; savedAt?: number };
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -46,7 +46,7 @@ export async function savePurchase(_: PurchaseState, form: FormData): Promise<Pu
       if (unitCost === null || unitCost > 10_000_000) return { error: `${p.name}: birim fiyat geçersiz (ör. 20,00).`, field: "lines" };
       lines.push({ productId: l.pid, qtyMilli, unitCost });
     }
-    const storeId = await firstStoreId(tx);
+    const storeId = await scopedStoreId(tx, a.tenantId);
     if (!storeId) return { error: "Şube yok." };
     const r = await recordPurchase(tx, a.tenantId, a.id, { storeId, supplierId, docNo, date, note, lines });
     if ("error" in r) return { error: r.error, field: "lines" };

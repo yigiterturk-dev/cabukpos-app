@@ -6,7 +6,7 @@ import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { parseQty, stockUnitOf } from "@/lib/core/stock";
-import { firstStoreId } from "./stock";
+import { scopedStoreId } from "./store-scope";
 
 export type StockState = { error?: string; field?: string; savedAt?: number };
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -24,7 +24,7 @@ export async function addStockMove(productId: string, _: StockState, form: FormD
     const unit = stockUnitOf(p);
     const q = parseQty(String(form.get("qty") ?? ""), unit, kind === "sayim");
     if (q === null) return { error: unit === "adet" ? "Miktar tam sayı olmalı." : `Miktar ${unit} (ör. 2,5).`, field: "qty" };
-    const storeId = await firstStoreId(tx);
+    const storeId = await scopedStoreId(tx, a.tenantId);
     if (!storeId) return { error: "Şube yok." };
     const qtyMilli = kind === "fire" ? -q : q;
     await tx.insert(schema.stockMovements).values({ tenantId: a.tenantId, storeId, productId, kind, qtyMilli, actor: `user:${a.id}`, note });

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
-import { firstStoreId, stockLevels } from "@/lib/admin/stock";
+import { stockLevels } from "@/lib/admin/stock";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { formatQty, isCriticalRow } from "@/lib/admin/stock-view";
 import { heatData, productData, staffData, staffEvents, summaryData } from "@/lib/admin/report";
 import { parseRange, REPORT_TABS, type ReportTab } from "@/lib/core/report";
@@ -35,7 +36,7 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
   const sort = sp.sirala === "adet" ? "adet" : "ciro";
   const kisi = sp.kisi && UUID.test(sp.kisi) ? sp.kisi : null;
   const critical = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await firstStoreId(tx);
+    const storeId = await scopedStoreId(tx, a.tenantId);
     return storeId ? (await stockLevels(tx, storeId)).filter(isCriticalRow) : [];
   });
 

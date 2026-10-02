@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { and, asc, eq } from "drizzle-orm";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { acceptPlatformOrder, deleteCode } from "@/lib/admin/delivery-actions";
@@ -101,8 +102,8 @@ export default async function Platformlar() {
   ]));
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
-  const [store] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
-  const hat = store ? [...foldTabs(await initialEvents({ tenantId: a.tenantId, storeId: store.id })).values()].filter((t) => t.kind !== "masa") : [];
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const hat = storeId ? [...foldTabs(await initialEvents({ tenantId: a.tenantId, storeId })).values()].filter((t) => t.kind !== "masa") : [];
   const acik = hat.filter((t) => !t.closed);
   const teslim = hat.filter((t) => {
     const at = t.closedAt ?? t.delivery.deliveredAt;

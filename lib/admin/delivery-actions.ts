@@ -12,14 +12,16 @@ import type { IncomingOrder } from "@/lib/core/platform";
 import { SUPPORTED_PLATFORMS } from "@/lib/platform";
 import { ingestOrders } from "@/lib/platform/ingest";
 import { applyDoc } from "@/lib/sync/apply";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 
 export type DeliveryState = { error?: string; field?: string; savedAt?: number; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 async function firstStore(tenantId: string) {
-  const [s] = await withTenant(tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
-  return s.id;
+  const sid = await withTenant(tenantId, (tx) => scopedStoreId(tx, tenantId));
+  if (!sid) throw new Error("Şube yok");
+  return sid;
 }
 
 /** Boş → 0; aksi TL. */
@@ -177,7 +179,7 @@ export async function acceptPlatformOrder(tabId: string): Promise<void> {
   if (!UUID.test(tabId)) return;
   const storeId = await firstStore(a.tenantId);
   const [device] = await getDb().select({ id: schema.devices.id, receiptPrefix: schema.devices.receiptPrefix }).from(schema.devices)
-    .where(and(eq(schema.devices.tenantId, a.tenantId), eq(schema.devices.role, "kasa"))).limit(1);
+    .where(and(eq(schema.devices.tenantId, a.tenantId), eq(schema.devices.storeId, storeId), eq(schema.devices.role, "kasa"))).limit(1);
   const [staff] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.active, true)).limit(1));
   if (!device || !staff) return;
   const r = await applyDoc({ tenantId: a.tenantId, storeId, deviceId: device.id, receiptPrefix: device.receiptPrefix },

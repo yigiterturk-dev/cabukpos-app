@@ -3,7 +3,8 @@ import { and, count, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, ChartColumn, CheckCircle2, Minus, Monitor, Package, Plus, TriangleAlert, UserPlus } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
-import { firstStoreId, stockLevels } from "@/lib/admin/stock";
+import { stockLevels } from "@/lib/admin/stock";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { formatQty, isCriticalRow } from "@/lib/admin/stock-view";
 import { summaryData } from "@/lib/admin/report";
 import { istToday, pctChange } from "@/lib/core/report";
@@ -40,7 +41,7 @@ export default async function Bugun() {
   const today = istToday();
   const restoran = a.vertical === "restoran";
   const { sum, critical, recent, storeId, setup, attention } = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await firstStoreId(tx);
+    const storeId = await scopedStoreId(tx, a.tenantId);
     const S = schema.sales;
     const recent = await tx.select({ id: S.id, receiptNo: S.receiptNo, channel: S.channel, status: S.status, total: S.total, at: S.createdAt, staff: schema.staff.name })
       .from(S).innerJoin(schema.staff, eq(schema.staff.id, S.staffId)).where(inArray(S.status, ["kapandi", "iade"])).orderBy(desc(S.createdAt)).limit(8);

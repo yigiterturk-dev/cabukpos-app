@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Armchair, Bell, Boxes, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu,
+  Armchair, Bell, Boxes, Building2, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu,
   Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Tag, Ticket, TrendingUp, UserCog, X, type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +40,7 @@ const groups: { title: string; items: Item[] }[] = [
     { href: "/yonetim/hediyekarti", label: "Hediye kartı", icon: Gift },
   ] },
   { title: "İşletme", items: [
+    { href: "/yonetim/subeler", label: "Şubeler", icon: Building2 },
     { href: "/yonetim/personel", label: "Personel", icon: UserCog },
     { href: "/yonetim/cihazlar", label: "Cihazlar", icon: MonitorSmartphone },
     { href: "/yonetim/donanim", label: "Donanım", icon: Printer },
