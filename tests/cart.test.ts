@@ -1,7 +1,7 @@
 // tests/cart.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatTL, parseTL, splitVat } from "@/lib/core/money";
+import { CURRENCIES, formatTL, isCurrency, formatMoney, parseTL, splitVat } from "@/lib/core/money";
 import { addProduct, lineTotal, removedLines, setQty, totals } from "@/lib/core/cart";
 
 const doner = { id: "d", name: "Döner", price: 18000, vatRate: 10 as const };
@@ -18,6 +18,18 @@ test("TL ayrıştırma ve biçim", () => {
   assert.equal(parseTL("abc"), null);
   assert.equal(formatTL(123456), "1.234,56 ₺");
   assert.equal(formatTL(-500), "-5,00 ₺");
+  assert.equal(parseTL("$ 25"), 2500);
+  assert.equal(parseTL("12,99 €"), 1299);
+});
+
+test("çoklu para birimi (#16): meta, tip koruması, biçim", () => {
+  assert.deepEqual(Object.keys(CURRENCIES), ["TRY", "USD", "EUR", "GBP"]);
+  assert.equal(isCurrency("EUR"), true);
+  assert.equal(isCurrency("BTC"), false);
+  assert.equal(formatMoney(123456, "USD"), "$1.234,56");
+  assert.equal(formatMoney(999, "EUR"), "€9,99");
+  assert.equal(formatMoney(500, "TRY"), formatMoney(500)); // varsayılan TRY
+  assert.equal(typeof formatMoney(1, "GBP"), "string");
 });
 
 test("KDV ayırma (dahil fiyattan)", () => {
