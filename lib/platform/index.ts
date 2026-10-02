@@ -1,10 +1,13 @@
 // lib/platform/index.ts — adaptör kaydı + bağlantı okuma (RLS dışı kimlik tablosu; her sorguda kiracı koşulu).
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
+import { getirSource } from "./getir";
 import { mockSource } from "./mock";
+import { yemeksepetiSource } from "./yemeksepeti";
 import type { Conn, OrderSource } from "./types";
 
-const SOURCES: Record<string, OrderSource> = { mock: mockSource };
+// mock varsayılan kalır; getir/yemeksepeti sandbox sürücüleri varsayılan kapalı (env ile açılır).
+const SOURCES: Record<string, OrderSource> = { mock: mockSource, getir: getirSource, yemeksepeti: yemeksepetiSource };
 export const sourceFor = (platform: string): OrderSource | null => SOURCES[platform] ?? null;
 export const SUPPORTED_PLATFORMS = Object.keys(SOURCES);
 
