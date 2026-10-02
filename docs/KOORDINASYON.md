@@ -60,7 +60,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 Tam açık listesi: **`docs/ACIK-RAPORU.md`** (61 madde, P0→P2 sıralı).
 Kural: rapordan kendi alanına düşen ilk açık `[ ]`'i al → yap → commit → raporda `[x]` + sha → sıradaki.
 
-- **Ajan-1 sıradaki:** #33 sadakat/hediye kartı/kupon (şema+UI) → #44 şube UI → #37 QR menü/kiosko
+- **Ajan-1 sıradaki:** #37 QR menü/kiosko → #22 panel offline → #34 pazarlama sağlayıcı
 - **Müdür sıradaki:** #57 Sentry/APM iskeleti + uptime → #40 kohort/RFM rapor → #43 konsolide rapor
 - **Lead sıradaki:** #11+#12 PayTR otomatik yenileme + dunning → #1 2FA → #4 e-posta doğrulama
 - **İnsan bekleyen:** PayTR canlı anahtar + **kart saklama (Direct API) sözleşmesi** (#11 için), e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi
