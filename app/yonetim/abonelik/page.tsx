@@ -1,22 +1,26 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatTL } from "@/lib/core/money";
-import { PERIODS, STATE_LABEL, planBreakdown } from "@/lib/core/billing";
+import { PERIODS, STATE_LABEL, planBreakdown, refundWindowOk } from "@/lib/core/billing";
 import { unitPrices, salesContact } from "@/lib/billing/plans";
 import { getBillingProvider } from "@/lib/billing/provider";
-import { paymentsOf, tenantUnits } from "@/lib/billing/service";
-import { startCheckout } from "@/lib/billing/actions";
-import { Badge, Card, PageHeader } from "@/components/ui";
+import { paymentsOf, salesSincePayment, tenantUnits } from "@/lib/billing/service";
+import { approveRefundAction, requestRefundAction, startCheckout, withdrawRefundAction } from "@/lib/billing/actions";
+import { Badge, Card, Field, Input, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 const day = (d: Date) => d.toLocaleDateString("tr-TR", { dateStyle: "long", timeZone: "Europe/Istanbul" });
-const STATUS: Record<string, string> = { bekliyor: "Bekliyor", odendi: "Ödendi", basarisiz: "Başarısız" };
+const STATUS: Record<string, string> = { bekliyor: "Bekliyor", odendi: "Ödendi", basarisiz: "Başarısız", iade_talep: "İade talebi", iade: "İade edildi" };
+const REASON_LABEL: Record<string, string> = { hatali: "Hatalı/mükerrer çekim", satissiz: "7 gün içinde satışsız dönem", diger: "Diğer" };
 
-export default async function Abonelik({ searchParams }: { searchParams: Promise<{ kilit?: string; sonuc?: string }> }) {
+export default async function Abonelik({ searchParams }: { searchParams: Promise<{ kilit?: string; sonuc?: string; iade?: string; id?: string }> }) {
   const a = await requireAdmin();
   const sp = await searchParams;
   const b = a.billing, provider = getBillingProvider(), contact = salesContact();
   const pays = await paymentsOf(a.tenantId), units = await tenantUnits(a.tenantId);
+  const sel = pays.find(({ p }) => p.id === sp.id);
+  const hint = sel?.p.paidAt ? refundWindowOk(sel.p.paidAt, new Date(), await salesSincePayment(a.tenantId, sel.p.paidAt)) : null;
   return (
     <>
       <PageHeader title="Abonelik" desc="ÇabukPOS aboneliği. Abonelik bitse de kasa satışa devam eder; yalnız yönetim salt okunur olur." />
@@ -25,6 +29,10 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
       {sp.sonuc === "isleniyor" && <Card className="mb-4 border-amber-200 bg-warn-soft p-4 text-sm text-warn" role="status">Ödeme işleniyor; banka onayı gelince abonelik birkaç saniye içinde uzar. Sayfayı yenileyebilirsin.</Card>}
       {sp.sonuc === "telefon" && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Kartla ödeme için geçerli bir cep telefonu gir.</Card>}
       {sp.sonuc === "hata" && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Ödeme tamamlanamadı. Tekrar deneyebilirsin.</Card>}
+      {sp.iade === "talep" && <Card className="mb-4 border-emerald-200 bg-ok-soft p-4 text-sm text-ok" role="status">İade talebin kaydedildi. Onaylanınca ödeme yapılan karta, ödeme kuruluşu aracılığıyla döner (2–10 iş günü).</Card>}
+      {sp.iade === "ceklildi" && <Card className="mb-4 p-4 text-sm text-muted" role="status">İade talebi çekildi.</Card>}
+      {sp.iade === "onaylandi" && <Card className="mb-4 border-emerald-200 bg-ok-soft p-4 text-sm text-ok" role="status">İade işlendi olarak işaretlendi.</Card>}
+      {sp.iade === "hata" && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">İade işlemi tamamlanamadı.</Card>}
       <Card className="mb-6 flex flex-wrap items-center gap-3 p-4">
         <Badge tone={b.locked ? "bad" : b.warn ? "warn" : "ok"}><span data-testid="billing-state">{STATE_LABEL[b.state]}</span></Badge>
         <span className="text-sm" data-testid="billing-ends">
@@ -62,13 +70,59 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
       {pays.length > 0 && (
         <Card className="mt-6 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr>{["Tarih", "Dönem", "Tutar", "Birimler", "Durum", "Fatura", "Dönem sonu"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
+            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr>{["Tarih", "Dönem", "Tutar", "Birimler", "Durum", "Fatura", "Dönem sonu", "İşlem"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
             <tbody className="divide-y divide-line">{pays.map(({ p, invoice }) => (
-              <tr key={p.id}><td className="px-4 py-2.5">{day(p.createdAt)}</td><td className="px-4 py-2.5">{p.period === "yillik" ? "Yıllık" : "Aylık"}</td><td className="px-4 py-2.5 tabular-nums">{formatTL(p.amount)}</td><td className="px-4 py-2.5">{p.stores > 0 || p.devices > 0 ? `${p.stores} şube · ${p.devices} terminal` : "—"}</td><td className="px-4 py-2.5">{STATUS[p.status] ?? p.status}</td><td className="px-4 py-2.5">{invoice?.token ? (invoice.status === "issued" ? <Link href={`/fatura/${invoice.token}`} className="underline" data-testid="invoice-link">Görüntüle</Link> : <span className="text-muted">Hazırlanıyor</span>) : "—"}</td><td className="px-4 py-2.5">{p.periodEnd ? day(p.periodEnd) : "—"}</td></tr>
+              <Fragment key={p.id}>
+                <tr>
+                  <td className="px-4 py-2.5">{day(p.createdAt)}</td>
+                  <td className="px-4 py-2.5">{p.period === "yillik" ? "Yıllık" : "Aylık"}</td>
+                  <td className="px-4 py-2.5 tabular-nums">{formatTL(p.amount)}</td>
+                  <td className="px-4 py-2.5">{p.stores > 0 || p.devices > 0 ? `${p.stores} şube · ${p.devices} terminal` : "—"}</td>
+                  <td className="px-4 py-2.5">
+                    <Badge tone={p.status === "iade" ? "warn" : p.status === "iade_talep" ? "warn" : p.status === "odendi" ? "ok" : p.status === "basarisiz" ? "bad" : "neutral"}>{STATUS[p.status] ?? p.status}</Badge>
+                    {p.refundedAt && <div className="mt-0.5 text-xs text-muted">{day(p.refundedAt)}</div>}
+                    {p.status === "iade_talep" && p.refundReason && <div className="mt-0.5 text-xs text-muted">{REASON_LABEL[p.refundReason] ?? p.refundReason}</div>}
+                  </td>
+                  <td className="px-4 py-2.5">{invoice?.token ? (invoice.status === "issued" ? <Link href={`/fatura/${invoice.token}`} className="underline" data-testid="invoice-link">Görüntüle</Link> : <span className="text-muted">Hazırlanıyor</span>) : "—"}</td>
+                  <td className="px-4 py-2.5">{p.periodEnd ? day(p.periodEnd) : "—"}</td>
+                  <td className="px-4 py-2.5">
+                    {p.status === "odendi" && <Link href={`/yonetim/abonelik?id=${p.id}`} className="underline">İade talebi</Link>}
+                    {p.status === "iade_talep" && (
+                      <div className="flex flex-wrap gap-3">
+                        <form action={withdrawRefundAction}><input type="hidden" name="id" value={p.id} /><button className="underline">Talebi çek</button></form>
+                        {a.role === "sahip" && <form action={approveRefundAction}><input type="hidden" name="id" value={p.id} /><button className="text-brand underline">İade edildi</button></form>}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+                {sp.id === p.id && p.status === "odendi" && (
+                  <tr><td colSpan={8} className="bg-surface-2 px-4 py-4">
+                    <form action={requestRefundAction} className="flex flex-wrap items-end gap-3">
+                      <input type="hidden" name="id" value={p.id} />
+                      <Field label="Neden">
+                        <select name="reason" className="h-11 rounded-lg border border-line bg-white px-3 text-sm">
+                          <option value="satissiz">7 gün içinde satışsız dönem</option>
+                          <option value="hatali">Hatalı / mükerrer çekim</option>
+                          <option value="diger">Diğer</option>
+                        </select>
+                      </Field>
+                      <Field label="Not"><Input name="note" className="w-64" /></Field>
+                      <button className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white">Talebi gönder</button>
+                      <span className="text-xs text-muted">
+                        {hint === true ? "Koşula uygun görünüyor: ödeme 7 gün içinde ve dönemde satış yok → tam iade istenebilir." : hint === false ? "Yayınlanan koşula göre başlamış dönemin bedeli iade edilmez; yalnız hatalı/mükerrer çekimde tam iade istenebilir." : ""}
+                      </span>
+                    </form>
+                  </td></tr>
+                )}
+              </Fragment>
             ))}</tbody>
           </table>
         </Card>
       )}
+      <Card className="mt-6 p-5 text-sm text-ink-2">
+        <h2 className="mb-1 font-semibold text-ink">İptal</h2>
+        <p>Abonelik otomatik yenilenmez: yeni dönem için ödeme yapmamanız aboneliği dönem sonunda eritir, ayrıca işlem gerekmez. Dönem bitince 7 günlük ek süre sonrasında yönetim paneli salt okunur olur; kasa satışa devam eder, verileriniz silinmez. Hesap ve verilerin tamamen silinmesini isterseniz {contact ? `${contact} adresine` : <Link href="/iletisim" className="underline">İletişim sayfasındaki adrese</Link>} yazmanız yeterli. Koşulların tamamı: <Link href="/yasal/iade-iptal" className="underline">İptal ve iade</Link>.</p>
+      </Card>
     </>
   );
 }

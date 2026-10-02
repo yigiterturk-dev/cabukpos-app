@@ -46,6 +46,12 @@ export function reminderDue(t: BillingDates & { remindedEnd: Date | null }, now 
   return (i.state === "deneme" || i.state === "aktif") && i.daysLeft >= 1 && i.daysLeft <= WARN_DAYS && t.remindedEnd?.getTime() !== i.endsAt.getTime();
 }
 
+/** #15: Yayınlanan iade koşulu — ödemeden 7 gün içinde + dönemde hiç satış yoksa tam iade. Hatalı/mükerrer çekimde koşul aranmaz. */
+export const REFUND_WINDOW_DAYS = 7;
+export function refundWindowOk(paidAt: Date, now: Date, salesSincePayment: number): boolean {
+  return now.getTime() - paidAt.getTime() <= REFUND_WINDOW_DAYS * DAY && salesSincePayment === 0;
+}
+
 export function bannerText(i: BillingInfo): string {
   if (i.state === "kilitli") return "Aboneliğin sona erdi; yönetim salt okunur. Kasa satışa devam ediyor.";
   if (i.state === "ek_sure") return `Aboneliğin sona erdi. ${i.daysLeft} gün içinde ödeme yapılmazsa yönetim salt okunur olur.`;

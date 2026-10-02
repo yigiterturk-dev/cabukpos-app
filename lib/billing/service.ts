@@ -1,5 +1,5 @@
 // lib/billing/service.ts — Abonelik DB işlemleri (tenants + billing_payments; ikisi de RLS'siz).
-import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { extendFrom, type BillingPeriod, type UnitCounts } from "@/lib/core/billing";
 import { openSubscriptionInvoice } from "./invoice";
@@ -52,4 +52,37 @@ export async function completePayment(id: string, ok: boolean, providerRef: stri
     await openSubscriptionInvoice(tx, p.tenantId, p.id); // #14: SaaS abonelik e-Arşiv faturası (bekleyen; cron keser)
     return "odendi";
   });
+}
+
+// — #15: İptal/iade. İptal: abonelik otomatik yenilenmediğinden işlem gerekmez (yasal/iade-iptal). İade: talep → onay; para hareketi sağlayıcıya (PayTR canlı anahtar) ya da elle işlenir, burada kayıt tutulur. —
+
+export const REFUND_REASONS = ["hatali", "satissiz", "diger"] as const;
+export type RefundReason = (typeof REFUND_REASONS)[number];
+
+/** Ödemeden bugüne kadarki satış sayısı — 7 gün + satışsız dönem koşulu için. */
+export const salesSincePayment = (tenantId: string, paidAt: Date) =>
+  withTenant(tenantId, async (tx) => {
+    const [r] = await tx.select({ n: count() }).from(schema.sales).where(sql`${schema.sales.createdAt} >= ${paidAt.toISOString()}`);
+    return r.n;
+  });
+
+/** Yalnız ödenmiş çekime talep açar; idempotent (zaten talepli/iadeli ise dokunmaz). */
+export async function requestRefund(id: string, reason: RefundReason, note: string | null): Promise<boolean> {
+  const [p] = await getDb().update(P).set({ status: "iade_talep", refundRequestedAt: new Date(), refundReason: reason, refundNote: note })
+    .where(and(eq(P.id, id), eq(P.status, "odendi"))).returning({ id: P.id });
+  return Boolean(p);
+}
+
+/** Talep sahibi vazgeçer: ödendi'ye döner, iade alanları temizlenir. */
+export async function withdrawRefund(id: string): Promise<boolean> {
+  const [p] = await getDb().update(P).set({ status: "odendi", refundRequestedAt: null, refundReason: null, refundNote: null })
+    .where(and(eq(P.id, id), eq(P.status, "iade_talep"))).returning({ id: P.id });
+  return Boolean(p);
+}
+
+/** Onay: iade işlendi (sağlayıcı ya da elle). Kayıt kalıcı; iade edilen dönem kısaltılmaz. */
+export async function completeRefund(id: string, providerRef?: string | null, now = new Date()): Promise<boolean> {
+  const [p] = await getDb().update(P).set({ status: "iade", refundedAt: now, providerRef: providerRef ?? undefined })
+    .where(and(eq(P.id, id), eq(P.status, "iade_talep"))).returning({ id: P.id });
+  return Boolean(p);
 }

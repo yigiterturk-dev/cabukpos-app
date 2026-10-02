@@ -18,7 +18,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [x] 4 | Güvenlik | ~~Kayıtta e-posta doğrulama~~ ✅ `/dogrula` sayfası + kayıtta otomatik e-posta + panel banner'ı + yeniden gönderme
 - [x] 13 | Faturalama | ~~Katmanlı planlar (şube/terminal başına fiyat)~~ ✅ taban 1 şube + 1 terminal dahil, ek birim env'den; ödeme anı şube/terminal fotoğrafı (`billing_payments.stores/devices`) (`a56d184`)
 - [x] 14 | Faturalama | ~~Abonelik e-Arşiv faturası (SaaS kendi faturası)~~ ✅ ödemede bekleyen fatura açılır, günlük cron `fake-earsiv` ile keser, `/fatura/<token>` herkese açık görünüm; satıcı env'den (`SAAS_NAME/SAAS_TAX_ID/SAAS_ADDRESS/SAAS_SERIES`); gerçek entegratör #17'ye bağlı (`7c6f816`)
-- [ ] 15 | Faturalama | Abonelik iptal/iade akışı | Lead
+- [x] 15 | Faturalama | ~~Abonelik iptal/iade akışı~~ ✅ iade: ödenmiş çekime talep (neden+not) → sahip onayı → `iade` kaydı (`billingPayments.refundRequestedAt/refundReason/refundNote/refundedAt`); 7 gün + satışsız dönem koşulu `refundWindowOk` (+satış sayacı) yayınlanan koşullarla uyumlu; abonelik sayfasında satır içi talep formu, talep çekme, onay ve İptal bilgi bölümü; gerçek para iadesi PayTR canlı anahtarına bağlı (#11 sonrası)
 - [ ] 28 | Platform | Getir/Yemeksepeti gerçek API bağlantısı (sandbox driver hazır) | İnsan hesabı + Ajan-1
 
 ## P1 — Rekabet gücü

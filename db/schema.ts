@@ -563,8 +563,12 @@ export const billingPayments = pgTable("billing_payments", {
   amount: integer("amount").notNull(), // kuruş, KDV dahil; taban + ek şube/terminal (ödeme anı fotoğrafı)
   stores: integer("stores").notNull().default(0), // ödeme anındaki şube sayısı
   devices: integer("devices").notNull().default(0), // ödeme anındaki aktif terminal sayısı
-  status: text("status").notNull().default("bekliyor"), // bekliyor | odendi | basarisiz
+  status: text("status").notNull().default("bekliyor"), // bekliyor | odendi | basarisiz | iade_talep | iade
   providerRef: text("provider_ref"),
+  refundRequestedAt: ts("refund_requested_at"), // #15: iade talebi
+  refundReason: text("refund_reason"), // hatali | satissiz | diger
+  refundNote: text("refund_note"),
+  refundedAt: ts("refunded_at"),
   periodEnd: ts("period_end"),
   createdAt: ts("created_at").notNull().defaultNow(),
   paidAt: ts("paid_at"),
