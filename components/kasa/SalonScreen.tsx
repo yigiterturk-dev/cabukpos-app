@@ -5,6 +5,7 @@ import { formatTL } from "@/lib/core/money";
 import { openTabsByTable, tableStatus, type TabState, type TableStatus } from "@/lib/core/tab";
 import type { Area, Table } from "@/lib/offline/state";
 import { minutesSince } from "./useTabs";
+import { MasaGlyph } from "@/components/MasaGlyph";
 
 const TONE: Record<TableStatus, string> = {
   bos: "border-line bg-white",
@@ -14,6 +15,7 @@ const TONE: Record<TableStatus, string> = {
 };
 const BAR: Record<TableStatus, string> = { bos: "bg-transparent", dolu: "bg-brand", hazir: "bg-ok", uzun: "bg-amber-500" };
 const LABEL: Record<TableStatus, string> = { bos: "Boş", dolu: "Dolu", hazir: "Hazır bekliyor", uzun: "Uzun süredir açık" };
+const GLYPH: Record<TableStatus, string> = { bos: "text-line", dolu: "text-brand", hazir: "text-ok", uzun: "text-amber-500" };
 
 export function SalonScreen({ areas, tables, tabs, now, onOpen }: { areas: Area[]; tables: Table[]; tabs: Map<string, TabState>; now: number; onOpen: (tableId: string) => void }) {
   const [areaId, setAreaId] = useState(areas[0]?.id ?? "");
@@ -42,6 +44,7 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen }: { areas: Area[
             <button key={t.id} type="button" onClick={() => onOpen(t.id)} aria-label={`${t.name}, ${LABEL[st]}`} data-status={st}
               className={`press relative flex min-h-32 flex-col overflow-hidden rounded-2xl border-2 p-3.5 pt-4 text-left shadow-card hover:shadow-pop ${TONE[st]}`}>
               <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${BAR[st]}`} />
+              <MasaGlyph className={`absolute right-3 top-3.5 ${GLYPH[st]}`} size={30} />
               <span className="text-xl font-semibold tracking-tight">{t.name}</span>
               {open.length === 0 && <span className="mt-auto text-xs font-medium text-muted">Boş</span>}
               {open.length > 0 && <span className="tabular mt-auto text-lg font-bold">{formatTL(total)}</span>}

@@ -12,6 +12,36 @@ export type SalonState = { error?: string; field?: string; savedAt?: number };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
+// — Hızlı kurulum: yeni işletme bölge adı + masa sayısıyla salonunu tek seferde kurar —
+export async function salonSetup(_: SalonState, form: FormData): Promise<SalonState> {
+  const a = await requireWriter();
+  const zones = form.getAll("zone").map((v) => String(v).trim());
+  const counts = form.getAll("count").map((v) => Number(v));
+  const list = zones.map((name, i) => ({ name, count: counts[i] })).filter((z) => z.name !== "" || Number.isFinite(z.count) && z.count > 0);
+  if (!list.length) return { error: "En az bir bölüm yazın (ör. Salon — 8 masa).", field: "zone" };
+  if (list.some((z) => z.name.length < 1 || z.name.length > 40)) return { error: "Bölge adı 1-40 karakter olmalı.", field: "zone" };
+  if (list.some((z) => !Number.isInteger(z.count) || z.count < 1 || z.count > 80)) return { error: "Masa sayısı 1-80 arasında olmalı.", field: "count" };
+  const used = new Set<string>();
+  const prefixOf = (name: string) => {
+    for (const ch of name.toUpperCase()) if (/[A-ZÇĞİÖŞÜ0-9]/.test(ch) && !used.has(ch)) { used.add(ch); return ch; }
+    const fb = "SBTMEKBAPÇGŞİÜÖZY0123456789".split("").find((c) => !used.has(c));
+    used.add(fb!);
+    return fb!;
+  };
+  await withTenant(a.tenantId, async (tx) => {
+    const storeId = (await tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1))[0]?.id;
+    if (!storeId) return;
+    for (const [i, z] of list.entries()) {
+      const [area] = await tx.insert(schema.areas).values({ tenantId: a.tenantId, storeId, name: z.name, sort: i }).returning({ id: schema.areas.id });
+      const names = expandTableNames(`${prefixOf(z.name)}1-${z.count}`);
+      if (names) await tx.insert(schema.tables).values(names.map((name, k) => ({ tenantId: a.tenantId, areaId: area.id, name, sort: k })));
+      await audit(tx, a.tenantId, `user:${a.id}`, "salon.setup", { area: area.id, name: z.name, count: z.count });
+    }
+  });
+  revalidatePath("/yonetim/salon");
+  return { savedAt: Date.now() };
+}
+
 async function firstStore(tenantId: string) {
   const [s] = await withTenant(tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
   return s.id;

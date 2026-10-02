@@ -1,7 +1,7 @@
 "use client";
 // M5 salon yönetim formları: bölge, masa, istasyon, seçenek grubu, cihaz rolü, kategori istasyonu.
 import { useState, useTransition } from "react";
-import { addTables, saveArea, saveOptionGroup, saveStation, setCategoryStation, setDeviceRole, type SalonState } from "@/lib/admin/salon-actions";
+import { addTables, salonSetup, saveArea, saveOptionGroup, saveStation, setCategoryStation, setDeviceRole, type SalonState } from "@/lib/admin/salon-actions";
 import { formatTL } from "@/lib/core/money";
 import { Select, type Option } from "@/components/Select";
 import { useFormAction } from "@/components/useFormAction";
@@ -16,6 +16,41 @@ export function AreaForm() {
     <form onSubmit={onSubmit} className="flex flex-wrap items-start gap-2">
       <div><Input key={state.savedAt ?? 0} name="name" placeholder="Yeni bölge (ör. Salon, Bahçe)" aria-label="Bölge adı" className="w-64" required /><Err s={state} f="name" /></div>
       <Button type="submit" disabled={pending}>Bölge ekle</Button>
+    </form>
+  );
+}
+
+const ONEMLI_BOLGELER = ["Salon", "Bahçe", "Teras", "Kapalı alan", "Üst kat"] as const;
+
+/** İlk kurulum: bölge adı + masa sayısıyla salonu tek seferde kurar. */
+export function SalonSetup() {
+  const { state, pending, onSubmit } = useFormAction(salonSetup, {} as SalonState);
+  const [rows, setRows] = useState([
+    { name: "Salon", count: "8" },
+    { name: "Bahçe", count: "4" },
+  ]);
+  const duzenle = (i: number, yama: Partial<{ name: string; count: string }>) =>
+    setRows((rs) => rs.map((r, k) => (k === i ? { ...r, ...yama } : r)));
+  return (
+    <form onSubmit={onSubmit} className="max-w-xl space-y-3">
+      <p className="text-sm text-muted">Bölümlerini yaz, masa sayısını gir — masa planı kasaya ve garson tabletine otomatik düşer. Masa adları bölümün baş harfine göre verilir (S1…, B1…).</p>
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <div className="flex-1"><Input name="zone" value={r.name} onChange={(e) => duzenle(i, { name: e.target.value })} placeholder="Bölge adı (Salon, Bahçe, Teras…)" aria-label={`${i + 1}. bölge adı`} maxLength={40} /></div>
+          <div className="w-28"><Input name="count" value={r.count} onChange={(e) => duzenle(i, { count: e.target.value.replace(/\D/g, "") })} inputMode="numeric" placeholder="Masa" aria-label={`${i + 1}. bölge masa sayısı`} /></div>
+          <button type="button" onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))} aria-label={`${r.name} bölümünü kaldır`}
+            className={`flex size-10 items-center justify-center rounded-lg border border-line text-muted hover:text-bad ${rows.length === 1 ? "invisible" : ""}`}>×</button>
+        </div>
+      ))}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-sm text-muted">Hızlı ekle:</span>
+        {ONEMLI_BOLGELER.map((b) => (
+          <button key={b} type="button" onClick={() => setRows((rs) => [...rs, { name: b, count: "4" }])}
+            className="rounded-full border border-line px-2.5 py-1 text-sm text-muted hover:bg-surface-3 hover:text-ink">+ {b}</button>
+        ))}
+      </div>
+      <Err s={state} f="zone" /><Err s={state} f="count" /><Err s={state} />
+      <Button type="submit" disabled={pending}>{pending ? "Kuruluyor…" : "Salonu kur"}</Button>
     </form>
   );
 }
