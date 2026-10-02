@@ -24,7 +24,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 ## P1 — Rekabet gücü
 
 - [x] 2 | Güvenlik | ~~CSRF koruması (server action'lara token)~~ ✅ uygulama düzeyi katman: `lib/auth/csrf.ts` saf `csrfVerdict` (fetch-metadata: çapraz site/same-site reddi, origin↔host çapraz denetimi, navigate geçer) + `assertCsrf()` `requireWriter`'a bağlı → tüm yönetim aksiyonları tek merkezden; form imzaları bozulmaz, Next'in Origin=Host denetimine ek derinlik (`f5b5386`)
-- [ ] 3 | Güvenlik | Kayan oturum yenileme + aktivite rotasyonu | Lead
+- [x] 3 | Güvenlik | ~~Kayan oturum yenileme + aktivite rotasyonu~~ ✅ proxy /yonetim'de jeton yaşı 1 günü aşınca aynı kimlikle yeni 14 günlük jeton verir (`shouldRenewSession` saf + testli); etkin kullanıcı hiç düşmez, 14 gün hareketsiz düşer; eski jeton değeri kendi süresine kadar geçerli kalır — tam iptal/aktif oturum listesi #9'da (`343fe1a`)
 - [ ] 7 | Güvenlik | JWT audience'ları için ayrı anahtarlar | Lead
 - [ ] 8 | Güvenlik | Hassas işlemde re-auth; cihaz oturumu rotasyonu | Lead
 - [ ] 9 | Güvenlik | Aktif oturum listesi + tüm cihazlardan çıkış | Lead
