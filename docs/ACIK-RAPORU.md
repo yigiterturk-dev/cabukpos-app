@@ -35,8 +35,8 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 21 | Ops | ~~Fiscal backlog escalation~~ ✅ (cron 6 saate çekildi)
 - [x] 22 | Offline | Yönetim paneli offline + Background Sync ✅ (SW `/yonetim` önbelleği + SyncManager köprüsü, `d33e9e3`) | Ajan-1
 - [x] 23 | Offline | ~~Sekme kapalıyken outbox boşaltımı (periodic wake)~~ ✅ SW artık sekme hiç yokken giden kutusunu kendisi boşaltır: aynı Dexie DB'sini ham IDB ile açan batch pusher + `sync` olayında kasa sekmesi yoksa boşaltım + kurulu PWA'da `periodicsync` kaydı (3 saat); kasa sekmesi varsa eskisi gibi sayfaya "sync-now" (`969cfbb`)
-- [ ] 24 | Offline | Cihaz re-pair'de veri kaybı UX düzeltmesi | Lead
-- [ ] 25 | Offline | Fiş çakışması çözüm politikası | Lead
+- [x] 24 | Offline | ~~Cihaz re-pair'de veri kaybı UX düzeltmesi~~ ✅ sessiz sıfırlama kalktı: `resetForDevice` kaç bekleyen belgenin taşındığını meta'ya yazar (`resetNotice`), kasa üst çubuğunda "N bekleyen belge reddedildi listesine taşındı" rozeti + nedeni (tooltip) + "Anladım" ile kapatma (`49d5e19`)
+- [x] 25 | Offline | ~~Fiş çakışması çözüm politikası~~ ✅ çift yönlü: sunucu çakışan fişi "-N" ile yeniden adlandırıp review'a "fiş no çakıştı" yazıyor (mevcut); iade sorgusu artık tam eşleşme yoksa çekirdek numaranın "-N" ikizlerinin en eskisine bakar — basılan fişte çekirdek no yazar, buluttaki ikiz bulunabilir; tam eşleşme öncelikli (DB testi, `443633c`)
 - [x] 26 | Offline | ~~14 gün prune + push-crash dayanıklılığı~~ ✅ gün sonunda reddedilen belge kopyaları da 14 günde budanır (kanıt sunucu audit_log'da); push'ta "yanıt partiyle uyuşmuyor" koruması → hiçbir satır yanlış silinmez, sunucu idempotent olduğundan yeniden gönderim güvenli; giden kutusu asla otomatik silinmez (yazılmamış hasılat) — motor + SW boşaltıcısında (`f864f71`)
 - [x] 27 | Sync | Bulut→istemci gerçek zamanlı push (SSE/poll) ✅ (`GET /api/sync/stream` ucuz kiracı belirteci + kasada EventSource→kick, `1448969`) | Ajan-1
 - [x] 29 | Platform | Menü/fiyat/stok marketplace'e geri push ✅ (mock+Getir sandbox sürücü, panel butonu, `a2420ba`) | Ajan-1
