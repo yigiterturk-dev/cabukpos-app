@@ -29,23 +29,23 @@ ve yedekleme alanında emre amade. İletişim: bu dosyaya not bırak, insan akta
 Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buraya `[x]` satırı bırak. Bitirdiğin görevin kapattığı açık-rapor maddesini parantezde yaz.
 
 ### Ajan-1 (yonetim paneli) — iade tutanağı bittikten sonra sırayla
-1. Yonetim alt sayfalarına `loading.tsx` + `error.tsx` iskeletleri (#56)
+1. [x] Yonetim alt sayfalarına `loading.tsx` + `error.tsx` iskeletleri (#56) — `f99c9fd`
 2. Bildirim merkezi iskeleti + Nav zil ikonu (#46)
-3. `lib/platform`: Getir/Yemeksepeti adaptör arayüzü + sandbox driver (#28 ilk adım)
+3. [x] `lib/platform`: Getir/Yemeksepeti adaptör arayüzü + sandbox driver (#28 ilk adım) — `b1d9482`; env kapalı varsayılan (`GETIR_ENABLED`, `YS_ENABLED`), canlı anahtar insan işi
 4. Kurye akışına durum zaman damgası + gecikme uyarısı (#39 kolay kısmı)
 
 ### Müdür ajan (DB/ops)
 1. Sentry/APM iskeleti + uptime kontrolü — `lib/observability` (#57)
-2. CI restore provası job'ı — `.github/workflows` (#58)
-3. Fiscal backlog escalation: 5/gün limitine takılan kiracı için alarm — `app/api/cron`, `vercel.json` (#21)
-4. `db/`: `users.emailVerified` + `users.totpSecret` kolon şeması (2FA/e-posta doğrulama ön hazırlığı; auth tarafını lead oturum yazar) (#1, #4 ön hazırlık)
+2. [x] CI restore provası job'ı — `.github/workflows` (#58) — `ba57d7a`
+3. [x] Fiscal backlog escalation: 5/gün limitine takılan kiracı için alarm — `app/api/cron`, `vercel.json` (#21) — `6b79dfd`
+4. [x] `db/`: `users.emailVerified` + `users.totpSecret` kolon şeması (2FA/e-posta doğrulama ön hazırlığı; auth tarafını lead oturum yazar) (#1, #4 ön hazırlık) — `54e160a`; ⚠️ yayında `db:push` gerekir
 
 ### Lead oturum (koordinatör) — ŞİMDİ YAPIYOR
-1. `lib/auth/password.ts`: HIBP sızma şifre kontrolü + sıkı politika (#5)
-2. `lib/auth/actions.ts`: başarısız girişte hesap kilitleme (#6)
-3. Kök `app/error.tsx` + `app/global-error.tsx` + `app/loading.tsx` (#56)
-4. `app/robots.ts` + `app/sitemap.ts` + layout noindex kapısı (#59)
-5. İlgili birim testleri (#53 kısmi)
+1. [x] `lib/auth/password.ts`: HIBP sızma şifre kontrolü + sıkı politika (#5) — `31d8e06`
+2. [x] `lib/auth/actions.ts`: başarısız girişte hesap kilitleme (#6) — `31d8e06`
+3. [x] Kök `app/error.tsx` + `app/global-error.tsx` + `app/loading.tsx` (#56) — `31d8e06`
+4. [x] `app/robots.ts` + `app/sitemap.ts` + layout noindex kapısı (#59) — `31d8e06`
+5. [x] İlgili birim testleri (#53 kısmi) — `31d8e06`
 
 ## İnsan müdahalesi bekleyenler (kod değil)
 
