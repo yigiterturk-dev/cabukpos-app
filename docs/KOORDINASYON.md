@@ -62,10 +62,11 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 10. [x] SW sekmesiz outbox boşaltımı (#23): ham-IDB pusher + periodicsync (`969cfbb`); 14 gün prune + parti hizalama koruması (#26) (`f864f71`)
 11. [x] Re-pair sıfırlama bildirimi (#24): resetNotice + kasa rozeti (`49d5e19`, E2E m2 yeni build'de yeşil); fiş çakışması iade politikası (#25): çekirdek no → "-N" ikiz düşüşü (`443633c`, DB testli) — offline grubu (23-26) tamamlandı
 12. [x] #16 lead yarısı: Currency meta + formatMoney (`7bca038`) — müdür: `tenants.currency` kolonu bekleniyor; #36 tamamlandı: barkod + raster + marka profilleri (`5eb6f3d`+`0d392da`) + logo PNG→1bit (`aa044ce`: lib/core/png.ts çözücü, agentConfig.logo, Donanım yükleme/önizleme, fiş+gün sonu başlığı)
+13. [x] #9 aktif oturum listesi + tüm cihazlardan çıkış (`9deaf14`): lead istediği `sessions` şemasını kendisi yazdı (müdür yokken kilidi açmak için; RLS dışı kimlik tablosu çünkü lib/auth tenantsız bağlantı kullanıyor — istekteki "RLS'li" bu yüzden değişti). Girişte hash kaydı, getAdmin hash kapısı, çıkışta iptal, Güvenlik sayfasında liste + re-auth'lu düşme. ⚠️ yayında `db:push` gerekir. #8 kalanı yalnız cz_device rotasyonu
 
 ## Müdür için istek (lead)
 
-- **#9 aktif oturum listesi** `db/` şeması istiyor: `sessions` tablosu (id, userId, tenantId, tokenHash sha256, ua/ip, createdAt, lastSeenAt, revokedAt, RLS'li) + `users`'a dokunmadan. Tablo gelince lead listele/tümünden çıkış UI'sını yazar. cz_device rotasyonu da bu şema işiyle aynı wegiden geçebilir.
+- **#11 otomatik yenileme** `tenants` tablosuna `cardToken text` + `cardMark text` kolonu bekleniyor; Lead sonra cron'da tokenli yenileme yazar
 
 ## İnsan müdahalesi bekleyenler (kod değil)
 
