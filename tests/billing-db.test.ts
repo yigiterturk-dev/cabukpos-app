@@ -3,8 +3,8 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 process.env.DATABASE_URL = "postgres://cabukpos_app:dev-app-pass@localhost:5432/cabukpos_test";
 process.env.MIGRATE_DATABASE_URL = "postgres://yigiterturk@localhost:5432/cabukpos_test";
-const { getDb, closeDb, schema } = await import("@/db");
-const { createPayment, completePayment, tenantBilling } = await import("@/lib/billing/service");
+const { getDb, closeDb, schema, withTenant } = await import("@/db");
+const { createPayment, completePayment, tenantBilling, tenantUnits } = await import("@/lib/billing/service");
 const { eq } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "ABONE-T", vertical: "market" }).returning();
@@ -32,4 +32,16 @@ test("ödeme: başarısız uzatmaz, başarılı bir kez uzatır", async () => {
   const exp = new Date(b.trialEndsAt);
   exp.setUTCFullYear(exp.getUTCFullYear() + 1);
   assert.equal(b.paidUntil!.toISOString(), exp.toISOString());
+});
+
+test("birim sayısı ve ödeme fotoğrafı: şube/terminal ödeme satırına yazılır", async () => {
+  const [s] = await withTenant(t.id, (tx) => tx.insert(schema.stores).values({ tenantId: t.id, name: "MERKEZ" }).returning());
+  await withTenant(t.id, (tx) => tx.insert(schema.stores).values({ tenantId: t.id, name: "ŞUBE-2" }));
+  await withTenant(t.id, (tx) => tx.insert(schema.devices).values({ tenantId: t.id, storeId: s.id, name: "KASA-1", receiptPrefix: "A" }));
+  await withTenant(t.id, (tx) => tx.insert(schema.devices).values({ tenantId: t.id, storeId: s.id, name: "KASA-2", receiptPrefix: "B", revokedAt: new Date() }));
+  const u = await tenantUnits(t.id);
+  assert.deepEqual(u, { stores: 2, devices: 1 });
+  const p = await createPayment(t.id, "fake", "aylik", 60_000, u);
+  assert.equal(p.stores, 2);
+  assert.equal(p.devices, 1);
 });

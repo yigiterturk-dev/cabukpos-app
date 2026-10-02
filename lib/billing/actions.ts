@@ -3,9 +3,9 @@
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/session";
 import type { BillingPeriod } from "@/lib/core/billing";
-import { planPrice } from "./plans";
+import { planPriceFor } from "./plans";
 import { getBillingProvider } from "./provider";
-import { completePayment, createPayment, paymentOf, tenantBilling } from "./service";
+import { completePayment, createPayment, paymentOf, tenantBilling, tenantUnits } from "./service";
 import { clientIp } from "@/lib/ratelimit";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -13,11 +13,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function startCheckout(form: FormData) {
   const a = await requireAdmin();
   const period: BillingPeriod = form.get("period") === "yillik" ? "yillik" : "aylik";
-  const provider = getBillingProvider(), amount = planPrice(period);
+  const provider = getBillingProvider(), units = await tenantUnits(a.tenantId), amount = planPriceFor(period, units);
   const phone = String(form.get("phone") ?? "").replace(/[^\d+]/g, "");
   if (!provider || !amount) redirect("/yonetim/abonelik?sonuc=hata");
   if (provider.name === "paytr" && phone.length < 10) redirect("/yonetim/abonelik?sonuc=telefon");
-  const p = await createPayment(a.tenantId, provider.name, period, amount);
+  const p = await createPayment(a.tenantId, provider.name, period, amount, units);
   const t = await tenantBilling(a.tenantId);
   let url: string;
   try {

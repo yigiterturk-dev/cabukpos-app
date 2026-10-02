@@ -1,7 +1,7 @@
 // tests/billing.test.ts — abonelik durumu (saf).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { billingInfo, extendFrom, reminderDue, bannerText } from "@/lib/core/billing";
+import { billingInfo, extendFrom, reminderDue, bannerText, planBreakdown } from "@/lib/core/billing";
 
 const D = (s: string) => new Date(s);
 const now = D("2026-09-29T12:00:00Z");
@@ -32,4 +32,15 @@ test("hatırlatma: 1-7 gün kala, aynı bitişe bir kez", () => {
   assert.equal(reminderDue({ ...t, remindedEnd: t.trialEndsAt }, now), false);
   assert.equal(reminderDue({ ...t, trialEndsAt: D("2026-10-20T00:00:00Z") }, now), false);
   assert.equal(reminderDue({ ...t, trialEndsAt: D("2026-09-28T00:00:00Z") }, now), false);
+});
+
+test("katmanlı plan: taban 1 şube + 1 terminal dahil, fazlası birim başına", () => {
+  const p = { base: 50_000, store: 10_000, device: 5_000 };
+  assert.deepEqual(planBreakdown(p, { stores: 1, devices: 1 }), { base: 50_000, extraStores: 0, extraDevices: 0, total: 50_000 });
+  assert.deepEqual(planBreakdown(p, { stores: 3, devices: 4 }), { base: 50_000, extraStores: 20_000, extraDevices: 15_000, total: 85_000 });
+});
+test("katmanlı plan: birim fiyat tanımsızsa o bileşen ek ücretsiz", () => {
+  const p = { base: 50_000, store: null, device: 5_000 };
+  assert.equal(planBreakdown(p, { stores: 9, devices: 4 }).total, 65_000);
+  assert.equal(planBreakdown({ base: 50_000, store: null, device: null }, { stores: 9, devices: 9 }).total, 50_000);
 });

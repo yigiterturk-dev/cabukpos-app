@@ -28,6 +28,18 @@ export function extendFrom(t: BillingDates, period: BillingPeriod, now = new Dat
   return d;
 }
 
+// — #13 katmanlı planlar: taban fiyat 1 şube + 1 terminal dahil; fazlası birim başına eklenir. —
+export type UnitCounts = { stores: number; devices: number };
+export type UnitPrices = { base: number; store: number | null; device: number | null };
+export type PlanBreakdown = { base: number; extraStores: number; extraDevices: number; total: number };
+
+/** Birim fiyatı tanımsızsa o bileşen ücretsizdir (katmanlama kapalı = eski düz model). */
+export function planBreakdown(p: UnitPrices, c: UnitCounts): PlanBreakdown {
+  const extraStores = p.store && c.stores > 1 ? (c.stores - 1) * p.store : 0;
+  const extraDevices = p.device && c.devices > 1 ? (c.devices - 1) * p.device : 0;
+  return { base: p.base, extraStores, extraDevices, total: p.base + extraStores + extraDevices };
+}
+
 /** Günlük hatırlatma: bitişe 1-7 gün kala, aynı bitiş için bir kez. */
 export function reminderDue(t: BillingDates & { remindedEnd: Date | null }, now = new Date()): boolean {
   const i = billingInfo(t, now);

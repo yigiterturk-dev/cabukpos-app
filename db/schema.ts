@@ -560,7 +560,9 @@ export const billingPayments = pgTable("billing_payments", {
   tenantId: tenantRef(),
   provider: text("provider").notNull(),
   period: text("period").notNull(), // aylik | yillik
-  amount: integer("amount").notNull(), // kuruş, KDV dahil
+  amount: integer("amount").notNull(), // kuruş, KDV dahil; taban + ek şube/terminal (ödeme anı fotoğrafı)
+  stores: integer("stores").notNull().default(0), // ödeme anındaki şube sayısı
+  devices: integer("devices").notNull().default(0), // ödeme anındaki aktif terminal sayısı
   status: text("status").notNull().default("bekliyor"), // bekliyor | odendi | basarisiz
   providerRef: text("provider_ref"),
   periodEnd: ts("period_end"),

@@ -1,17 +1,28 @@
 // lib/billing/service.ts — Abonelik DB işlemleri (tenants + billing_payments; ikisi de RLS'siz).
-import { and, desc, eq } from "drizzle-orm";
-import { getDb, schema } from "@/db";
-import { extendFrom, type BillingPeriod } from "@/lib/core/billing";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { getDb, schema, withTenant } from "@/db";
+import { extendFrom, type BillingPeriod, type UnitCounts } from "@/lib/core/billing";
 
-const T = schema.tenants, P = schema.billingPayments;
+const T = schema.tenants, P = schema.billingPayments, S = schema.stores, D = schema.devices;
 
 export async function tenantBilling(tenantId: string) {
   const [t] = await getDb().select({ trialEndsAt: T.trialEndsAt, paidUntil: T.paidUntil, address: T.address }).from(T).where(eq(T.id, tenantId));
   return t ?? null;
 }
 
-export async function createPayment(tenantId: string, provider: string, period: BillingPeriod, amount: number) {
-  const [p] = await getDb().insert(P).values({ tenantId, provider, period, amount }).returning();
+/** Kiracının şube ve aktif (iptal edilmemiş) terminal sayısı — fiyatlandırma fotoğrafı için. */
+export async function tenantUnits(tenantId: string): Promise<UnitCounts> {
+  return withTenant(tenantId, async (tx) => {
+    const [[s], [d]] = await Promise.all([
+      tx.select({ n: count() }).from(S),
+      tx.select({ n: count() }).from(D).where(isNull(D.revokedAt)),
+    ]);
+    return { stores: s.n, devices: d.n };
+  });
+}
+
+export async function createPayment(tenantId: string, provider: string, period: BillingPeriod, amount: number, units: UnitCounts = { stores: 0, devices: 0 }) {
+  const [p] = await getDb().insert(P).values({ tenantId, provider, period, amount, stores: units.stores, devices: units.devices }).returning();
   return p;
 }
 
