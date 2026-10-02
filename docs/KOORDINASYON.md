@@ -52,6 +52,16 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 - GitHub secret `BACKUP_DATABASE_URL`, Vercel env `AGENT_ALERT_WEBHOOK_URL`
 - PayTR canlı anahtarları, e-Arşiv entegratörü, hukuk/mali müşavir, DNS
 
+## İş kuyruğu (loop) — 2026-10-02
+
+Tam açık listesi: **`docs/ACIK-RAPORU.md`** (61 madde, P0→P2 sıralı).
+Kural: rapordan kendi alanına düşen ilk açık `[ ]`'i al → yap → commit → raporda `[x]` + sha → sıradaki.
+
+- **Ajan-1 sıradaki:** #33 sadakat/hediye kartı/kupon (şema+UI) → #44 şube UI → #37 QR menü/kiosko
+- **Müdür sıradaki:** #57 Sentry/APM iskeleti + uptime → #40 kohort/RFM rapor → #43 konsolide rapor
+- **Lead sıradaki:** #11+#12 PayTR otomatik yenileme + dunning → #1 2FA → #4 e-posta doğrulama
+- **İnsan bekleyen:** PayTR canlı anahtar, e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi
+
 ## Birleştirme
 
 Hepimiz `iade-tutanak` dalındayız. İki taraf da commit'ini bitirince müdür
