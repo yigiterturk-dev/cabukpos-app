@@ -28,8 +28,10 @@ durumu ve cabukpos_app BYPASSRLS durumu birlikte doğrulanmalıdır.
 - Yedeği canlıya geri yüklemeden doğrulamak için `pg_restore --list <dosya>`;
   gerçek restore provası için `REHEARSAL_DATABASE_URL=<izole staging DB> npm run db:restore:rehearsal -- --file=<dump>`
   komutu dump'ı izole veritabanına yükler, canlı URL ile aynı olduğunu reddeder ve tenants duman testini çalıştırır.
-- Komut yedeği üretir, zamanlamayı kendisi yapmaz. Neon/Vercel dışı güvenilir bir
-  scheduler ile en az günlük çalıştırın ve restore provasını düzenli kaydedin.
+- Komut yedeği üretir, zamanlamayı `.github/workflows/backup.yml` üstlenir: her gün
+  03:15 UTC'de dump alır, katalog provası yapar, artifact olarak 30 gün saklar.
+  Repo secret'ına `BACKUP_DATABASE_URL` (okuma yetkili Neon bağlantısı) tanımlı olmalı;
+  ilk koşuda Actions logundan "Yedek hazır" satırı doğrulanır.
 
 ## Canlı kontrol
 

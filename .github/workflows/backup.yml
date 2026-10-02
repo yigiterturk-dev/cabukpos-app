@@ -1,0 +1,35 @@
+name: Yedekleme
+
+# Günlük backup gate: canlı DB'den custom-format dump alır, pg_restore katalog
+# provası yapar ve dump'ı workflow artifact olarak 30 gün saklar.
+# Gerekli secret: BACKUP_DATABASE_URL (Neon MIGRATE_DATABASE_URL ile aynı rol, okuma yeterli).
+on:
+  schedule:
+    - cron: "15 3 * * *" # her gün 03:15 UTC (Türkiye sabahı)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      MIGRATE_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_DIR: /tmp/cabukpos-backups
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Yedek al ve katalog provasını çalıştır
+        run: npm run db:backup
+      - name: Artifact'a yükle (30 gün)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cabukpos-dump-${{ github.run_id }}
+          path: /tmp/cabukpos-backups/*.dump
+          retention-days: 30
+          if-no-files-found: error
