@@ -9,8 +9,9 @@ import { appUrl, esc, mailReady, sendEmail } from "@/lib/mail";
 import { salesContact } from "@/lib/billing/plans";
 import { passwordProblemAsync } from "./password";
 import { failKey, shouldLock } from "./lockout";
+import { newTotpSecret, otpauthUrl, verifyTotp } from "./totp";
 import { checkReset, resetToken } from "./reset";
-import { clearAdminSession, setAdminSession } from "./session";
+import { clearAdminSession, getAdmin, setAdminSession } from "./session";
 
 export type AuthState = { error?: string; field?: string; values?: Record<string, string>; ok?: string };
 
@@ -57,9 +58,53 @@ export async function login(_: AuthState, form: FormData): Promise<AuthState> {
   if (shouldLock(await hit(failKey(email)))) return { error: "Çok fazla başarısız deneme. Hesap 15 dakika kilitli; şifrenizi unuttuysanız yenileyin.", values };
   const [u] = await getDb().select().from(schema.users).where(eq(schema.users.email, email));
   if (!u || !u.active || !(await bcrypt.compare(password, u.passwordHash))) return { error: "E-posta veya şifre hatalı.", values };
+  if (u.totpSecret) {
+    const kod = String(form.get("kod") ?? "").trim();
+    if (!kod) return { error: "2FA kodu gerekli. Kimlik doğrulayıcı uygulamanızdaki 6 haneli kodu girin.", values };
+    if (!verifyTotp(u.totpSecret, kod)) return { error: "E-posta, şifre veya 2FA kodu hatalı.", values };
+  }
   await getDb().delete(schema.loginAttempts).where(inArray(schema.loginAttempts.key, [`e:${email}`, failKey(email)]));
   await setAdminSession(u.id, u.tenantId, u.tokenVersion);
   redirect("/yonetim");
+}
+
+export type MfaState = { secret?: string; url?: string; error?: string; ok?: string };
+
+/** Yeni 2FA kurulumu: gizli anahtar üretir, henüz kaydetmez; onay kodu doğrulaması kaydeder. */
+export async function mfaBasla(): Promise<MfaState> {
+  const a = await getAdmin();
+  if (!a) return { error: "Oturum gerekli." };
+  const secret = newTotpSecret();
+  return { secret, url: otpauthUrl(secret, a.email) };
+}
+
+export async function mfaOnayla(_: MfaState, form: FormData): Promise<MfaState> {
+  const a = await getAdmin();
+  if (!a) return { error: "Oturum gerekli." };
+  const secret = String(form.get("secret") ?? "");
+  const kod = String(form.get("kod") ?? "");
+  if (!/^[A-Z2-7]{32,64}$/i.test(secret)) return { error: "Kurulum baştan başlatılmalı." };
+  if (!verifyTotp(secret, kod)) return { error: "Kod doğrulanamadı. Uygulamadaki güncel kodu girin." };
+  await getDb().update(schema.users).set({ totpSecret: secret }).where(eq(schema.users.id, a.id));
+  await getDb().transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.tenant_id', ${a.tenantId}, true)`);
+    await audit(tx, a.tenantId, `user:${a.id}`, "user.totp_on");
+  });
+  return { ok: "İki adımlı doğrulama açıldı. Girişte artık kod istenecek." };
+}
+
+export async function mfaKapat(_: MfaState, form: FormData): Promise<MfaState> {
+  const a = await getAdmin();
+  if (!a) return { error: "Oturum gerekli." };
+  const sifre = String(form.get("password") ?? "");
+  const [u] = await getDb().select({ passwordHash: schema.users.passwordHash }).from(schema.users).where(eq(schema.users.id, a.id));
+  if (!u || !(await bcrypt.compare(sifre, u.passwordHash))) return { error: "Şifre hatalı." };
+  await getDb().update(schema.users).set({ totpSecret: null }).where(eq(schema.users.id, a.id));
+  await getDb().transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.tenant_id', ${a.tenantId}, true)`);
+    await audit(tx, a.tenantId, `user:${a.id}`, "user.totp_off");
+  });
+  return { ok: "İki adımlı doğrulama kapatıldı." };
 }
 
 export async function logout() {

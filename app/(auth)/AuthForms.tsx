@@ -44,6 +44,7 @@ export function LoginForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       <Field label="E-posta"><Input name="email" type="email" defaultValue={state.values?.email} autoComplete="email" required /></Field>
       <Field label="Şifre"><Input name="password" type="password" autoComplete="current-password" required /></Field>
+      <Field label="2FA kodu" hint="İki adımlı doğrulama açtıysanız uygulamadaki 6 haneli kod"><Input name="kod" inputMode="numeric" autoComplete="one-time-code" /></Field>
       <p className="-mt-2 text-right text-sm"><Link href="/sifremi-unuttum" className="text-muted underline">Şifremi unuttum</Link></p>
       {state.error && <p className="text-sm text-bad">{state.error}</p>}
       <Button type="submit" disabled={pending} size="lg" className="w-full">{pending ? "Giriş yapılıyor…" : "Giriş yap"}</Button>

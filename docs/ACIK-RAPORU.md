@@ -14,7 +14,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 33 | Büyüme | Sadakat programı, hediye kartı, kupon motoru (şema+UI) | Ajan-1+Lead
 - [ ] 32 | Büyüme | Gerçek SMS (Netgsm/İletimerkezi) + WhatsApp gönderim sağlayıcısı | İnsan hesabı + ajan
 - [ ] 44 | Panel | Şube oluşturma/geçiş UI + şube bazlı veri kapsamı | Ajan-1
-- [ ] 1 | Güvenlik | 2FA (TOTP) — şema hazır (`users.totpSecret`), auth UI+doğrulama | Lead
+- [x] 1 | Güvenlik | ~~2FA (TOTP)~~ ✅ `lib/auth/totp.ts` + `/yonetim/guvenlik` sayfası + giriş akışı kod doğrulama
 - [ ] 4 | Güvenlik | Kayıtta e-posta doğrulama — şema hazır (`users.emailVerifiedAt`) | Lead
 - [ ] 13 | Faturalama | Katmanlı planlar (şube/terminal başına fiyat) | Lead
 - [ ] 14 | Faturalama | Abonelik e-Arşiv faturası (SaaS kendi faturası) | Lead
