@@ -5,10 +5,78 @@ import { requireAdmin } from "@/lib/auth/session";
 import { deleteCode } from "@/lib/admin/delivery-actions";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
 import { SUPPORTED_PLATFORMS } from "@/lib/platform";
+import { foldTabs, type TabState } from "@/lib/core/tab";
+import { initialEvents } from "@/lib/tabs/stream";
+import { formatTL } from "@/lib/core/money";
 import { CodeForm, ConnectionForm, ConnectionToggles, TestOrderButton } from "@/components/admin/DeliveryForms";
 import { Card, Empty, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
+
+const platformEtiket = (t: TabState) => {
+  const p = t.order?.source?.platform;
+  return (p && PLATFORM_NAMES[p.toLowerCase()]) ?? p ?? (t.kind === "paket" ? "Telefon" : "Platform");
+};
+const dkOnce = (at: string) => Math.max(0, Math.round((Date.now() - new Date(at).getTime()) / 60_000));
+const bugunMu = (at: string) => new Date(at).toDateString() === new Date().toDateString();
+const DURUM = (t: TabState): { label: string; cls: string } =>
+  t.closed || t.delivery.deliveredAt ? { label: "Teslim", cls: "bg-ok text-white" }
+  : t.delivery.outAt ? { label: "Kuryede", cls: "bg-brand text-white" }
+  : t.delivery.acceptedAt ? { label: `Hazırlanıyor${t.delivery.prepMin ? ` · ${t.delivery.prepMin} dk` : ""}`, cls: "bg-ink text-white" }
+  : { label: "Onay bekliyor", cls: "bg-amber-500 text-white" };
+
+function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
+  const gruplar = new Map<string, TabState[]>();
+  for (const t of acik) {
+    const p = platformEtiket(t);
+    gruplar.set(p, [...(gruplar.get(p) ?? []), t]);
+  }
+  return (
+    <Card className="mb-6 p-5" data-testid="paket-hatti">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <h2 className="font-semibold">Canlı paket hattı</h2>
+        {teslim > 0 && <span className="text-sm text-muted">bugün {teslim} teslim</span>}
+        <a href="/yonetim/platformlar" className="ml-auto text-sm text-brand hover:underline">Yenile</a>
+      </div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {gruplar.size === 0 && <span className="text-sm text-muted">Açık paket/platform siparişi yok.</span>}
+        {[...gruplar.entries()].map(([p, ts]) => (
+          <div key={p} className="flex items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2">
+            <span className="text-sm font-medium">{p}</span>
+            <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white">{ts.length}</span>
+          </div>
+        ))}
+      </div>
+      {acik.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-line">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-line bg-surface-3 text-left text-muted">
+              <th className="px-3 py-2 font-medium">Platform</th><th className="px-3 py-2 font-medium">Müşteri</th>
+              <th className="px-3 py-2 font-medium">Sipariş</th><th className="px-3 py-2 font-medium">Tutar</th>
+              <th className="px-3 py-2 font-medium">Durum</th><th className="px-3 py-2 font-medium">Süre</th>
+            </tr></thead>
+            <tbody className="divide-y divide-line">
+              {acik.map((t) => {
+                const dk = dkOnce(t.openedAt);
+                return (
+                  <tr key={t.id}>
+                    <td className="px-3 py-2 font-medium">{platformEtiket(t)}{t.order?.source?.externalId ? <span className="text-muted"> #{t.order.source.externalId.slice(-4)}</span> : null}</td>
+                    <td className="px-3 py-2">{t.order?.name ?? "—"}<span className="block text-xs text-muted">{t.order?.phone ?? ""}</span></td>
+                    <td className="px-3 py-2 text-muted">{t.lines.filter((l) => !l.voided).length} ürün</td>
+                    <td className="px-3 py-2 tabular font-semibold">{formatTL(t.total)}</td>
+                    <td className="px-3 py-2"><span className={`rounded px-1.5 py-0.5 text-xs font-medium ${DURUM(t).cls}`}>{DURUM(t).label}</span></td>
+                    <td className="px-3 py-2 text-muted">{dk} dk</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-3 text-sm text-muted">Onay, kurye ve teslim kasada <strong>Paket</strong> sekmesinden yapılır; bu ekran canlı izleme. Yeni sipariş kasaya sesli uyarıyla düşer.</p>
+    </Card>
+  );
+}
 
 export default async function Platformlar() {
   const a = await requireAdmin();
@@ -21,10 +89,18 @@ export default async function Platformlar() {
   ]));
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
+  const [store] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
+  const hat = store ? [...foldTabs(await initialEvents({ tenantId: a.tenantId, storeId: store.id })).values()].filter((t) => t.kind !== "masa") : [];
+  const acik = hat.filter((t) => !t.closed);
+  const teslim = hat.filter((t) => {
+    const at = t.closedAt ?? t.delivery.deliveredAt;
+    return at && bugunMu(at);
+  }).length;
   const free = SUPPORTED_PLATFORMS.filter((p) => !conns.some((c) => c.platform === p)).map((p) => ({ value: p, label: PLATFORM_NAMES[p] ?? p }));
   return (
     <>
       <PageHeader title="Sipariş platformları" desc="Platform siparişleri kasada Paket sekmesine sesli uyarıyla düşer; kabul/red platforma bildirilir. Yemeksepeti ve Trendyol Go entegratör onayı gelince eklenecek." />
+      <PaketHatti acik={acik} teslim={teslim} />
       {free.length > 0 && <Card className="mb-6 p-5"><ConnectionForm platforms={free} /></Card>}
       {conns.length === 0 ? <Empty>Henüz bağlı platform yok. Akışı denemek için Deneme platformunu bağlayın.</Empty> : conns.map((c) => (
         <Card key={c.id} className="mb-6 space-y-4 p-5">
