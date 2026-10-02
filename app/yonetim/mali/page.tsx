@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { DEFAULT_MODES, FISCAL_CHANNELS } from "@/lib/core/fiscal";
 import { formatTL } from "@/lib/core/money";
 import { FiscalRowActions, FiscalSettingsForm } from "@/components/admin/FiscalForms";
+import { currentIstMonth } from "@/lib/admin/accounting";
 import { Badge, Card, Empty, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,8 @@ const seg = (on: boolean) => `rounded-lg border px-3 py-2 text-sm ${on ? "border
 export default async function Mali({ searchParams }: { searchParams: Promise<{ sekme?: string; durum?: string }> }) {
   const a = await requireAdmin();
   const q = await searchParams;
-  const tab = q.sekme === "belgeler" ? "belgeler" : "ayarlar";
+  const tab = q.sekme === "belgeler" ? "belgeler" : q.sekme === "muhasebe" ? "muhasebe" : "ayarlar";
+  const { year, month } = currentIstMonth();
   const durum = FILTERS.some(([v]) => v === q.durum) ? (q.durum as (typeof schema.fiscalDocStatus.enumValues)[number]) : "";
   const D = schema.fiscalDocuments;
   const [[t], [fs, counts, docs]] = await Promise.all([
@@ -47,10 +49,30 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <Link href="/yonetim/mali" className={seg(tab === "ayarlar")}>Ayarlar</Link>
         <Link href="/yonetim/mali?sekme=belgeler" className={seg(tab === "belgeler")}>Belgeler</Link>
+        <Link href="/yonetim/mali?sekme=muhasebe" className={seg(tab === "muhasebe")}>Muhasebe</Link>
         {n("error") > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=error"><Badge tone="bad">{n("error")} hata</Badge></Link>}
         {n("cancel_rejected") > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=cancel_rejected"><Badge tone="warn">{n("cancel_rejected")} iptal reddedildi</Badge></Link>}
       </div>
-      {tab === "ayarlar" ? (
+      {tab === "muhasebe" ? (
+        <Card className="max-w-xl p-5">
+          <h2 className="font-semibold">Muhasebe programına aktar</h2>
+          <p className="mt-1 text-sm text-muted">Ayın yevmiye fişleri: gün sonu POS satışları, e-Arşiv cari satışları, iadeler ve alımlar. Alım satırlarında KDV ayrıştırması fişte bulunmadığından genel toplam 153’e yazılır; mizanı muhasebeciniz eşler. e-Defter çıktısı entegratör ön verisidir, GİB imzası kapsamaz.</p>
+          <form method="get" action="/api/yonetim/muhasebe" className="mt-4 flex flex-wrap items-end gap-3">
+            <label className="text-sm"><span className="block text-xs text-muted">Ay</span>
+              <input type="month" name="aylik" required defaultValue={`${year}-${String(month).padStart(2, "0")}`} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm" />
+            </label>
+            <label className="text-sm"><span className="block text-xs text-muted">Format</span>
+              <select name="format" className="rounded-lg border border-line bg-surface px-3 py-2 text-sm">
+                <option value="parasut">Paraşüt</option>
+                <option value="logo">Logo</option>
+                <option value="mikro">Mikro</option>
+                <option value="edefter">e-Defter yevmiye (ön veri)</option>
+              </select>
+            </label>
+            <button className="press inline-flex min-h-11 items-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">İndir</button>
+          </form>
+        </Card>
+      ) : tab === "ayarlar" ? (
         <Card className="p-5">
           <FiscalSettingsForm fake={fake} channels={a.vertical === "market" ? ["kasa"] : FISCAL_CHANNELS}
             initial={{ taxId: t?.taxId ?? "", taxOffice: t?.taxOffice ?? "", address: t?.address ?? "", series: fs?.series ?? "CBP", modes: { ...DEFAULT_MODES, ...fs?.channelModes }, fakeFail: fs?.fakeFail ?? false }} />
