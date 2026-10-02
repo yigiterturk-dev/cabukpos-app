@@ -1,0 +1,16 @@
+import type { MetadataRoute } from "next";
+import { indexable, siteUrl } from "@/lib/site";
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  if (!indexable()) return [];
+  const now = new Date();
+  return [
+    { url: `${siteUrl()}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
+    ...["iade-iptal", "iletisim", "kullanim-kosullari", "kvkk", "mesafeli-satis"].map((p) => ({
+      url: `${siteUrl()}/yasal/${p}`,
+      lastModified: now,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    })),
+  ];
+}

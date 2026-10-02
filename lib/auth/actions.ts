@@ -1,13 +1,14 @@
 "use server";
 import bcrypt from "bcryptjs";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb, schema } from "@/db";
 import { audit } from "@/lib/audit";
 import { clientIp, hit } from "@/lib/ratelimit";
 import { appUrl, esc, mailReady, sendEmail } from "@/lib/mail";
 import { salesContact } from "@/lib/billing/plans";
-import { passwordProblem } from "./password";
+import { passwordProblemAsync } from "./password";
+import { failKey, shouldLock } from "./lockout";
 import { checkReset, resetToken } from "./reset";
 import { clearAdminSession, setAdminSession } from "./session";
 
@@ -26,7 +27,7 @@ export async function signup(_: AuthState, form: FormData): Promise<AuthState> {
   if (values.vertical !== "restoran" && values.vertical !== "market") return fail("İşletme türünü seçin.", "vertical");
   if (values.name.length < 2) return fail("Ad soyad gerekli.", "name");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(values.email)) return fail("E-posta geçersiz.", "email");
-  const pw = passwordProblem(password);
+  const pw = await passwordProblemAsync(password);
   if (pw) return fail(pw, "password");
   if ((await hit(`signup:${await clientIp()}`, 60)) > 5) return fail("Çok fazla kayıt denemesi. Bir saat sonra tekrar deneyin.", "email");
 
@@ -53,9 +54,10 @@ export async function login(_: AuthState, form: FormData): Promise<AuthState> {
   if (!email || !password) return { error: "E-posta ve şifre gerekli.", values };
   const [e, i] = await Promise.all([hit(`e:${email}`), hit(`ip:${await clientIp()}`)]);
   if (e > 8 || i > 30) return { error: "Çok fazla deneme. 15 dakika sonra tekrar deneyin.", values };
+  if (shouldLock(await hit(failKey(email)))) return { error: "Çok fazla başarısız deneme. Hesap 15 dakika kilitli; şifrenizi unuttuysanız yenileyin.", values };
   const [u] = await getDb().select().from(schema.users).where(eq(schema.users.email, email));
   if (!u || !u.active || !(await bcrypt.compare(password, u.passwordHash))) return { error: "E-posta veya şifre hatalı.", values };
-  await getDb().delete(schema.loginAttempts).where(eq(schema.loginAttempts.key, `e:${email}`));
+  await getDb().delete(schema.loginAttempts).where(inArray(schema.loginAttempts.key, [`e:${email}`, failKey(email)]));
   await setAdminSession(u.id, u.tenantId, u.tokenVersion);
   redirect("/yonetim");
 }
@@ -94,7 +96,7 @@ export async function requestReset(_: AuthState, form: FormData): Promise<AuthSt
 export async function resetPassword(_: AuthState, form: FormData): Promise<AuthState> {
   const token = String(form.get("t") ?? "");
   const password = String(form.get("password") ?? "");
-  const pw = passwordProblem(password);
+  const pw = await passwordProblemAsync(password);
   if (pw) return { error: pw, field: "password" };
   const U = schema.users;
   const userId = await checkReset(token, async (id) => (await getDb().select({ passwordHash: U.passwordHash, active: U.active }).from(U).where(eq(U.id, id)))[0] ?? null);
@@ -108,7 +110,7 @@ export async function resetPassword(_: AuthState, form: FormData): Promise<AuthS
     await tx.execute(sql`select set_config('app.tenant_id', ${u.tenantId}, true)`);
     await audit(tx, u.tenantId, `user:${u.id}`, "user.password_reset");
   });
-  await getDb().delete(schema.loginAttempts).where(eq(schema.loginAttempts.key, `e:${u.email}`));
+  await getDb().delete(schema.loginAttempts).where(inArray(schema.loginAttempts.key, [`e:${u.email}`, failKey(u.email)]));
   await setAdminSession(u.id, u.tenantId, u.tokenVersion);
   redirect("/yonetim");
 }
