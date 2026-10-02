@@ -147,6 +147,9 @@ export async function closeShiftLocal(staffId: string, countedCash: number): Pro
     const pendingIds = new Set((await d.outbox.toArray()).map((o) => o.id));
     const old = await d.sales.where("at").below(cutoff).filter((s) => s.shiftId !== m.shift!.id && !pendingIds.has(s.id)).primaryKeys();
     await d.sales.bulkDelete(old);
+    // Reddedilen belge kopyaları da 14 günde budanır (kanıt sunucu audit_log "sync.red"de yaşar). (#26)
+    await d.rejected.filter((r) => r.at < cutoff).delete();
+    // Giden kutusu asla otomatik silinmez: yazılmamış hasılattır; yalnız bulut yazınca çıkar.
     const next = { ...m, shift: null, lastClosed };
     await d.meta.put(next);
     return next;

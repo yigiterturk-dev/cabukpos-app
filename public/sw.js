@@ -147,6 +147,9 @@ async function drainOnce(db) {
   if (!res.ok) return false;
   const body = await res.json();
   const results = (body && body.results) || [];
+  // Sonuç partiyle hizalı değilse hiçbir satır silinmez; sunucu idempotent olduğundan
+  // sonraki uyandırmada aynı belgeler güvenle yeniden gönderilir (#26).
+  if (!Array.isArray(results) || results.length !== rows.length) return false;
   const now = new Date().toISOString();
   const txw = db.transaction(["outbox", "rejected"], "readwrite");
   const out = txw.objectStore("outbox");
