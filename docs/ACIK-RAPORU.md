@@ -25,8 +25,8 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 
 - [x] 2 | Güvenlik | ~~CSRF koruması (server action'lara token)~~ ✅ uygulama düzeyi katman: `lib/auth/csrf.ts` saf `csrfVerdict` (fetch-metadata: çapraz site/same-site reddi, origin↔host çapraz denetimi, navigate geçer) + `assertCsrf()` `requireWriter`'a bağlı → tüm yönetim aksiyonları tek merkezden; form imzaları bozulmaz, Next'in Origin=Host denetimine ek derinlik (`f5b5386`)
 - [x] 3 | Güvenlik | ~~Kayan oturum yenileme + aktivite rotasyonu~~ ✅ proxy /yonetim'de jeton yaşı 1 günü aşınca aynı kimlikle yeni 14 günlük jeton verir (`shouldRenewSession` saf + testli); etkin kullanıcı hiç düşmez, 14 gün hareketsiz düşer; eski jeton değeri kendi süresine kadar geçerli kalır — tam iptal/aktif oturum listesi #9'da (`343fe1a`)
-- [ ] 7 | Güvenlik | JWT audience'ları için ayrı anahtarlar | Lead
-- [ ] 8 | Güvenlik | Hassas işlemde re-auth; cihaz oturumu rotasyonu | Lead
+- [x] 7 | Güvenlik | ~~JWT audience'ları için ayrı anahtarlar~~ ✅ mevcut tasarım zaten kapatıyor: `lib/auth/jwt.ts` `key(aud) = AUTH_SECRET|<aud>` — her audience (`admin/cashier/reset/dogrula`) ayrı HMAC anahtarı türetir, doğrulama audience+kilitli algoritma ile; kod tabanında jose'u yalnız bu modül kullanır (çapraz tür ikamesi imkânsız)
+- [~] 8 | Güvenlik | Hassas işlemde re-auth ✅ (`checkReauth` merkezi: personel rol/PIN değişimi, ajans/entegrasyon anahtarı üretimi, 2FA kapatma — hesap şifresi yeniden sorulur, UI alanları + m9c E2E güncel, `9e41459`); ⏳ kalan: bağlı (formsuz) yıkıcı aksiyonlar (ajans/anahtar iptali, personel pasifleştirme) için onay penceresi + cihaz oturumu (cz_device, 400 gün sabit) rotasyonu — tam iptal #9 oturum listesiyle birlikte | Lead
 - [ ] 9 | Güvenlik | Aktif oturum listesi + tüm cihazlardan çıkış | Lead
 - [ ] 10 | Güvenlik | API rotaları için merkezi auth guard (middleware genişletme) | Lead
 - [ ] 16 | Faturalama | Çoklu para birimi altyapısı | Lead
