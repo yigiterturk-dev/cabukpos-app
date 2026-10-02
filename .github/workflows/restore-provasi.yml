@@ -1,0 +1,46 @@
+name: Restore Provası
+
+# Haftalık restore provası: canlı DB'den taze dump alır, izole Postgres 16 service
+# container'ına gerçekten geri yükler, tenants duman testini çalıştırır.
+# Gerekli secret: BACKUP_DATABASE_URL (backup işiyle aynı).
+# REHEARSAL_DATABASE_URL gizli değildir (efemera container); sızdırma riski yok.
+on:
+  schedule:
+    - cron: "30 4 * * 1" # her Pazartesi 04:30 UTC (backup'ın ardından)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  restore-provasi:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: provali
+          POSTGRES_PASSWORD: provali
+          POSTGRES_DB: provadb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U provali -d provadb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      MIGRATE_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      REHEARSAL_DATABASE_URL: postgres://provali:provali@localhost:5432/provadb
+      BACKUP_DIR: /tmp/cabukpos-backups
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Taze dump al
+        run: npm run db:backup
+      - name: İzole Postgres 16'ya restore provası
+        run: npm run db:restore:rehearsal
