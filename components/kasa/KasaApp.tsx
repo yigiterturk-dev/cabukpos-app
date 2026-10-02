@@ -338,7 +338,10 @@ export function KasaApp() {
     sync.current = s;
     void s.kick();
     const offSyncNow = onSyncNow(() => s.kick());
-    return () => { offSyncNow(); s.stop(); };
+    // Bulut→istemci itme (#27): sunucu değişim belirteci değişince hemen eşitle; EventSource kendi yeniden bağlanır.
+    const es = new EventSource("/api/sync/stream");
+    es.onmessage = () => s.kick();
+    return () => { es.close(); offSyncNow(); s.stop(); };
   }, []);
 
   // Eşleme yok/iptal ve gönderilecek belge kalmadıysa eşleme ekranına.
