@@ -25,7 +25,7 @@ import { ShiftReport, type ShiftReportData } from "@/components/ShiftReport";
 import { PinPad, type Cashier } from "./PinPad";
 import { RefundScreen } from "./RefundScreen";
 import { SaleScreen, type OnSale, type PrintView } from "./SaleScreen";
-import { registerKasaSw } from "./sw-register";
+import { onSyncNow, registerKasaSw, registerOutboxSync } from "./sw-register";
 import { SalonScreen } from "./SalonScreen";
 import { TabScreen } from "./TabScreen";
 import { BillScreen } from "./BillScreen";
@@ -329,10 +329,16 @@ export function KasaApp() {
   useEffect(() => {
     registerKasaSw();
     void loadMeta().then(setMeta);
-    const s = createSync((st, m) => { setStatus(st); if (m) setMeta(m); });
+    const s = createSync((st, m) => {
+      setStatus(st);
+      if (m) setMeta(m);
+      // Çevrimdışı + kuyruk dolu: ağ dönünce SW uyandırsın.
+      if (st.pending > 0 && !navigator.onLine) registerOutboxSync();
+    });
     sync.current = s;
     void s.kick();
-    return () => s.stop();
+    const offSyncNow = onSyncNow(() => s.kick());
+    return () => { offSyncNow(); s.stop(); };
   }, []);
 
   // Eşleme yok/iptal ve gönderilecek belge kalmadıysa eşleme ekranına.

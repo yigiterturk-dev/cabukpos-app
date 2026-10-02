@@ -7,6 +7,7 @@ import { bildirimler } from "@/lib/admin/bildirim";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { logout } from "@/lib/auth/actions";
 import { LogoMark } from "@/components/ui";
+import { PanelOffline } from "@/components/yonetim/panel-offline";
 import { MobileNav, Nav } from "./Nav";
 
 export default async function YonetimLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,7 @@ export default async function YonetimLayout({ children }: { children: React.Reac
   );
   return (
     <div className="min-h-dvh bg-canvas md:grid md:grid-cols-[232px_1fr] print:block print:bg-white">
+      <PanelOffline />
       <aside className="hidden bg-espresso print:hidden md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:gap-6 md:p-4 md:shadow-[inset_-1px_0_0_rgb(255_255_255/0.06)]">
         {brand(true)}
         <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1"><Nav vertical={a.vertical} /></div>

@@ -29,3 +29,19 @@ export function registerKasaSw() {
   if (document.readyState === "complete") setTimeout(warm, 500);
   else window.addEventListener("load", () => setTimeout(warm, 500), { once: true });
 }
+
+// Background Sync: çevrimdışıyken kuyruk doluysa kaydet; ağ dönünce SW "sync-now" yollar (sekme arka planda bile).
+export function registerOutboxSync() {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("SyncManager" in window)) return;
+  type SyncCapable = ServiceWorkerRegistration & { sync: { register(tag: string): Promise<void> } };
+  void navigator.serviceWorker.ready.then((r) => (r as SyncCapable).sync.register("kasa-outbox")).catch(() => {});
+}
+
+export function onSyncNow(cb: () => void) {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return () => {};
+  const onMessage = (e: MessageEvent) => {
+    if ((e.data as { type?: string } | null)?.type === "sync-now") cb();
+  };
+  navigator.serviceWorker.addEventListener("message", onMessage);
+  return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+}
