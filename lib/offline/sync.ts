@@ -2,9 +2,9 @@
 // Ağ/5xx hatası → artan bekleme; 401 → cihaz eşlemesi yok/iptal; 409 → tarayıcı başka cihaz olarak eşlenmiş.
 import { backoffMs, PUSH_BATCH, type DocResult } from "@/lib/sync/docs";
 import { kasaDb, loadMeta, resetForDevice } from "./db";
-import { reconcile, type Meta } from "./state";
+import { reconcile, type Meta, type ResetNotice } from "./state";
 
-export type SyncStatus = { online: boolean; pending: number; rejected: number; unpaired: boolean; lastOkAt: number | null; syncing: boolean };
+export type SyncStatus = { online: boolean; pending: number; rejected: number; unpaired: boolean; lastOkAt: number | null; syncing: boolean; reset: ResetNotice | null };
 type Listener = (s: SyncStatus, meta: Meta | null) => void;
 
 const PULL_EVERY_MS = 60_000;
@@ -21,7 +21,7 @@ async function getJson(url: string, init?: RequestInit) {
 
 export function createSync(listener: Listener) {
   const d = kasaDb();
-  let status: SyncStatus = { online: typeof navigator === "undefined" ? true : navigator.onLine, pending: 0, rejected: 0, unpaired: false, lastOkAt: null, syncing: false };
+  let status: SyncStatus = { online: typeof navigator === "undefined" ? true : navigator.onLine, pending: 0, rejected: 0, unpaired: false, lastOkAt: null, syncing: false, reset: null };
   let running: Promise<void> | null = null;
   let again = false;
   let failures = 0;
@@ -29,7 +29,8 @@ export function createSync(listener: Listener) {
   let stopped = false;
 
   const emit = async (meta: Meta | null = null) => {
-    status = { ...status, pending: await d.outbox.count(), rejected: await d.rejected.count() };
+    const m = meta ?? (await loadMeta());
+    status = { ...status, pending: await d.outbox.count(), rejected: await d.rejected.count(), reset: m.resetNotice ?? null };
     if (!stopped) listener(status, meta);
   };
 

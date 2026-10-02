@@ -34,17 +34,27 @@ export async function loadMeta(): Promise<Meta> {
   return (await kasaDb().meta.get("state")) ?? emptyMeta();
 }
 
-/** Tarayıcı başka cihaz olarak eşlendi: bekleyen belgeler "reddedildi"ye, geri kalan yerel veri silinir. */
+/** Tarayıcı başka cihaz olarak eşlendi: bekleyen belgeler "reddedildi"ye taşınır, geri kalan yerel veri silinir.
+ *  Sessiz silme değildir — kaç belgenin etkilendiği meta'ya yazılır, kasa açılışta rozetle bildirir (#24). */
 export async function resetForDevice(reason: string) {
   const d = kasaDb();
   await d.transaction("rw", [d.meta, d.sales, d.outbox, d.rejected, d.tabEvents], async () => {
     const now = new Date().toISOString();
+    const pending = await d.outbox.count();
     for (const o of await d.outbox.toArray()) await d.rejected.put({ id: o.id, doc: o.doc, error: reason, at: now });
     await d.outbox.clear();
     await d.sales.clear();
     await d.tabEvents.clear();
-    await d.meta.put(emptyMeta());
+    const fresh = emptyMeta();
+    if (pending > 0) fresh.resetNotice = { at: now, reason, pending };
+    await d.meta.put(fresh);
   });
+}
+
+/** Sıfırlama bildirimi kapatıldı. */
+export async function clearResetNotice() {
+  const m = await loadMeta();
+  if (m.resetNotice) await kasaDb().meta.put({ ...m, resetNotice: null });
 }
 
 const enqueue = (doc: SyncDoc) => kasaDb().outbox.add({ id: doc.id, doc });

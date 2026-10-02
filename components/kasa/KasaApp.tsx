@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { summarizeShift } from "@/lib/core/shift";
-import { closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
+import { clearResetNotice, closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
 import type { Buyer } from "@/lib/core/fiscal";
 import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, withTestFlag, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
 import { fiscalNotes } from "@/lib/core/receipt";
@@ -501,6 +501,17 @@ export function KasaApp() {
   const bar = (nav?: React.ReactNode) => (
     <Bar tenant={d.tenantName} device={d.name} nav={nav}>
       <SyncBadge s={status} />
+      {status.reset && (
+        <button
+          type="button"
+          data-testid="reset-notice"
+          title={`${status.reset.reason} — "Anladım" ile kapatın.`}
+          onClick={() => { void clearResetNotice(); setStatus({ ...status, reset: null }); }}
+          className="text-xs font-medium text-red-300 underline decoration-dotted"
+        >
+          {status.reset.pending} bekleyen belge reddedildi listesine taşındı
+        </button>
+      )}
       <AgentBadge s={agentCfg ? agent : null} />
       {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-300">Yerel ağ (internet yok)</span>}
       {status.rejected > 0 && <span className="text-xs font-medium text-red-300">{status.rejected} belge reddedildi</span>}

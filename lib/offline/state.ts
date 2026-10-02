@@ -21,6 +21,8 @@ export type DeliveryZone = { id: string; name: string; fee: number; minOrder: nu
 export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null } };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
 export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number };
+/** Re-pair sıfırlaması kullanıcıya haber verilir: kaç bekleyen belge reddedildi listesine taşındı, neden. (#24) */
+export type ResetNotice = { at: string; reason: string; pending: number };
 
 export type Meta = {
   key: "state";
@@ -34,6 +36,7 @@ export type Meta = {
   pinLockUntil: number;
   agent?: KasaAgent | null; // M4: şubedeki yerel ajan (yoksa null/undefined → tarayıcı yazdırma)
   lan?: LanLink | null; // LAN merkezi: kasa dışı cihazın adisyon akışı (yazdırma yok)
+  resetNotice?: ResetNotice | null; // son re-pair sıfırlamasının bildirimi; "Anladım" ile temizlenir
 };
 
 export type LocalSale = {
