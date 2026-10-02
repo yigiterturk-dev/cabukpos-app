@@ -13,6 +13,7 @@ import { newTotpSecret, otpauthUrl, verifyTotp } from "./totp";
 import { checkReset, resetToken } from "./reset";
 import { dogrulaToken } from "./verify-email";
 import { clearAdminSession, getAdmin, setAdminSession } from "./session";
+import { checkReauth } from "./reauth";
 
 export type AuthState = { error?: string; field?: string; values?: Record<string, string>; ok?: string };
 
@@ -105,9 +106,8 @@ export async function mfaOnayla(_: MfaState, form: FormData): Promise<MfaState> 
 
 export async function mfaKapat(_: MfaState, form: FormData): Promise<MfaState> {  const a = await getAdmin();
   if (!a) return { error: "Oturum gerekli." };
-  const sifre = String(form.get("password") ?? "");
-  const [u] = await getDb().select({ passwordHash: schema.users.passwordHash }).from(schema.users).where(eq(schema.users.id, a.id));
-  if (!u || !(await bcrypt.compare(sifre, u.passwordHash))) return { error: "Şifre hatalı." };
+  const re = await checkReauth(a.id, form);
+  if (re) return { error: re };
   await getDb().update(schema.users).set({ totpSecret: null }).where(eq(schema.users.id, a.id));
   await getDb().transaction(async (tx) => {
     await tx.execute(sql`select set_config('app.tenant_id', ${a.tenantId}, true)`);

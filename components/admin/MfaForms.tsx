@@ -43,7 +43,7 @@ export function MfaKapat() {
   if (state.ok) return <p role="status" className="rounded-[14px] bg-ok-soft p-4 text-sm text-ok">{state.ok}</p>;
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <Field label="Şifreniz" hint="Kapatmak için şifrenizi yeniden girin"><Input name="password" type="password" autoComplete="current-password" required /></Field>
+      <Field label="Şifreniz" hint="Kapatmak için şifrenizi yeniden girin"><Input name="sifre" type="password" autoComplete="current-password" required /></Field>
       {state.error && <p className="text-sm text-bad">{state.error}</p>}
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Kapatılıyor…" : "2FA'yı kapat"}</Button>
     </form>

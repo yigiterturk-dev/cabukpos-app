@@ -25,6 +25,12 @@ export function StaffForm({ initial }: { initial?: { id: string; name: string; r
         </div>
         <div><Field label="PIN" hint={initial ? "Boş bırakırsanız değişmez" : "4-6 hane"}><Input name="pin" inputMode="numeric" autoComplete="off" maxLength={6} required={!initial} /></Field><Err s={state} f="pin" /></div>
       </div>
+      {initial && (
+        <div className="max-w-xs">
+          <Field label="Hesap şifreniz" hint="Rol veya PIN değişiminde gerekli"><Input name="sifre" type="password" autoComplete="current-password" /></Field>
+          <Err s={state} f="sifre" />
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Personeli kaydet"}</Button>
         {state.savedAt && <span className="text-sm text-ok">Kaydedildi.</span>}

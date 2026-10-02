@@ -29,6 +29,10 @@ export function IntegrationKeyForm({ scope = "stats" }: { scope?: "stats" | "gro
           <Field label={scope === "growth" ? "Büyüme bağlantısı adı" : "Ajans adı"}><Input name="name" placeholder={scope === "growth" ? "Laya Büyüme" : "Zirve Ajans"} maxLength={40} required /></Field>
           {state.field === "name" && state.error && <p className="mt-1 text-sm text-bad">{state.error}</p>}
         </div>
+        <div>
+          <Field label="Hesap şifreniz" hint="Kimlik bilgisi üretimi için teyit"><Input name="sifre" type="password" autoComplete="current-password" required /></Field>
+          {state.field === "sifre" && state.error && <p className="mt-1 text-sm text-bad">{state.error}</p>}
+        </div>
         <Button type="submit" disabled={pending} className="mt-6">{pending ? "Oluşturuluyor…" : scope === "growth" ? "Büyüme erişimi oluştur" : "Ajans erişimi oluştur"}</Button>
       </div>
       <KeyBox s={state} scope={scope} />

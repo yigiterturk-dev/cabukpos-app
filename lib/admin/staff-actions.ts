@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { hashPin, pinProblem, verifyPin } from "@/lib/auth/pin";
+import { checkReauth } from "@/lib/auth/reauth";
 import { audit } from "@/lib/audit";
 
 export type StaffState = { error?: string; field?: string; savedAt?: number };
@@ -22,6 +23,14 @@ export async function saveStaff(id: string | null, _: StaffState, form: FormData
     const p = pinProblem(pin);
     if (p) return { error: p, field: "pin" };
   }
+  // Hassas işlem (#8): mevcut personelin rolü/PIN'i değişirken hesap şifresi yeniden sorulur.
+  let reauthErr: string | null = null;
+  if (id) {
+    const [onceki] = await withTenant(a.tenantId, (tx) => tx.select({ role: schema.staff.role }).from(schema.staff).where(eq(schema.staff.id, id)));
+    if (!onceki) return { error: "Personel bulunamadı." };
+    if (onceki.role !== role || pin) reauthErr = await checkReauth(a.id, form);
+  }
+  if (reauthErr) return { error: reauthErr, field: "sifre" };
   const err = await withTenant(a.tenantId, async (tx) => {
     if (pin) {
       const others = await tx.select({ pinHash: schema.staff.pinHash }).from(schema.staff).where(id ? and(eq(schema.staff.active, true), ne(schema.staff.id, id)) : eq(schema.staff.active, true));

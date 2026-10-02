@@ -45,6 +45,7 @@ try {
   expect((await api(null)).status, 401, "anahtarsız");
   await admin.goto(`${BASE}/yonetim/entegrasyonlar`);
   await admin.fill("input[name=name]", "Zirve Ajans");
+  await admin.fill("input[name=sifre]", "Cabukpos2026x");
   await admin.getByRole("button", { name: "Ajans erişimi oluştur" }).click();
   const key = (await admin.getByTestId("integration-key").innerText()).trim();
   if (!/^cpk_[A-Za-z0-9_-]{43}$/.test(key)) throw new Error(`anahtar biçimi: ${key}`);
