@@ -8,8 +8,8 @@ import { assertCsrf } from "./csrf";
 import { billingInfo } from "@/lib/core/billing";
 
 export { ADMIN_COOKIE } from "./session-cookie";
-import { ADMIN_COOKIE } from "./session-cookie";
-const MAX_AGE = 60 * 60 * 24 * 14;
+import { ADMIN_COOKIE, ADMIN_SESSION_MAX_AGE } from "./session-cookie";
+const MAX_AGE = ADMIN_SESSION_MAX_AGE;
 
 export async function setAdminSession(userId: string, tenantId: string, v: number) {
   (await cookies()).set(ADMIN_COOKIE, await signJwt("admin", { userId, tenantId, v }, MAX_AGE), {
