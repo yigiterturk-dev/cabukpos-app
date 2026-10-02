@@ -146,6 +146,27 @@ test("fiş sorgusu: iade edilebilir miktar; başka kiracı göremez", async () =
   assert.equal(await lookupSale(t.id, "K1-999999"), null);
 });
 
+test("fiş çakışması politikası (#25): çekirdek numara ikiz '-N' satışını bulur; tam eşleşme önceliklidir", async () => {
+  // Yalnız ikiz var (orijinal örn. budanmış/diğer cihazda): "K1-000040" yazısı "K1-000040-2"yi bulmalı.
+  const soloId = crypto.randomUUID();
+  await withTenant(t.id, async (tx) => {
+    await tx.insert(schema.sales).values({ id: soloId, tenantId: t.id, storeId: setup.store.id, deviceId: dev.id, shiftId, staffId: setup.st.id, receiptNo: "K1-000040-2", total: 18000, change: 0, vat: [{ rate: 10, gross: 18000, net: 16364, vat: 1636 }], createdAt: new Date(), status: "kapandi" });
+    await tx.insert(schema.saleLines).values({ tenantId: t.id, saleId: soloId, productId: setup.doner.id, name: "Döner", unitPrice: 18000, vatRate: 10, qtyMilli: 1000, total: 18000, discount: 0, cost: null });
+  });
+  const lu = await lookupSale(t.id, "K1-000040");
+  assert.ok(lu, "çekirdek numara ikizi bulamadı");
+  assert.equal(lu.receiptNo, "K1-000040-2");
+  assert.deepEqual(lu.lines.map((l) => [l.name, l.qtyMilli]), [["Döner", 1000]]);
+  // Çakışan gerçek çift: tam eşleşme kazanır, ikiz kendi numarasıyla bulunur.
+  const a = crypto.randomUUID(), b = crypto.randomUUID();
+  assert.equal((await applyDoc(ctx, sale(30, { id: a }))).ok, true);
+  assert.equal((await applyDoc(ctx, sale(30, { id: b }))).ok, true);
+  assert.equal((await saleRow(b)).receiptNo, "K1-000030-2");
+  assert.equal((await lookupSale(t.id, "K1-000030"))?.receiptNo, "K1-000030");
+  assert.equal((await lookupSale(t.id, "K1-000030-2"))?.receiptNo, "K1-000030-2");
+  assert.equal(await lookupSale(t.id, "K1-000050"), null);
+});
+
 test("iade: idempotent, stok geri girer, fiş sayacından numara, sorguda düşer", async () => {
   const r = refund(21, unSale);
   assert.deepEqual(await applyDoc(ctx, r), { id: r.id, ok: true });

@@ -1,5 +1,8 @@
 // lib/sync/lookup.ts — İade için fiş sorgusu (kiracı geneli): kapanmış satış + iade edilebilir satırlar.
-import { and, eq } from "drizzle-orm";
+// Fiş çakışması politikası (#25): bulut çakışan fişi "-N" ile yeniden adlandırır ama kasaya basılan
+// fişte çekirdek numara yazar. Tam eşleşme yoksa çekirdek numaranın "-N" ikizlerinin en eskisine bakılır;
+// tam eşleşme varsa o kazanır (ikiz yalnız kendi numarasıyla bulunur).
+import { and, asc, eq, like } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { refundable, type RefLine } from "@/lib/core/refund";
 import { buyerKindOf, type FiscalBuyerKind } from "@/lib/core/refundNote";
@@ -11,7 +14,17 @@ export type LookedUpSale = { id: string; receiptNo: string; at: string; lines: R
 
 export async function lookupSale(tenantId: string, receiptNo: string): Promise<LookedUpSale | null> {
   return withTenant(tenantId, async (tx) => {
-    const [s] = await tx.select({ id: schema.sales.id, receiptNo: schema.sales.receiptNo, at: schema.sales.createdAt }).from(schema.sales).where(and(eq(schema.sales.receiptNo, receiptNo), eq(schema.sales.status, "kapandi"))).limit(1);
+    const core = /^(.*-\d{6})/.exec(receiptNo)?.[1] ?? receiptNo;
+    const rowFor = async (no: string, prefix: boolean) => {
+      const [s] = await tx
+        .select({ id: schema.sales.id, receiptNo: schema.sales.receiptNo, at: schema.sales.createdAt })
+        .from(schema.sales)
+        .where(and(prefix ? like(schema.sales.receiptNo, no) : eq(schema.sales.receiptNo, no), eq(schema.sales.status, "kapandi")))
+        .orderBy(asc(schema.sales.createdAt))
+        .limit(1);
+      return s ?? null;
+    };
+    const s = (await rowFor(receiptNo, false)) ?? (await rowFor(`${core}-%`, true));
     if (!s) return null;
     const sold = await soldLines(tx, s.id);
     if (!sold) return null;
