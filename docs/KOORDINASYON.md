@@ -61,7 +61,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 9. [x] Merkezi API kimlik kapıları (#10): `lib/auth/api.ts` requireApiAdmin/Writer + apiRole + mutasyonda CSRF; 2 admin rotası taşındı (`ae9504f`)
 10. [x] SW sekmesiz outbox boşaltımı (#23): ham-IDB pusher + periodicsync (`969cfbb`); 14 gün prune + parti hizalama koruması (#26) (`f864f71`)
 11. [x] Re-pair sıfırlama bildirimi (#24): resetNotice + kasa rozeti (`49d5e19`, E2E m2 yeni build'de yeşil); fiş çakışması iade politikası (#25): çekirdek no → "-N" ikiz düşüşü (`443633c`, DB testli) — offline grubu (23-26) tamamlandı
-12. [x] #16 lead yarısı: Currency meta + formatMoney (`7bca038`) — müdür: `tenants.currency` kolonu bekleniyor; #36: ESC/POS barkod + raster + marka profilleri config/UI/zincir (`5eb6f3d`+`0d392da`), logo PNG→1bit yükleme kalan
+12. [x] #16 lead yarısı: Currency meta + formatMoney (`7bca038`) — müdür: `tenants.currency` kolonu bekleniyor; #36 tamamlandı: barkod + raster + marka profilleri (`5eb6f3d`+`0d392da`) + logo PNG→1bit (`aa044ce`: lib/core/png.ts çözücü, agentConfig.logo, Donanım yükleme/önizleme, fiş+gün sonu başlığı)
 
 ## Müdür için istek (lead)
 
