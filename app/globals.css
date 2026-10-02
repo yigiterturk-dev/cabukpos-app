@@ -3,37 +3,63 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* Marka: birincil eylem ve seçili durum */
-  --color-brand: #c2410c;
-  --color-brand-hover: #9a3412;
-  --color-brand-soft: #fff7ed;
-  --color-brand-ring: #fed7aa;
-  /* Metin */
-  --color-ink: #1c1917;
-  --color-ink-2: #44403c;
-  --color-muted: #78716c;
-  /* Yüzey ve çizgi (beyazın bir-iki kademe altı) */
-  --color-surface-2: #fafaf9;
-  --color-surface-3: #f5f5f4;
-  --color-line: #e7e5e4;
-  --color-line-strong: #d6d3d1;
-  /* Anlam: para/başarı, uyarı/bekleyen, hata/silme */
-  --color-ok: #047857;
-  --color-ok-soft: #ecfdf5;
+  --font-display: var(--font-bricolage), var(--font-geist-sans), sans-serif;
+
+  /* Tuval: sıcak kâğıt (kemik) */
+  --color-canvas: #f3efe7;
+
+  /* Yüzeyler: kart neredeyse beyaz, dolgular kâğıdın tonlarında */
+  --color-surface: #fffefb;
+  --color-surface-2: #f7f4ee;
+  --color-surface-3: #eee8dc;
+
+  /* Çizgi: sıcak gri-bej */
+  --color-line: #e5ded0;
+  --color-line-strong: #d2c8b4;
+
+  /* Mürekkep: espresso */
+  --color-ink: #241f19;
+  --color-ink-2: #5b5142;
+  --color-muted: #8b7f6d;
+
+  /* Marka: kor turuncu — sıcaklık, enerji, para hareketi */
+  --color-brand: #e05a10;
+  --color-brand-hover: #bf4408;
+  --color-brand-soft: #fdf0e4;
+  --color-brand-ring: #f8d8ba;
+
+  /* Koyu krom: espresso yan panel */
+  --color-espresso: #221c15;
+  --color-espresso-2: #2e261c;
+  --color-cream: #ece4d4;
+  --color-cream-muted: #a2957f;
+
+  /* Anlam */
+  --color-ok: #177245;
+  --color-ok-soft: #e8f5ec;
   --color-warn: #b45309;
-  --color-warn-soft: #fffbeb;
-  --color-bad: #b91c1c;
-  --color-bad-soft: #fef2f2;
-  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.04), 0 1px 3px rgb(28 25 23 / 0.06);
-  --shadow-pop: 0 10px 30px -8px rgb(28 25 23 / 0.25), 0 4px 10px -4px rgb(28 25 23 / 0.1);
+  --color-warn-soft: #fdf6e3;
+  --color-bad: #c03530;
+  --color-bad-soft: #fdeeed;
+
+  /* Sıcak, katmanlı gölgeler */
+  --shadow-card: 0 1px 2px rgb(62 44 20 / 0.06), 0 2px 8px rgb(62 44 20 / 0.05);
+  --shadow-pop: 0 12px 32px -8px rgb(56 36 12 / 0.28), 0 4px 12px -4px rgb(56 36 12 / 0.12);
+  --shadow-glow: 0 6px 16px -6px rgb(214 79 8 / 0.5);
 }
 
+/* Kâğıt dokusu: çok hafif gren, tuvali canlı gösterir */
 body {
-  background: #ffffff;
+  background-color: var(--color-canvas);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
   color: var(--color-ink);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+@media print {
+  body { background: #fff; background-image: none; }
 }
 
 ::selection {
@@ -43,7 +69,10 @@ body {
 
 .tabular { font-variant-numeric: tabular-nums; }
 
-/* Dokunmatik: basılı geri bildirimi, çift dokunma yakınlaştırması yok */
+/* Fiş ayracı: kesik makbuz çizgisi */
+.receipt-dash { border-top: 2px dashed var(--color-line-strong); }
+
+/* Dokunmatik: basılı geri bildirim, çift dokunma yakınlaştırması yok */
 .press { transition: transform 80ms ease, background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease; touch-action: manipulation; }
 .press:active:not(:disabled) { transform: scale(0.97); }
 button:focus-visible, a:focus-visible, [role=tab]:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }

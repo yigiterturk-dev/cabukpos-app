@@ -101,3 +101,41 @@ Yeni token'lar ve Button; giriş/kayıt ekranında sol marka paneli + sağ form;
 ## Kapsam dışı
 
 Koyu tema, ürün görselleri (katalogda görsel alanı yok), animasyon kütüphanesi, iş mantığı değişiklikleri.
+
+---
+
+## Revizyon 2026-10-02 — "Sıcak Kâğıt" tasarım dili
+
+Onay: Yiğit ("genel olarak sevmiyorum … piyasadaki en iyi pos sistemi olmak istiyorum"). Kural 1 amend edilir:
+**tam koyu tema hâlâ kapsam dışı**, ancak koyu krom artık tasarımın parçası — yalnızca yan panel ve mobil çekmece
+espresso (`espresso` / `espresso-2`), içerik yüzeyleri açık kalır.
+
+### Yeni token değerleri (`app/globals.css`)
+
+| Grup | Token | Değer |
+|---|---|---|
+| Tuval | `canvas` (yeni) | #f3efe7 (sıcak kâğıt + SVG gren dokusu) |
+| Yüzey | `surface` (yeni) / `surface-2` / `surface-3` | #fffefb / #f7f4ee / #eee8dc |
+| Çizgi | `line` / `line-strong` | #e5ded0 / #d2c8b4 |
+| Metin | `ink` / `ink-2` / `muted` | #241f19 / #5b5142 / #8b7f6d |
+| Marka | `brand` / `brand-hover` / `brand-soft` / `brand-ring` | #e05a10 / #bf4408 / #fdf0e4 / #f8d8ba |
+| Krom | `espresso` / `espresso-2` / `cream` / `cream-muted` (yeni) | #221c15 / #2e261c / #ece4d4 / #a2957f |
+| Anlam | `ok` `ok-soft` · `warn` `warn-soft` · `bad` `bad-soft` | #177245 #e8f5ec · #b45309 #fdf6e3 · #c03530 #fdeeed |
+
+Tipografi: Geist (gövde) + **Bricolage Grotesque** (display: sayfa başlıkları, istatistik rakamları, marka yazıları),
+`font-display` utility. Yarıçap: kontrol 10px, kart 16px (rounded-2xl). Badge pill + inset ring.
+
+### Bileşen değişiklikleri
+
+- `buttonClass` primary/success: kor gradyanı (from #ee6318 to #d64f08 / #14663f) + `shadow-glow` hover.
+- `Card` 16px yarıçap, `bg-surface`; `PageHeader` display font 26–30px bold; `Badge` pill+ring; `Empty` kesikli fiş çerçevesi;
+  `Panel` başlık şeridi `bg-surface-2/60`, edit tonunda brand ring.
+- `LogoMark`: kor gradyanı + iç highlight ring + `shadow-glow`.
+- Yönetim kabuğu (`app/yonetim/layout.tsx` + `Nav.tsx`): espresso panel, krem metin, aktif öğe kor gradyanı pill,
+  mobil çekmece espresso. `brand` node'u açık/koyu zemin için `brand(dark)` çağrılır.
+- Auth kabuğu: espresso sol panel, display fontlu slogan, gradyan vurgular; form tarafı `bg-canvas`.
+- Kasa zemini `bg-canvas`.
+
+### Doğrulama (2026-10-02)
+
+`npm run qa:static` yeşil (0 hata); masaüstü+mobil ekran görüntüleri göz denetimi yapıldı (giriş, Bugün paneli).

@@ -21,12 +21,12 @@ function Stat({ label, value, now, before, testId }: { label: string; value: str
   const Trend = p === null ? Minus : p < 0 ? ArrowDownRight : p > 0 ? ArrowUpRight : Minus;
   return (
     <Card className="relative overflow-hidden p-5">
-      <div className="absolute inset-x-0 top-0 h-1 bg-brand/80" />
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#ee6318] to-[#f6a45c]" />
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{label}</div>
-        <span className="rounded-md bg-surface-3 px-2 py-1 text-[11px] text-muted">Bugün</span>
+        <span className="rounded-full bg-surface-3 px-2 py-1 text-[11px] font-medium text-muted">Bugün</span>
       </div>
-      <div className="mt-2 text-[30px] font-semibold leading-none tracking-tight tabular" data-testid={testId}>{value}</div>
+      <div className="mt-2 font-display text-[32px] font-bold leading-none tracking-[-0.02em] tabular" data-testid={testId}>{value}</div>
       <div className={`mt-2 inline-flex items-center gap-1 text-xs tabular ${p === null ? "text-muted" : p < 0 ? "text-bad" : p > 0 ? "text-ok" : "text-muted"}`}>
         <Trend aria-hidden className="size-3.5" />
         {p === null ? "dün karşılaştırması yok" : `${p >= 0 ? "+" : ""}${p.toFixed(1)}% düne göre`}

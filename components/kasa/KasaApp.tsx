@@ -56,12 +56,12 @@ function Center({ title, sub, logo, card, children }: { title: string; sub?: str
 /** Kasa üst şeridi: marka + işletme/cihaz, bölüm segmenti, sağda durum ve eylemler. */
 function Bar({ tenant, device, nav, children }: { tenant: string; device: string; nav?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-white px-3 py-2 print:hidden">
+    <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/10 bg-espresso px-3 py-2 text-cream print:hidden">
       <div className="flex min-w-0 items-center gap-2.5">
         <LogoMark />
         <div className="min-w-0 leading-tight">
           <div className="truncate text-sm font-semibold">{tenant}</div>
-          <div className="truncate text-xs text-muted">{device}</div>
+          <div className="truncate text-xs text-cream-muted">{device}</div>
         </div>
       </div>
       {nav}
@@ -73,7 +73,7 @@ function Bar({ tenant, device, nav, children }: { tenant: string; device: string
 const LinkNote = ({ link }: { link: string }) => (
   <>
     {link === "yok" && <span className="text-xs font-medium text-warn">Canlı bağlantı yok</span>}
-    {link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
+    {link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-300">Yerel ağ (internet yok)</span>}
   </>
 );
 
@@ -81,7 +81,7 @@ function SyncBadge({ s }: { s: SyncStatus }) {
   const online = s.online && !s.unpaired;
   return (
     <span data-testid="sync-status" className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${online ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
-      <span className={`size-2 rounded-full ${online ? "bg-emerald-500" : "animate-pulse bg-amber-500"}`} />
+      <span className={`size-2 rounded-full ${online ? "bg-ok" : "animate-pulse bg-warn"}`} />
       {online ? "Çevrimiçi" : "Çevrimdışı"}
       {s.pending > 0 && <span data-testid="sync-pending"> · {s.pending} bekleyen</span>}
     </span>
@@ -492,8 +492,8 @@ export function KasaApp() {
     <Bar tenant={d.tenantName} device={d.name} nav={nav}>
       <SyncBadge s={status} />
       <AgentBadge s={agentCfg ? agent : null} />
-      {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-700">Yerel ağ (internet yok)</span>}
-      {status.rejected > 0 && <span className="text-xs font-medium text-bad">{status.rejected} belge reddedildi</span>}
+      {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-300">Yerel ağ (internet yok)</span>}
+      {status.rejected > 0 && <span className="text-xs font-medium text-red-300">{status.rejected} belge reddedildi</span>}
       {cashier && meta.agent?.drawer && atHome && (
         <Button variant="secondary" title="Çekmece" onClick={() => {
           if (meta.catalog.staff.find((x) => x.id === cashier.id)?.role === "mudur") void drawerBy(null);
@@ -505,7 +505,7 @@ export function KasaApp() {
       {cashier && (
         <span className="flex h-10 items-center gap-1 rounded-full border border-line bg-white pl-1 shadow-card">
           <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{cashier.name.trim().charAt(0).toLocaleUpperCase("tr")}</span>
-          <span className="max-w-32 truncate px-1 text-sm font-medium">{cashier.name}</span>
+          <span className="max-w-32 truncate px-1 text-sm font-medium text-ink">{cashier.name}</span>
           <button type="button" title="Kasiyer değiştir" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted hover:bg-surface-3 hover:text-ink"><LogOut aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Kasiyer değiştir</span></button>
         </span>
       )}

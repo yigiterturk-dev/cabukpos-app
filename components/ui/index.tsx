@@ -9,11 +9,11 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "success";
 type Size = "sm" | "md" | "lg" | "xl";
 
 const VARIANT: Record<Variant, string> = {
-  primary: "bg-brand text-white shadow-card hover:bg-brand-hover hover:shadow-pop",
-  secondary: "border border-line bg-white text-ink shadow-card hover:border-line-strong hover:bg-surface-2 hover:shadow-pop",
+  primary: "bg-gradient-to-b from-[#ee6318] to-[#d64f08] text-white shadow-card hover:from-[#e05a10] hover:to-[#bf4408] hover:shadow-glow",
+  secondary: "border border-line bg-surface text-ink shadow-card hover:border-line-strong hover:bg-surface-2 hover:shadow-pop",
   ghost: "text-ink-2 hover:bg-surface-3 hover:text-ink",
-  danger: "border border-red-200 bg-white text-bad hover:bg-bad-soft hover:shadow-card",
-  success: "bg-ok text-white shadow-card hover:bg-emerald-800 hover:shadow-pop",
+  danger: "border border-bad/25 bg-surface text-bad shadow-card hover:bg-bad-soft hover:shadow-pop",
+  success: "bg-gradient-to-b from-[#1d8a5a] to-[#14663f] text-white shadow-card hover:from-[#177245] hover:to-[#0f5634] hover:shadow-glow",
 };
 const SIZE: Record<Size, string> = {
   sm: "h-8 rounded-lg px-2.5 text-[13px]",
@@ -35,7 +35,7 @@ export function IconButton({ label, variant = "ghost", size = "md", className = 
   return <button type="button" aria-label={label} title={label} {...p} className={`${buttonClass(variant, size)} ${sq} !px-0 ${className}`} />;
 }
 
-const FIELD = "min-h-11 w-full rounded-[10px] border border-line bg-white px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-stone-400 hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
+const FIELD = "min-h-11 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-stone-400 hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
 
 export function Input({ className = "", ...p }: ComponentProps<"input">) {
   return <input {...p} className={`${FIELD} ${className}`} />;
@@ -56,14 +56,14 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 export function Card({ className = "", ...p }: ComponentProps<"div">) {
-  return <div {...p} className={`rounded-[14px] border border-line bg-white shadow-card transition-shadow duration-150 ${className}`} />;
+  return <div {...p} className={`rounded-2xl border border-line bg-surface shadow-card transition-shadow duration-150 ${className}`} />;
 }
 
 export function PageHeader({ title, desc, actions }: { title: string; desc?: string; actions?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-[22px] font-semibold tracking-tight">{title}</h1>
+        <h1 className="font-display text-[26px] font-bold leading-tight tracking-[-0.02em] md:text-[30px]">{title}</h1>
         {desc && <p className="mt-1 text-sm text-muted">{desc}</p>}
       </div>
       {actions}
@@ -73,28 +73,30 @@ export function PageHeader({ title, desc, actions }: { title: string; desc?: str
 
 export function Badge({ tone = "neutral", children }: { tone?: "neutral" | "ok" | "warn" | "bad" | "brand"; children: ReactNode }) {
   const t = {
-    neutral: "bg-surface-3 text-ink-2",
-    ok: "bg-ok-soft text-ok",
-    warn: "bg-warn-soft text-warn",
-    bad: "bg-bad-soft text-bad",
-    brand: "bg-brand-soft text-brand",
+    neutral: "bg-surface-3 text-ink-2 ring-line-strong/60",
+    ok: "bg-ok-soft text-ok ring-ok/25",
+    warn: "bg-warn-soft text-warn ring-warn/25",
+    bad: "bg-bad-soft text-bad ring-bad/25",
+    brand: "bg-brand-soft text-brand ring-brand/25",
   }[tone];
-  return <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${t}`}>{children}</span>;
+  return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${t}`}>{children}</span>;
 }
 
 export function Empty({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-[14px] border border-dashed border-line-strong p-10 text-center text-sm text-muted">
-      {icon && <span className="text-stone-300 [&>svg]:size-8">{icon}</span>}
+    <div className="flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-surface-2/40 p-10 text-center text-sm text-muted">
+      {icon && <span className="text-line-strong [&>svg]:size-8">{icon}</span>}
       {children}
     </div>
   );
 }
 
-/** Marka işareti: turuncu kare içinde Ç. Tüm yüzeylerde aynı. */
+/** Marka işareti: kor turuncu kare içinde Ç. Tüm yüzeylerde aynı. */
 export function LogoMark({ size = "md", className = "" }: { size?: "sm" | "md" | "lg"; className?: string }) {
   const s = { sm: "size-7 rounded-lg text-sm", md: "size-9 rounded-[10px] text-base", lg: "size-14 rounded-2xl text-2xl" }[size];
-  return <span aria-hidden className={`grid shrink-0 place-items-center bg-brand font-bold text-white shadow-card ring-1 ring-black/5 ${s} ${className}`}>Ç</span>;
+  return (
+    <span aria-hidden className={`grid shrink-0 place-items-center bg-gradient-to-b from-[#ee6318] to-[#c2410c] font-display font-extrabold text-white shadow-glow ring-1 ring-inset ring-white/25 ${s} ${className}`}>Ç</span>
+  );
 }
 
 /** Yönetim tablosu başlık satırı (thead) sınıfı: tüm listelerde aynı. */
@@ -113,8 +115,8 @@ export function SplitView({ list, panel, wide = false }: { list: ReactNode; pane
 /** Yan paneldeki form kartı: başlık şeridi + gövde. `tone="edit"` düzenlemede marka kenarı. */
 export function Panel({ title, desc, action, tone, children }: { title: string; desc?: ReactNode; action?: ReactNode; tone?: "edit"; children: ReactNode }) {
   return (
-    <Card className={tone === "edit" ? "border-brand-ring" : ""}>
-      <div className={`flex items-start justify-between gap-3 border-b border-line px-5 py-3.5 ${tone === "edit" ? "bg-brand-soft/60" : ""}`}>
+    <Card className={tone === "edit" ? "border-brand-ring ring-4 ring-brand-ring/30" : ""}>
+      <div className={`flex items-start justify-between gap-3 border-b border-line px-5 py-3.5 ${tone === "edit" ? "bg-brand-soft/50" : "bg-surface-2/60"}`}>
         <div className="min-w-0">
           <h2 className="font-semibold">{title}</h2>
           {desc && <p className="mt-0.5 text-xs text-muted">{desc}</p>}

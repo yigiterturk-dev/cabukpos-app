@@ -11,19 +11,19 @@ const POINTS = [
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid min-h-dvh bg-white lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <aside className="relative hidden overflow-hidden bg-ink text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
+    <div className="grid min-h-dvh bg-canvas lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <aside className="relative hidden overflow-hidden bg-espresso text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 size-96 rounded-full bg-brand/30 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-24 size-96 rounded-full bg-brand/15 blur-3xl" />
-        <Link href="/" className="relative inline-flex items-center gap-2.5 text-lg font-semibold tracking-tight">
+        <Link href="/" className="relative inline-flex items-center gap-2.5 font-display text-lg font-bold tracking-tight">
           <LogoMark />ÇabukPOS
         </Link>
         <div className="relative max-w-md">
-          <p className="text-3xl font-semibold leading-tight tracking-tight">İnternet gitse de <span className="text-orange-400">kasa durmaz.</span></p>
+          <p className="font-display text-4xl font-bold leading-[1.1] tracking-[-0.02em]">İnternet gitse de <span className="bg-gradient-to-r from-[#ff9d5c] to-[#ee6318] bg-clip-text text-transparent">kasa durmaz.</span></p>
           <ul className="mt-10 space-y-6">
             {POINTS.map(({ icon: I, title, text }) => (
               <li key={title} className="flex gap-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 text-orange-300"><I aria-hidden className="size-5" /></span>
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 text-[#f6a45c]"><I aria-hidden className="size-5" /></span>
                 <span><span className="block font-medium">{title}</span><span className="mt-0.5 block text-sm text-stone-400">{text}</span></span>
               </li>
             ))}

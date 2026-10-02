@@ -11,11 +11,11 @@ const TONE: Record<TableStatus, string> = {
   bos: "border-line bg-white",
   dolu: "border-brand/60 bg-brand-soft",
   hazir: "border-ok bg-ok-soft",
-  uzun: "border-amber-500 bg-warn-soft",
+  uzun: "border-warn bg-warn-soft",
 };
-const BAR: Record<TableStatus, string> = { bos: "bg-transparent", dolu: "bg-brand", hazir: "bg-ok", uzun: "bg-amber-500" };
+const BAR: Record<TableStatus, string> = { bos: "bg-transparent", dolu: "bg-brand", hazir: "bg-ok", uzun: "bg-warn" };
 const LABEL: Record<TableStatus, string> = { bos: "Boş", dolu: "Dolu", hazir: "Hazır bekliyor", uzun: "Uzun süredir açık" };
-const GLYPH: Record<TableStatus, string> = { bos: "text-line", dolu: "text-brand", hazir: "text-ok", uzun: "text-amber-500" };
+const GLYPH: Record<TableStatus, string> = { bos: "text-line", dolu: "text-brand", hazir: "text-ok", uzun: "text-warn" };
 
 export function SalonScreen({ areas, tables, tabs, now, onOpen }: { areas: Area[]; tables: Table[]; tabs: Map<string, TabState>; now: number; onOpen: (tableId: string) => void }) {
   const [areaId, setAreaId] = useState(areas[0]?.id ?? "");

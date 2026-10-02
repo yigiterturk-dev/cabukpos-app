@@ -259,7 +259,7 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
         <div className="flex-1 divide-y divide-line overflow-y-auto">
           {cart.length === 0 && (
             <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted">
-              <ShoppingBasket aria-hidden className="size-10 text-stone-300" />Sepet boş
+              <ShoppingBasket aria-hidden className="size-10 text-line-strong" />Sepet boş
             </div>
           )}
           {cart.map((l) => {
@@ -286,7 +286,7 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
           {t.vat.map((v) => <div key={v.rate} className="tabular flex justify-between text-xs text-muted"><span>KDV %{v.rate}</span><span>{formatTL(v.vat)}</span></div>)}
           <div data-testid="cart-total" className="tabular mt-1 flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">TOPLAM</span><span className="text-4xl font-bold tracking-tight">{formatTL(t.total)}</span></div>
           {last && (
-            <div className="mt-3 rounded-xl border border-emerald-200 bg-ok-soft p-3 text-sm text-ok">
+            <div className="mt-3 rounded-xl border border-ok/30 bg-ok-soft p-3 text-sm text-ok">
               <div className="flex items-center gap-2">
                 <CheckCircle2 aria-hidden className="size-5 shrink-0" />
                 <span className="flex-1 font-medium">Fiş {last.receiptNo} · Para üstü {formatTL(last.change)}</span>

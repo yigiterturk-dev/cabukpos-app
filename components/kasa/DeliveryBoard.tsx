@@ -81,7 +81,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                   const deadline = o?.source?.deadline ? Math.ceil((Date.parse(o.source.deadline) - now) / 60_000) : null;
                   const closed = st === "teslim" || st === "iptal" || st === "reddedildi";
                   return (
-                    <li key={t.id} data-testid="delivery-card" className={`rounded-xl border bg-white p-3 text-sm shadow-card ${st === "onay_bekliyor" ? "border-red-300 ring-2 ring-bad-soft" : "border-line"} ${closed ? "opacity-70" : ""}`}>
+                    <li key={t.id} data-testid="delivery-card" className={`rounded-xl border bg-white p-3 text-sm shadow-card ${st === "onay_bekliyor" ? "border-bad/40 ring-2 ring-bad-soft" : "border-line"} ${closed ? "opacity-70" : ""}`}>
                       <button type="button" onClick={() => !closed && onOpen(t.id)} className="block w-full text-left">
                         <div className="flex items-baseline gap-2">
                           <span className="font-semibold">{tabLabel(t, tables, PLATFORM_NAMES)}</span>
