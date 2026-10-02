@@ -1,6 +1,6 @@
 // lib/core/billing.ts — Abonelik durumu (saf). Bitiş = max(deneme sonu, ödenen dönem sonu);
 // sonra 7 gün ek süre, sonra kilit (yalnız yönetim yazması; kasa hiç kilitlenmez).
-const DAY = 86400_000;
+export const DAY = 86400_000;
 export const TRIAL_DAYS = 14, GRACE_DAYS = 7, WARN_DAYS = 7;
 
 export type BillingPeriod = "aylik" | "yillik";

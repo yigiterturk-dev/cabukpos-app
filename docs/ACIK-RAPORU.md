@@ -8,8 +8,8 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 
 - [ ] 18 | Mali | ÖKC/ETMOS mali cihaz entegrasyonu; fişler yasal mali belge değil | Mali müşavir + ajan
 - [ ] 17 | Mali | Gerçek e-Arşiv entegratörü (Foriba/Uyumsoft/Paraşüt) sandbox+canlı | İnsan hesabı + ajan
-- [ ] 11 | Faturalama | PayTR otomatik yenileme / kayıtlı kart | Lead
-- [ ] 12 | Faturalama | Başarısız ödeme dunning akışı (hatırlatma→kilit) | Lead
+- [ ] 11 | Faturalama | PayTR otomatik yenileme / kayıtlı kart — [ENGEL: PayTR kart saklama sözleşmesi (insan) + `tenants.cardToken` kolonu (müdür)] | Lead
+- [x] 12 | Faturalama | ~~Başarısız ödeme dunning akışı~~ ✅ gecikme 1/3/5. gün + kilit + haftalık e-posta akışı
 - [ ] 57 | Ops | Sentry/APM iskeleti + uptime izleme | Müdür
 - [ ] 33 | Büyüme | Sadakat programı, hediye kartı, kupon motoru (şema+UI) | Ajan-1+Lead
 - [ ] 32 | Büyüme | Gerçek SMS (Netgsm/İletimerkezi) + WhatsApp gönderim sağlayıcısı | İnsan hesabı + ajan
