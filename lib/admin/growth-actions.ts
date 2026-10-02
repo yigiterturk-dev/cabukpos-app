@@ -6,6 +6,7 @@ import { withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { createGrowthCampaignDraft, isGrowthSegment } from "@/lib/growth/campaigns";
 import { approveGrowthCampaign } from "@/lib/growth/campaign-approval";
+import { messagingProvider, sendGrowthCampaignPage } from "@/lib/growth/messaging";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
@@ -29,4 +30,19 @@ export async function approveCampaign(form: FormData) {
   await withTenant(a.tenantId, (tx) => approveGrowthCampaign(tx, { tenantId: a.tenantId, campaignId, approvedBy: a.id, actor: "user:" + a.id }));
   revalidatePath("/yonetim/buyume/" + campaignId);
   redirect("/yonetim/buyume/" + campaignId + "?onaylandi=1");
+}
+
+/** Onaylı kampanyanın izinli alıcılarını sağlayıcıya gönderir (sayfa başına 100, turda en fazla 500). */
+export async function sendCampaignPageAction(form: FormData) {
+  const a = await requireWriter();
+  const campaignId = text(form, "campaignId");
+  if (a.role !== "sahip" || a.vertical !== "restoran" || !campaignId) redirect("/yonetim/buyume");
+  const provider = messagingProvider();
+  if (!provider) redirect("/yonetim/buyume/" + campaignId + "?hata=saglayici");
+  const result = await sendGrowthCampaignPage({ tenantId: a.tenantId, campaignId, actor: "user:" + a.id, provider });
+  if ("error" in result) redirect("/yonetim/buyume/" + campaignId + "?hata=" + result.error);
+  const query = new URLSearchParams({ gonderildi: String(result.sent), kalan: String(result.remaining) });
+  if (result.failed) query.set("basarisiz", String(result.failed));
+  revalidatePath("/yonetim/buyume/" + campaignId);
+  redirect("/yonetim/buyume/" + campaignId + "?" + query.toString());
 }
