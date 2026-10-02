@@ -119,8 +119,8 @@ export function categoryRows(rows: ProductRow[], names: Map<string, string>): Ca
   return [...by.values()].sort((a, b) => b.gross - a.gross);
 }
 
-export type EventKind = "iade" | "iptal" | "ikram" | "indirim" | "paket_iptal" | "silme";
-export const EVENT_LABEL: Record<EventKind, string> = { iade: "İade", iptal: "Adisyon iptali", ikram: "İkram", indirim: "İndirim", paket_iptal: "Paket iptali", silme: "Sepetten silme" };
+export type EventKind = "iade" | "iptal" | "ikram" | "indirim" | "paket_iptal" | "silme" | "safe_drop";
+export const EVENT_LABEL: Record<EventKind, string> = { iade: "İade", iptal: "Adisyon iptali", ikram: "İkram", indirim: "İndirim", paket_iptal: "Paket iptali", silme: "Sepetten silme", safe_drop: "Seifeye para" };
 export type StaffEvent = { at: Date; staffId: string | null; kind: EventKind; text: string; amount: Kurus | null; approvedBy: string | null; reason: string | null };
 
 export const qtyText = (milli: number) => (milli / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 3 });
@@ -139,6 +139,7 @@ export function tabEventRow(x: { at: Date; staffId: string | null; approvedBy: s
 }
 
 export function registerEventRow(x: { at: Date; staffId: string; type: string; lines: RemovedLine[]; total: Kurus }): StaffEvent {
+  if (x.type === "safe_drop") return { at: x.at, staffId: x.staffId, kind: "safe_drop", text: `Seifeye alınan ${formatTL(x.total)}`, amount: x.total, approvedBy: null, reason: null };
   const what = x.lines.map((l) => `${l.name} × ${qtyText(l.qtyMilli)}`).join(", ");
   return { at: x.at, staffId: x.staffId, kind: "silme", text: x.type === "cart_cleared" ? `Sepet boşaltıldı: ${what}` : what, amount: x.total, approvedBy: null, reason: null };
 }
@@ -162,6 +163,7 @@ export function staffRows(sales: SaleRow[], discounts: { staffId: string; discou
     else if (e.kind === "ikram") { r.comps++; r.compTotal += a; }
     else if (e.kind === "indirim") r.discounts++;
     else if (e.kind === "paket_iptal") r.cancels++;
+    else if (e.kind === "safe_drop") { /* kasa hareketi; personel performansına sayılmaz */ }
     else { r.removed++; r.removedTotal += a; }
   }
   return [...by.values()].sort((a, b) => b.gross - a.gross || a.name.localeCompare(b.name, "tr"));

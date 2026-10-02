@@ -113,6 +113,25 @@ test("gün sonu: beklenen kasa buluttaki satışlardan; ikinci kapama değiştir
   assert.equal((await applyDoc(ctx, sale(10, { shiftId: crypto.randomUUID() }))).ok, false);
 });
 
+test("safe drop: register_events'e yazılır, idempotent, beklenen kasadan düşülür (#48)", async () => {
+  const shift3 = crypto.randomUUID();
+  assert.equal((await applyDoc(ctx, { kind: "shift_open", id: shift3, staffId: setup.st.id, at: now(), openingCash: 10000 })).ok, true);
+  const drop = { kind: "safe_drop", id: crypto.randomUUID(), shiftId: shift3, staffId: setup.st.id, at: now(), amount: 20000 };
+  assert.equal((await applyDoc(ctx, drop)).ok, true);
+  assert.equal((await applyDoc(ctx, drop)).ok, true); // idempotent
+  const bad = await applyDoc(ctx, { ...drop, id: crypto.randomUUID(), staffId: other.st.id });
+  assert.equal(bad.ok, false);
+  assert.equal((await applyDoc(ctx, sale(25, { shiftId: shift3 }))).ok, true);
+  assert.equal((await applyDoc(ctx, { kind: "shift_close", id: shift3, staffId: setup.st.id, at: now(), countedCash: 10000 })).ok, true);
+  const [s] = await withTenant(t.id, (tx) => tx.select().from(schema.shifts).where(eq(schema.shifts.id, shift3)));
+  // açılış 100 TL + döner 2×18=36 TL nakit (net) − seifeye 200 TL = 260 TL = 26000 kuruş
+  assert.equal(s.expectedCash, 26000);
+  const regs = await withTenant(t.id, (tx) => tx.select().from(schema.registerEvents).where(eq(schema.registerEvents.shiftId, shift3)));
+  assert.equal(regs.length, 1);
+  assert.equal(regs[0].type, "safe_drop");
+  assert.equal(regs[0].total, 20000);
+});
+
 // — M3: stok hareketleri ve iade (ayrı vardiya) —
 const shift2 = crypto.randomUUID();
 const moves = (productId: string) => withTenant(t.id, (tx) => tx.select().from(schema.stockMovements).where(eq(schema.stockMovements.productId, productId)));

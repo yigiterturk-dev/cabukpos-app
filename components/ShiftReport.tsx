@@ -65,6 +65,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
         <h2 className="mb-1 font-semibold">Kasa</h2>
         <div className="divide-y divide-line border-y border-line">
           <Row label="Açılış nakdi" value={formatTL(shift.openingCash)} />
+          {s.dropped > 0 && <Row label="Seifeye alınan" value={`-${formatTL(s.dropped)}`} />}
           <Row label="Beklenen kasa" value={formatTL(expected)} strong />
           {shift.countedCash !== null && <Row label="Sayılan nakit" value={formatTL(shift.countedCash)} />}
           {diff !== null && <Row label="Fark" value={signedTL(diff)} strong tone={diff < 0 ? "bad" : diff > 0 ? "ok" : undefined} />}

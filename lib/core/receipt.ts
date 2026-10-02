@@ -113,6 +113,7 @@ export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts)
   p.cols2("Kasa", s.deviceName).cols2("Açan", s.openedByName).cols2("Açılış", `${date(s.openedAt)} ${time(s.openedAt)}`);
   if (s.closedAt) p.cols2("Kapatan", s.closedByName).cols2("Kapanış", `${date(s.closedAt)} ${time(s.closedAt)}`);
   p.rule().cols2("Satış sayısı", String(m.saleCount));
+  if (m.dropped) p.cols2("Seifeye alınan", `-${formatTL(m.dropped)}`);
   if (m.refundCount > 0) p.cols2(`İade (${m.refundCount})`, `-${formatTL(m.refundTotal)}`);
   p.bold(true).cols2("Ciro", formatTL(m.gross)).bold(false);
   for (const x of shownMethods(m.byMethod)) p.cols2(x.label, formatTL(m.byMethod[x.value]));

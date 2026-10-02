@@ -89,6 +89,17 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
     return null;
   }
 
+  if (doc.kind === "safe_drop") {
+    const [shift] = await tx.select({ id: sh.id }).from(sh).where(and(eq(sh.id, doc.shiftId), eq(sh.deviceId, ctx.deviceId)));
+    if (!shift) return "Vardiya bulunamadı.";
+    if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
+    await tx.insert(schema.registerEvents)
+      .values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, at: clampAt(doc.at), type: "safe_drop", lines: [], total: doc.amount })
+      .onConflictDoNothing();
+    await audit(tx, ctx.tenantId, `staff:${doc.staffId}`, "kasa.safe_drop", { shiftId: doc.shiftId, amount: doc.amount });
+    return null;
+  }
+
   if (doc.kind === "tab") return applyTab(tx, ctx, doc);
   return doc.kind === "refund" ? applyRefund(tx, ctx, doc) : applySale(tx, ctx, doc);
 }
@@ -96,7 +107,8 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
 async function expectedCashOf(tx: Tx, shiftId: string, openingCash: number) {
   const sales = await tx.select({ id: schema.sales.id, total: schema.sales.total, change: schema.sales.change, vat: schema.sales.vat, status: schema.sales.status }).from(schema.sales).where(and(eq(schema.sales.shiftId, shiftId), inArray(schema.sales.status, ["kapandi", "iade"])));
   const pays = sales.length ? await tx.select().from(schema.payments).where(inArray(schema.payments.saleId, sales.map((s) => s.id))) : [];
-  return summarizeShift(openingCash, sales.map((s) => ({ refund: s.status === "iade", total: s.total, change: s.change, vat: s.vat as VatLine[], payments: pays.filter((p) => p.saleId === s.id).map((p) => ({ method: p.method as PayMethod, amount: p.amount })) }))).expectedCash;
+  const drops = await tx.select({ total: schema.registerEvents.total }).from(schema.registerEvents).where(and(eq(schema.registerEvents.shiftId, shiftId), eq(schema.registerEvents.type, "safe_drop")));
+  return summarizeShift(openingCash, sales.map((s) => ({ refund: s.status === "iade", total: s.total, change: s.change, vat: s.vat as VatLine[], payments: pays.filter((p) => p.saleId === s.id).map((p) => ({ method: p.method as PayMethod, amount: p.amount })) })), drops.map((d) => d.total)).expectedCash;
 }
 
 type Checked = { lines: (AnyLine & { known: boolean; trackStock: boolean; options?: { id: string; name: string; delta: number }[]; note?: string | null })[]; reasons: string[] };

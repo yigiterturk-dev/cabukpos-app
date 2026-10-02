@@ -14,7 +14,8 @@ export async function loadShiftSummary(tenantId: string, shiftId: string) {
     const staffIds = [shift.openedBy, ...(shift.closedBy ? [shift.closedBy] : [])];
     const staff = await tx.select({ id: schema.staff.id, name: schema.staff.name }).from(schema.staff).where(inArray(schema.staff.id, staffIds));
     const closed = sales.filter((s) => s.status === "kapandi" || s.status === "iade");
-    const summary = summarizeShift(shift.openingCash, closed.map((s) => ({ refund: s.status === "iade", total: s.total, change: s.change, vat: s.vat as VatLine[], payments: pays.filter((p) => p.saleId === s.id).map((p) => ({ method: p.method as PayMethod, amount: p.amount })) })));
+    const drops = await tx.select({ total: schema.registerEvents.total }).from(schema.registerEvents).where(and(eq(schema.registerEvents.shiftId, shiftId), eq(schema.registerEvents.type, "safe_drop")));
+    const summary = summarizeShift(shift.openingCash, closed.map((s) => ({ refund: s.status === "iade", total: s.total, change: s.change, vat: s.vat as VatLine[], payments: pays.filter((p) => p.saleId === s.id).map((p) => ({ method: p.method as PayMethod, amount: p.amount })) })), drops.map((d) => d.total));
     const [fe] = await tx.select({ n: sql<number>`count(*)::int` }).from(schema.fiscalDocuments).innerJoin(schema.sales, eq(schema.sales.id, schema.fiscalDocuments.saleId))
       .where(and(eq(schema.sales.shiftId, shiftId), eq(schema.fiscalDocuments.status, "error")));
     const name = (id: string | null) => staff.find((s) => s.id === id)?.name ?? "—";

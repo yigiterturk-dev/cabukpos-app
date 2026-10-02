@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
-import { summarizeShift } from "@/lib/core/shift";
-import { clearResetNotice, closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
+import { countCash, summarizeShift, BANKNOTES, COINS, type CashBreakdown } from "@/lib/core/shift";
+import { clearResetNotice, closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, safeDropLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
 import type { Buyer } from "@/lib/core/fiscal";
 import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, withTestFlag, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
 import { fiscalNotes } from "@/lib/core/receipt";
@@ -19,7 +19,7 @@ import { PLATFORM_NAMES } from "@/lib/core/platform";
 import type { Payment } from "@/lib/core/payment";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
 import type { LocalSale, Meta } from "@/lib/offline/state";
-import { ArrowLeft, ClipboardCheck, Inbox, LayoutGrid, LogOut, Printer, Bike, Undo2, Zap } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Inbox, Landmark, LayoutGrid, LogOut, Printer, Bike, Undo2, Zap } from "lucide-react";
 import { Button, Card, Field, Input, LogoMark, Segmented } from "@/components/ui";
 import { ShiftReport, type ShiftReportData } from "@/components/ShiftReport";
 import { PinPad, type Cashier } from "./PinPad";
@@ -36,7 +36,7 @@ import { NewDelivery } from "./NewDelivery";
 import { CourierScreen } from "./CourierScreen";
 import { beep } from "./beep";
 
-type View = { name: "home" } | { name: "sale" } | { name: "tab"; tableId: string } | { name: "bill"; tabId: string } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" }
+type View = { name: "home" } | { name: "sale" } | { name: "tab"; tableId: string } | { name: "bill"; tabId: string } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" } | { name: "safe-drop" }
   | { name: "paket" } | { name: "yeni-paket" } | { name: "ptab"; tabId: string } | { name: "kurye-kapat" } | { name: "kurye-gun-sonu"; by: string }; // M6
 type PrintState = PrintView & { jobId?: string | null };
 
@@ -135,6 +135,55 @@ function MoneyForm({ label, hint, submit, onSubmit, defaultValue = "" }: { label
       <Field label={label} hint={hint}><Input name="amount" inputMode="decimal" defaultValue={defaultValue} className="tabular h-14 text-right text-2xl font-semibold" required /></Field>
       {error && <p className="text-sm text-bad">{error}</p>}
       <Button type="submit" size="lg" disabled={busy} className="w-full">{submit}</Button>
+    </form>
+  );
+}
+
+/** #48: banknot/bozuk kırılımıyla sayım; toplamı sayılan nakde aktarır. */
+function CashCount({ onApply }: { onApply: (k: number) => void }) {
+  const [b, setB] = useState<CashBreakdown>({});
+  const total = countCash(b);
+  return (
+    <details className="rounded-[10px] border border-line p-3" data-testid="cash-count">
+      <summary className="cursor-pointer text-sm font-medium">Para kırılımıyla say</summary>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {[...BANKNOTES, ...COINS].map((v) => (
+          <label key={v} className="text-xs">
+            <span className="mb-1 block font-medium">{v >= 100 ? `${v / 100} TL` : `${v} kr`}</span>
+            <Input aria-label={`${v / 100} adet`} inputMode="numeric" className="tabular h-10 text-right" value={b[v] ? String(b[v]) : ""}
+              onChange={(e) => setB({ ...b, [v]: Math.min(9999, Number(e.target.value.replace(/\D/g, "")) || 0) })} />
+          </label>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between text-sm">
+        <span className="text-muted">Sayılan toplam</span>
+        <span className="tabular font-semibold" data-testid="cash-count-total">{formatTL(total)}</span>
+      </div>
+      <Button type="button" variant="secondary" className="mt-3 w-full" disabled={total <= 0} onClick={() => onApply(total)}>Sayılanı nakde aktar</Button>
+    </details>
+  );
+}
+
+/** #48: gün sonu kapanış formu — kırılımlı sayım + sayılan nakit. */
+function KapanisForm({ onClose }: { onClose: (counted: number) => Promise<void> }) {
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [applied, setApplied] = useState<number | null>(null);
+  return (
+    <form className="space-y-4" onSubmit={(e) => {
+      e.preventDefault();
+      const k = parseTL(String(new FormData(e.currentTarget).get("amount") ?? ""));
+      if (k === null) return setError("Tutar geçersiz (ör. 500 ya da 500,00).");
+      setError(null);
+      setBusy(true);
+      void onClose(k).finally(() => setBusy(false));
+    }}>
+      <CashCount onApply={setApplied} />
+      <Field label="Sayılan nakit (TL)" hint="Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır.">
+        <Input key={applied ?? "bos"} name="amount" inputMode="decimal" defaultValue={applied ? String(applied / 100).replace(".", ",") : ""} className="tabular h-14 text-right text-2xl font-semibold" required />
+      </Field>
+      {error && <p className="text-sm text-bad">{error}</p>}
+      <Button type="submit" size="lg" disabled={busy} className="w-full">Gün sonunu kapat</Button>
     </form>
   );
 }
@@ -250,7 +299,7 @@ function reportData(meta: Meta, sales: LocalSale[], closed: boolean): ShiftRepor
   const c = closed ? meta.lastClosed! : null;
   return {
     shift: { openingCash: sh.openingCash, openedAt: new Date(sh.openedAt), closedAt: c ? new Date(c.closedAt) : null, countedCash: c?.countedCash ?? null, expectedCash: c?.expectedCash ?? null },
-    summary: summarizeShift(sh.openingCash, sales),
+    summary: summarizeShift(sh.openingCash, sales, c ? (c.dropped ? [c.dropped] : []) : (meta.drops ?? []).map((d) => d.amount)),
     openedByName: name(sh.openedBy),
     closedByName: name(c?.closedBy ?? null),
     sales: sales.map((s) => ({ id: s.id, receiptNo: s.receiptNo, createdAt: new Date(s.at), total: s.refund ? -s.total : s.total })),
@@ -287,9 +336,19 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
       <h1 className="text-2xl font-semibold tracking-tight">{closed ? "Vardiya kapandı" : "Gün sonu"}</h1>
       <p className="mb-5 text-sm text-muted">{meta.device?.tenantName} · {meta.device?.name}</p>
       {data && <ShiftReport data={data} showSales={closed} />}
+      {!closed && (meta.drops?.length ?? 0) > 0 && (
+        <Card className="mt-6 p-5 print:hidden" data-testid="drops">
+          <h2 className="mb-2 font-medium">Seifeye alınan</h2>
+          <ul className="divide-y divide-line text-sm">
+            {meta.drops!.map((d) => (
+              <li key={d.id} className="flex justify-between py-1.5"><span>{new Date(d.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span><span className="tabular-nums">-{formatTL(d.amount)}</span></li>
+            ))}
+          </ul>
+        </Card>
+      )}
       {!closed && (
         <Card className="mt-6 p-5 print:hidden">
-          <MoneyForm label="Sayılan nakit (TL)" hint="Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır." submit="Gün sonunu kapat" onSubmit={onClose} />
+          <KapanisForm onClose={onClose} />
         </Card>
       )}
     </main>
@@ -522,6 +581,7 @@ export function KasaApp() {
         }}><Inbox aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Çekmece</span></Button>
       )}
       {cashier && meta.shift && atHome && <Button variant="secondary" title="İade" onClick={() => setView({ name: "iade" })}><Undo2 aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">İade</span></Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" title="Seifeye para al" data-testid="safe-drop-btn" onClick={() => setView({ name: "safe-drop" })}><Landmark aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Seife</span></Button>}
       {cashier && meta.shift && atHome && <Button variant="secondary" title="Gün sonu" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Gün sonu</span></Button>}
       {cashier && (
         <span className="flex h-10 items-center gap-1 rounded-full border border-line bg-white pl-1 shadow-card">
@@ -578,6 +638,23 @@ export function KasaApp() {
         {header}
         <Center title="Müdür onayı" sub="Çekmeceyi açmak için müdür PIN'i girsin.">
           <PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "mudur"} onOk={(m) => void drawerBy(m.id)} />
+          <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 w-full">Vazgeç</Button>
+        </Center>
+      </>
+    );
+  }
+  if (view.name === "safe-drop" && meta.shift) {
+    const drops = meta.drops ?? [];
+    return (
+      <>
+        {header}
+        <Center title="Seifeye para al" sub="Kasadaki fazlalığı seifeye alın; tutar beklenen kasadan düşer, gün sonunda ayrı satır olarak görünür.">
+          {drops.length > 0 && (
+            <ul className="mb-4 w-full divide-y divide-line rounded-[10px] border border-line px-4 text-sm">
+              {drops.map((d) => <li key={d.id} className="flex justify-between py-1.5"><span>{new Date(d.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span><span className="tabular-nums">-{formatTL(d.amount)}</span></li>)}
+            </ul>
+          )}
+          <MoneyForm label="Seifeye alınan tutar (TL)" submit="Seifeye al" onSubmit={async (k) => { const m2 = await safeDropLocal(cashier.id, k); if (m2) setMeta(m2); setView({ name: "gun-sonu" }); }} />
           <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 w-full">Vazgeç</Button>
         </Center>
       </>

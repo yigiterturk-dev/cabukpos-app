@@ -7,7 +7,16 @@ import type { Payment, PayMethod } from "./payment";
 
 export type ShiftSale = { total: Kurus; change: Kurus; payments: Payment[]; vat: VatLine[]; refund?: boolean };
 
-export function summarizeShift(openingCash: Kurus, sales: ShiftSale[]) {
+/** #48: TR banknot/bozuk değerleri (kuruş) — sayım paneli sırası. */
+export const BANKNOTES = [20_000, 10_000, 5000, 2000, 1000, 500] as const;
+export const COINS = [100, 50, 25, 10, 5] as const;
+export type CashBreakdown = Partial<Record<(typeof BANKNOTES)[number] | (typeof COINS)[number], number>>;
+
+/** Kırılım adetlerinden kasa toplamı (kuruş). */
+export const countCash = (b: CashBreakdown): Kurus =>
+  Object.entries(b).reduce((s, [v, n]) => s + Number(v) * Math.max(0, Math.floor(n ?? 0)), 0);
+
+export function summarizeShift(openingCash: Kurus, sales: ShiftSale[], drops: Kurus[] = []) {
   const byMethod: Record<PayMethod, Kurus> = { nakit: 0, kart: 0, yemek_karti: 0, online: 0 };
   const byRate = new Map<VatRate, Kurus>();
   let gross = 0, saleCount = 0, refundCount = 0, refundTotal = 0;
@@ -20,5 +29,6 @@ export function summarizeShift(openingCash: Kurus, sales: ShiftSale[]) {
     for (const v of s.vat) byRate.set(v.rate, (byRate.get(v.rate) ?? 0) + k * v.gross);
   }
   const vat = [...byRate].filter(([, g]) => g !== 0).sort(([a], [b]) => a - b).map(([rate, g]) => ({ rate, gross: g, ...splitVat(g, rate) }));
-  return { saleCount, refundCount, refundTotal, gross, byMethod, netCash: byMethod.nakit, expectedCash: openingCash + byMethod.nakit, vat };
+  const dropped = drops.reduce((s, d) => s + d, 0);
+  return { saleCount, refundCount, refundTotal, gross, byMethod, netCash: byMethod.nakit, dropped, expectedCash: openingCash + byMethod.nakit - dropped, vat };
 }

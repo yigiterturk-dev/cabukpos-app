@@ -20,7 +20,9 @@ export type DeliveryZone = { id: string; name: string; fee: number; minOrder: nu
 // M5: restoran salonu (market kataloğunda yok)
 export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null } };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
-export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number };
+export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number; dropped: number };
+/** #48: vardiyada seifeye alınan paralar (safe drop); beklenen kasadan düşer. */
+export type CashDrop = { id: string; at: string; amount: number; by: string };
 /** Re-pair sıfırlaması kullanıcıya haber verilir: kaç bekleyen belge reddedildi listesine taşındı, neden. (#24) */
 export type ResetNotice = { at: string; reason: string; pending: number };
 
@@ -37,6 +39,7 @@ export type Meta = {
   agent?: KasaAgent | null; // M4: şubedeki yerel ajan (yoksa null/undefined → tarayıcı yazdırma)
   lan?: LanLink | null; // LAN merkezi: kasa dışı cihazın adisyon akışı (yazdırma yok)
   resetNotice?: ResetNotice | null; // son re-pair sıfırlamasının bildirimi; "Anladım" ile temizlenir
+  drops?: CashDrop[]; // #48: açık vardiyanın safe-drop'ları; kapanınca temizlenir
 };
 
 export type LocalSale = {

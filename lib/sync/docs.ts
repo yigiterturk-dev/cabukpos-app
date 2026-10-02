@@ -97,6 +97,8 @@ export const syncDoc = z.discriminatedUnion("kind", [
     type: z.enum(["line_removed", "cart_cleared"]),
     lines: z.array(z.object({ productId: uuid.nullable(), name: z.string().min(1).max(120), qtyMilli: z.number().int().min(1).max(1_000_000), total: kurus })).min(1).max(500),
   }),
+  // #48: seifeye para alma (safe drop). Kimlik register_events.id; beklenen kasadan düşer.
+  z.object({ kind: z.literal("safe_drop"), id: uuid, shiftId: uuid, staffId: uuid, at, amount: kurus.min(1) }),
 ]);
 
 export type SyncDoc = z.infer<typeof syncDoc>;

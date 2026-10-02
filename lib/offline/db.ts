@@ -11,7 +11,7 @@ import type { LineOption } from "@/lib/core/options";
 import { docModeFor, newFiscalToken, type Buyer, type Channel } from "@/lib/core/fiscal";
 import type { LookedUpSale } from "@/lib/sync/lookup";
 import { buyerKindOf, type RefundFiscal } from "@/lib/core/refundNote";
-import { emptyMeta, type ClosedShift, type LocalSale, type Meta, type OutboxRow, type RejectedRow } from "./state";
+import { emptyMeta, type CashDrop, type ClosedShift, type LocalSale, type Meta, type OutboxRow, type RejectedRow } from "./state";
 
 class KasaDb extends Dexie {
   meta!: Table<Meta, string>;
@@ -143,6 +143,17 @@ export async function shiftSales(shiftId: string) {
   return (await kasaDb().sales.where("shiftId").equals(shiftId).sortBy("at"));
 }
 
+/** #48: seifeye para alma (safe drop): yerel kayıt + giden kutusu → register_events(type=safe_drop). */
+export async function safeDropLocal(staffId: string, amount: number): Promise<Meta | null> {
+  const d = kasaDb();
+  const m = await loadMeta();
+  if (!m.shift || amount <= 0) return null;
+  const drop: CashDrop = { id: crypto.randomUUID(), at: new Date().toISOString(), amount, by: staffId };
+  await enqueue({ kind: "safe_drop", id: drop.id, shiftId: m.shift.id, staffId, at: drop.at, amount });
+  await d.meta.put({ ...m, drops: [...(m.drops ?? []), drop] });
+  return { ...m, drops: [...(m.drops ?? []), drop] };
+}
+
 export async function closeShiftLocal(staffId: string, countedCash: number): Promise<Meta> {
   const d = kasaDb();
   return d.transaction("rw", [d.meta, d.sales, d.outbox], async () => {
@@ -150,7 +161,9 @@ export async function closeShiftLocal(staffId: string, countedCash: number): Pro
     if (!m.shift) return m;
     const sales = await d.sales.where("shiftId").equals(m.shift.id).toArray();
     const closedAt = new Date().toISOString();
-    const lastClosed: ClosedShift = { ...m.shift, closedBy: staffId, closedAt, countedCash, expectedCash: summarizeShift(m.shift.openingCash, sales).expectedCash };
+    const drops = (m.drops ?? []).map((x) => x.amount);
+    const sum = drops.reduce((s, d) => s + d, 0);
+    const lastClosed: ClosedShift = { ...m.shift, closedBy: staffId, closedAt, countedCash, expectedCash: summarizeShift(m.shift.openingCash, sales, drops).expectedCash, dropped: sum };
     await enqueue({ kind: "shift_close", id: m.shift.id, staffId, at: closedAt, countedCash });
     // Eski vardiyaların eşitlenmiş satışları: son kapanan vardiya dışında 14 günden eskiler silinir.
     const cutoff = new Date(Date.now() - 14 * 86_400_000).toISOString();
@@ -160,7 +173,7 @@ export async function closeShiftLocal(staffId: string, countedCash: number): Pro
     // Reddedilen belge kopyaları da 14 günde budanır (kanıt sunucu audit_log "sync.red"de yaşar). (#26)
     await d.rejected.filter((r) => r.at < cutoff).delete();
     // Giden kutusu asla otomatik silinmez: yazılmamış hasılattır; yalnız bulut yazınca çıkar.
-    const next = { ...m, shift: null, lastClosed };
+    const next = { ...m, shift: null, lastClosed, drops: [] };
     await d.meta.put(next);
     return next;
   });
