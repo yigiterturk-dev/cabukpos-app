@@ -28,7 +28,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [x] 7 | Güvenlik | ~~JWT audience'ları için ayrı anahtarlar~~ ✅ mevcut tasarım zaten kapatıyor: `lib/auth/jwt.ts` `key(aud) = AUTH_SECRET|<aud>` — her audience (`admin/cashier/reset/dogrula`) ayrı HMAC anahtarı türetir, doğrulama audience+kilitli algoritma ile; kod tabanında jose'u yalnız bu modül kullanır (çapraz tür ikamesi imkânsız)
 - [~] 8 | Güvenlik | Hassas işlemde re-auth ✅ (`checkReauth` merkezi: personel rol/PIN değişimi, ajans/entegrasyon anahtarı üretimi, 2FA kapatma — hesap şifresi yeniden sorulur, UI alanları + m9c E2E güncel, `9e41459`); ⏳ kalan: bağlı (formsuz) yıkıcı aksiyonlar (ajans/anahtar iptali, personel pasifleştirme) için onay penceresi + cihaz oturumu (cz_device, 400 gün sabit) rotasyonu — tam iptal #9 oturum listesiyle birlikte | Lead
 - [ ] 9 | Güvenlik | Aktif oturum listesi + tüm cihazlardan çıkış | Lead
-- [ ] 10 | Güvenlik | API rotaları için merkezi auth guard (middleware genişletme) | Lead
+- [x] 10 | Güvenlik | ~~API rotaları için merkezi auth guard~~ ✅ `lib/auth/api.ts`: `requireApiAdmin`/`requireApiWriter` (401/402/403 Response, redirect yok) + `apiRole` + çerezli MUTASYON isteklerinde fetch-metadata CSRF; mevcut 2 admin API rotası taşındı, ileride açılacak rotalar bu kapıdan geçer (`ae9504f`)
 - [ ] 16 | Faturalama | Çoklu para birimi altyapısı | Lead
 - [ ] 19 | Mali | B2B e-Fatura zarf akışı + GİB durum sorgulama | Lead
 - [x] 20 | Mali | Logo/Mikro/Paraşüt muhasebe export + e-Defter ✅ (aylık yevmiye + 4 format CSV, `07b46a9`) | Ajan-1

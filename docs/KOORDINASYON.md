@@ -58,6 +58,11 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 6. [x] Uygulama düzeyi CSRF katmanı (#2): `lib/auth/csrf.ts` saf `csrfVerdict` + `assertCsrf()` → `requireWriter`'da; çapraz site/same-site + origin↔host reddi, tüm yönetim aksiyonlarını tek merkezden kapatır (`f5b5386`)
 7. [x] Kayan oturum yenileme (#3): proxy'de 1 günü aşan jetona yeni 14 gün; `shouldRenewSession` saf + testli (`343fe1a`)
 8. [x] #7 raporlandı (mevcut `AUTH_SECRET|<aud>` türev anahtar tasarımı zaten kapatıyor); #8 yarısı: form tabanlı hassas işlemlerde `checkReauth` re-auth (`9e41459`, E2E m1+m9c yeşil); kalan: formsuz yıkıcı aksiyonlar + cz_device rotasyonu
+9. [x] Merkezi API kimlik kapıları (#10): `lib/auth/api.ts` requireApiAdmin/Writer + apiRole + mutasyonda CSRF; 2 admin rotası taşındı (`ae9504f`)
+
+## Müdür için istek (lead)
+
+- **#9 aktif oturum listesi** `db/` şeması istiyor: `sessions` tablosu (id, userId, tenantId, tokenHash sha256, ua/ip, createdAt, lastSeenAt, revokedAt, RLS'li) + `users`'a dokunmadan. Tablo gelince lead listele/tümünden çıkış UI'sını yazar. cz_device rotasyonu da bu şema işiyle aynı wegiden geçebilir.
 
 ## İnsan müdahalesi bekleyenler (kod değil)
 
