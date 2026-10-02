@@ -29,7 +29,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [~] 8 | Güvenlik | Hassas işlemde re-auth ✅ (`checkReauth` merkezi: personel rol/PIN değişimi, ajans/entegrasyon anahtarı üretimi, 2FA kapatma — hesap şifresi yeniden sorulur, UI alanları + m9c E2E güncel, `9e41459`); ⏳ kalan: bağlı (formsuz) yıkıcı aksiyonlar (ajans/anahtar iptali, personel pasifleştirme) için onay penceresi + cihaz oturumu (cz_device, 400 gün sabit) rotasyonu — tam iptal #9 oturum listesiyle birlikte | Lead
 - [ ] 9 | Güvenlik | Aktif oturum listesi + tüm cihazlardan çıkış | Lead
 - [x] 10 | Güvenlik | ~~API rotaları için merkezi auth guard~~ ✅ `lib/auth/api.ts`: `requireApiAdmin`/`requireApiWriter` (401/402/403 Response, redirect yok) + `apiRole` + çerezli MUTASYON isteklerinde fetch-metadata CSRF; mevcut 2 admin API rotası taşındı, ileride açılacak rotalar bu kapıdan geçer (`ae9504f`)
-- [ ] 16 | Faturalama | Çoklu para birimi altyapısı | Lead
+- [~] 16 | Faturalama | Çoklu para birimi altyapısı — ✅ lead yarısı: `lib/core/money.ts` `Currency` tipi + `CURRENCIES` meta + `isCurrency` + `formatMoney` (Intl, narrowSymbol), `parseTL` tüm para simgelerini kabul eder (testli, `7bca038`); ⏳ kalan: `tenants.currency` kolonu (müdür şeması) + tenant bazlı biçimlendirme bağlanması. Not: e-Arşiv TRY dışını GİB kurallarıyla kabul etmez — satış her zaman işletme para biriminde; kur dönüşümü kapsamda değil | Lead
 - [ ] 19 | Mali | B2B e-Fatura zarf akışı + GİB durum sorgulama | Lead
 - [x] 20 | Mali | Logo/Mikro/Paraşüt muhasebe export + e-Defter ✅ (aylık yevmiye + 4 format CSV, `07b46a9`) | Ajan-1
 - [ ] 21 | Ops | ~~Fiscal backlog escalation~~ ✅ (cron 6 saate çekildi)
@@ -44,7 +44,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 31 | Entegrasyon | Muhasebe/ERP/e-ticaret bağlantıları | Müdür
 - [x] 34 | Büyüme | Pazarlama izin çıkışı gerçek sağlayıcıya bağlama ✅ (SMS sürücüsü + sayfa sayfa gönderim, opt-out'lu hedef filtresi, `44152b5`) | Ajan-1
 - [ ] 35 | Büyüme | Advisor'a tahmin/ML katmanı | Müdür
-- [ ] 36 | Yazıcı | ESC/POS logo/raster + barkod + çok marka | Lead
+- [x] 36 | Yazıcı | ~~ESC/POS logo/raster + barkod + çok marka~~ ✅ `lib/core/escpos.ts`: `barcode()` (GS k; CODE128 + EAN13 doğrulamalı, fişte fiş no barkodu), `raster()` (GS v 0, 1 bit) + `packBits` saf paketleyici; marka profilleri (`genel`/`xprinter` kısmi kes, `epson` tam kes) yazıcı config'ine (`brand`, zod default genel) + Donanım formu seçicisine + kasa KasaAgent zincirine bağlandı (testli, `5eb6f3d`+`0d392da`); ⏳ kalan: logo yükleme + PNG→1bit çözümü (raster kodlayıcı hazır) | Lead
 - [x] 37 | Ön yüz | ~~QR menü, self-order kiosko, müşteri ekranı~~ ✅ `/menu/<şube>` herkese açık menü (`public_menu_by_store` definer fn); kiosko: `?k=` sırrıyla sepet + `/api/kiosk` → platform hattındaki gibi tab olaylarına düşer (autoAccept destekli, rate limitli); müşteri ekranı `/menu/<şube>/s/<tab>` (kendini yenileyen durum); panelde kiosko bağlantısı kartı QR SVG ile (`qrcode` bağımlılığı); kiosk sırrı QR'da taşınır — sızdırırsa bağlantı kapatılıp yenisi açılır
 - [ ] 38 | Ön yüz | Nakit satışta e-makbuz/SMS fişi | Lead
 - [ ] 39 | Teslimat | Kurye takibi (GPS/ETA veya durum zaman çizelgesi) | Ajan-1
