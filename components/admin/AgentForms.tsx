@@ -1,7 +1,9 @@
 "use client";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createAgent, saveAgentConfig, type AgentState } from "@/lib/admin/agent-actions";
-import { PRINTER_ROLES, TRANSPORTS, type AgentConfig, type PrinterConfig } from "@/lib/agent/config";
+import { PRINTER_ROLES, TRANSPORTS, type AgentConfig, type LogoConfig, type PrinterConfig } from "@/lib/agent/config";
+import { fromBase64 } from "@/lib/core/escpos";
+import { pngToLogo } from "@/lib/core/png";
 import { useFormAction } from "@/components/useFormAction";
 import { Select } from "@/components/Select";
 import { Button, Field, Input } from "@/components/ui";
@@ -44,6 +46,20 @@ export function AgentPairButton({ action }: { action: () => Promise<AgentState> 
 }
 
 const newPrinter = (n: number): PrinterConfig => ({ id: `p${n}`, name: n === 1 ? "Fiş yazıcısı" : `Yazıcı ${n}`, role: "fis", transport: "ag", address: "", width: 80, codepage: "pc857", brand: "genel", drawer: n === 1 });
+
+function LogoPreview({ logo }: { logo: LogoConfig }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current, ctx = cv?.getContext("2d");
+    if (!cv || !ctx) return;
+    cv.width = logo.w; cv.height = logo.h;
+    const bytes = fromBase64(logo.data), stride = logo.w / 8;
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = "#000";
+    for (let y = 0; y < logo.h; y++) for (let x = 0; x < logo.w; x++) if (bytes[y * stride + (x >> 3)] & (0x80 >> (x & 7))) ctx.fillRect(x, y, 1, 1);
+  }, [logo]);
+  return <canvas ref={ref} className="h-24 w-auto border border-line bg-white" style={{ imageRendering: "pixelated" }} aria-label="Logo önizleme" data-testid="logo-preview" />;
+}
 const Seg = <T extends string | number>({ value, options, onChange, label }: { value: T; options: readonly { value: T; label: string }[]; onChange: (v: T) => void; label: string }) => (
   <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
     {options.map((o) => (
@@ -58,6 +74,16 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
   const setP = (i: number, patch: Partial<PrinterConfig>) => setC({ ...c, printers: c.printers.map((p, j) => (j === i ? { ...p, ...patch } : patch.drawer ? { ...p, drawer: false } : p)) });
   const nextN = () => { let n = 1; while (c.printers.some((p) => p.id === `p${n}`)) n++; return n; };
   const sc = c.scale;
+  const [logoErr, setLogoErr] = useState<string | null>(null);
+  const onLogo = async (f: File | undefined) => {
+    setLogoErr(null);
+    if (!f) return;
+    try {
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const width = c.printers.find((p) => p.role === "fis")?.width ?? 80;
+      setC({ ...c, logo: await pngToLogo(bytes, width) });
+    } catch (e) { setLogoErr(e instanceof Error ? e.message : "Logo okunamadı."); }
+  };
   return (
     <form onSubmit={onSubmit} className="space-y-5" data-testid={`agent-config-${agentId}`}>
       <input type="hidden" name="config" value={JSON.stringify(c)} />
@@ -80,6 +106,21 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
           </div>
         ))}
         {c.printers.length < 8 && <button type="button" className="text-sm text-brand underline" onClick={() => setC({ ...c, printers: [...c.printers, newPrinter(nextN())] })}>+ Yazıcı ekle</button>}
+      </div>
+
+      <div className="rounded-xl border border-line p-4" data-testid="agent-logo">
+        <div className="mb-1.5 text-sm font-medium">Fiş logosu</div>
+        <p className="mb-3 text-sm text-muted">PNG dosyası; kağıt genişliğine sığdırılır, siyah-beyaza çevrilir. Fişin üstünde işletme adından önce basılır.</p>
+        <div className="flex flex-wrap items-center gap-4">
+          {c.logo && <LogoPreview logo={c.logo} />}
+          <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-surface-2">
+            {c.logo ? "Değiştir…" : "PNG yükle"}
+            <input type="file" accept="image/png" className="sr-only" onChange={(e) => onLogo(e.target.files?.[0])} />
+          </label>
+          {c.logo && <button type="button" className="text-bad underline" onClick={() => setC({ ...c, logo: null })}>Logoyu kaldır</button>}
+          {c.logo && <span className="text-sm text-muted">{c.logo.w}×{c.logo.h} nokta</span>}
+        </div>
+        {logoErr && <p className="mt-2 text-sm text-bad">{logoErr}</p>}
       </div>
 
       <div className="rounded-xl border border-line p-4">

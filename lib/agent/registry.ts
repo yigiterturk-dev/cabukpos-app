@@ -57,6 +57,7 @@ export async function kasaAgentFor(device: { id: string; tenantId: string; store
     url, ticket, autoPrint: cfg.autoPrint,
     drawer: cfg.printers.some((p) => p.drawer),
     scale: cfg.scale.kind !== "yok",
+    logo: cfg.logo,
     printers: cfg.printers.map((p) => ({ id: p.id, role: p.role, width: p.width, codepage: p.codepage, brand: p.brand })),
   };
 }

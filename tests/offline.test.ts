@@ -24,7 +24,7 @@ test("giden kutusu doluyken yerel vardiya korunur, boşken bulut yetkili", () =>
 });
 
 test("ajan bilgisi her çekişte güncellenir; kaldırılınca null", () => {
-  const agent = { url: "http://127.0.0.1:17654", ticket: "t", autoPrint: true, drawer: true, scale: false, printers: [] };
+  const agent = { url: "http://127.0.0.1:17654", ticket: "t", autoPrint: true, drawer: true, scale: false, logo: null, printers: [] };
   const m = reconcile(emptyMeta(), { v: "v", device, openShift: null, catalog: null, agent }, 0);
   assert.equal(m.agent?.url, agent.url);
   assert.equal(reconcile(m, { v: "v", device, openShift: null, catalog: null, agent: null }, 0).agent, null);

@@ -31,6 +31,7 @@ test("ajan: bilet, yazdırma, kuyruk, çekmece, terazi", async () => {
   const sport = await listen(scale);
   const config: AgentConfig = {
     printers: [{ id: "p1", name: "Kasa", role: "fis", transport: "ag", address: `127.0.0.1:${pport}`, width: 80, codepage: "pc857", brand: "genel", drawer: true }],
+    logo: null,
     scale: { kind: "tcp", host: "127.0.0.1", port: sport, request: "enq" },
     autoPrint: true,
   };

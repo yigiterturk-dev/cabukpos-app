@@ -4,10 +4,11 @@ import { PAY_METHODS, shownMethods } from "./payment";
 import type { Payment } from "./payment";
 import type { VatLine } from "./cart";
 import type { summarizeShift } from "./shift";
-import { EscPos, BRANDS, type Codepage, type PaperWidth, type PrinterBrand } from "./escpos";
+import { EscPos, BRANDS, fromBase64, type Codepage, type PaperWidth, type PrinterBrand } from "./escpos";
+import type { LogoImg } from "./png";
 import { refundNote, type RefundFiscal } from "./refundNote";
 
-export type PrintOpts = { width: PaperWidth; codepage: Codepage; brand?: PrinterBrand; drawer?: boolean; appUrl?: string };
+export type PrintOpts = { width: PaperWidth; codepage: Codepage; brand?: PrinterBrand; drawer?: boolean; appUrl?: string; logo?: LogoImg | null };
 /** M8: e-Arşiv. number yoksa henüz kesilmedi (çevrimdışı/gecikme) → bağlantı ya da e-posta notu. */
 export type ReceiptFiscal = { token: string; number: string | null; ettn: string | null; buyer: { name: string; email?: string } | null; test?: boolean };
 export const fiscalLink = (appUrl: string, token: string) => `${appUrl.replace(/\/$/, "")}/f/${token}`;
@@ -40,7 +41,11 @@ export const qtyText = (m: number, weighed = false) =>
   weighed ? `${(m / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`
     : m % 1000 === 0 ? String(m / 1000) : (m / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 3 });
 
-function header(p: EscPos, h: ReceiptHeader) {
+function header(p: EscPos, h: ReceiptHeader, logo: LogoImg | null | undefined) {
+  if (logo) {
+    try { p.align("center").raster({ width: logo.w, data: fromBase64(logo.data) }).feed(1).align("left"); }
+    catch { /* bozuk logo fişi bloklamasın */ }
+  }
   p.align("center").bold(true).size(2).lines(h.tenantName).size(1).bold(false);
   if (h.storeName) p.lines(h.storeName);
   if (h.storeAddress) p.lines(h.storeAddress);
@@ -52,7 +57,7 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
   const p = new EscPos(o.codepage, o.width, o.brand ?? "genel");
   const at = new Date(sale.at);
   if (o.drawer) p.drawer();
-  header(p, h);
+  header(p, h, o.logo);
   if (sale.refund) p.align("center").bold(true).line("İADE FİŞİ").bold(false).align("left");
   p.rule().cols2(date(at), time(at)).cols2("Fiş no", sale.receiptNo);
   if (sale.refund && sale.refundOfNo) p.cols2("Asıl fiş", sale.refundOfNo);
@@ -103,7 +108,7 @@ export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts)
   const p = new EscPos(o.codepage, o.width, o.brand ?? "genel");
   const m = s.summary;
   const expected = s.expectedCash ?? m.expectedCash;
-  header(p, h);
+  header(p, h, o.logo);
   p.align("center").bold(true).line(s.closedAt ? "GÜN SONU" : "ARA RAPOR").bold(false).align("left").rule();
   p.cols2("Kasa", s.deviceName).cols2("Açan", s.openedByName).cols2("Açılış", `${date(s.openedAt)} ${time(s.openedAt)}`);
   if (s.closedAt) p.cols2("Kapatan", s.closedByName).cols2("Kapanış", `${date(s.closedAt)} ${time(s.closedAt)}`);
