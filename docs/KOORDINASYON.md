@@ -63,6 +63,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 11. [x] Re-pair sıfırlama bildirimi (#24): resetNotice + kasa rozeti (`49d5e19`, E2E m2 yeni build'de yeşil); fiş çakışması iade politikası (#25): çekirdek no → "-N" ikiz düşüşü (`443633c`, DB testli) — offline grubu (23-26) tamamlandı
 12. [x] #16 lead yarısı: Currency meta + formatMoney (`7bca038`) — müdür: `tenants.currency` kolonu bekleniyor; #36 tamamlandı: barkod + raster + marka profilleri (`5eb6f3d`+`0d392da`) + logo PNG→1bit (`aa044ce`: lib/core/png.ts çözücü, agentConfig.logo, Donanım yükleme/önizleme, fiş+gün sonu başlığı)
 13. [x] #9 aktif oturum listesi + tüm cihazlardan çıkış (`9deaf14`): lead istediği `sessions` şemasını kendisi yazdı (müdür yokken kilidi açmak için; RLS dışı kimlik tablosu çünkü lib/auth tenantsız bağlantı kullanıyor — istekteki "RLS'li" bu yüzden değişti). Girişte hash kaydı, getAdmin hash kapısı, çıkışta iptal, Güvenlik sayfasında liste + re-auth'lu düşme. ⚠️ yayında `db:push` gerekir. #8 kalanı yalnız cz_device rotasyonu
+14. [x] #48 para kırılımı sayımı + safe-drop (`d5bb003`): sayım paneli Gün sonu'nda; seifeye alma → `safe_drop` outbox belgesi → `register_events` (yeni type, şema değişikliği yok) → beklenen kasa yerelde ve bulutta düşer. Rapor/fişte "Seifeye alınan" satırı
 
 ## Müdür için istek (lead)
 

@@ -55,7 +55,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 45 | Panel | i18n altyapısı (TR/EN) | Ajan-1
 - [ ] 46 | Panel | Bildirim merkezi + dark mode + tercihler | Ajan-1
 - [ ] 47 | Panel | PWA tamamlama (install prompt, yonetim offline) | Ajan-1
-- [ ] 48 | Kasa | Para kırılımı sayımı + safe-drop akışı | Lead
+- [x] 48 | Kasa | ~~Para kırılımı sayımı + safe-drop akışı~~ ✅ `lib/core/shift.ts`: `BANKNOTES`/`COINS` (kuruş) + `countCash` + `summarizeShift` üçüncü parametre `drops[]` (`dropped` + beklenen kasadan düşüm); kasa Gün sonu'da "Para kırılımıyla say" paneli (6 banknot + 5 bozuk adet girişi, canlı toplam, "Sayılanı nakde aktar"); safe-drop: kasa araç çubuğunda "Seife" → tutar → `meta.drops` + outbox `safe_drop` belgesi → bulutta `register_events(type=safe_drop, lines=[], total)` + audit `kasa.safe_drop`; `expectedCashOf`/`loadShiftSummary`/yerel kapanış hep düşümü uygular; ShiftReport ekranı + fiş + yönetim olay listesi "Seifeye para" satırı (personel performansına sayılmaz) (testli, `d5bb003`) | Lead
 
 ## P2 — Olgunluk
 
