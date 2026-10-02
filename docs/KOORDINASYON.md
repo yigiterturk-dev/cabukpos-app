@@ -59,6 +59,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 7. [x] Kayan oturum yenileme (#3): proxy'de 1 günü aşan jetona yeni 14 gün; `shouldRenewSession` saf + testli (`343fe1a`)
 8. [x] #7 raporlandı (mevcut `AUTH_SECRET|<aud>` türev anahtar tasarımı zaten kapatıyor); #8 yarısı: form tabanlı hassas işlemlerde `checkReauth` re-auth (`9e41459`, E2E m1+m9c yeşil); kalan: formsuz yıkıcı aksiyonlar + cz_device rotasyonu
 9. [x] Merkezi API kimlik kapıları (#10): `lib/auth/api.ts` requireApiAdmin/Writer + apiRole + mutasyonda CSRF; 2 admin rotası taşındı (`ae9504f`)
+10. [x] SW sekmesiz outbox boşaltımı (#23): ham-IDB pusher + periodicsync (`969cfbb`); 14 gün prune + parti hizalama koruması (#26) (`f864f71`)
 
 ## Müdür için istek (lead)
 

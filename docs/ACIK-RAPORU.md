@@ -34,10 +34,10 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [x] 20 | Mali | Logo/Mikro/Paraşüt muhasebe export + e-Defter ✅ (aylık yevmiye + 4 format CSV, `07b46a9`) | Ajan-1
 - [ ] 21 | Ops | ~~Fiscal backlog escalation~~ ✅ (cron 6 saate çekildi)
 - [x] 22 | Offline | Yönetim paneli offline + Background Sync ✅ (SW `/yonetim` önbelleği + SyncManager köprüsü, `d33e9e3`) | Ajan-1
-- [ ] 23 | Offline | Sekme kapalıyken outbox boşaltımı (periodic wake) | Lead
+- [x] 23 | Offline | ~~Sekme kapalıyken outbox boşaltımı (periodic wake)~~ ✅ SW artık sekme hiç yokken giden kutusunu kendisi boşaltır: aynı Dexie DB'sini ham IDB ile açan batch pusher + `sync` olayında kasa sekmesi yoksa boşaltım + kurulu PWA'da `periodicsync` kaydı (3 saat); kasa sekmesi varsa eskisi gibi sayfaya "sync-now" (`969cfbb`)
 - [ ] 24 | Offline | Cihaz re-pair'de veri kaybı UX düzeltmesi | Lead
 - [ ] 25 | Offline | Fiş çakışması çözüm politikası | Lead
-- [ ] 26 | Offline | 14 gün prune + push-crash dayanıklılığı | Lead
+- [x] 26 | Offline | ~~14 gün prune + push-crash dayanıklılığı~~ ✅ gün sonunda reddedilen belge kopyaları da 14 günde budanır (kanıt sunucu audit_log'da); push'ta "yanıt partiyle uyuşmuyor" koruması → hiçbir satır yanlış silinmez, sunucu idempotent olduğundan yeniden gönderim güvenli; giden kutusu asla otomatik silinmez (yazılmamış hasılat) — motor + SW boşaltıcısında (`f864f71`)
 - [x] 27 | Sync | Bulut→istemci gerçek zamanlı push (SSE/poll) ✅ (`GET /api/sync/stream` ucuz kiracı belirteci + kasada EventSource→kick, `1448969`) | Ajan-1
 - [x] 29 | Platform | Menü/fiyat/stok marketplace'e geri push ✅ (mock+Getir sandbox sürücü, panel butonu, `a2420ba`) | Ajan-1
 - [ ] 30 | Platform | Webhook URL kimliklendirme iyileştirme | Ajan-1
