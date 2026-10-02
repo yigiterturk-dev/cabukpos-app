@@ -33,7 +33,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 19 | Mali | B2B e-Fatura zarf akışı + GİB durum sorgulama | Lead
 - [ ] 20 | Mali | Logo/Mikro/Paraşüt muhasebe export + e-Defter | Ajan-1
 - [ ] 21 | Ops | ~~Fiscal backlog escalation~~ ✅ (cron 6 saate çekildi)
-- [ ] 22 | Offline | Yönetim paneli offline + Background Sync | Ajan-1
+- [x] 22 | Offline | Yönetim paneli offline + Background Sync ✅ (SW `/yonetim` önbelleği + SyncManager köprüsü, `d33e9e3`) | Ajan-1
 - [ ] 23 | Offline | Sekme kapalıyken outbox boşaltımı (periodic wake) | Lead
 - [ ] 24 | Offline | Cihaz re-pair'de veri kaybı UX düzeltmesi | Lead
 - [ ] 25 | Offline | Fiş çakışması çözüm politikası | Lead
