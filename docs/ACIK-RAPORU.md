@@ -10,7 +10,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 17 | Mali | Gerçek e-Arşiv entegratörü (Foriba/Uyumsoft/Paraşüt) sandbox+canlı | İnsan hesabı + ajan
 - [ ] 11 | Faturalama | PayTR otomatik yenileme / kayıtlı kart — [ENGEL: PayTR kart saklama sözleşmesi (insan) + `tenants.cardToken` kolonu (müdür)] | Lead
 - [x] 12 | Faturalama | ~~Başarısız ödeme dunning akışı~~ ✅ gecikme 1/3/5. gün + kilit + haftalık e-posta akışı
-- [ ] 57 | Ops | Sentry/APM iskeleti + uptime izleme | Müdür
+- [x] 57 | Ops | ~~Sentry/APM iskeleti + uptime izleme~~ ✅ bağımlılıksız iskelet: `lib/observability/telemetry.ts` (env kapalıysa dışarı istek çıkmaz, `OTEL_EXPORTER_OTLP_ENDPOINT` ile OTLP/JSON logs), `instrumentation.ts` (`register` + `onRequestError`), `instrumentation-client.ts` + `/api/telemetry/client` (istemci hatası fişeği), `/api/cron/uptime` (self DB + `UPTIME_TARGETS` denetimi, arızada `dispatchAlert`) (`ed5db94`); Sentry/gerçek SDK env hazır olunca bu modülün arkasına takılır
 - [ ] 33 | Büyüme | Sadakat programı, hediye kartı, kupon motoru (şema+UI) | Ajan-1+Lead
 - [ ] 32 | Büyüme | Gerçek SMS (Netgsm/İletimerkezi) + WhatsApp gönderim sağlayıcısı | İnsan hesabı + ajan
 - [ ] 44 | Panel | Şube oluşturma/geçiş UI + şube bazlı veri kapsamı | Ajan-1
