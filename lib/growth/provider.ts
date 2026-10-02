@@ -20,6 +20,19 @@ const Insight = z.object({
   evidence: Evidence.default({}),
 });
 const Remote = z.object({ insights: z.array(Insight).max(20) });
+const PLACEHOLDER_HOSTS = new Set(["localhost", "example.com", "example.org", "example.net"]);
+
+function validateAdvisorUrl(raw: string): URL {
+  const parsed = new URL(raw);
+  if (parsed.username || parsed.password) throw new Error("Laya URL userinfo içeremez.");
+  if (process.env.NODE_ENV === "production") {
+    if (parsed.protocol !== "https:") throw new Error("Laya URL production'da HTTPS olmalı.");
+    if (PLACEHOLDER_HOSTS.has(parsed.hostname) || parsed.hostname.endsWith(".localhost") || parsed.hostname.endsWith(".example.com") || parsed.hostname.endsWith(".example.org") || parsed.hostname.endsWith(".example.net")) {
+      throw new Error("Laya URL production'da gerçek bir host olmalı.");
+    }
+  }
+  return parsed;
+}
 
 function observedEvidence(pack: GrowthFeaturePack): Record<string, number> {
   return {
@@ -56,8 +69,7 @@ export async function advise(pack: GrowthFeaturePack): Promise<GrowthAdvice> {
   const token = process.env.GROWTH_ADVISOR_TOKEN?.trim();
   if (!url || !token) return { provider: "baseline", fallback: "not_configured", insights: baselineAdvisor(pack) };
   try {
-    const parsedUrl = new URL(url);
-    if (process.env.NODE_ENV === "production" && parsedUrl.protocol !== "https:") throw new Error("Laya URL production'da HTTPS olmalı.");
+    const parsedUrl = validateAdvisorUrl(url);
     const response = await fetch(parsedUrl, {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json", "x-cabukpos-schema-version": "1" },

@@ -7,10 +7,12 @@
 - İzinli kampanya hedefleri sayfalı audience endpoint'inden yalnız growth anahtarıyla türetilmiş hmac-sha256 recipientRef olarak okunur; telefon, ad ve müşteri UUID'si dışarı çıkmaz.
 - Audience yanıtındaki recipientRef tenant içi eşleme tablosuna yazılır; sağlayıcı opt-out olayını yalnız recipientRef ile gönderdiğinde POS doğru müşterinin iznini kapatır, UUID paylaşımı gerekmez.
 - Kampanya taslağı işletme sahibi onaylamadan audience endpoint'i 403 döner; onay aktörü/zamanı audit edilir ve yalnız onay sonrası hedef referansları açılır.
+- Multi-tenant audit tamamlandı: API anahtarı/oturum tenant'ı `withTenant` ve RLS ile taşınıyor; kampanya, audience, event ve opt-out akışlarında başka tenant negatifleri geçiyor. İç çağrılarda da `customerId` tenant doğrulaması savunma katmanı olarak zorunlu.
+- Laya egress sınırı sertleştirildi: yalnız PII'siz feature-pack gönderiliyor; production'da HTTPS dışı, placeholder/localhost veya userinfo içeren danışman URL'si çağrılmıyor; cevap schema ve gözlenen evidence ile doğrulanıyor.
 - API sözleşmesi docs/growth-api.openapi.yaml; operasyon/kullanım sınırları docs/GROWTH-API.md ve docs/GROWTH-SERVICE.md.
-- Kanıt: 168/168 test, lint/typecheck, production build, webhook imza testleri, DB tenant/idempotency/audience/recipient-dedupe testleri ve runtime audit'te 16 anonim/korumalı kontrol tanımı; `RUNTIME_GROWTH_KEY` ile buna ek 3 authenticated Growth contract kontrolü.
+- Kanıt: 169/169 test, lint/typecheck, production build, webhook imza testleri, DB tenant/idempotency/audience/recipient-dedupe testleri ve runtime audit'te 16 anonim/korumalı kontrol tanımı; `RUNTIME_GROWTH_KEY` ile buna ek 3 authenticated Growth contract kontrolü.
 - Açık canlı kapılar: gerçek deployment doğrulaması (şema + RLS + yeni recipient-ref tablosu), provider sandbox teslimat/opt-out provası, backup-restore provası ve hukuki/mali müşavir onayı. Bunlar repo testiyle kanıtlanmış sayılmaz.
-- Canlı alias kontrolü (2026-10-01): health/ready 200 ve mevcut korumalı uçlar geçiyor; Growth feature-pack, insights, campaign, audience, event ve signed webhook uçları 404. Branch deploy edilmediği için canlı alias eski deployment'ı gösteriyor; Growth canlı kabulü yapılmadı.
+- Canlı alias kontrolü (2026-10-02): production deployment `dpl_Au7pGSjpMXEteaW959XfJ43soWkf` hazır; health/ready 200, anonim Growth feature-pack/insights/campaign/audience/event/signed-webhook uçları beklenen 401 dönüyor. Authenticated Growth sözleşmesi gerçek key olmadığı için henüz çalıştırılmadı.
 
 Spec: docs/superpowers/specs/2026-09-28-cabukpos-pos-design.md · Planlar: docs/superpowers/plans/2026-09-28-cabukpos-m1-cekirdek-kasa.md, …-m2-cevrimdisi.md, …-m3-market.md
 Eski (YanındaPOS tabanlı) kod: git etiketi `yanindapos-tabanli-v0`. Bu dal (`pos-cekirdek`) main'e, production kurulumu (Neon rolü + env) kararlaştırılınca birleşir.

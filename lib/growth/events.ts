@@ -18,11 +18,15 @@ export async function recordCampaignEvent(tx: Tx, input: GrowthEventInput): Prom
       .where(and(eq(schema.growthRecipientRefs.tenantId, input.tenantId), eq(schema.growthRecipientRefs.recipientRef, input.recipientRef))).limit(1);
     customerId = ref?.customerId;
   }
-  if (input.type === "opt_out") {
-    if (!customerId) return { error: "customer_not_found" };
+  // Defense in depth for internal callers: a customer reference may never
+  // cross the tenant boundary, even if it bypasses the HTTP zod contract.
+  if (customerId) {
     const [customer] = await tx.select({ id: schema.customers.id }).from(schema.customers)
       .where(and(eq(schema.customers.id, customerId), eq(schema.customers.tenantId, input.tenantId))).limit(1);
     if (!customer) return { error: "customer_not_found" };
+  }
+  if (input.type === "opt_out") {
+    if (!customerId) return { error: "customer_not_found" };
   }
   const amount = input.type === "converted" ? Math.max(0, input.amount ?? 0) : 0;
   const [inserted] = await tx.insert(schema.growthCampaignEvents).values({

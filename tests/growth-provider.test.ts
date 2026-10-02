@@ -44,3 +44,26 @@ test("geçerli Laya cevabı doğrulanır, bozuk cevap baseline'a döner", async 
   if (oldUrl === undefined) delete process.env.GROWTH_ADVISOR_URL; else process.env.GROWTH_ADVISOR_URL = oldUrl;
   if (oldToken === undefined) delete process.env.GROWTH_ADVISOR_TOKEN; else process.env.GROWTH_ADVISOR_TOKEN = oldToken;
 });
+
+test("production Laya URL'si placeholder host ve userinfo ile egress yapmaz", async () => {
+  const env = process.env as Record<string, string | undefined>;
+  const oldNodeEnv = env.NODE_ENV;
+  const oldUrl = process.env.GROWTH_ADVISOR_URL;
+  const oldToken = process.env.GROWTH_ADVISOR_TOKEN;
+  const oldFetch = globalThis.fetch;
+  let calls = 0;
+  env.NODE_ENV = "production";
+  process.env.GROWTH_ADVISOR_TOKEN = "test-token";
+  globalThis.fetch = async () => { calls += 1; return new Response(JSON.stringify({ insights: [] }), { status: 200 }); };
+  for (const url of ["https://localhost:3700/advise", "https://example.com/advise", "https://user:pass@laya.example.test/advise"]) {
+    process.env.GROWTH_ADVISOR_URL = url;
+    const result = await advise(samplePack);
+    assert.equal(result.provider, "baseline");
+    assert.equal(result.fallback, "remote_error");
+  }
+  assert.equal(calls, 0);
+  globalThis.fetch = oldFetch;
+  if (oldNodeEnv === undefined) delete env.NODE_ENV; else env.NODE_ENV = oldNodeEnv;
+  if (oldUrl === undefined) delete process.env.GROWTH_ADVISOR_URL; else process.env.GROWTH_ADVISOR_URL = oldUrl;
+  if (oldToken === undefined) delete process.env.GROWTH_ADVISOR_TOKEN; else process.env.GROWTH_ADVISOR_TOKEN = oldToken;
+});

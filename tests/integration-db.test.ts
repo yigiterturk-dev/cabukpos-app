@@ -131,6 +131,9 @@ test("growth event intake: tenant sınırı ve externalId idempotency", async ()
   assert.deepEqual(await request(), { duplicate: true });
   const otherTenant = await withTenant(t2.id, (tx) => recordCampaignEvent(tx, { tenantId: t2.id, campaignId: campaign.id, type: "sent", externalId: "other-tenant", actor: "integration:test" }));
   assert.deepEqual(otherTenant, { error: "campaign_not_found" });
+  const [otherTenantCustomer] = await withTenant(t2.id, (tx) => tx.insert(schema.customers).values({ tenantId: t2.id, phone: "905550000099" + crypto.randomUUID().replaceAll("-", "").slice(0, 8), name: "Başka kiracı", marketingConsent: true }).returning({ id: schema.customers.id }));
+  const crossTenantCustomer = await withTenant(t.id, (tx) => recordCampaignEvent(tx, { tenantId: t.id, campaignId: campaign.id, type: "converted", externalId: "cross-tenant-customer", recipientRef: "hmac-sha256:" + "c".repeat(64), customerId: otherTenantCustomer.id, actor: "integration:test" }));
+  assert.deepEqual(crossTenantCustomer, { error: "customer_not_found" });
   const [customer] = await withTenant(t.id, (tx) => tx.insert(schema.customers).values({ tenantId: t.id, phone: "905550000001", name: "Opt-out", marketingConsent: true }).returning({ id: schema.customers.id }));
   const optOut = await withTenant(t.id, (tx) => recordCampaignEvent(tx, { tenantId: t.id, campaignId: campaign.id, type: "opt_out", externalId: "provider-optout-1", customerId: customer.id, actor: "integration:test" }));
   assert.equal("error" in optOut, false);
