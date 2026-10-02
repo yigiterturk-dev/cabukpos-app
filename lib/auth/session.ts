@@ -25,10 +25,10 @@ export async function getAdmin() {
   if (!p || typeof p.userId !== "string") return null;
   const u = schema.users, t = schema.tenants;
   const [row] = await getDb()
-    .select({ id: u.id, name: u.name, email: u.email, role: u.role, active: u.active, v: u.tokenVersion, tenantId: u.tenantId, tenantName: t.name, vertical: t.vertical, trialEndsAt: t.trialEndsAt, paidUntil: t.paidUntil })
+    .select({ id: u.id, name: u.name, email: u.email, role: u.role, active: u.active, v: u.tokenVersion, tenantId: u.tenantId, tenantName: t.name, vertical: t.vertical, trialEndsAt: t.trialEndsAt, paidUntil: t.paidUntil, emailVerifiedAt: u.emailVerifiedAt })
     .from(u).innerJoin(t, eq(t.id, u.tenantId)).where(eq(u.id, p.userId));
   if (!row || !row.active || row.v !== p.v || row.tenantId !== p.tenantId) return null;
-  return { id: row.id, name: row.name, email: row.email, role: row.role, tenantId: row.tenantId, tenantName: row.tenantName, vertical: row.vertical, billing: billingInfo({ trialEndsAt: row.trialEndsAt, paidUntil: row.paidUntil }) };
+  return { id: row.id, name: row.name, email: row.email, role: row.role, tenantId: row.tenantId, tenantName: row.tenantName, vertical: row.vertical, emailVerified: Boolean(row.emailVerifiedAt), billing: billingInfo({ trialEndsAt: row.trialEndsAt, paidUntil: row.paidUntil }) };
 }
 
 export async function requireAdmin() {

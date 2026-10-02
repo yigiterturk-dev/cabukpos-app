@@ -58,6 +58,11 @@ export default async function YonetimLayout({ children }: { children: React.Reac
             {bannerText(a.billing)} <Link href="/yonetim/abonelik" className="font-medium underline">Abonelik</Link>
           </div>
         )}
+        {!a.emailVerified && (
+          <div data-testid="verify-banner" className="mb-6 rounded-[14px] border border-amber-200 bg-warn-soft p-3 text-sm text-warn print:hidden">
+            E-postanız doğrulanmadı. <Link href="/yonetim/guvenlik" className="font-medium underline">Doğrulayın</Link> — hesap kurtarmayı kolaylaştırır.
+          </div>
+        )}
         {children}
       </main>
     </div>

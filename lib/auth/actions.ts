@@ -11,6 +11,7 @@ import { passwordProblemAsync } from "./password";
 import { failKey, shouldLock } from "./lockout";
 import { newTotpSecret, otpauthUrl, verifyTotp } from "./totp";
 import { checkReset, resetToken } from "./reset";
+import { dogrulaToken } from "./verify-email";
 import { clearAdminSession, getAdmin, setAdminSession } from "./session";
 
 export type AuthState = { error?: string; field?: string; values?: Record<string, string>; ok?: string };
@@ -44,6 +45,15 @@ export async function signup(_: AuthState, form: FormData): Promise<AuthState> {
     return { userId: u.id, tenantId: t.id };
   });
   if (!res) return fail("Bu e-posta zaten kayıtlı.", "email");
+  if (mailReady()) {
+    const baglanti = `${appUrl()}/dogrula?t=${await dogrulaToken({ id: res.userId, email: values.email })}`;
+    await sendEmail({
+      to: [values.email],
+      subject: "ÇabukPOS e-posta doğrulama",
+      text: `Merhaba ${values.name},\n\nÇabukPOS hesabınızı doğrulamak için: ${baglanti}\n\nBağlantı 24 saat geçerlidir. Bu kaydı siz yapmadıysanız bu e-postayı yok sayın.`,
+      html: `<p>Merhaba ${esc(values.name)},</p><p><a href="${esc(baglanti)}">E-postanızı doğrulamak için tıklayın</a>. Bağlantı 24 saat geçerlidir.</p><p>Bu kaydı siz yapmadıysanız bu e-postayı yok sayın.</p>`,
+    }).catch(() => {});
+  }
   await setAdminSession(res.userId, res.tenantId, 0);
   redirect("/yonetim");
 }
@@ -93,8 +103,7 @@ export async function mfaOnayla(_: MfaState, form: FormData): Promise<MfaState> 
   return { ok: "İki adımlı doğrulama açıldı. Girişte artık kod istenecek." };
 }
 
-export async function mfaKapat(_: MfaState, form: FormData): Promise<MfaState> {
-  const a = await getAdmin();
+export async function mfaKapat(_: MfaState, form: FormData): Promise<MfaState> {  const a = await getAdmin();
   if (!a) return { error: "Oturum gerekli." };
   const sifre = String(form.get("password") ?? "");
   const [u] = await getDb().select({ passwordHash: schema.users.passwordHash }).from(schema.users).where(eq(schema.users.id, a.id));
@@ -105,6 +114,21 @@ export async function mfaKapat(_: MfaState, form: FormData): Promise<MfaState> {
     await audit(tx, a.tenantId, `user:${a.id}`, "user.totp_off");
   });
   return { ok: "İki adımlı doğrulama kapatıldı." };
+}
+
+/** Doğrulama e-postasını yeniden gönder (sahip oturumu; form action). */
+export async function emailDogrulamaGonderAction(): Promise<void> {
+  const a = await getAdmin();
+  if (!a || a.emailVerified) return;
+  if ((await hit(`dv:${a.email}`, 60)) > 3) return;
+  if (!mailReady()) return;
+  const baglanti = `${appUrl()}/dogrula?t=${await dogrulaToken({ id: a.id, email: a.email })}`;
+  await sendEmail({
+    to: [a.email],
+    subject: "ÇabukPOS e-posta doğrulama",
+    text: `Merhaba ${a.name},\n\nE-postanızı doğrulamak için: ${baglanti}\n\nBağlantı 24 saat geçerlidir.`,
+    html: `<p>Merhaba ${esc(a.name)},</p><p><a href="${esc(baglanti)}">E-postanızı doğrulamak için tıklayın</a>. Bağlantı 24 saat geçerlidir.</p>`,
+  }).catch(() => {});
 }
 
 export async function logout() {
