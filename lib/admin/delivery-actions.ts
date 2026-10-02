@@ -11,6 +11,7 @@ import { parseTL } from "@/lib/core/money";
 import type { IncomingOrder } from "@/lib/core/platform";
 import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import { ingestOrders } from "@/lib/platform/ingest";
+import { pushStoreCatalog } from "@/lib/platform/outbound";
 import { applyDoc } from "@/lib/sync/apply";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 
@@ -169,12 +170,29 @@ export async function sendTestOrder(connectionId: string): Promise<DeliveryState
     note: "Deneme siparişi", payIntent: "online", deadline: new Date(Date.now() + 5 * 60_000).toISOString(),
     lines: [{ code: pick.code, name: pick.name, unitPrice: pick.price, qtyMilli: 1000, note: null }],
   };
-  const r = await ingestOrders({ id: conn.id, tenantId: conn.tenantId, storeId: conn.storeId, platform: conn.platform, credentials: conn.credentials, webhookSecret: conn.webhookSecret, autoAccept: conn.autoAccept }, [order]);
+  const r = await ingestOrders({ id: conn.id, tenantId: conn.tenantId, storeId: conn.storeId, platform: conn.platform, credentials: conn.credentials, webhookSecret: conn.webhookSecret, autoAccept: conn.autoAccept, active: conn.active }, [order]);
   return { savedAt: Date.now(), info: r.unmapped ? "Sipariş gönderildi (ürün kodu eşlenmemiş, serbest satır düştü)." : "Sipariş gönderildi; kasada Paket sekmesine düştü." };
 }
 
-/** Yönetimden tek tıkla platform/paket siparişi onaylama: kasada accept olayıyla aynı akış (15 dk hazırlık). */
-export async function acceptPlatformOrder(tabId: string): Promise<void> {
+/** #29: Eşlenmiş ürünleri (ad/fiyat/stok) platforma gönderir. */
+export async function pushCatalog(connectionId: string): Promise<DeliveryState> {
+  const a = await requireWriter();
+  const conn = await ownConnection(a.tenantId, connectionId);
+  if (!conn) return { error: "Bağlantı bulunamadı." };
+  const r = await pushStoreCatalog(a.tenantId, conn.storeId, conn.platform, `user:${a.id}`);
+  if ("error" in r) {
+    const msg: Record<typeof r.error, string> = {
+      not_connected: "Bağlantı kapalı ya da yok.",
+      unsupported: "Bu platform henüz geri push desteklemiyor (kiosk/ys).",
+      no_items: "Gönderilecek ürün yok: önce ürün kodu eşleyin.",
+    };
+    return { error: msg[r.error] };
+  }
+  revalidatePath("/yonetim/platformlar");
+  return { savedAt: Date.now(), info: `${r.ok}/${r.total} ürün gönderildi${r.failed ? `, ${r.failed} başarısız` : ""}.` };
+}
+
+/** Yönetimden tek tıkla platform/paket siparişi onaylama: kasada accept olayıyla aynı akış (15 dk hazırlık). */export async function acceptPlatformOrder(tabId: string): Promise<void> {
   const a = await requireWriter();
   if (!UUID.test(tabId)) return;
   const storeId = await firstStore(a.tenantId);

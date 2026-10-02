@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useTransition } from "react";
-import { createConnection, saveCode, saveCustomer, saveZone, sendTestOrder, setConnection, type DeliveryState } from "@/lib/admin/delivery-actions";
+import { createConnection, pushCatalog, saveCode, saveCustomer, saveZone, sendTestOrder, setConnection, type DeliveryState } from "@/lib/admin/delivery-actions";
 import { formatTL } from "@/lib/core/money";
 import { useFormAction } from "@/components/useFormAction";
 import { Select, type Option } from "@/components/Select";
@@ -78,6 +78,16 @@ export function TestOrderButton({ connectionId }: { connectionId: string }) {
   return (
     <form action={dispatch} className="flex items-center gap-3">
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Gönderiliyor…" : "Deneme siparişi gönder"}</Button>
+      <Saved s={state} /><Err s={state} />
+    </form>
+  );
+}
+
+export function PushCatalogButton({ connectionId }: { connectionId: string }) {
+  const [state, dispatch, pending] = useActionState(pushCatalog.bind(null, connectionId), {} as DeliveryState);
+  return (
+    <form action={dispatch} className="flex items-center gap-3" data-testid="push-catalog">
+      <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Gönderiliyor…" : "Menü/fiyat/stok gönder"}</Button>
       <Saved s={state} /><Err s={state} />
     </form>
   );

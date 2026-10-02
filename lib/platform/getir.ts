@@ -36,13 +36,13 @@ export function parseSandboxPayload(json: unknown): IncomingOrder[] {
   }));
 }
 
-function requireConfig() {
-  const base = process.env.GETIR_API_BASE, key = process.env.GETIR_API_KEY;
+function requireConfig(cfg?: { base: string; key: string }) {
+  const base = cfg?.base ?? process.env.GETIR_API_BASE, key = cfg?.key ?? process.env.GETIR_API_KEY;
   if (!base || !key) throw new Error("Getir entegrasyonu yapılandırılmamış: GETIR_API_BASE ve GETIR_API_KEY gerekli.");
   return { base, key };
 }
 
-export function createGetirSource(enabled: boolean): OrderSource {
+export function createGetirSource(enabled: boolean, cfg?: { base: string; key: string }): OrderSource {
   return {
     id: "getir",
     parseWebhook(raw, headers, conn) {
@@ -54,15 +54,25 @@ export function createGetirSource(enabled: boolean): OrderSource {
     },
     async accept(conn: Conn, externalId: string, prepMin: number) {
       if (!enabled) throw new Error("Getir bağlantısı kapalı.");
-      const { base, key } = requireConfig();
+      const { base, key } = requireConfig(cfg);
       const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/accept`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ prepMin }) });
       if (!res.ok) throw new Error(`Getir kabul hatası: HTTP ${res.status}`);
     },
     async reject(conn: Conn, externalId: string, reason: string) {
       if (!enabled) throw new Error("Getir bağlantısı kapalı.");
-      const { base, key } = requireConfig();
+      const { base, key } = requireConfig(cfg);
       const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/reject`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ reason }) });
       if (!res.ok) throw new Error(`Getir red hatası: HTTP ${res.status}`);
+    },
+    // Menü/fiyat/stok geri push'u (#29): eşlenmiş ürünleri sandbox'a yazar; hedef biçim {ok, failed}.
+    async pushCatalog(conn: Conn, items) {
+      if (!enabled) return { error: "Getir bağlantısı kapalı." };
+      const { base, key } = requireConfig(cfg);
+      const res = await fetch(`${base}/stores/${encodeURIComponent(conn.storeId)}/catalog`, { method: "PUT", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ items }), signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) throw new Error(`Getir katalog hatası: HTTP ${res.status}`);
+      const parsed = z.object({ ok: z.number().int().min(0), failed: z.number().int().min(0) }).safeParse(await res.json().catch(() => null));
+      if (!parsed.success) throw new Error("Getir katalog cevabı tanınmadı.");
+      return parsed.data;
     },
   };
 }

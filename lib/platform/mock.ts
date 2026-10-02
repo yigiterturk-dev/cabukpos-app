@@ -38,4 +38,9 @@ export const mockSource: OrderSource = {
   },
   accept: fail,
   reject: fail,
+  // Geri push (#29): sahte platformda ağ yok; MOCK_PLATFORM_FAIL=1 hata yolunu dener.
+  async pushCatalog(_conn, items) {
+    if (process.env.MOCK_PLATFORM_FAIL === "1") return { error: "sahte platform hatası" };
+    return { ok: items.length, failed: 0 };
+  },
 };

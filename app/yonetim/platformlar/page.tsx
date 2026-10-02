@@ -10,7 +10,7 @@ import QRCode from "qrcode";
 import { foldTabs, type TabState } from "@/lib/core/tab";
 import { initialEvents } from "@/lib/tabs/stream";
 import { formatTL } from "@/lib/core/money";
-import { CodeForm, ConnectionForm, ConnectionToggles, TestOrderButton } from "@/components/admin/DeliveryForms";
+import { CodeForm, ConnectionForm, ConnectionToggles, PushCatalogButton, TestOrderButton } from "@/components/admin/DeliveryForms";
 import { Card, Empty, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -138,6 +138,7 @@ export default async function Platformlar() {
             <div>İmza anahtarı (HMAC-SHA256, <code>x-signature</code>): <code className="break-all rounded bg-surface-2 px-1" data-testid="webhook-secret">{c.webhookSecret}</code></div>
           </div>
           {c.platform === "mock" && <TestOrderButton connectionId={c.id} />}
+          {c.platform !== "kiosk" && <PushCatalogButton connectionId={c.id} />}
           <div>
             <h3 className="mb-2 text-sm font-semibold">Ürün kodu eşleme</h3>
             <p className="mb-3 text-sm text-muted">Eşlenmeyen kod siparişe platformdaki ad ve fiyatla serbest satır olarak düşer.</p>

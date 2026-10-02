@@ -14,7 +14,7 @@ export const SUPPORTED_PLATFORMS = Object.keys(SOURCES);
 export const CONNECTABLE_PLATFORMS = [...SUPPORTED_PLATFORMS, "kiosk"];
 
 const P = schema.platformConnections;
-const cols = { id: P.id, tenantId: P.tenantId, storeId: P.storeId, platform: P.platform, credentials: P.credentials, webhookSecret: P.webhookSecret, autoAccept: P.autoAccept };
+const cols = { id: P.id, tenantId: P.tenantId, storeId: P.storeId, platform: P.platform, credentials: P.credentials, webhookSecret: P.webhookSecret, autoAccept: P.autoAccept, active: P.active };
 
 /** Webhook: kimlik yalnız bağlantı kimliği (+ platform adı). */
 export async function connectionById(id: string, platform: string): Promise<Conn | null> {
