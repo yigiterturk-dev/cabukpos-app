@@ -15,7 +15,7 @@ export type IncomingOrder = {
 
 export type MappedProduct = { id: string; name: string; vatRate: VatRate; stationId: string | null };
 
-export const PLATFORM_NAMES: Record<string, string> = { mock: "Deneme", yemeksepeti: "Yemeksepeti", trendyol: "Trendyol Go", getir: "Getir", migros: "Migros Yemek" };
+export const PLATFORM_NAMES: Record<string, string> = { mock: "Deneme", yemeksepeti: "Yemeksepeti", trendyol: "Trendyol Go", getir: "Getir", migros: "Migros Yemek", kiosk: "Kiosk / QR" };
 
 export function toTabEvents(o: IncomingOrder, platform: string, codes: Map<string, MappedProduct>, newId: () => string): { events: TabEv[]; unmapped: number } {
   let unmapped = 0;

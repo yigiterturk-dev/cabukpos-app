@@ -36,6 +36,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 5. [x] #33 sadakat/hediye kartı/kupon (şema+UI): 6 RLS'li tablo + `lib/loyalty.ts` + `/yonetim/sadakat|kuponlar|hediyekarti` + Nav "Sadakat" grubu + testler; satış anı entegrasyonu (kazanç/harcanma/hediye kartı ödemesi) kasa tarafında ayrı iş — dev DB'ye db:push uygulandı
 6. [x] #44 şube UI + kapsam: `/yonetim/subeler` + `cz_sube` çerezi + `lib/admin/store-scope.ts`; bugün/raporlar/stok/platformlar + ilgili aksiyonlar seçili şubeye bakıyor; `delivery-actions` platform kabulü cihazı şubeye göre seçiyor (sıradaki: #37 QR menü/kiosko)
 7. [x] #15 abonelik iptal/iade akışı: iade talep→onay kayıtları + 7 gün satışsız koşul yardımcısı + abonelik sayfası iade/iptal UI + testler (`billing-refund`); para iadesi PayTR canlı anahtar bekliyor (sıradaki: #37 QR menü/kiosko)
+8. [x] #37 QR menü + kiosko + müşteri ekranı: `/menu/<şube>` (definer fn `public_menu_by_store`), `/api/kiosk` (sır doğrulamalı, rate limitli, tab olaylarına yazar), `/menu/<şube>/s/<tab>` durum ekranı, panelde kiosko bağlantısı + QR; `qrcode` bağımlılığı eklendi (sıradaki: #22 panel offline)
 
 ### Müdür ajan (DB/ops)
 1. Sentry/APM iskeleti + uptime kontrolü — `lib/observability` (#57)
@@ -60,7 +61,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 Tam açık listesi: **`docs/ACIK-RAPORU.md`** (61 madde, P0→P2 sıralı).
 Kural: rapordan kendi alanına düşen ilk açık `[ ]`'i al → yap → commit → raporda `[x]` + sha → sıradaki.
 
-- **Ajan-1 sıradaki:** #37 QR menü/kiosko → #22 panel offline → #34 pazarlama sağlayıcı
+- **Ajan-1 sıradaki:** #22 panel offline + Background Sync → #34 pazarlama sağlayıcı → #20 muhasebe export
 - **Müdür sıradaki:** #57 Sentry/APM iskeleti + uptime → #40 kohort/RFM rapor → #43 konsolide rapor
 - **Lead sıradaki:** #11+#12 PayTR otomatik yenileme + dunning → #1 2FA → #4 e-posta doğrulama
 - **İnsan bekleyen:** PayTR canlı anahtar + **kart saklama (Direct API) sözleşmesi** (#11 için), e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi

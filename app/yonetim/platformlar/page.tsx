@@ -5,7 +5,8 @@ import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { acceptPlatformOrder, deleteCode } from "@/lib/admin/delivery-actions";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
-import { SUPPORTED_PLATFORMS } from "@/lib/platform";
+import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
+import QRCode from "qrcode";
 import { foldTabs, type TabState } from "@/lib/core/tab";
 import { initialEvents } from "@/lib/tabs/stream";
 import { formatTL } from "@/lib/core/money";
@@ -109,15 +110,29 @@ export default async function Platformlar() {
     const at = t.closedAt ?? t.delivery.deliveredAt;
     return at && bugunMu(at);
   }).length;
-  const free = SUPPORTED_PLATFORMS.filter((p) => !conns.some((c) => c.platform === p)).map((p) => ({ value: p, label: PLATFORM_NAMES[p] ?? p }));
+  const free = CONNECTABLE_PLATFORMS.filter((p) => !conns.some((c) => c.platform === p)).map((p) => ({ value: p, label: PLATFORM_NAMES[p] ?? p }));
   return (
     <>
       <PageHeader title="Sipariş platformları" desc="Platform siparişleri kasada Paket sekmesine sesli uyarıyla düşer; kabul/red platforma bildirilir. Yemeksepeti ve Trendyol Go entegratör onayı gelince eklenecek." />
       <PaketHatti acik={acik} teslim={teslim} />
       {free.length > 0 && <Card className="mb-6 p-5"><ConnectionForm platforms={free} /></Card>}
-      {conns.length === 0 ? <Empty>Henüz bağlı platform yok. Akışı denemek için Deneme platformunu bağlayın.</Empty> : conns.map((c) => (
+      {conns.length === 0 ? <Empty>Henüz bağlı platform yok. Akışı denemek için Deneme platformunu bağlayın.</Empty> : await Promise.all(conns.map(async (c) => {
+        const menuUrl = c.platform === "kiosk" ? `${origin}/menu/${c.storeId}?k=${c.webhookSecret}` : null;
+        const qr = menuUrl ? await QRCode.toString(menuUrl, { type: "svg", margin: 1, width: 148 }) : null;
+        return (
         <Card key={c.id} className="mb-6 space-y-4 p-5">
           <div className="flex flex-wrap items-center gap-3"><h2 className="font-semibold">{PLATFORM_NAMES[c.platform] ?? c.platform}</h2><ConnectionToggles id={c.id} autoAccept={c.autoAccept} active={c.active} /></div>
+          {c.platform === "kiosk" ? (
+            <div className="flex flex-wrap items-center gap-5">
+              {qr && <div className="size-[148px] shrink-0 rounded-xl border border-line bg-white p-1" data-testid="kiosk-qr" dangerouslySetInnerHTML={{ __html: qr }} />}
+              <div className="space-y-1 text-sm">
+                <p><b>QR menü:</b> masalara koyacağın kod bu; telefonla açan müşteri kendi siparişini verir.</p>
+                <p>Menü adresi: <code className="break-all rounded bg-surface-2 px-1">{menuUrl}</code></p>
+                <p className="text-muted">Siparişler yukarıdaki hatta “Kiosk / QR” olarak düşer; otomatik kabulü yukarıdan açabilirsin. Kod sızdırılırsa bağlantıyı kapat, yenisini aç.</p>
+              </div>
+            </div>
+          ) : (
+          <>
           <div className="space-y-1 text-sm">
             <div>Webhook adresi: <code className="break-all rounded bg-surface-2 px-1">{`${origin}/api/platform/${c.platform}/webhook?c=${c.id}`}</code></div>
             <div>İmza anahtarı (HMAC-SHA256, <code>x-signature</code>): <code className="break-all rounded bg-surface-2 px-1" data-testid="webhook-secret">{c.webhookSecret}</code></div>
@@ -134,8 +149,11 @@ export default async function Platformlar() {
               ))}
             </ul>
           </div>
+          </>
+          )}
         </Card>
-      ))}
+        );
+      }))}
     </>
   );
 }

@@ -10,6 +10,8 @@ import type { Conn, OrderSource } from "./types";
 const SOURCES: Record<string, OrderSource> = { mock: mockSource, getir: getirSource, yemeksepeti: yemeksepetiSource };
 export const sourceFor = (platform: string): OrderSource | null => SOURCES[platform] ?? null;
 export const SUPPORTED_PLATFORMS = Object.keys(SOURCES);
+/** Bağlanabilir kaynaklar: adaptörlüler + kiosko (webhook'suz; sipariş /api/kiosk'tan gelir, menü QR'ıyla açılır). */
+export const CONNECTABLE_PLATFORMS = [...SUPPORTED_PLATFORMS, "kiosk"];
 
 const P = schema.platformConnections;
 const cols = { id: P.id, tenantId: P.tenantId, storeId: P.storeId, platform: P.platform, credentials: P.credentials, webhookSecret: P.webhookSecret, autoAccept: P.autoAccept };

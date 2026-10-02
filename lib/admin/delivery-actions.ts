@@ -9,7 +9,7 @@ import { audit } from "@/lib/audit";
 import { newDeviceToken } from "@/lib/auth/tokens";
 import { parseTL } from "@/lib/core/money";
 import type { IncomingOrder } from "@/lib/core/platform";
-import { SUPPORTED_PLATFORMS } from "@/lib/platform";
+import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import { ingestOrders } from "@/lib/platform/ingest";
 import { applyDoc } from "@/lib/sync/apply";
 import { scopedStoreId } from "@/lib/admin/store-scope";
@@ -94,7 +94,7 @@ const P = schema.platformConnections;
 export async function createConnection(_: DeliveryState, form: FormData): Promise<DeliveryState> {
   const a = await requireWriter();
   const platform = str(form, "platform");
-  if (!SUPPORTED_PLATFORMS.includes(platform)) return { error: "Bu platform henüz desteklenmiyor.", field: "platform" };
+  if (!CONNECTABLE_PLATFORMS.includes(platform)) return { error: "Bu platform henüz desteklenmiyor.", field: "platform" };
   const storeId = await firstStore(a.tenantId);
   const [had] = await getDb().select({ id: P.id }).from(P).where(and(eq(P.tenantId, a.tenantId), eq(P.storeId, storeId), eq(P.platform, platform)));
   if (had) return { error: "Bu platform zaten bağlı.", field: "platform" };

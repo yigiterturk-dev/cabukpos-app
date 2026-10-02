@@ -45,7 +45,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 34 | Büyüme | Pazarlama izin çıkışı gerçek sağlayıcıya bağlama | Ajan-1
 - [ ] 35 | Büyüme | Advisor'a tahmin/ML katmanı | Müdür
 - [ ] 36 | Yazıcı | ESC/POS logo/raster + barkod + çok marka | Lead
-- [ ] 37 | Ön yüz | QR menü, self-order kiosko, müşteri ekranı | Ajan-1
+- [x] 37 | Ön yüz | ~~QR menü, self-order kiosko, müşteri ekranı~~ ✅ `/menu/<şube>` herkese açık menü (`public_menu_by_store` definer fn); kiosko: `?k=` sırrıyla sepet + `/api/kiosk` → platform hattındaki gibi tab olaylarına düşer (autoAccept destekli, rate limitli); müşteri ekranı `/menu/<şube>/s/<tab>` (kendini yenileyen durum); panelde kiosko bağlantısı kartı QR SVG ile (`qrcode` bağımlılığı); kiosk sırrı QR'da taşınır — sızdırırsa bağlantı kapatılıp yenisi açılır
 - [ ] 38 | Ön yüz | Nakit satışta e-makbuz/SMS fişi | Lead
 - [ ] 39 | Teslimat | Kurye takibi (GPS/ETA veya durum zaman çizelgesi) | Ajan-1
 - [ ] 40 | Rapor | Kohort/retansiyon, RFM, tahmin, gün dilimi | Müdür
