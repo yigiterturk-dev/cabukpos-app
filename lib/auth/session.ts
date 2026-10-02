@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { signJwt, verifyJwt } from "./jwt";
+import { assertCsrf } from "./csrf";
 import { billingInfo } from "@/lib/core/billing";
 
 export { ADMIN_COOKIE } from "./session-cookie";
@@ -39,6 +40,7 @@ export async function requireAdmin() {
 
 /** Yönetim yazması (server action): abonelik kilitliyse Abonelik sayfasına. Okuma serbest; kasa hiç etkilenmez. */
 export async function requireWriter() {
+  await assertCsrf();
   const a = await requireAdmin();
   if (a.billing.locked) redirect("/yonetim/abonelik?kilit=1");
   return a;
