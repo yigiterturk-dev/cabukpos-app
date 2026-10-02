@@ -3,8 +3,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Armchair, Bell, Boxes, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Globe, Handshake, LayoutDashboard, MapPin, Menu,
-  Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Tag, TrendingUp, UserCog, X, type LucideIcon,
+  Armchair, Bell, Boxes, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu,
+  Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Tag, Ticket, TrendingUp, UserCog, X, type LucideIcon,
 } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
@@ -33,6 +33,11 @@ const groups: { title: string; items: Item[] }[] = [
     { href: "/yonetim/musteriler", label: "Müşteriler", icon: Contact, only: "restoran" },
     { href: "/yonetim/buyume", label: "Büyüme Merkezi", icon: TrendingUp, only: "restoran" },
     { href: "/yonetim/platformlar", label: "Platformlar", icon: Globe, only: "restoran" },
+  ] },
+  { title: "Sadakat", items: [
+    { href: "/yonetim/sadakat", label: "Puan programı", icon: Star },
+    { href: "/yonetim/kuponlar", label: "Kuponlar", icon: Ticket },
+    { href: "/yonetim/hediyekarti", label: "Hediye kartı", icon: Gift },
   ] },
   { title: "İşletme", items: [
     { href: "/yonetim/personel", label: "Personel", icon: UserCog },

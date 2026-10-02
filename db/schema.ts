@@ -594,6 +594,100 @@ export const billingInvoiceCounters = pgTable("billing_invoice_counters", {
   counter: integer("counter").notNull().default(0),
 });
 
+// — #33: Sadakat puanı (ayar kiracı başına tek satır; defter işaretli puan hareketleri). RLS'li. —
+export const loyaltyPointKind = pgEnum("loyalty_point_kind", ["kazanc", "harcanma", "iade", "duzeltme"]);
+export const loyaltySettings = pgTable("loyalty_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  enabled: boolean("enabled").notNull().default(false),
+  kurusPerPoint: integer("kurus_per_point").notNull().default(10000), // her X kuruş harcamaya 1 puan
+  kurusPerRedeem: integer("kurus_per_redeem").notNull().default(100), // 1 puan = X kuruş indirim
+  minRedeemPoints: integer("min_redeem_points").notNull().default(10), // en az bu puanla harcanabilir
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("loyalty_settings_tenant_uq").on(t.tenantId)]);
+
+/** Puan defteri: bakiye = tüm hareketlerin işaretli toplamı (kazanc +, harcanma −, iade/düzeltme ±). */
+export const loyaltyEvents = pgTable("loyalty_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  saleId: uuid("sale_id").references(() => sales.id, { onDelete: "set null" }),
+  kind: loyaltyPointKind("kind").notNull(),
+  points: integer("points").notNull(), // işaretli puan
+  note: text("note"),
+  actor: text("actor").notNull(), // user:<id> | device:<id>
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("loyalty_events_customer_idx").on(t.tenantId, t.customerId, t.createdAt)]);
+
+// — #33: Hediye kartı (kod kiracı içinde tek; bakiye kuruş; olay defteri ile iz sürülür). RLS'li. —
+export const giftCardStatus = pgEnum("gift_card_status", ["aktif", "bitti", "iptal"]);
+export const giftCardEventKind = pgEnum("gift_card_event_kind", ["harcama", "yukleme", "iade", "iptal"]);
+export const giftCards = pgTable("gift_cards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  code: text("code").notNull(),
+  initialKurus: integer("initial_kurus").notNull(),
+  balanceKurus: integer("balance_kurus").notNull(),
+  status: giftCardStatus("status").notNull().default("aktif"),
+  expiresAt: ts("expires_at"),
+  note: text("note"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("gift_cards_code_uq").on(t.tenantId, t.code),
+  index("gift_cards_status_idx").on(t.tenantId, t.status, t.createdAt),
+]);
+
+export const giftCardEvents = pgTable("gift_card_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  cardId: uuid("card_id").notNull().references(() => giftCards.id, { onDelete: "cascade" }),
+  saleId: uuid("sale_id").references(() => sales.id, { onDelete: "set null" }),
+  kind: giftCardEventKind("kind").notNull(),
+  amountKurus: integer("amount_kurus").notNull(), // işaretli: yükleme/iade +, harcama −, iptal 0
+  note: text("note"),
+  actor: text("actor").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("gift_card_events_card_idx").on(t.tenantId, t.cardId, t.createdAt)]);
+
+// — #33: Kupon motoru (kod kiracı içinde tek; kullanım defteri tek satışta tek kullanımı zorunlu kılar). RLS'li. —
+export const couponKind = pgEnum("coupon_kind", ["yuzde", "tutar", "teslimat"]);
+export const couponStatus = pgEnum("coupon_status", ["acik", "kapali"]);
+export const coupons = pgTable("coupons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  code: text("code").notNull(),
+  kind: couponKind("kind").notNull(),
+  value: integer("value").notNull(), // yuzde: 1-100; tutar: kuruş; teslimat: 0
+  minSubtotal: integer("min_subtotal").notNull().default(0), // kuruş
+  maxDiscount: integer("max_discount"), // yuzde üst sınırı (kuruş); null = sınırsız
+  startsAt: ts("starts_at"),
+  endsAt: ts("ends_at"),
+  usageLimit: integer("usage_limit"), // toplam kullanım; null = sınırsız
+  perCustomerLimit: integer("per_customer_limit").notNull().default(1),
+  usedCount: integer("used_count").notNull().default(0),
+  status: couponStatus("status").notNull().default("acik"),
+  note: text("note"),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("coupons_code_uq").on(t.tenantId, t.code),
+  index("coupons_status_idx").on(t.tenantId, t.status, t.createdAt),
+]);
+
+export const couponUses = pgTable("coupon_uses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  couponId: uuid("coupon_id").notNull().references(() => coupons.id, { onDelete: "cascade" }),
+  customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
+  saleId: uuid("sale_id").references(() => sales.id, { onDelete: "set null" }),
+  discountKurus: integer("discount_kurus").notNull(),
+  usedAt: ts("used_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("coupon_uses_sale_uq").on(t.couponId, t.saleId),
+  index("coupon_uses_customer_idx").on(t.tenantId, t.couponId, t.customerId, t.usedAt),
+]);
+
 // — M9c: ajans erişim anahtarları. RLS yok (anahtar kiracı bilinmeden hash ile aranır, devices gibi); yalnız lib/integrations/keys erişir, her sorguda tenantId. —
 export const integrationKeys = pgTable("integration_keys", {
   id: uuid("id").primaryKey().defaultRandom(),

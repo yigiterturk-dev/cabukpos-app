@@ -11,7 +11,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 11 | Faturalama | PayTR otomatik yenileme / kayıtlı kart — [ENGEL: PayTR kart saklama sözleşmesi (insan) + `tenants.cardToken` kolonu (müdür)] | Lead
 - [x] 12 | Faturalama | ~~Başarısız ödeme dunning akışı~~ ✅ gecikme 1/3/5. gün + kilit + haftalık e-posta akışı
 - [x] 57 | Ops | ~~Sentry/APM iskeleti + uptime izleme~~ ✅ bağımlılıksız iskelet: `lib/observability/telemetry.ts` (env kapalıysa dışarı istek çıkmaz, `OTEL_EXPORTER_OTLP_ENDPOINT` ile OTLP/JSON logs), `instrumentation.ts` (`register` + `onRequestError`), `instrumentation-client.ts` + `/api/telemetry/client` (istemci hatası fişeği), `/api/cron/uptime` (self DB + `UPTIME_TARGETS` denetimi, arızada `dispatchAlert`) (`ed5db94`); Sentry/gerçek SDK env hazır olunca bu modülün arkasına takılır
-- [ ] 33 | Büyüme | Sadakat programı, hediye kartı, kupon motoru (şema+UI) | Ajan-1+Lead
+- [x] 33 | Büyüme | ~~Sadakat programı, hediye kartı, kupon motoru (şema+UI)~~ ✅ şema: `loyalty_settings`/`loyalty_events`, `gift_cards`/`gift_card_events`, `coupons`/`coupon_uses` (RLS'li, db:push uygulandı); saf hesap `lib/loyalty.ts` + testler; panel: `/yonetim/sadakat` (ayar+bakiye+manuel puan), `/yonetim/kuponlar`, `/yonetim/hediyekarti`; ⚠️ satış anı kazanım/harcanma/hediye kartı ödemesi kasa tarafına ayrı iş
 - [ ] 32 | Büyüme | Gerçek SMS (Netgsm/İletimerkezi) + WhatsApp gönderim sağlayıcısı | İnsan hesabı + ajan
 - [ ] 44 | Panel | Şube oluşturma/geçiş UI + şube bazlı veri kapsamı | Ajan-1
 - [x] 1 | Güvenlik | ~~2FA (TOTP)~~ ✅ `lib/auth/totp.ts` + `/yonetim/guvenlik` sayfası + giriş akışı kod doğrulama
