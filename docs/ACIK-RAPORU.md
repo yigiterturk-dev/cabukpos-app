@@ -39,7 +39,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 25 | Offline | Fiş çakışması çözüm politikası | Lead
 - [ ] 26 | Offline | 14 gün prune + push-crash dayanıklılığı | Lead
 - [x] 27 | Sync | Bulut→istemci gerçek zamanlı push (SSE/poll) ✅ (`GET /api/sync/stream` ucuz kiracı belirteci + kasada EventSource→kick, `1448969`) | Ajan-1
-- [ ] 29 | Platform | Menü/fiyat/stok marketplace'e geri push | Ajan-1
+- [x] 29 | Platform | Menü/fiyat/stok marketplace'e geri push ✅ (mock+Getir sandbox sürücü, panel butonu, `a2420ba`) | Ajan-1
 - [ ] 30 | Platform | Webhook URL kimliklendirme iyileştirme | Ajan-1
 - [ ] 31 | Entegrasyon | Muhasebe/ERP/e-ticaret bağlantıları | Müdür
 - [x] 34 | Büyüme | Pazarlama izin çıkışı gerçek sağlayıcıya bağlama ✅ (SMS sürücüsü + sayfa sayfa gönderim, opt-out'lu hedef filtresi, `44152b5`) | Ajan-1

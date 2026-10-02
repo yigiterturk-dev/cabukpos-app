@@ -41,6 +41,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 10. [x] #34 pazarlama sağlayıcı: `lib/growth/messaging` — SMS HTTP sürücüsü (`MARKETING_SMS_ENABLED`/`API_BASE`/`API_KEY`/`FROM`, kapalıyken ağa çıkmaz), `sendGrowthCampaignPage` (onaylı kampanyayı izinli alıcıya sayfa sayfa gönderir, sent olayı + ref eşlemesi idempotent, opt-out'lular atlanır, telefon log/audit'e yazılmaz), kampanya sayfasında "Gönder (SMS)" (sahip + env açık); opt-out geri çağrısı mevcut events API'si üzerinden izni kapatır — `44152b5`; canlı SMS/WhatsApp hesabı insan işi (sıradaki: #20 muhasebe export)
 11. [x] #20 muhasebe export: `lib/core/accounting.ts` (saf yevmiye kuralları: gün sonu POS 102/600/391, e-Arşiv 120 cari — POS özetinden düşülür, iadeler ters, alımlar 153/320; CSV hücre kaçışı + formül koruması) + `lib/admin/accounting.ts` (aylık DB özeti, Istanbul ay aralığı, audit) + `GET /api/yonetim/muhasebe?aylik=YYYY-MM&format=parasut|logo|mikro|edefter` (sahip/müdür) + Mali'de "Muhasebe" sekmesi — `07b46a9`; not: alım KDV ayrıştırması fişte yok (153'e toplam), e-Defter çıktısı entegratör ön verisi, GİB imzası kapsamaz (sıradaki: #27 bulut→istemci push)
 12. [x] #27 bulut→istemci push: `GET /api/sync/stream` (SSE; cihaz çerezi; 2 sn'de bir `lib/sync/dirty.ts` ucuz kiracı belirteci — satış synced_at, tab_events seq, vardiya aç/kapa, cihaz eşleme/fiş sayacı; 15 sn ping, ~240 sn ömür, EventSource kendi bağlanır) + kasada `es.onmessage → sync.kick()` (çekim yine ?v= katalog özetiyle; belirteçte katalog içeriği yok, katalog düzeni 60 sn periyodla gelir) — `1448969` (sıradaki: #29 marketplace'e geri push)
+13. [x] #29 marketplace'e geri push: `OrderSource.pushCatalog?` (opsiyonel adaptör metodu) + `lib/platform/outbound.ts` (`pushStoreCatalog`: eşlenmiş kod → ürün adı/fiyat/stok, stok `stockLevels`'ten, izlemesizde null; ağ DB işlemi dışında; audit) — mock sürücü anında ok (MOCK_PLATFORM_FAIL hata yolu), Getir sandbox `PUT /stores/:id/catalog` (GETIR_ENABLED kapalıysa error; `createGetirSource` artık test için config parametreli), kiosk/ys "unsupported"; Platformlar sayfasında "Menü/fiyat/stok gönder" butonu — `a2420ba`; not: `Conn` tipine + `cols`'a `active` eklendi (pushStoreCatalog kapalı bağlantıyı reddeder); canlı Getir/YS katalog onayı insan işi (sıradaki: #30 webhook kimliklendirme)
 
 ### Müdür ajan (DB/ops)
 1. Sentry/APM iskeleti + uptime kontrolü — `lib/observability` (#57)
@@ -65,7 +66,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 Tam açık listesi: **`docs/ACIK-RAPORU.md`** (61 madde, P0→P2 sıralı).
 Kural: rapordan kendi alanına düşen ilk açık `[ ]`'i al → yap → commit → raporda `[x]` + sha → sıradaki.
 
-- **Ajan-1 sıradaki:** #29 menü/fiyat/stok marketplace'e geri push → #30 webhook URL kimliklendirme iyileştirme
+- **Ajan-1 sıradaki:** #30 webhook URL kimliklendirme iyileştirme
 - **Müdür sıradaki:** #57 Sentry/APM iskeleti + uptime → #40 kohort/RFM rapor → #43 konsolide rapor
 - **Lead sıradaki:** #11+#12 PayTR otomatik yenileme + dunning → #1 2FA → #4 e-posta doğrulama
 - **İnsan bekleyen:** PayTR canlı anahtar + **kart saklama (Direct API) sözleşmesi** (#11 için), e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi
