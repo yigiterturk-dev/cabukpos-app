@@ -71,6 +71,7 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
               <Field label="Adres" hint={TRANSPORTS.find((t) => t.value === p.transport)?.hint}><Input value={p.address} onChange={(e) => setP(i, { address: e.target.value })} aria-label="Yazıcı adresi" required /></Field>
               <div><div className="mb-1.5 text-sm font-medium">Kâğıt</div><Seg label="Kâğıt" value={p.width} options={[{ value: 80, label: "80 mm" }, { value: 58, label: "58 mm" }] as const} onChange={(v) => setP(i, { width: v })} /></div>
               <div><div className="mb-1.5 text-sm font-medium">Türkçe karakter</div><Seg label="Kod sayfası" value={p.codepage} options={[{ value: "pc857", label: "PC857" }, { value: "ascii", label: "Türkçesiz (ç→c)" }] as const} onChange={(v) => setP(i, { codepage: v })} /></div>
+              <div><div className="mb-1.5 text-sm font-medium">Marka</div><Seg label="Marka" value={p.brand} options={[{ value: "genel", label: "Genel" }, { value: "xprinter", label: "XPrinter" }, { value: "epson", label: "Epson" }] as const} onChange={(v) => setP(i, { brand: v })} /></div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
               <label className="inline-flex items-center gap-2"><input type="checkbox" checked={p.drawer} onChange={(e) => setP(i, { drawer: e.target.checked })} /> Para çekmecesi bu yazıcıya bağlı</label>
