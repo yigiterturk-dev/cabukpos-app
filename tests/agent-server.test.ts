@@ -30,7 +30,7 @@ test("ajan: bilet, yazdırma, kuyruk, çekmece, terazi", async () => {
   const scale = net.createServer((c) => c.on("data", (d) => { if (d[0] === 0x05) c.write("ST,GS,+  0.750kg\r\n"); }));
   const sport = await listen(scale);
   const config: AgentConfig = {
-    printers: [{ id: "p1", name: "Kasa", role: "fis", transport: "ag", address: `127.0.0.1:${pport}`, width: 80, codepage: "pc857", drawer: true }],
+    printers: [{ id: "p1", name: "Kasa", role: "fis", transport: "ag", address: `127.0.0.1:${pport}`, width: 80, codepage: "pc857", brand: "genel", drawer: true }],
     scale: { kind: "tcp", host: "127.0.0.1", port: sport, request: "enq" },
     autoPrint: true,
   };

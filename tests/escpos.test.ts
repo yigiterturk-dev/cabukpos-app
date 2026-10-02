@@ -1,7 +1,7 @@
 // tests/escpos.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cols, encodeText, EscPos, wrap, DRAWER_PULSE, toBase64, fromBase64 } from "@/lib/core/escpos";
+import { cols, encodeText, EscPos, wrap, DRAWER_PULSE, toBase64, fromBase64, packBits, BRANDS } from "@/lib/core/escpos";
 import { renderReceipt, renderShiftReport } from "@/lib/core/receipt";
 import { summarizeShift } from "@/lib/core/shift";
 import { totals } from "@/lib/core/cart";
@@ -94,4 +94,31 @@ test("fiş: e-Arşiv kesildi / kesilmedi / uygulama adresi yok", () => {
   assert.ok(noMail.includes("Faturaniz:"));
   const plain = ascii(renderReceipt({ ...sale, fiscal: f }, head, { width: 80, codepage: "ascii" }));
   assert.ok(!plain.includes("CBP2026") && plain.includes("Bilgi fisidir"));
+});
+
+test("escpos: barkod (GS h, GS H 2, GS k 73/67) + doğrulama", () => {
+  const u = new EscPos("ascii", 80).barcode("K1-000001").bytes();
+  assert.deepEqual([...u.slice(-19)], [0x1d, 0x68, 80, 0x1d, 0x48, 2, 0x1d, 0x6b, 73, 9, ...[..."K1-000001"].map((c) => c.charCodeAt(0))]);
+  const ean = new EscPos("ascii", 80).barcode("1234567890128", "EAN13").bytes();
+  assert.deepEqual([...ean.slice(-23)], [0x1d, 0x68, 80, 0x1d, 0x48, 2, 0x1d, 0x6b, 67, 13, ...[..."1234567890128"].map((c) => c.charCodeAt(0))]);
+  assert.throws(() => new EscPos().barcode("123", "EAN13"), /13 hane/);
+  assert.throws(() => new EscPos().barcode("fiş-ğ"), /ASCII/);
+  assert.throws(() => new EscPos().barcode("x".repeat(49)), /ASCII/);
+});
+
+test("escpos: raster (GS v 0) + packBits paketleme", () => {
+  const img = packBits([[1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 1]]);
+  assert.deepEqual([...img.data], [0x80, 0x01]);
+  const u = new EscPos("ascii", 80).raster(img).bytes();
+  assert.deepEqual([...u.slice(-10)], [0x1d, 0x76, 0x30, 0, 8, 0, 2, 0, 0x80, 0x01]);
+  assert.throws(() => packBits([[1, 0], [0, 1]]), /8'in katı/);
+  assert.throws(() => new EscPos().raster({ width: 16, data: new Uint8Array(3) }), /tam bölünmeli/);
+});
+
+test("escpos: marka profili kesme baytını değiştirir (#36)", () => {
+  assert.deepEqual(Object.keys(BRANDS), ["genel", "xprinter", "epson"]);
+  const cutOf = (b: keyof typeof BRANDS) => [...new EscPos("ascii", 80, b).cut().bytes().slice(-4)];
+  assert.deepEqual(cutOf("genel"), [0x1d, 0x56, 66, 3]);
+  assert.deepEqual(cutOf("xprinter"), [0x1d, 0x56, 66, 3]);
+  assert.deepEqual(cutOf("epson"), [0x1d, 0x56, 65, 3]);
 });

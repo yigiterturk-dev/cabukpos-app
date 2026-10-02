@@ -17,6 +17,7 @@ export const printerConfig = z.object({
   address: z.string().trim().min(1).max(200),
   width: z.union([z.literal(58), z.literal(80)]),
   codepage: z.enum(["pc857", "ascii"]),
+  brand: z.enum(["genel", "epson", "xprinter"]).default("genel"), // kesme davranışı (#36)
   drawer: z.boolean(), // para çekmecesi bu yazıcıya bağlı
 });
 
@@ -53,7 +54,7 @@ export type Heartbeat = z.infer<typeof heartbeatBody>;
 /** Katalogla kasaya inen ajan bilgisi. */
 /** LAN merkezi: yalnız adisyon akışı için ajan adresi + bilet (yazdırma yetkisi yok). */
 export type LanLink = { url: string; ticket: string };
-export type KasaAgent = { url: string; ticket: string; autoPrint: boolean; drawer: boolean; scale: boolean; printers: { id: string; role: string; width: 58 | 80; codepage: "pc857" | "ascii" }[] };
+export type KasaAgent = { url: string; ticket: string; autoPrint: boolean; drawer: boolean; scale: boolean; printers: { id: string; role: string; width: 58 | 80; codepage: "pc857" | "ascii"; brand: "genel" | "epson" | "xprinter" }[] };
 
 export const AGENT_PORT = 17654;
 export const LAN_DOMAIN = "lan.cabukpos.com";

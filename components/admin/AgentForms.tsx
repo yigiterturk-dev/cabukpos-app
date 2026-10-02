@@ -43,7 +43,7 @@ export function AgentPairButton({ action }: { action: () => Promise<AgentState> 
   );
 }
 
-const newPrinter = (n: number): PrinterConfig => ({ id: `p${n}`, name: n === 1 ? "Fiş yazıcısı" : `Yazıcı ${n}`, role: "fis", transport: "ag", address: "", width: 80, codepage: "pc857", drawer: n === 1 });
+const newPrinter = (n: number): PrinterConfig => ({ id: `p${n}`, name: n === 1 ? "Fiş yazıcısı" : `Yazıcı ${n}`, role: "fis", transport: "ag", address: "", width: 80, codepage: "pc857", brand: "genel", drawer: n === 1 });
 const Seg = <T extends string | number>({ value, options, onChange, label }: { value: T; options: readonly { value: T; label: string }[]; onChange: (v: T) => void; label: string }) => (
   <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
     {options.map((o) => (

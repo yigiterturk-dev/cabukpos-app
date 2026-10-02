@@ -47,7 +47,7 @@ test("ajan: süresi geçmiş kod; heartbeat yalnız kendi kiracısının iptalle
   // A kiracısında iptal edilmiş cihaz B'ye inmemeli
   const [aDev] = await getDb().select().from(schema.devices).where(eq(schema.devices.tenantId, tenants[0].id));
   await getDb().update(schema.devices).set({ revokedAt: sql`now()` }).where(eq(schema.devices.id, aDev.id));
-  const cfg = { ...emptyAgentConfig(), printers: [{ id: "p1", name: "Fiş", role: "fis" as const, transport: "ag" as const, address: "10.0.0.5", width: 58 as const, codepage: "pc857" as const, drawer: true }] };
+  const cfg = { ...emptyAgentConfig(), printers: [{ id: "p1", name: "Fiş", role: "fis" as const, transport: "ag" as const, address: "10.0.0.5", width: 58 as const, codepage: "pc857" as const, brand: "genel" as const, drawer: true }] };
   await getDb().update(schema.agents).set({ config: cfg }).where(eq(schema.agents.id, agent.id));
   const hb = await recordHeartbeat({ ...agent, config: cfg }, { version: "0.4.0", lanIp: "192.168.1.20", port: 17654, httpsPort: null, certExpiresAt: null, printers: [{ id: "p1", ok: true, error: null }], failed: 0, scale: false });
   assert.deepEqual(hb.revoked, []);
@@ -58,7 +58,7 @@ test("ajan: süresi geçmiş kod; heartbeat yalnız kendi kiracısının iptalle
   const k = (await kasaAgentFor({ id: x.dv.id, tenantId: B.id, storeId: x.st.id }))!;
   assert.equal(k.url, "http://127.0.0.1:17654");
   assert.equal(k.drawer, true);
-  assert.deepEqual(k.printers, [{ id: "p1", role: "fis", width: 58, codepage: "pc857" }]);
+  assert.deepEqual(k.printers, [{ id: "p1", role: "fis", width: 58, codepage: "pc857", brand: "genel" }]);
   const claims = await verifyTicket(r.hubKey, k.ticket);
   assert.equal(claims?.d, x.dv.id);
   assert.equal(claims?.t, B.id);

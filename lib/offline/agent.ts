@@ -58,7 +58,7 @@ export function printSale(meta: Meta, sale: ReceiptSale, drawer = false): Promis
   const p = a && receiptPrinter(a);
   if (!a || !p || !d) return null;
   const weighed = (id: string) => meta.catalog.products.find((x) => x.id === id)?.kind === "tartili";
-  return send(a, p.id, renderReceipt(withTestFlag(meta, sale), d, { width: p.width, codepage: p.codepage, appUrl: location.origin }, weighed), drawer && a.drawer);
+  return send(a, p.id, renderReceipt(withTestFlag(meta, sale), d, { width: p.width, codepage: p.codepage, brand: p.brand, appUrl: location.origin }, weighed), drawer && a.drawer);
 }
 
 /** Mutfak fişi: istasyonun ajan yazıcısına. Yazıcı ajanda tanımlı değilse null. */

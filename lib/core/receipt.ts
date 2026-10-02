@@ -4,10 +4,10 @@ import { PAY_METHODS, shownMethods } from "./payment";
 import type { Payment } from "./payment";
 import type { VatLine } from "./cart";
 import type { summarizeShift } from "./shift";
-import { EscPos, type Codepage, type PaperWidth } from "./escpos";
+import { EscPos, BRANDS, type Codepage, type PaperWidth, type PrinterBrand } from "./escpos";
 import { refundNote, type RefundFiscal } from "./refundNote";
 
-export type PrintOpts = { width: PaperWidth; codepage: Codepage; drawer?: boolean; appUrl?: string };
+export type PrintOpts = { width: PaperWidth; codepage: Codepage; brand?: PrinterBrand; drawer?: boolean; appUrl?: string };
 /** M8: e-Arşiv. number yoksa henüz kesilmedi (çevrimdışı/gecikme) → bağlantı ya da e-posta notu. */
 export type ReceiptFiscal = { token: string; number: string | null; ettn: string | null; buyer: { name: string; email?: string } | null; test?: boolean };
 export const fiscalLink = (appUrl: string, token: string) => `${appUrl.replace(/\/$/, "")}/f/${token}`;
@@ -49,7 +49,7 @@ function header(p: EscPos, h: ReceiptHeader) {
 
 /** weighed(productId): tartılı ürün mü (miktar kg gösterilir). */
 export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts, weighed: (id: string) => boolean = () => false): Uint8Array {
-  const p = new EscPos(o.codepage, o.width);
+  const p = new EscPos(o.codepage, o.width, o.brand ?? "genel");
   const at = new Date(sale.at);
   if (o.drawer) p.drawer();
   header(p, h);
@@ -86,6 +86,8 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
     for (const s of rn.sign) p.line().line(`${s}: `.padEnd(o.width === 58 ? 32 : 48, "."));
   }
   if (!f?.title) p.rule().align("center").lines("Bilgi fişidir, mali değeri yoktur.").align("left");
+  // Fiş no barkodu (#36): iade/kasa sorgusunda el girişi yerine okutma.
+  p.align("center").barcode(sale.receiptNo).align("left");
   p.feed(3).cut();
   return p.bytes();
 }
@@ -98,7 +100,7 @@ export type ShiftPrint = {
 };
 
 export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts): Uint8Array {
-  const p = new EscPos(o.codepage, o.width);
+  const p = new EscPos(o.codepage, o.width, o.brand ?? "genel");
   const m = s.summary;
   const expected = s.expectedCash ?? m.expectedCash;
   header(p, h);
