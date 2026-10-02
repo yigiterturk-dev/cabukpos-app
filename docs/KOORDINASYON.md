@@ -55,6 +55,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 3. [x] Kök `app/error.tsx` + `app/global-error.tsx` + `app/loading.tsx` (#56) — `31d8e06`
 4. [x] `app/robots.ts` + `app/sitemap.ts` + layout noindex kapısı (#59) — `31d8e06`
 5. [x] İlgili birim testleri (#53 kısmi) — `31d8e06`
+6. [x] Uygulama düzeyi CSRF katmanı (#2): `lib/auth/csrf.ts` saf `csrfVerdict` + `assertCsrf()` → `requireWriter`'da; çapraz site/same-site + origin↔host reddi, tüm yönetim aksiyonlarını tek merkezden kapatır (`f5b5386`)
 
 ## İnsan müdahalesi bekleyenler (kod değil)
 

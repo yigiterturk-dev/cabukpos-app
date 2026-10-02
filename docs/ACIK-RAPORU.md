@@ -23,7 +23,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 
 ## P1 — Rekabet gücü
 
-- [ ] 2 | Güvenlik | CSRF koruması (server action'lara token) | Lead
+- [x] 2 | Güvenlik | ~~CSRF koruması (server action'lara token)~~ ✅ uygulama düzeyi katman: `lib/auth/csrf.ts` saf `csrfVerdict` (fetch-metadata: çapraz site/same-site reddi, origin↔host çapraz denetimi, navigate geçer) + `assertCsrf()` `requireWriter`'a bağlı → tüm yönetim aksiyonları tek merkezden; form imzaları bozulmaz, Next'in Origin=Host denetimine ek derinlik (`f5b5386`)
 - [ ] 3 | Güvenlik | Kayan oturum yenileme + aktivite rotasyonu | Lead
 - [ ] 7 | Güvenlik | JWT audience'ları için ayrı anahtarlar | Lead
 - [ ] 8 | Güvenlik | Hassas işlemde re-auth; cihaz oturumu rotasyonu | Lead
