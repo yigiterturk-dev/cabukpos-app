@@ -37,6 +37,18 @@ export function registerOutboxSync() {
   void navigator.serviceWorker.ready.then((r) => (r as SyncCapable).sync.register("kasa-outbox")).catch(() => {});
 }
 
+// Periyodik uyandırma (#23): kurulu PWA'da tarayıcı zaman zaman SW'yi uyandırır; kasa sekmesi
+// hiç yoksa SW giden kutusunu kendisi boşaltır (destek yoksa sessizce atlanır).
+export function registerOutboxPeriodicDrain() {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+  type PeriodicCapable = ServiceWorkerRegistration & {
+    periodicSync?: { register(tag: string, opts: { minInterval: number }): Promise<void> };
+  };
+  void navigator.serviceWorker.ready
+    .then((r) => (r as PeriodicCapable).periodicSync?.register("kasa-outbox-drain", { minInterval: 3 * 3600_000 }))
+    .catch(() => {});
+}
+
 export function onSyncNow(cb: () => void) {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return () => {};
   const onMessage = (e: MessageEvent) => {

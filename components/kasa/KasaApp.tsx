@@ -25,7 +25,7 @@ import { ShiftReport, type ShiftReportData } from "@/components/ShiftReport";
 import { PinPad, type Cashier } from "./PinPad";
 import { RefundScreen } from "./RefundScreen";
 import { SaleScreen, type OnSale, type PrintView } from "./SaleScreen";
-import { onSyncNow, registerKasaSw, registerOutboxSync } from "./sw-register";
+import { onSyncNow, registerKasaSw, registerOutboxPeriodicDrain, registerOutboxSync } from "./sw-register";
 import { SalonScreen } from "./SalonScreen";
 import { TabScreen } from "./TabScreen";
 import { BillScreen } from "./BillScreen";
@@ -328,6 +328,7 @@ export function KasaApp() {
 
   useEffect(() => {
     registerKasaSw();
+    registerOutboxPeriodicDrain();
     void loadMeta().then(setMeta);
     const s = createSync((st, m) => {
       setStatus(st);
