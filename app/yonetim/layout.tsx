@@ -1,31 +1,36 @@
 import Link from "next/link";
 import { LogOut, Monitor } from "lucide-react";
+import { asc } from "drizzle-orm";
+import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { bannerText } from "@/lib/core/billing";
+import { bildirimler } from "@/lib/admin/bildirim";
 import { logout } from "@/lib/auth/actions";
 import { LogoMark } from "@/components/ui";
 import { MobileNav, Nav } from "./Nav";
 
 export default async function YonetimLayout({ children }: { children: React.ReactNode }) {
   const a = await requireAdmin();
-  const brand = (
+  const [store] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
+  const bildirim = store ? (await bildirimler(a.tenantId, store.id)).length : 0;
+  const brand = (dark: boolean) => (
     <Link href="/yonetim" className="flex items-center gap-2.5 px-1">
       <LogoMark size="sm" />
       <span className="min-w-0">
-        <span className="block text-sm font-semibold leading-tight">ÇabukPOS</span>
-        <span className="block truncate text-xs text-muted">{a.tenantName} · {a.vertical === "restoran" ? "Restoran" : "Market"}</span>
+        <span className={`block font-display text-sm font-bold leading-tight tracking-tight ${dark ? "text-cream" : "text-ink"}`}>ÇabukPOS</span>
+        <span className={`block truncate text-xs ${dark ? "text-cream-muted" : "text-muted"}`}>{a.tenantName} · {a.vertical === "restoran" ? "Restoran" : "Market"}</span>
       </span>
     </Link>
   );
   const footer = (
-    <div className="space-y-1 border-t border-line pt-3">
-      <Link href="/kasa" className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-ink-2 outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">
-        <Monitor aria-hidden className="size-4 text-muted" />Kasa ekranı
+    <div className="space-y-1 border-t border-white/10 pt-3">
+      <Link href="/kasa" className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-cream-muted outline-none transition hover:bg-white/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+        <Monitor aria-hidden className="size-4" />Kasa ekranı
       </Link>
       <div className="flex items-center gap-2 px-3 pt-1">
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.name}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-cream">{a.name}</span>
         <form action={logout}>
-          <button className="press inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+          <button className="press inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-cream-muted outline-none transition hover:bg-white/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
             <LogOut aria-hidden className="size-3.5" />Çıkış
           </button>
         </form>
@@ -33,19 +38,19 @@ export default async function YonetimLayout({ children }: { children: React.Reac
     </div>
   );
   return (
-    <div className="min-h-dvh bg-surface-2 md:grid md:grid-cols-[232px_1fr] print:block print:bg-white">
-      <aside className="hidden border-r border-line bg-white print:hidden md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:gap-6 md:p-4">
-        {brand}
+    <div className="min-h-dvh bg-canvas md:grid md:grid-cols-[232px_1fr] print:block print:bg-white">
+      <aside className="hidden bg-espresso print:hidden md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:gap-6 md:p-4 md:shadow-[inset_-1px_0_0_rgb(255_255_255/0.06)]">
+        {brand(true)}
         <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1"><Nav vertical={a.vertical} /></div>
         {footer}
       </aside>
-      <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-line bg-white px-3 py-2 print:hidden md:hidden">
+      <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-line bg-surface px-3 py-2 print:hidden md:hidden">
         <MobileNav>
-          <div className="mb-5">{brand}</div>
+          <div className="mb-5">{brand(true)}</div>
           <div className="flex-1"><Nav vertical={a.vertical} /></div>
           <div className="mt-5">{footer}</div>
         </MobileNav>
-        {brand}
+        {brand(false)}
       </header>
       <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">
         {a.billing.warn && (

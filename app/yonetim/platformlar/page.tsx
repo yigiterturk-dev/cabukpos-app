@@ -19,11 +19,16 @@ const platformEtiket = (t: TabState) => {
 };
 const dkOnce = (at: string) => Math.max(0, Math.round((Date.now() - new Date(at).getTime()) / 60_000));
 const bugunMu = (at: string) => new Date(at).toDateString() === new Date().toDateString();
+const saat = (at: string) => new Date(at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+const gecikti = (t: TabState) => Boolean(t.delivery.acceptedAt && t.delivery.prepMin && !t.delivery.outAt && Date.now() - new Date(t.delivery.acceptedAt).getTime() > t.delivery.prepMin * 60_000);
 const DURUM = (t: TabState): { label: string; cls: string } =>
   t.closed || t.delivery.deliveredAt ? { label: "Teslim", cls: "bg-ok text-white" }
   : t.delivery.outAt ? { label: "Kuryede", cls: "bg-brand text-white" }
+  : gecikti(t) ? { label: `Gecikti · hedef ${t.delivery.prepMin} dk`, cls: "bg-amber-500 text-white" }
   : t.delivery.acceptedAt ? { label: `Hazırlanıyor${t.delivery.prepMin ? ` · ${t.delivery.prepMin} dk` : ""}`, cls: "bg-ink text-white" }
   : { label: "Onay bekliyor", cls: "bg-amber-500 text-white" };
+const cizelge = (t: TabState) =>
+  [t.delivery.acceptedAt ? `kabul ${saat(t.delivery.acceptedAt)}` : "", t.delivery.outAt ? `yolda ${saat(t.delivery.outAt)}` : "", t.delivery.deliveredAt ? `teslim ${saat(t.delivery.deliveredAt)}` : ""].filter(Boolean).join(" · ");
 
 function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
   const gruplar = new Map<string, TabState[]>();
@@ -64,7 +69,7 @@ function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
                     <td className="px-3 py-2">{t.order?.name ?? "—"}<span className="block text-xs text-muted">{t.order?.phone ?? ""}</span></td>
                     <td className="px-3 py-2 text-muted">{t.lines.filter((l) => !l.voided).length} ürün</td>
                     <td className="px-3 py-2 tabular font-semibold">{formatTL(t.total)}</td>
-                    <td className="px-3 py-2"><span className={`rounded px-1.5 py-0.5 text-xs font-medium ${DURUM(t).cls}`}>{DURUM(t).label}</span></td>
+                    <td className="px-3 py-2"><span className={`rounded px-1.5 py-0.5 text-xs font-medium ${DURUM(t).cls}`}>{DURUM(t).label}</span><span className="block text-[11px] text-muted">{cizelge(t)}</span></td>
                     <td className="px-3 py-2 text-muted">{dk} dk</td>
                     <td className="px-3 py-2">
                       {!t.closed && !t.delivery.acceptedAt && !t.delivery.rejected && !t.delivery.cancelled ? (

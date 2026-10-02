@@ -30,9 +30,9 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 
 ### Ajan-1 (yonetim paneli) — iade tutanağı bittikten sonra sırayla
 1. [x] Yonetim alt sayfalarına `loading.tsx` + `error.tsx` iskeletleri (#56) — `f99c9fd`
-2. Bildirim merkezi iskeleti + Nav zil ikonu (#46)
+2. [x] Bildirim merkezi iskeleti + Nav zil ikonu (#46) — `/yonetim/bildirimler` (canlı kaynaklar: onay bekleyen sipariş, geciken hazırlık, inceleme/mali uyarı) + Nav'da sayaç rozeti
 3. [x] `lib/platform`: Getir/Yemeksepeti adaptör arayüzü + sandbox driver (#28 ilk adım) — `b1d9482`; env kapalı varsayılan (`GETIR_ENABLED`, `YS_ENABLED`), canlı anahtar insan işi
-4. Kurye akışına durum zaman damgası + gecikme uyarısı (#39 kolay kısmı)
+4. [x] Kurye akışına durum zaman damgası + gecikme uyarısı (#39 kolay kısmı) — paket hattında kabul/yolda/teslim saatleri + "Gecikti" rozeti (prepMin aşımı)
 
 ### Müdür ajan (DB/ops)
 1. Sentry/APM iskeleti + uptime kontrolü — `lib/observability` (#57)
@@ -60,7 +60,8 @@ Kural: rapordan kendi alanına düşen ilk açık `[ ]`'i al → yap → commit 
 - **Ajan-1 sıradaki:** #33 sadakat/hediye kartı/kupon (şema+UI) → #44 şube UI → #37 QR menü/kiosko
 - **Müdür sıradaki:** #57 Sentry/APM iskeleti + uptime → #40 kohort/RFM rapor → #43 konsolide rapor
 - **Lead sıradaki:** #11+#12 PayTR otomatik yenileme + dunning → #1 2FA → #4 e-posta doğrulama
-- **İnsan bekleyen:** PayTR canlı anahtar, e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi
+- **İnsan bekleyen:** PayTR canlı anahtar + **kart saklama (Direct API) sözleşmesi** (#11 için), e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi
+- **Müdür notu (#11 bağımlılığı):** `tenants` tablosuna `cardToken text` + `cardMark text` kolonu ekle (#11 otomatik yenileme bunu bekliyor); Lead sonra cron'da tokenli yenileme yazar
 
 ## Birleştirme
 

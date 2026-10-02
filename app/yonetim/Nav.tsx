@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Armchair, Boxes, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Globe, Handshake, LayoutDashboard, MapPin, Menu,
+  Armchair, Bell, Boxes, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Globe, Handshake, LayoutDashboard, MapPin, Menu,
   Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Tag, TrendingUp, UserCog, X, type LucideIcon,
 } from "lucide-react";
 
@@ -11,6 +11,7 @@ type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" |
 const groups: { title: string; items: Item[] }[] = [
   { title: "Genel", items: [
     { href: "/yonetim", label: "Bugün", icon: LayoutDashboard, exact: true },
+    { href: "/yonetim/bildirimler", label: "Bildirimler", icon: Bell },
     { href: "/yonetim/raporlar", label: "Raporlar", icon: ChartColumn },
   ] },
   { title: "Menü", items: [
@@ -45,7 +46,7 @@ const groups: { title: string; items: Item[] }[] = [
   ] },
 ];
 
-export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
+export function Nav({ vertical, bildirim = 0 }: { vertical: "restoran" | "market"; bildirim?: number }) {
   const path = usePathname();
   return (
     <nav aria-label="Yönetim" className="space-y-5">
@@ -54,15 +55,15 @@ export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
         if (!items.length) return null;
         return (
           <div key={g.title}>
-            <div aria-hidden className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">{g.title}</div>
+          <div aria-hidden className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-cream-muted/70">{g.title}</div>
             <ul className="space-y-0.5">
               {items.map((i) => {
                 const on = i.exact ? path === i.href : path.startsWith(i.href);
                 const Icon = i.icon;
                 return (
                   <li key={i.href}>
-                    <Link href={i.href} aria-current={on ? "page" : undefined} className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm outline-none transition focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "bg-brand-soft font-medium text-brand" : "text-ink-2 hover:bg-surface-3 hover:text-ink"}`}>
-                      <Icon aria-hidden className={`size-4 shrink-0 ${on ? "text-brand" : "text-muted"}`} />{i.label}
+                    <Link href={i.href} aria-current={on ? "page" : undefined} className={`flex min-h-11 items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm outline-none transition focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "bg-gradient-to-b from-[#ee6318] to-[#c2410c] font-semibold text-white shadow-glow" : "font-medium text-cream-muted hover:bg-white/5 hover:text-cream"}`}>
+                      <Icon aria-hidden className={`size-4 shrink-0 ${on ? "text-white" : ""}`} />{i.label}
                     </Link>
                   </li>
                 );
@@ -95,9 +96,9 @@ export function MobileNav({ children }: { children: React.ReactNode }) {
       </button>
       {open && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menü">
-          <div className="absolute inset-0 bg-stone-900/30" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-white p-4 shadow-pop">
-            <button type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-11 place-items-center rounded-[10px] text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+          <div className="absolute inset-0 bg-espresso/50" onClick={() => setOpen(false)} />
+          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-espresso p-4 shadow-pop">
+            <button type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-11 place-items-center rounded-[10px] text-cream-muted outline-none hover:bg-white/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
               <X aria-hidden className="size-5" />
             </button>
             {children}
