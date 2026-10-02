@@ -1,14 +1,16 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
-import { getAdmin } from "@/lib/auth/session";
+import { requireApiAdmin, apiRole } from "@/lib/auth/api";
 
 export const dynamic = "force-dynamic";
 
 /** İşletme sahibinin taşınabilir veri kopyası. Sırlar, hash'ler ve cihaz jetonları dışarı alınmaz. */
-export async function GET() {
-  const a = await getAdmin();
-  if (!a) return new Response("Oturum gerekli.", { status: 401 });
-  if (a.role !== "sahip") return new Response("Yalnız işletme sahibi dışa aktarabilir.", { status: 403 });
+export async function GET(req: Request) {
+  const g = await requireApiAdmin(req);
+  if (!g.ok) return g.res;
+  const denied = apiRole(g.admin, ["sahip"]);
+  if (denied) return denied;
+  const a = g.admin;
 
   const db = getDb();
   const [tenant, users, devices, agents, platforms, billing, keys] = await Promise.all([
