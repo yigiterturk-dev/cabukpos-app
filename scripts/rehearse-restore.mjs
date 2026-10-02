@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+// Yedeği izole staging veritabanına gerçekten geri yükler ve taban tablo
+// duman testini çalıştırır; canlıya hiç dokunmaz. Checklist kalemi:
+// "İzole staging veritabanına gerçek restore yapıldı".
+// Kullanım: npm run db:restore:rehearsal -- --file=backups/cabukpos-....dump
+//   (--file verilmezse BACKUP_DIR altındaki en yeni .dump seçilir)
+import { readdir, stat, access } from "node:fs/promises";
+import { constants } from "node:fs";
+import { resolve, join, extname } from "node:path";
+import { spawn } from "node:child_process";
+
+const target = process.env.REHEARSAL_DATABASE_URL;
+if (!target) throw new Error("REHEARSAL_DATABASE_URL gerekli (izole staging DB); uygulama/canlı URL'ini kullanmayın.");
+for (const forbidden of ["MIGRATE_DATABASE_URL", "DATABASE_URL"]) {
+  const live = process.env[forbidden];
+  if (live && live === target) throw new Error(`REHEARSAL_DATABASE_URL ${forbidden} ile aynı olamaz; canlıya restore riski.`);
+}
+
+const arg = process.argv.slice(2).find((x) => x.startsWith("--file="));
+let file = arg?.slice("--file=".length);
+if (!file) {
+  const dir = resolve(process.env.BACKUP_DIR || "./backups");
+  const dumps = (await readdir(dir)).filter((f) => extname(f) === ".dump").map((f) => join(dir, f));
+  if (dumps.length === 0) throw new Error(`${dir} altında .dump yok; önce npm run db:backup çalıştırın veya --file= verin.`);
+  file = (await Promise.all(dumps.map(async (f) => [f, (await stat(f)).mtimeMs]))).sort((a, b) => b[1] - a[1])[0][0];
+}
+await access(file, constants.R_OK);
+
+const run = (cmd, args, opts = {}) =>
+  new Promise((resolveExit, reject) => {
+    const child = spawn(cmd, args, { stdio: ["ignore", opts.capture ? "pipe" : "inherit", "inherit"], env: process.env });
+    let out = "";
+    if (opts.capture) child.stdout.on("data", (c) => { out += c; });
+    child.once("error", reject);
+    child.once("exit", (status, signal) => resolveExit({ code: status ?? (signal ? 1 : 0), out }));
+  });
+
+const restore = await run("pg_restore", ["--clean", "--if-exists", "--no-owner", "--dbname", target, file]);
+if (restore.code !== 0) throw new Error(`pg_restore başarısız (kod ${restore.code}).`);
+
+const smoke = await run("psql", ["--dbname", target, "--tuples-only", "--no-align", "--command",
+  "select case when count(*) > 0 then 'OK' else 'BOS' end from tenants;"], { capture: true });
+if (smoke.code !== 0) throw new Error("Restore sonrası sorgu çalışmadı.");
+if (smoke.out.trim() !== "OK") throw new Error("Restore edilen veritabanında tenants tablosu boş; dump eksik olabilir.");
+
+console.log(`Restore provası tamam: ${file} -> izole DB'ye yüklendi, tenants dolu.`);

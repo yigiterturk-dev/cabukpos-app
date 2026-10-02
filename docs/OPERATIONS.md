@@ -26,7 +26,8 @@ durumu ve cabukpos_app BYPASSRLS durumu birlikte doğrulanmalıdır.
 - Güvenli bir dış dizin için `npm run db:backup -- --output=/secure/cabukpos` kullanın;
   dump dosyasını repoya veya uygulama storage'ına koymayın.
 - Yedeği canlıya geri yüklemeden doğrulamak için `pg_restore --list <dosya>`;
-  gerçek restore provası yalnız izole staging veritabanında yapılmalıdır.
+  gerçek restore provası için `REHEARSAL_DATABASE_URL=<izole staging DB> npm run db:restore:rehearsal -- --file=<dump>`
+  komutu dump'ı izole veritabanına yükler, canlı URL ile aynı olduğunu reddeder ve tenants duman testini çalıştırır.
 - Komut yedeği üretir, zamanlamayı kendisi yapmaz. Neon/Vercel dışı güvenilir bir
   scheduler ile en az günlük çalıştırın ve restore provasını düzenli kaydedin.
 

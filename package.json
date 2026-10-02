@@ -23,6 +23,7 @@
     "e2e:critical": "npm run e2e:m8 && npm run e2e:m9a && npm run e2e:iade && npm run e2e:m9b && npm run e2e:m9c",
     "db:backup": "node --env-file-if-exists=.env.local scripts/backup-db.mjs",
     "db:backup:verify": "node scripts/verify-backup.mjs",
+    "db:restore:rehearsal": "node scripts/rehearse-restore.mjs",
     "audit:runtime": "node scripts/runtime-audit.mjs",
     "launch:check": "node --env-file-if-exists=.env.local scripts/launch-check.mjs",
     "growth:webhook:smoke": "node scripts/growth-webhook-smoke.mjs",
