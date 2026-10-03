@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import type { Buyer, ChannelModes } from "../lib/core/fiscal";
 import { DEFAULT_MODES } from "../lib/core/fiscal";
 import type { RemovedLine } from "../lib/core/cart";
+import type { OkcSaleData } from "../lib/core/okc";
 import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index, bigserial, check, date } from "drizzle-orm/pg-core";
 
 export const vertical = pgEnum("vertical", ["restoran", "market"]);
@@ -201,6 +202,7 @@ export const sales = pgTable("sales", {
   tabId: uuid("tab_id"), // M5: masa adisyonundan ödenen parça
   tableId: uuid("table_id"),
   review: text("review"), // eşitlemede kabul edildi ama incelenmeli (fiyat farkı, silinmiş ürün, fiş no çakışması…)
+  okc: jsonb("okc").$type<OkcSaleData>(), // #18: mali fiş künyesi — ÖKC kapalıysa/kesilemediyse null
   createdAt: ts("created_at").notNull().defaultNow(), // satış anı (cihaz saati)
   syncedAt: ts("synced_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("sales_receipt_uq").on(t.deviceId, t.receiptNo), index("sales_shift_idx").on(t.shiftId), index("sales_at_idx").on(t.tenantId, t.storeId, t.createdAt)]);
@@ -566,6 +568,10 @@ export const fiscalSettings = pgTable("fiscal_settings", {
   counter: integer("counter").notNull().default(0),
   channelModes: jsonb("channel_modes").notNull().$type<ChannelModes>().default(DEFAULT_MODES),
   fakeFail: boolean("fake_fail").notNull().default(false),
+  okcProvider: text("okc_provider"), // #18: null = ÖKC kapalı
+  okcSerial: text("okc_serial"),
+  okcCounter: integer("okc_counter").notNull().default(0),
+  okcFakeFail: boolean("okc_fake_fail").notNull().default(false),
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 

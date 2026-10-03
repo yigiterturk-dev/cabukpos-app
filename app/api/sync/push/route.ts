@@ -2,6 +2,7 @@
 import { after } from "next/server";
 import { getDevice } from "@/lib/auth/kasa";
 import { issueOne, processDue } from "@/lib/fiscal/issue";
+import { okcReceiptFor } from "@/lib/fiscal/okc";
 import { applyDoc } from "@/lib/sync/apply";
 import { withTenant } from "@/db";
 import { audit } from "@/lib/audit";
@@ -26,7 +27,10 @@ export async function POST(req: Request) {
   // Bu partide eşitlenen satışların e-Arşivi hemen (kasanın 3 sn beklemesi yavaş ağda kaçabilir); sonra vadesi gelenler.
   const sold = body.docs.flatMap((d, i) => (results[i]?.ok && (d as { kind?: unknown }).kind === "sale" ? [results[i].id] : []));
   after(async () => {
-    for (const id of sold) await issueOne(device.tenantId, id).catch(() => null);
+    for (const id of sold) {
+      await issueOne(device.tenantId, id).catch(() => null);
+      await okcReceiptFor(device.tenantId, id).catch(() => null); // #18: mali fiş künyesi (satışı geciktirmez)
+    }
     await processDue(device.tenantId).catch(() => {});
   });
   return Response.json({ results }, { headers: { "Cache-Control": "no-store" } });

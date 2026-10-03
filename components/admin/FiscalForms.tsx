@@ -4,16 +4,19 @@ import { resendFiscalMail, retryFiscal, saveFiscalSettings, type FiscalState } f
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 import type { Channel, ChannelModes, DocMode } from "@/lib/core/fiscal";
+import { OKC_PROVIDERS } from "@/lib/core/okc";
 
 const CH_LABEL: Record<Channel, string> = { kasa: "Kasa (hızlı satış)", masa: "Masa", paket: "Paket servis", platform: "Platform siparişi" };
 const Err = ({ s, f }: { s: FiscalState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-xs text-bad">{s.error}</p> : null);
 
-export function FiscalSettingsForm({ initial, channels, fake }: {
+export function FiscalSettingsForm({ initial, channels, fake, okc }: {
   initial: { taxId: string; taxOffice: string; address: string; series: string; modes: ChannelModes; fakeFail: boolean };
   channels: readonly Channel[]; fake: boolean;
+  okc?: { provider: string; serial: string } | null;
 }) {
   const { state, pending, onSubmit } = useFormAction(saveFiscalSettings, {} as FiscalState);
   const [modes, setModes] = useState(initial.modes);
+  const [okcOn, setOkcOn] = useState(!!okc);
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -46,6 +49,30 @@ export function FiscalSettingsForm({ initial, channels, fake }: {
           <label className="mt-2 flex items-center gap-2"><input type="checkbox" name="fakeFail" defaultChecked={initial.fakeFail} className="size-4 accent-[var(--color-brand)]" />Hata simülasyonu (her kesim hata verir)</label>
         </div>
       )}
+      <div className="rounded-lg border border-line p-4">
+        <h3 className="text-sm font-semibold">ÖKC / mali cihaz</h3>
+        <p className="mt-1 text-sm text-muted">Kasa fişi ancak ÖKC imzasıyla yasal mali belge olur. Açıkken eşitlenen her satış mali fiş no ile künyelenir.</p>
+        <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" name="okcOn" checked={okcOn} onChange={(e) => setOkcOn(e.target.checked)} className="size-4 accent-[var(--color-brand)]" />ÖKC bağlantısı açık</label>
+        {okcOn && (
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div>
+              <Field label="Sağlayıcı">
+                <select name="okcProvider" defaultValue={okc?.provider ?? OKC_PROVIDERS[0].value} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm">
+                  {OKC_PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </Field>
+              <Err s={state} f="okcProvider" />
+            </div>
+            <div>
+              <Field label="Cihaz seri no" hint="ÖKC üzerine yazılı seri no, ör. TRA123456">
+                <Input name="okcSerial" defaultValue={okc?.serial ?? ""} maxLength={20} className="font-mono uppercase" />
+              </Field>
+              <Err s={state} f="okcSerial" />
+            </div>
+            <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" name="okcFakeFail" defaultChecked={false} className="size-4 accent-[var(--color-brand)]" />Hata simülasyonu (sandbox)</label>
+          </div>
+        )}
+      </div>
       {state.error && !state.field && <p className="text-sm text-bad">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>

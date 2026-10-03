@@ -6,7 +6,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 
 ## P0 — Satışa çıkış için zorunlu
 
-- [ ] 18 | Mali | ÖKC/ETMOS mali cihaz entegrasyonu; fişler yasal mali belge değil | Mali müşavir + ajan
+- [~] 18 | Mali | ÖKC/ETMOS mali cihaz entegrasyonu; fişler yasal mali belge değil — ✅ ajan payı: sürücü katmanı `lib/fiscal/okc.ts` (`OkcProvider` arayüzü + `fake-okc` sandbox: fiş no `seri-Z-sıra`, Z no günden durumsuz, hata simülasyonu, iptal), saf `lib/core/okc.ts` (testli), şema `fiscalSettings.okcProvider/okcSerial/okcCounter/okcFakeFail` + `sales.okc` (db:push uygulandı); push sonrası `okcReceiptFor` künyeler (satışı engellemez, numara yalnız kesimde yanar), sayaç hatada geri sarılır; fiş render'ı "MALİ FİŞ" bloğu + TEST notu (okc varken "bilgi fişidir" uyarısı basılmaz); Mali > Ayarlar'da ÖKC kartı (aç/kapa, sağlayıcı, seri no, sandbox hata simülasyonu, kayıtta canlı ping); audit `fiscal.okc` | ⏳ kalan (insan): gerçek cihaz/entegratör sözleşmesi (Mali müşavir) → `getOkc`'e gerçek sürücü, iade fişi politikası, kasa yeniden basımda künye çekme | Mali müşavir + ajan
 - [ ] 17 | Mali | Gerçek e-Arşiv entegratörü (Foriba/Uyumsoft/Paraşüt) sandbox+canlı | İnsan hesabı + ajan
 - [ ] 11 | Faturalama | PayTR otomatik yenileme / kayıtlı kart — [ENGEL: PayTR kart saklama sözleşmesi (insan) + `tenants.cardToken` kolonu (müdür)] | Lead
 - [x] 12 | Faturalama | ~~Başarısız ödeme dunning akışı~~ ✅ gecikme 1/3/5. gün + kilit + haftalık e-posta akışı

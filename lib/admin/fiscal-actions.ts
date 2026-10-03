@@ -6,6 +6,8 @@ import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { FISCAL_CHANNELS, validateTaxId, type ChannelModes } from "@/lib/core/fiscal";
+import { OKC_PROVIDERS } from "@/lib/core/okc";
+import { okcPing } from "@/lib/fiscal/okc";
 import { issueOne, processEnvelopes, sendMail } from "@/lib/fiscal/issue";
 import { validateBuyerInvoice } from "@/lib/core/refundNote";
 
@@ -28,12 +30,20 @@ export async function saveFiscalSettings(_: FiscalState, form: FormData): Promis
   if (address.length > 500) return { error: "Adres en çok 500 karakter.", field: "address" };
   if (!/^[A-Z0-9]{3}$/.test(series)) return { error: "Seri 3 büyük harf/rakam olmalı (ör. CBP).", field: "series" };
   const fakeFail = form.get("fakeFail") === "on";
+  // #18: ÖKC — kapalıysa kolonlar null'a döner; açıkken sağlayıcı listeden ve seri no biçimden doğrulanır.
+  const okcOn = form.get("okcOn") === "on";
+  const okcProvider = str(form, "okcProvider");
+  const okcSerial = str(form, "okcSerial").toUpperCase();
+  if (okcOn && !OKC_PROVIDERS.some((p) => p.value === okcProvider)) return { error: "ÖKC sağlayıcı seçin.", field: "okcProvider" };
+  if (okcOn && !/^[A-Z0-9-]{3,20}$/.test(okcSerial)) return { error: "Cihaz seri no 3-20 karakter, harf/rakam/tire olmalı.", field: "okcSerial" };
+  const okc = okcOn ? { okcProvider, okcSerial, okcFakeFail: form.get("okcFakeFail") === "on" } : { okcProvider: null, okcSerial: null, okcFakeFail: false };
   await getDb().update(schema.tenants).set({ taxId: taxId || null, taxOffice: taxOffice || null, address: address || null }).where(eq(schema.tenants.id, a.tenantId));
   await withTenant(a.tenantId, async (tx) => {
-    const v = { series, channelModes: modes, fakeFail, updatedAt: new Date() };
+    const v = { series, channelModes: modes, fakeFail, ...okc, updatedAt: new Date() };
     await tx.insert(schema.fiscalSettings).values({ tenantId: a.tenantId, ...v }).onConflictDoUpdate({ target: schema.fiscalSettings.tenantId, set: v });
-    await audit(tx, a.tenantId, `user:${a.id}`, "fiscal.settings", { taxId, series, modes, fakeFail });
+    await audit(tx, a.tenantId, `user:${a.id}`, "fiscal.settings", { taxId, series, modes, fakeFail, okc });
   });
+  if (okcOn) await okcPing(a.tenantId).catch(() => {});
   revalidatePath("/yonetim/mali");
   return { savedAt: Date.now() };
 }

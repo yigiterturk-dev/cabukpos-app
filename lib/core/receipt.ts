@@ -7,6 +7,7 @@ import type { summarizeShift } from "./shift";
 import { EscPos, fromBase64, type Codepage, type PaperWidth, type PrinterBrand } from "./escpos";
 import type { LogoImg } from "./png";
 import { refundNote, type RefundFiscal } from "./refundNote";
+import { okcNotes, type OkcSaleData } from "./okc";
 
 export type PrintOpts = { width: PaperWidth; codepage: Codepage; brand?: PrinterBrand; drawer?: boolean; appUrl?: string; logo?: LogoImg | null };
 /** M8: e-Arşiv. number yoksa henüz kesilmedi (çevrimdışı/gecikme) → bağlantı ya da e-posta notu. */
@@ -29,6 +30,7 @@ export type ReceiptSale = {
   payments: Payment[]; total: number; change: number; vat: VatLine[];
   refund?: boolean; refundOfNo?: string; tableName?: string;
   fiscal?: ReceiptFiscal;
+  okc?: OkcSaleData | null; // #18: ÖKC mali fiş künyesi (sunucudan gelir, yeniden basımda basılır)
   refundFiscal?: RefundFiscal; // e-Arşiv'li satışın iadesi → tutanak / alıcı faturası notu
 };
 export type ReceiptHeader = { tenantName: string; storeName: string; storeAddress: string | null };
@@ -82,6 +84,13 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
     for (const n of f.notes) p.lines(n);
     p.align("center").qr(f.url).align("left");
   }
+  const ok = sale.okc ? okcNotes(sale.okc) : null;
+  if (ok) {
+    p.rule().align("center").bold(true).line(ok.title).bold(false).align("left");
+    for (const [k, v] of ok.rows) p.cols2(k, v);
+    for (const n of ok.notes) p.lines(n);
+    p.align("left");
+  }
   const rn = sale.refund && sale.refundFiscal ? refundNote(sale.refundFiscal, h.tenantName, sale.receiptNo) : null;
   if (rn?.kind === "note") p.rule().lines(rn.text);
   if (rn?.kind === "tutanak") {
@@ -90,7 +99,7 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
     p.lines(rn.statement);
     for (const s of rn.sign) p.line().line(`${s}: `.padEnd(o.width === 58 ? 32 : 48, "."));
   }
-  if (!f?.title) p.rule().align("center").lines("Bilgi fişidir, mali değeri yoktur.").align("left");
+  if (!f?.title && !ok) p.rule().align("center").lines("Bilgi fişidir, mali değeri yoktur.").align("left");
   // Fiş no barkodu (#36): iade/kasa sorgusunda el girişi yerine okutma.
   p.align("center").barcode(sale.receiptNo).align("left");
   p.feed(3).cut();
