@@ -40,7 +40,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [x] 26 | Offline | ~~14 gün prune + push-crash dayanıklılığı~~ ✅ gün sonunda reddedilen belge kopyaları da 14 günde budanır (kanıt sunucu audit_log'da); push'ta "yanıt partiyle uyuşmuyor" koruması → hiçbir satır yanlış silinmez, sunucu idempotent olduğundan yeniden gönderim güvenli; giden kutusu asla otomatik silinmez (yazılmamış hasılat) — motor + SW boşaltıcısında (`f864f71`)
 - [x] 27 | Sync | Bulut→istemci gerçek zamanlı push (SSE/poll) ✅ (`GET /api/sync/stream` ucuz kiracı belirteci + kasada EventSource→kick, `1448969`) | Ajan-1
 - [x] 29 | Platform | Menü/fiyat/stok marketplace'e geri push ✅ (mock+Getir sandbox sürücü, panel butonu, `a2420ba`) | Ajan-1
-- [ ] 30 | Platform | Webhook URL kimliklendirme iyileştirme | Ajan-1
+- [x] 30 | Platform | ~~Webhook URL kimliklendirme iyileştirme~~ ✅ bağlantıya `webhook_token` (DB default `gen_random_uuid()`, unique); webhook adresi artık `?t=<jeton>` taşır, bağlantı kimliği URL'de dolaşmaz (`connectionByToken`); eski `?c=<id>` geriye dönük çalışır (imza doğrulaması her iki yolda da zorunlu); panel yeni adresi gösterir
 - [ ] 31 | Entegrasyon | Muhasebe/ERP/e-ticaret bağlantıları | Müdür
 - [x] 34 | Büyüme | Pazarlama izin çıkışı gerçek sağlayıcıya bağlama ✅ (SMS sürücüsü + sayfa sayfa gönderim, opt-out'lu hedef filtresi, `44152b5`) | Ajan-1
 - [ ] 35 | Büyüme | Advisor'a tahmin/ML katmanı | Müdür

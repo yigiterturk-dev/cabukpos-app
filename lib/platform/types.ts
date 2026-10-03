@@ -1,7 +1,7 @@
 // lib/platform/types.ts — Sipariş platformu adaptör arayüzü (sunucu). Gerçek YS/TGO adaptörleri onay gelince buraya eklenir.
 import type { IncomingOrder } from "@/lib/core/platform";
 
-export type Conn = { id: string; tenantId: string; storeId: string; platform: string; credentials: string | null; webhookSecret: string; autoAccept: boolean; active: boolean };
+export type Conn = { id: string; tenantId: string; storeId: string; platform: string; credentials: string | null; webhookSecret: string; webhookToken: string; autoAccept: boolean; active: boolean };
 
 /** Geri push satırı (#29): POS'taki eşlenmiş ürünün platformdaki hâli. stock null = stok takibi yok. */
 export type OutboundItem = { code: string; name: string; price: number; stock: number | null; active: boolean };

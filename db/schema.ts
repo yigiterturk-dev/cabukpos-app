@@ -464,10 +464,11 @@ export const platformConnections = pgTable("platform_connections", {
   platform: text("platform").notNull(), // mock | yemeksepeti | trendyol …
   credentials: text("credentials"), // şifreli; sahte platformda boş
   webhookSecret: text("webhook_secret").notNull(),
+  webhookToken: text("webhook_token").notNull().default(sql`gen_random_uuid()::text`), // #30: URL'de taşınan tahmin edilemez jeton; imza anahtarıyla karışmaz
   autoAccept: boolean("auto_accept").notNull().default(false),
   active: boolean("active").notNull().default(true),
   createdAt: ts("created_at").notNull().defaultNow(),
-}, (t) => [uniqueIndex("platform_connections_uq").on(t.storeId, t.platform)]);
+}, (t) => [uniqueIndex("platform_connections_uq").on(t.storeId, t.platform), uniqueIndex("platform_connections_token_uq").on(t.webhookToken)]);
 
 export const productPlatformCodes = pgTable("product_platform_codes", {
   id: uuid("id").primaryKey().defaultRandom(),

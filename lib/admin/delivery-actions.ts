@@ -170,7 +170,7 @@ export async function sendTestOrder(connectionId: string): Promise<DeliveryState
     note: "Deneme siparişi", payIntent: "online", deadline: new Date(Date.now() + 5 * 60_000).toISOString(),
     lines: [{ code: pick.code, name: pick.name, unitPrice: pick.price, qtyMilli: 1000, note: null }],
   };
-  const r = await ingestOrders({ id: conn.id, tenantId: conn.tenantId, storeId: conn.storeId, platform: conn.platform, credentials: conn.credentials, webhookSecret: conn.webhookSecret, autoAccept: conn.autoAccept, active: conn.active }, [order]);
+  const r = await ingestOrders(conn, [order]);
   return { savedAt: Date.now(), info: r.unmapped ? "Sipariş gönderildi (ürün kodu eşlenmemiş, serbest satır düştü)." : "Sipariş gönderildi; kasada Paket sekmesine düştü." };
 }
 

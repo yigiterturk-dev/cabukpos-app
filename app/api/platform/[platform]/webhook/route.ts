@@ -1,6 +1,6 @@
-// Platform sipariş webhook'u: POST /api/platform/<platform>/webhook?c=<bağlantı kimliği>.
+// Platform sipariş webhook'u: POST /api/platform/<platform>/webhook?t=<bağlantı jetonu> (#30; eski ?c=<id> geçerliliğini korur).
 // İmza/biçim adaptörde doğrulanır; aynı sipariş ikinci kez gelirse 200 döner, yazılmaz (platform yeniden dener).
-import { connectionById, sourceFor } from "@/lib/platform";
+import { connectionById, connectionByToken, sourceFor } from "@/lib/platform";
 import { ingestOrders } from "@/lib/platform/ingest";
 import { audit as auditLog } from "@/lib/audit";
 import { withTenant } from "@/db";
@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request, ctx: { params: Promise<{ platform: string }> }) {
   const { platform } = await ctx.params;
   const source = sourceFor(platform);
-  const conn = source ? await connectionById(new URL(req.url).searchParams.get("c") ?? "", platform) : null;
+  const q = new URL(req.url).searchParams;
+  const conn = source ? (await connectionByToken(q.get("t") ?? "", platform)) ?? (await connectionById(q.get("c") ?? "", platform)) : null;
   if (!source || !conn) return Response.json({ error: "Bağlantı bulunamadı." }, { status: 404 });
   const raw = await req.text();
   if (raw.length > 1_000_000) return Response.json({ error: "Gövde çok büyük." }, { status: 413 });

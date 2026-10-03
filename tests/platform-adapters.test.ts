@@ -6,7 +6,7 @@ import { createGetirSource, parseSandboxPayload as parseGetir } from "@/lib/plat
 import { createYemeksepetiSource, parseSandboxPayload as parseYemeksepeti } from "@/lib/platform/yemeksepeti";
 import type { Conn } from "@/lib/platform/types";
 
-const conn: Conn = { id: "00000000-0000-0000-0000-000000000000", tenantId: "t", storeId: "s", platform: "getir", credentials: null, webhookSecret: "sifre", autoAccept: false, active: true };
+const conn: Conn = { id: "00000000-0000-0000-0000-000000000000", tenantId: "t", storeId: "s", platform: "getir", credentials: null, webhookSecret: "sifre", webhookToken: "webhook-token-0123456789abcd", autoAccept: false, active: true };
 
 test("kayıt: getir/yemeksepeti var, mock varsayılan", () => {
   assert.ok(SUPPORTED_PLATFORMS.includes("mock"));

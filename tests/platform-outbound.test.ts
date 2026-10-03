@@ -19,7 +19,7 @@ const setup = await withTenant(t.id, async (tx) => {
   const [conn] = await tx.insert(schema.platformConnections).values({ tenantId: t.id, storeId: store.id, platform: "mock", webhookSecret: "gizli", active: true }).returning();
   return { store, p1, p2, conn };
 });
-const connObj = { id: setup.conn.id, tenantId: t.id, storeId: setup.store.id, platform: "mock", credentials: null, webhookSecret: "gizli", autoAccept: true, active: true };
+const connObj = { id: setup.conn.id, tenantId: t.id, storeId: setup.store.id, platform: "mock", credentials: null, webhookSecret: "gizli", webhookToken: setup.conn.webhookToken, autoAccept: true, active: true };
 
 test("mock'a push: eşlenmiş ürünler ok sayılır, audit yazılır", async () => {
   const r = await pushStoreCatalog(t.id, setup.store.id, "mock", "test");

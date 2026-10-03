@@ -134,7 +134,7 @@ export default async function Platformlar() {
           ) : (
           <>
           <div className="space-y-1 text-sm">
-            <div>Webhook adresi: <code className="break-all rounded bg-surface-2 px-1">{`${origin}/api/platform/${c.platform}/webhook?c=${c.id}`}</code></div>
+            <div>Webhook adresi: <code className="break-all rounded bg-surface-2 px-1">{`${origin}/api/platform/${c.platform}/webhook?t=${c.webhookToken}`}</code></div>
             <div>İmza anahtarı (HMAC-SHA256, <code>x-signature</code>): <code className="break-all rounded bg-surface-2 px-1" data-testid="webhook-secret">{c.webhookSecret}</code></div>
           </div>
           {c.platform === "mock" && <TestOrderButton connectionId={c.id} />}

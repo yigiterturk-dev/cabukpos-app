@@ -29,7 +29,7 @@ const [kuryeDev] = await getDb().insert(schema.devices).values({ tenantId: t.id,
 const kasa = { tenantId: t.id, storeId: s.store.id, deviceId: kasaDev.id, receiptPrefix: "K1" };
 const kuryeCtx = { tenantId: t.id, storeId: s.store.id, deviceId: kuryeDev.id, receiptPrefix: "R1" };
 const [conn] = await getDb().insert(schema.platformConnections).values({ tenantId: t.id, storeId: s.store.id, platform: "mock", webhookSecret: "gizli", autoAccept: true }).returning();
-const connObj = { id: conn.id, tenantId: t.id, storeId: s.store.id, platform: "mock", credentials: null, webhookSecret: "gizli", autoAccept: true, active: true };
+const connObj = { id: conn.id, tenantId: t.id, storeId: s.store.id, platform: "mock", credentials: null, webhookSecret: "gizli", webhookToken: "webhook-token-0123456789abcd", autoAccept: true, active: true };
 
 after(async () => {
   await getDb().delete(schema.tenants).where(eq(schema.tenants.id, t.id));
