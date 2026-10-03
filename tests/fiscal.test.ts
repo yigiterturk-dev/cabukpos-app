@@ -79,3 +79,29 @@ test("sahte sürücü: başarı, hata simülasyonu, 7 gün iptal", async () => {
   assert.throws(() => getProvider("yok", { fakeFail: false }));
   assert.equal(typeof getProvider("fake-earsiv", { fakeFail: false }).issue, "function");
 });
+
+// #19: sahte zarf yaşam döngüsü — gönderim → 1dk iletildi → 5dk kabul|red
+test("fake zarf: gönderim, iletme, kabul", async () => {
+  const t0 = new Date("2026-10-03T10:00:00Z");
+  let t = t0;
+  const p = fakeEarsiv({ fakeFail: false }, () => t);
+  await p.submitEnvelope!("ettn-1");
+  const sentAt = t0;
+  const q = async () => { const r = await p.queryEnvelope!("ettn-1", sentAt); assert.ok(r.ok); return r.status; };
+  assert.equal(await q(), "gonderildi"); // 0 dk
+  t = new Date(t0.getTime() + 61_000);
+  assert.equal(await q(), "iletildi");
+  t = new Date(t0.getTime() + 5 * 61_000);
+  assert.equal(await q(), "kabul");
+});
+
+test("fake zarf: fakeFail → gönderim hatası ve red cevabı", async () => {
+  const t0 = new Date("2026-10-03T10:00:00Z");
+  let t = t0;
+  const p = fakeEarsiv({ fakeFail: true }, () => t);
+  assert.equal((await p.submitEnvelope!("e")).ok, false);
+  t = new Date(t0.getTime() + 10 * 60_000);
+  const r = await p.queryEnvelope!("e", t0);
+  assert.ok(r.ok);
+  assert.equal(r.status, "red");
+});

@@ -18,6 +18,8 @@ export const stockCountStatus = pgEnum("stock_count_status", ["acik", "kapandi"]
 export const stockUnit = pgEnum("stock_unit", ["adet", "kg", "lt"]);
 export const purchaseStatus = pgEnum("purchase_status", ["kayitli", "iptal"]);
 export const fiscalDocStatus = pgEnum("fiscal_doc_status", ["pending", "issued", "error", "cancelled", "cancel_rejected"]);
+// #19: e-Fatura zarfı — VKN'li alıcıya kesilen belgeler entegratör zarfıyla GİB'e gider, alıcı kabul/red cevabı verir.
+export const fiscalEnvelopeStatus = pgEnum("fiscal_envelope_status", ["hazir", "gonderildi", "iletildi", "kabul", "red"]);
 export const supplierPayMethod = pgEnum("supplier_pay_method", ["nakit", "havale", "kart"]);
 export const growthCampaignStatus = pgEnum("growth_campaign_status", ["taslak", "arsiv"]);
 export const growthCampaignEventType = pgEnum("growth_campaign_event_type", ["sent", "delivered", "converted", "opt_out", "failed"]);
@@ -579,9 +581,23 @@ export const fiscalDocuments = pgTable("fiscal_documents", {
   lastTryAt: ts("last_try_at"),
   cancelPending: boolean("cancel_pending").notNull().default(false),
   emailSentAt: ts("email_sent_at"),
+  gibStatus: text("gib_status"), // #19: yalnız kind="efatura" — zarf | gonderildi | iletildi | kabul | red
+  envelopeId: uuid("envelope_id").references(() => fiscalEnvelopes.id, { onDelete: "set null" }),
   createdAt: ts("created_at").notNull().defaultNow(),
   issuedAt: ts("issued_at"),
 }, (t) => [index("fiscal_documents_status_idx").on(t.tenantId, t.status)]);
+
+/** #19: GİB zarfı — e-Fatura belgeleri zarfla gönderilir, durumu sorgulanır. */
+export const fiscalEnvelopes = pgTable("fiscal_envelopes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  ettn: uuid("ettn").notNull().unique(),
+  status: fiscalEnvelopeStatus("status").notNull().default("hazir"),
+  sentAt: ts("sent_at"),
+  respondedAt: ts("responded_at"),
+  lastError: text("last_error"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("fiscal_envelopes_status_idx").on(t.tenantId, t.status)]);
 
 // — İade tutanağı / alıcı iade faturası: e-Arşiv'li satışın kısmi iadesi (ya da iptali reddedilen tam iade). —
 export const fiscalRefunds = pgTable("fiscal_refunds", {

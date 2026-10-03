@@ -16,7 +16,7 @@ export async function tenantUnits(tenantId: string): Promise<UnitCounts> {
   return withTenant(tenantId, async (tx) => {
     const [[s], [d]] = await Promise.all([
       tx.select({ n: count() }).from(S),
-      tx.select({ n: count() }).from(D).where(isNull(D.revokedAt)),
+      tx.select({ n: count() }).from(D).where(and(eq(D.tenantId, tenantId), isNull(D.revokedAt))), // devices RLS'siz kimlik tablosu → filtre zorunlu
     ]);
     return { stores: s.n, devices: d.n };
   });

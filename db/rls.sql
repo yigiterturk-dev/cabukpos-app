@@ -117,3 +117,18 @@ alter table stock_count_lines enable row level security;
 alter table stock_count_lines force row level security;
 drop policy if exists tenant_isolation on stock_count_lines;
 create policy tenant_isolation on stock_count_lines using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+
+-- #19 e-Fatura zarfları
+alter table fiscal_envelopes enable row level security;
+alter table fiscal_envelopes force row level security;
+drop policy if exists tenant_isolation on fiscal_envelopes;
+create policy tenant_isolation on fiscal_envelopes using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+
+-- Cron kuyruğu: zarfı bekleyen/gönderilmiş zarfı sorgulanacak kiracılar da.
+create or replace function fiscal_pending_tenants() returns setof uuid
+language sql stable security definer set search_path = public as $f$
+  select distinct tenant_id from fiscal_documents
+  where (status in ('pending','error') and attempts < 5) or (status = 'issued' and cancel_pending)
+  union
+  select distinct tenant_id from fiscal_envelopes where status in ('hazir','gonderildi','iletildi')
+$f$;

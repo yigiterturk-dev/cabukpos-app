@@ -6,7 +6,7 @@ import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { FISCAL_CHANNELS, validateTaxId, type ChannelModes } from "@/lib/core/fiscal";
-import { issueOne, sendMail } from "@/lib/fiscal/issue";
+import { issueOne, processEnvelopes, sendMail } from "@/lib/fiscal/issue";
 import { validateBuyerInvoice } from "@/lib/core/refundNote";
 
 export type FiscalState = { error?: string; field?: string; savedAt?: number; info?: string };
@@ -86,4 +86,12 @@ export async function resolveBuyerInvoice(_: FiscalState, form: FormData): Promi
     revalidatePath("/yonetim/mali");
     return { savedAt: Date.now() };
   });
+}
+
+/** #19: zarf gönderimi + GİB durum sorgusunu elle tetikle (cron zaten periyodik çalışır). */
+export async function queryEnvelopes(): Promise<void> {
+  const a = await requireWriter();
+  await processEnvelopes(a.tenantId, 20);
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "fiscal.envelope.query", {}));
+  revalidatePath("/yonetim/mali");
 }

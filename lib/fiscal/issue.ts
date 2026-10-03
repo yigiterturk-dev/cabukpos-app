@@ -15,11 +15,13 @@ export async function fiscalSettingsOf(tx: Tx) {
   return s ?? null;
 }
 
-/** Satış eşitlemesinde (aynı işlem): kanal modu e-Arşiv ya da fatura istenmişse bekleyen belge açar. */
+/** Satış eşitlemesinde (aynı işlem): kanal modu e-Arşiv ya da fatura istenmişse bekleyen belge açar.
+ *  #19: VKN'li alıcı → kind "efatura" (zarf akışı); TCKN/boş → "earsiv". */
 export async function openFiscalDoc(tx: Tx, tenantId: string, saleId: string, channel: Channel, fiscal: { token: string; buyer: Buyer | null } | undefined) {
   const s = await fiscalSettingsOf(tx);
   if (docModeFor(channel, s?.channelModes ?? DEFAULT_MODES, !!fiscal?.buyer) !== "earsiv") return;
-  await tx.insert(D).values({ tenantId, saleId, buyer: fiscal?.buyer ?? { ...NIHAI_TUKETICI }, token: fiscal?.token ?? newFiscalToken() }).onConflictDoNothing();
+  const buyer = fiscal?.buyer ?? { ...NIHAI_TUKETICI };
+  await tx.insert(D).values({ tenantId, saleId, buyer, token: fiscal?.token ?? newFiscalToken(), kind: buyerKindOf(buyer.taxId) === "vkn" ? "efatura" : "earsiv" }).onConflictDoNothing();
 }
 
 const trYear = (d: Date) => Number(new Intl.DateTimeFormat("en", { timeZone: "Europe/Istanbul", year: "numeric" }).format(d));
@@ -65,9 +67,16 @@ export async function issueOne(tenantId: string, saleId: string, { force = false
     }
     // Kesilmeden önce kısmi iade yapılmışsa belge kesilir ama iade faturası gerekir.
     const [ref] = await tx.select({ n: sql<number>`count(*)::int` }).from(schema.sales).where(and(eq(schema.sales.refundOf, saleId), eq(schema.sales.status, "iade")));
+    // #19: e-Fatura ise zarf açılır; gönderim/sorgu cron'la (processEnvelopes).
+    let envelopeId: string | null = null;
+    if (doc.kind === "efatura") {
+      const [env] = await tx.insert(schema.fiscalEnvelopes).values({ tenantId, ettn: r.ettn }).returning({ id: schema.fiscalEnvelopes.id });
+      envelopeId = env.id;
+    }
     const [d] = await tx.update(D).set({
       status: ref.n ? "cancel_rejected" : "issued", ettn: r.ettn, number: r.number, url: r.url ?? null, issuedAt: new Date(), lastTryAt: new Date(),
       attempts: sql`${D.attempts} + 1`, lastError: ref.n ? "kısmi iade" : null,
+      ...(doc.kind === "efatura" ? { gibStatus: "zarf", envelopeId } : {}),
     }).where(eq(D.id, doc.id)).returning();
     return { out: outcome(d), mail: !!doc.buyer.email };
   });
@@ -134,6 +143,39 @@ export async function processDue(tenantId: string, limit = 5, now = new Date()) 
   for (const d of due) await issueOne(tenantId, d.saleId, { force: true });
   for (const c of cancels) await cancelOne(tenantId, c.id);
   for (const m of mails) await sendMail(tenantId, m.saleId).catch(() => {});
+  await processEnvelopes(tenantId, limit, now).catch(() => {});
+}
+
+/** #19: zarf gönderimi + durum sorgusu. hazir → gonderildi; gonderildi/iletildi → (1/5 dk) iletildi/kabul|red. */
+export async function processEnvelopes(tenantId: string, limit = 5, now = new Date()): Promise<void> {
+  await withTenant(tenantId, async (tx) => {
+    const open = await tx.select().from(schema.fiscalEnvelopes)
+      .where(inArray(schema.fiscalEnvelopes.status, ["hazir", "gonderildi", "iletildi"])).orderBy(schema.fiscalEnvelopes.createdAt).limit(limit);
+    if (!open.length) return;
+    const [s] = await tx.select().from(schema.fiscalSettings);
+    const p = getProvider(s?.provider ?? "fake-earsiv", { fakeFail: s?.fakeFail ?? false });
+    for (const env of open) {
+      if (!p.submitEnvelope || !p.queryEnvelope) return; // sağlayıcı zarf akışını desteklemiyor
+      if (env.status === "hazir") {
+        let r: { ok: true } | { ok: false; error: string; retryable: boolean };
+        try { r = await p.submitEnvelope(env.ettn); } catch (e) { r = { ok: false, error: e instanceof Error ? e.message : "sağlayıcı hatası", retryable: true }; }
+        if (!r.ok) {
+          await tx.update(schema.fiscalEnvelopes).set({ lastError: r.error.slice(0, 500) }).where(eq(schema.fiscalEnvelopes.id, env.id));
+          continue;
+        }
+        await tx.update(schema.fiscalEnvelopes).set({ status: "gonderildi", sentAt: now, lastError: null }).where(eq(schema.fiscalEnvelopes.id, env.id));
+        await tx.update(D).set({ gibStatus: "gonderildi" }).where(eq(D.envelopeId, env.id));
+        continue;
+      }
+      if (!env.sentAt) continue;
+      let q: Awaited<ReturnType<NonNullable<typeof p.queryEnvelope>>>;
+      try { q = await p.queryEnvelope(env.ettn, env.sentAt); } catch (e) { q = { ok: false, error: e instanceof Error ? e.message : "sağlayıcı hatası", retryable: true }; }
+      if (!q.ok || q.status === env.status) continue;
+      const final = q.status === "kabul" || q.status === "red";
+      await tx.update(schema.fiscalEnvelopes).set({ status: q.status, respondedAt: final ? now : null, lastError: q.error ?? null }).where(eq(schema.fiscalEnvelopes.id, env.id));
+      await tx.update(D).set({ gibStatus: q.status, ...(q.status === "red" ? { lastError: "Alıcı faturayı reddetti" } : {}) }).where(eq(D.envelopeId, env.id));
+    }
+  });
 }
 
 export async function pendingTenants(): Promise<string[]> {
