@@ -1,7 +1,7 @@
 // Katalog aşağı: cihaz + açık vardiya + fiş sayacı her seferinde; katalog (kategori, ürün, personel PIN hash'i)
 // yalnız içerik özeti ?v= ile farklıysa. Kimlik: cihaz çerezi.
 import { billingInfo } from "@/lib/core/billing";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, or } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { getDevice as requireAuthDevice } from "@/lib/auth/kasa";
 import { sha256 } from "@/lib/auth/tokens";
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   const device = await requireAuthDevice();
   if (!device) return Response.json({ error: "cihaz" }, { status: 401, headers: noStore });
   const d = schema.devices, sh = schema.shifts;
-  const [[dv], [store, cats, prods, staff, [shift], [fs]], salon, agent, hub, [tn]] = await Promise.all([
+  const [[dv], [store, cats, prods, staff, [shift], [fs]], salon, agent, hub, [tn], priceLists] = await Promise.all([
     getDb().select({ next: d.nextReceiptNo }).from(d).where(eq(d.id, device.id)),
     withTenant(device.tenantId, (tx) =>
       Promise.all([
@@ -41,6 +41,7 @@ export async function GET(req: Request) {
     device.role === "kasa" ? kasaAgentFor(device) : null, // tablet/mutfak ekranı ajana ulaşamaz (127.0.0.1); yazıcıyı kasa sürer
     device.role !== "kasa" && device.vertical === "restoran" ? kasaAgentFor(device) : null, // LAN merkezi (yalnız adisyon akışı)
     getDb().select({ taxId: schema.tenants.taxId }).from(schema.tenants).where(eq(schema.tenants.id, device.tenantId)), // iade tutanağında satıcı VKN
+    priceListCatalog(device),
   ]);
   const products = prods.filter((p) => isVatRate(p.vatRate)).map(({ stationId, ...p }) => ({
     ...p,
@@ -50,6 +51,7 @@ export async function GET(req: Request) {
   }));
   const catalog = {
     categories: cats.map(({ id, name }) => ({ id, name })), products, staff,
+    priceLists: priceLists.length ? priceLists : undefined, // #50
     fiscal: { modes: { ...DEFAULT_MODES, ...fs?.modes }, provider: fs?.provider ?? "fake-earsiv", sellerTaxId: tn?.taxId ?? null }, // M8
     ...(salon ? { areas: salon.areas, tables: salon.tables, stations: salon.stations, optionGroups: salon.optionGroups, deliveryZones: salon.deliveryZones } : {}),
   };
@@ -68,6 +70,19 @@ export async function GET(req: Request) {
     },
     { headers: noStore },
   );
+}
+
+/** #50: cihazın şubesi ya da tüm şubeler için aktif fiyat listeleri + kalemleri (sort sırasıyla). */
+function priceListCatalog(device: { tenantId: string; storeId: string }) {
+  const L = schema.priceLists, I = schema.priceListItems;
+  return withTenant(device.tenantId, async (tx) => {
+    const [lists, items] = await Promise.all([
+      tx.select({ id: L.id, name: L.name, days: L.days, startMin: L.startMin, endMin: L.endMin, storeId: L.storeId })
+        .from(L).where(and(eq(L.active, true), or(isNull(L.storeId), eq(L.storeId, device.storeId)))).orderBy(asc(L.sort), asc(L.name)),
+      tx.select({ listId: I.listId, productId: I.productId, price: I.price }).from(I),
+    ]);
+    return lists.map((l) => ({ ...l, items: items.filter((i) => i.listId === l.id).map(({ productId, price }) => ({ productId, price })) }));
+  });
 }
 
 /** Restoran: şubenin bölge/masa/istasyonları + kiracının seçenek grupları ve ürün bağları. */

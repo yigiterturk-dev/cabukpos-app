@@ -97,3 +97,13 @@ alter table register_events enable row level security;
 alter table register_events force row level security;
 drop policy if exists tenant_isolation on register_events;
 create policy tenant_isolation on register_events using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+
+-- #50 fiyat listesi / happy hour
+alter table price_lists enable row level security;
+alter table price_lists force row level security;
+drop policy if exists tenant_isolation on price_lists;
+create policy tenant_isolation on price_lists using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+alter table price_list_items enable row level security;
+alter table price_list_items force row level security;
+drop policy if exists tenant_isolation on price_list_items;
+create policy tenant_isolation on price_list_items using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);

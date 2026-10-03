@@ -759,6 +759,7 @@ export function KasaApp() {
       <SaleScreen
         categories={meta.catalog.categories}
         products={meta.catalog.products}
+        priceLists={meta.catalog.priceLists ?? []}
         market={d.vertical === "market"}
         onPay={onSale}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }}

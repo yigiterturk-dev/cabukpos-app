@@ -60,7 +60,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 ## P2 — Olgunluk
 
 - [ ] 49 | Şema | Rezervasyon, masa birleştirme, bahşiş | Ajan-1
-- [ ] 50 | Şema | Fiyat listesi / happy hour | Lead
+- [x] 50 | Şema | ~~Fiyat listesi / happy hour~~ ✅ `price_lists`/`price_list_items` (RLS'li, db:push uygulandı); saf `lib/core/pricelist.ts` (gün+saat penceresi, gece yarısı aşımı, şube kapsamı, ilk eşleşen kazanır — testli); katalog `priceLists` taşır (cihazın şubesine göre süzülü), kasa satır eklerken fiyatı dondurur (tek huni `SaleScreen.add`, tartılı dahil); panel `/yonetim/fiyatlistesi` (liste CRUD + ürün fiyatı, Menü nav'ında) | Lead
 - [ ] 51 | Stok | Sayım oturumu (sapma onayı) + zayi raporu | Lead
 - [ ] 52 | Teslimat | Mesafe bazlı ücret + saat dilimleri | Ajan-1
 - [ ] 54 | Kalite | CI-standardı E2E + mobil viewport testleri | Müdür

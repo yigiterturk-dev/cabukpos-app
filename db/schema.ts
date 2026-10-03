@@ -338,6 +338,27 @@ export const deliveryZones = pgTable("delivery_zones", {
   active: boolean("active").notNull().default(true),
 });
 
+/** #50 fiyat listesi / happy hour: ürün fiyatını zaman + şube penceresinde ezer. days boş = her gün; endMin < startMin = gece yarısını aşar. storeId null = tüm şubeler. */
+export const priceLists = pgTable("price_lists", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  name: text("name").notNull(),
+  days: integer("days").array().notNull().default([]), // JS getDay: 0 pazar … 6 cumartesi
+  startMin: integer("start_min").notNull(), // gece yarısından dakika
+  endMin: integer("end_min").notNull(),
+  storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+  sort: integer("sort").notNull().default(0), // küçük önce kazanır
+  active: boolean("active").notNull().default(true),
+});
+
+export const priceListItems = pgTable("price_list_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  listId: uuid("list_id").notNull().references(() => priceLists.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  price: integer("price").notNull(), // kuruş
+}, (t) => [uniqueIndex("price_list_items_uq").on(t.listId, t.productId)]);
+
 /** Müşteri defteri: kiracı + normalize telefon benzersiz. Bulut "order" olayından doldurur. */
 export const customers = pgTable("customers", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -17,8 +17,10 @@ export type Area = { id: string; name: string };
 export type Table = { id: string; areaId: string; name: string };
 export type Station = { id: string; name: string; printer: string | null };
 export type DeliveryZone = { id: string; name: string; fee: number; minOrder: number };
+// #50: fiyat listesi / happy hour (market + restoran; kasa satır eklerken uygular)
+export type KasaPriceList = { id: string; name: string; days: number[]; startMin: number; endMin: number; storeId: string | null; items: { productId: string; price: number }[] };
 // M5: restoran salonu (market kataloğunda yok)
-export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null } };
+export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; priceLists?: KasaPriceList[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null } };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
 export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number; dropped: number };
 /** #48: vardiyada seifeye alınan paralar (safe drop); beklenen kasadan düşer. */

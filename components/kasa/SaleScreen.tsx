@@ -4,6 +4,7 @@ import { addProduct, lineTotal, removedLines, setQty, totals, type CartLine, typ
 import { formatTL, parseTL } from "@/lib/core/money";
 import { settle, type Payment } from "@/lib/core/payment";
 import { buildIndex, parseKg, resolveScan } from "@/lib/core/scan";
+import { effectivePrice, type PriceListCore } from "@/lib/core/pricelist";
 import type { KasaProduct } from "@/lib/offline/state";
 import type { Buyer } from "@/lib/core/fiscal";
 import { InvoiceForm } from "./InvoiceForm";
@@ -150,7 +151,7 @@ function WeighDialog({ product, onOk, onClose, scale }: { product: KasaProduct; 
 const MAX_SHOWN = 60;
 const kg = (g: number) => `${(g / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;
 
-export function SaleScreen({ categories, products, market, onPay, onReceipt, prints = {}, onRetryPrint, scale, onRemove }: { categories: { id: string; name: string }[]; products: KasaProduct[]; market: boolean; onPay: OnSale; onReceipt: (saleId: string) => void; prints?: Record<string, PrintView>; onRetryPrint?: (saleId: string) => void; scale?: ReadScale; onRemove?: (type: "line_removed" | "cart_cleared", lines: RemovedLine[]) => void }) {
+export function SaleScreen({ categories, products, priceLists = [], market, onPay, onReceipt, prints = {}, onRetryPrint, scale, onRemove }: { categories: { id: string; name: string }[]; products: KasaProduct[]; priceLists?: PriceListCore[]; market: boolean; onPay: OnSale; onReceipt: (saleId: string) => void; prints?: Record<string, PrintView>; onRetryPrint?: (saleId: string) => void; scale?: ReadScale; onRemove?: (type: "line_removed" | "cart_cleared", lines: RemovedLine[]) => void }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cat, setCat] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -178,7 +179,8 @@ export function SaleScreen({ categories, products, market, onPay, onReceipt, pri
     const base = needle ? products.filter((p) => p.name.toLocaleLowerCase("tr").includes(needle) || p.barcodes.includes(q.trim())) : market ? products.filter((p) => p.quick) : products;
     return base.filter((p) => (cat ? p.categoryId === cat : true)).slice(0, MAX_SHOWN);
   }, [products, cat, q, market]);
-  const add = (p: KasaProduct, qtyMilli = 1000) => { setCart((c) => addProduct(c, p, qtyMilli)); setLast(null); setScanError(null); };
+  // #50: fiyat satır eklenirken donar — happy hour bitse de sepetteki satır değişmez.
+  const add = (p: KasaProduct, qtyMilli = 1000) => { setCart((c) => addProduct(c, { ...p, price: effectivePrice(p.id, p.price, priceLists, new Date()) }, qtyMilli)); setLast(null); setScanError(null); };
   const pick = (p: KasaProduct) => (p.kind === "tartili" ? setWeigh(p) : add(p));
   const refocus = () => requestAnimationFrame(() => search.current?.focus());
   const onScan = (e: React.KeyboardEvent<HTMLInputElement>) => {
