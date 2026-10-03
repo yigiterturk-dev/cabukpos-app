@@ -575,6 +575,15 @@ export const fiscalSettings = pgTable("fiscal_settings", {
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 
+// #41: zamanlanmış rapor e-postası (cron sabah gönderir; kapatılmışsa dokunmaz)
+export const reportSettings = pgTable("report_settings", {
+  tenantId: uuid("tenant_id").primaryKey().references(() => tenants.id, { onDelete: "cascade" }),
+  daily: boolean("daily").notNull().default(false),
+  weekly: boolean("weekly").notNull().default(false),
+  lastDailyAt: ts("last_daily_at"),
+  lastWeeklyAt: ts("last_weekly_at"),
+});
+
 export const fiscalDocuments = pgTable("fiscal_documents", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: tenantRef(),

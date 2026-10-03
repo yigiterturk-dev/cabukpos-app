@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { withTenant } from "@/db";
+import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { stockLevels } from "@/lib/admin/stock";
 import { scopedStoreId } from "@/lib/admin/store-scope";
@@ -8,6 +8,7 @@ import { heatData, productData, staffData, staffEvents, summaryData } from "@/li
 import { parseRange, REPORT_TABS, type ReportTab } from "@/lib/core/report";
 import { Card, PageHeader } from "@/components/ui";
 import { RangeBar, reportHref } from "@/components/reports/RangeBar";
+import { ReportMailCard } from "@/components/admin/ReportMailCard";
 import { SummaryTab } from "@/components/reports/SummaryTab";
 import { HeatTab } from "@/components/reports/HeatTab";
 import { ProductsTab } from "@/components/reports/ProductsTab";
@@ -39,6 +40,9 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
     const storeId = await scopedStoreId(tx, a.tenantId);
     return storeId ? (await stockLevels(tx, storeId)).filter(isCriticalRow) : [];
   });
+  const mailSettings = tab.key === "ozet"
+    ? (await withTenant(a.tenantId, (tx) => tx.select().from(schema.reportSettings)))[0] ?? null
+    : null;
 
   let body: React.ReactNode;
   if (tab.key === "ozet") body = <SummaryTab d={await withTenant(a.tenantId, (tx) => summaryData(tx, range))} />;
@@ -63,7 +67,8 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
       <div className="mb-4 flex flex-wrap gap-1" role="tablist" aria-label="Rapor">
         {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} role="tab" aria-selected={t.key === tab.key} className={`rounded-lg border px-3 py-1.5 text-sm ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{t.label}</Link>)}
       </div>
-      {tab.range && <RangeBar sekme={tab.key} range={range} csv={tab.csv ? tab.key : null} extra={tab.key === "urunler" ? { sirala: sp.sirala } : tab.key === "personel" ? { kisi: kisi ?? undefined } : {}} />}
+      {tab.range && <RangeBar sekme={tab.key} range={range} csv={tab.csv ? tab.key : null} print extra={tab.key === "urunler" ? { sirala: sp.sirala } : tab.key === "personel" ? { kisi: kisi ?? undefined } : {}} />}
+      {mailSettings && <ReportMailCard initial={{ daily: mailSettings.daily, weekly: mailSettings.weekly }} />}
       {body}
     </>
   );

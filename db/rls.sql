@@ -21,7 +21,7 @@ end $$;
 
 -- M8: mali belge
 do $$ declare t text; begin
-  foreach t in array array['fiscal_settings','fiscal_documents','fiscal_refunds'] loop
+  foreach t in array array['fiscal_settings','fiscal_documents','fiscal_refunds','report_settings'] loop
     execute format('alter table %I enable row level security', t);
     execute format('alter table %I force row level security', t);
     execute format('drop policy if exists tenant_isolation on %I', t);
@@ -91,6 +91,17 @@ language sql stable security definer set search_path = public as $f$
 $f$;
 revoke all on function fiscal_pending_tenants() from public;
 grant execute on function fiscal_pending_tenants() to cabukpos_app;
+
+-- #41: e-posta özeti vakti gelen kiracılar (daily/weekly bayrağı + son gönderim sınırı cron'dan gelir).
+create or replace function report_due_tenants(kind text, before timestamptz) returns setof uuid
+language sql stable security definer set search_path = public as $f$
+  select tenant_id from report_settings
+  where (kind = 'gunluk' and daily or kind = 'haftalik' and weekly)
+    and (case when kind = 'gunluk' then last_daily_at else last_weekly_at end is null
+         or case when kind = 'gunluk' then last_daily_at else last_weekly_at end < before)
+$f$;
+revoke all on function report_due_tenants(text, timestamptz) from public;
+grant execute on function report_due_tenants(text, timestamptz) to cabukpos_app;
 
 -- M9a: kasa olayı
 alter table register_events enable row level security;
