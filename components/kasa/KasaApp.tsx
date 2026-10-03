@@ -21,6 +21,7 @@ import { createSync, type SyncStatus } from "@/lib/offline/sync";
 import type { LocalSale, Meta } from "@/lib/offline/state";
 import { ArrowLeft, ClipboardCheck, Inbox, Landmark, LayoutGrid, LogOut, Printer, Bike, Undo2, Zap } from "lucide-react";
 import { Button, Card, Field, Input, LogoMark, Segmented } from "@/components/ui";
+import { InstallButton } from "@/components/InstallButton";
 import { ShiftReport, type ShiftReportData } from "@/components/ShiftReport";
 import { PinPad, type Cashier } from "./PinPad";
 import { RefundScreen } from "./RefundScreen";
@@ -559,6 +560,7 @@ export function KasaApp() {
   };
   const bar = (nav?: React.ReactNode) => (
     <Bar tenant={d.tenantName} device={d.name} nav={nav}>
+      <InstallButton />
       <SyncBadge s={status} />
       {status.reset && (
         <button
