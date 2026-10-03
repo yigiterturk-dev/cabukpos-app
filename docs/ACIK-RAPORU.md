@@ -50,7 +50,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 39 | Teslimat | Kurye takibi (GPS/ETA veya durum zaman çizelgesi) | Ajan-1
 - [ ] 40 | Rapor | Kohort/retansiyon, RFM, tahmin, gün dilimi | Müdür
 - [ ] 41 | Rapor | Zamanlanmış/e-posta rapor + PDF/Excel export | Ajan-1
-- [ ] 42 | Rapor | Muhasebe formatlarında export (bkz. 20) | Ajan-1
+- [x] 42 | Rapor | ~~Muhasebe formatlarında export~~ ✅ #20 ile aynı iş: aylık yevmiye + Paraşüt/Logo/Mikro/e-Defter CSV exportu yayında (`07b46a9`, Mali > Muhasebe)
 - [ ] 43 | Rapor | Çok şubeli konsolide rapor | Müdür
 - [ ] 45 | Panel | i18n altyapısı (TR/EN) | Ajan-1
 - [ ] 46 | Panel | Bildirim merkezi + dark mode + tercihler | Ajan-1
