@@ -8,6 +8,7 @@ import { effectivePrice, type PriceListCore } from "@/lib/core/pricelist";
 import type { KasaProduct } from "@/lib/offline/state";
 import type { Buyer } from "@/lib/core/fiscal";
 import { InvoiceForm } from "./InvoiceForm";
+import { SmsReceiptForm } from "./SmsReceiptForm";
 import { ArrowRight, Banknote, CheckCircle2, CreditCard, FileText, Plus, Printer, Scale, ScanBarcode, ShoppingBasket, Trash2, Utensils, X } from "lucide-react";
 import { Button, Dialog, IconButton } from "@/components/ui";
 import { categoryTone } from "@/lib/ui/categoryTone";
@@ -306,6 +307,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
                   )}
                 </div>
               )}
+              <SmsReceiptForm saleId={last.saleId} />
             </div>
           )}
           <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">

@@ -127,3 +127,19 @@ export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts)
   p.rule().align("center").lines("Mali Z raporu değildir.").align("left").feed(3).cut();
   return p.bytes();
 }
+
+// #38: SMS fiş — düz metin, SMS uzunluğuna sığar (satır listesi taşarsa kırpılır).
+export type SmsSale = { storeName: string; receiptNo: string; at: string; total: number; lines: { name: string; qtyMilli: number }[] };
+const smsDt = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
+
+export function receiptSmsText(s: SmsSale, max = 320): string {
+  const head = `${s.storeName} · Fiş ${s.receiptNo} · ${smsDt.format(new Date(s.at))}`;
+  const tail = `TOPLAM: ${formatTL(s.total)}`;
+  let body = "";
+  for (const l of s.lines) {
+    const piece = `${body ? body + ", " : ""}${l.qtyMilli !== 1000 ? `${(l.qtyMilli / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 3 })}x ` : ""}${l.name}`;
+    if (`${head}\n${piece}\n${tail}`.length > max) { body = `${body}…`; break; }
+    body = piece;
+  }
+  return `${head}\n${body}\n${tail}`;
+}

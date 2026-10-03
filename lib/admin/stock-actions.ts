@@ -1,7 +1,7 @@
 "use server";
 // Stok hareketleri (yönetim): fire (−, not zorunlu), sayım (mutlak). Alış M7'den beri alış fişiyle (purchase-actions). Yönetim ilk şubeyi kullanır (M1 tek şube).
 // #51 sayım oturumu: açılışta anlık görüntü, satır satır sayım, kapanışta sapma onayıyla mutlak sayım hareketi.
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
