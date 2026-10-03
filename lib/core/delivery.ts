@@ -16,10 +16,25 @@ export function normalizePhone(input: string): string | null {
 /** "905321234567" → "0532 123 45 67" */
 export const formatPhone = (p: string) => (/^90\d{10}$/.test(p) ? `0${p.slice(2, 5)} ${p.slice(5, 8)} ${p.slice(8, 10)} ${p.slice(10)}` : p);
 
-export type Zone = { id: string; name: string; fee: Kurus; minOrder: Kurus };
+export type Zone = { id: string; name: string; fee: Kurus; minOrder: Kurus; perKm?: number | null; startMin?: number | null; endMin?: number | null };
 
 /** Asgari tutar uyarıdır, engel değil (kasiyer karar verir). */
 export const zoneCheck = (zone: Zone | null, subtotal: Kurus) => ({ fee: zone?.fee ?? 0, belowMin: Boolean(zone && zone.minOrder > 0 && subtotal < zone.minOrder) });
+
+/** #52: mesafe bazlı ücret — bölge ücreti + km × km başı ücret (perKm yoksa sabit). */
+export const zoneFee = (zone: Zone | null, km: number | null): Kurus => {
+  if (!zone) return 0;
+  return zone.fee + (zone.perKm && km && km > 0 ? Math.round(zone.perKm * km) : 0);
+};
+
+/** #52: servis penceresi — startMin/endMin null = sınırsız; endMin <= startMin = gece yarısını aşar. */
+export function zoneOpenAt(zone: Zone, at = new Date()): boolean {
+  if (zone.startMin == null || zone.endMin == null) return true;
+  const m = at.getHours() * 60 + at.getMinutes();
+  if (zone.startMin === zone.endMin) return false;
+  if (zone.startMin < zone.endMin) return m >= zone.startMin && m < zone.endMin;
+  return m >= zone.startMin || m < zone.endMin;
+}
 
 export const FEE_NAME = "Paket servis ücreti";
 

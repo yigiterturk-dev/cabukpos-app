@@ -16,7 +16,7 @@ export type KasaStaff = { id: string; name: string; role: "kasiyer" | "mudur" | 
 export type Area = { id: string; name: string };
 export type Table = { id: string; areaId: string; name: string };
 export type Station = { id: string; name: string; printer: string | null };
-export type DeliveryZone = { id: string; name: string; fee: number; minOrder: number };
+export type DeliveryZone = { id: string; name: string; fee: number; minOrder: number; perKm: number | null; startMin: number | null; endMin: number | null };
 // #50: fiyat listesi / happy hour (market + restoran; kasa satır eklerken uygular)
 export type KasaPriceList = { id: string; name: string; days: number[]; startMin: number; endMin: number; storeId: string | null; items: { productId: string; price: number }[] };
 // M5: restoran salonu (market kataloğunda yok)

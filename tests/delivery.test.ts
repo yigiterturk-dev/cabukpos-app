@@ -61,3 +61,29 @@ test("platform siparişi → olaylar; eşlenmeyen kod serbest satır", () => {
   const sends = sendByStation([{ lineId: a1.lineId, stationId: "st" }, { lineId: a2.lineId, stationId: null }], () => `t${++i}`);
   assert.deepEqual(sends.map((s) => [s.stationId, s.lineIds]), [["st", [a1.lineId]], [null, [a2.lineId]]]);
 });
+
+// #52: mesafe bazlı ücret + servis penceresi
+import { zoneFee, zoneOpenAt } from "@/lib/core/delivery";
+
+test("zoneFee: sabit; km'li bölgede fee + km×perKm", () => {
+  const z = { id: "z", name: "Köy", fee: 2000, minOrder: 0 };
+  assert.equal(zoneFee(z, null), 2000);
+  assert.equal(zoneFee(z, 8), 2000);
+  const kmli = { ...z, perKm: 500 };
+  assert.equal(zoneFee(kmli, null), 2000);
+  assert.equal(zoneFee(kmli, 3.5), 3750);
+  assert.equal(zoneFee(kmli, 0), 2000);
+});
+
+test("zoneOpenAt: pencere yoksa hep açık; gece yarısı aşımı", () => {
+  const z = { id: "z", name: "Merkez", fee: 0, minOrder: 0 };
+  assert.equal(zoneOpenAt(z), true);
+  const w = { ...z, startMin: 11 * 60, endMin: 23 * 60 };
+  assert.equal(zoneOpenAt(w, new Date(2026, 9, 3, 12)), true);
+  assert.equal(zoneOpenAt(w, new Date(2026, 9, 3, 23)), false);
+  const gece = { ...z, startMin: 22 * 60, endMin: 2 * 60 };
+  assert.equal(zoneOpenAt(gece, new Date(2026, 9, 3, 23)), true);
+  assert.equal(zoneOpenAt(gece, new Date(2026, 9, 3, 1)), true);
+  assert.equal(zoneOpenAt(gece, new Date(2026, 9, 3, 12)), false);
+  assert.equal(zoneOpenAt({ ...z, startMin: 600, endMin: 600 }, new Date(2026, 9, 3, 12)), false);
+});

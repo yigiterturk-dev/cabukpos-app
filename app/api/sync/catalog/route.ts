@@ -96,7 +96,7 @@ function salonCatalog(device: { tenantId: string; storeId: string }) {
       tx.select({ id: G.id, name: G.name, min: G.min, max: G.max }).from(G).orderBy(asc(G.sort), asc(G.name)),
       tx.select({ id: O.id, groupId: O.groupId, name: O.name, delta: O.delta }).from(O).orderBy(asc(O.sort), asc(O.name)),
       tx.select({ productId: L.productId, groupId: L.groupId }).from(L).orderBy(asc(L.sort)),
-      tx.select({ id: Z.id, name: Z.name, fee: Z.fee, minOrder: Z.minOrder }).from(Z).where(and(eq(Z.storeId, device.storeId), eq(Z.active, true))).orderBy(asc(Z.sort), asc(Z.name)),
+      tx.select({ id: Z.id, name: Z.name, fee: Z.fee, minOrder: Z.minOrder, perKm: Z.perKm, startMin: Z.startMin, endMin: Z.endMin }).from(Z).where(and(eq(Z.storeId, device.storeId), eq(Z.active, true))).orderBy(asc(Z.sort), asc(Z.name)),
     ]);
     const optionGroups = groups.map((g) => ({ ...g, options: opts.filter((o) => o.groupId === g.id).map(({ id, name, delta }) => ({ id, name, delta })) }));
     return { areas, tables, stations, optionGroups, links, deliveryZones };

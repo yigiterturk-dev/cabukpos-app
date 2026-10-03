@@ -3,7 +3,7 @@
 // Olaylar: open{kind:paket} + order + (bölge ücreti varsa) ücret satırı + (tekrarla seçildiyse) eski satırlar yeni kimlikle.
 import { useState } from "react";
 import { formatTL } from "@/lib/core/money";
-import { feeLine, formatPhone, normalizePhone, PAY_INTENTS } from "@/lib/core/delivery";
+import { feeLine, formatPhone, normalizePhone, PAY_INTENTS, zoneFee, zoneOpenAt } from "@/lib/core/delivery";
 import type { PayIntent } from "@/lib/core/tab";
 import type { CustomerLookup } from "@/lib/delivery/customers";
 import type { NewTabEvent } from "@/lib/offline/tabs";
@@ -25,6 +25,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
   const [address, setAddress] = useState("");
   const [directions, setDirections] = useState("");
   const [zoneId, setZoneId] = useState<string | null>(null);
+  const [km, setKm] = useState(""); // #52: mesafe bazlı ücret için mesafe
   const [intent, setIntent] = useState<PayIntent>("nakit");
   const [note, setNote] = useState("");
   const [repeat, setRepeat] = useState<string | null>(null);
@@ -55,17 +56,21 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
     if (name.trim().length < 2) return setError("Müşteri adını girin.");
     if (address.trim().length < 5) return setError("Adresi girin.");
     if (zones.length && !zoneId) return setError("Bölge seçin.");
+    const zone = zones.find((z) => z.id === zoneId) ?? null;
+    if (zone && !zoneOpenAt(zone)) return setError(`${zone.name} bu saatte servis dışında.`);
+    const kmN = zone?.perKm ? Math.max(0, Math.min(100, Number(km.replace(",", ".")) || 0)) : null;
+    if (zone?.perKm && kmN === 0) return setError("Mesafeyi (km) girin.");
     setError(null);
     setBusy(true);
     const tabId = crypto.randomUUID();
-    const zone = zones.find((z) => z.id === zoneId) ?? null;
     const ev = (e: NewTabEvent["ev"]): NewTabEvent => ({ tabId, tableId: null, staffId, ev: e });
     const lines = found.recent.find((r) => r.tabId === repeat)?.lines ?? [];
     const known = lines.filter((l) => l.productId && meta.catalog.products.some((p) => p.id === l.productId));
+    const fee = zoneFee(zone, kmN);
     await add([
       ev({ type: "open", guests: 0, kind: "paket" }),
       ev({ type: "order", customerId: found.customer?.id ?? null, name: name.trim(), phone, address: address.trim(), directions: directions.trim() || null, zoneId, note: note.trim() || null, payIntent: intent, promisedAt: null, source: null }),
-      ...(zone && zone.fee > 0 ? [ev(feeLine(crypto.randomUUID(), zone.fee))] : []),
+      ...(zone && fee > 0 ? [ev(feeLine(crypto.randomUUID(), fee))] : []),
       ...known.map((l) => ev({ ...l, lineId: crypto.randomUUID() })),
     ]);
     setBusy(false);
@@ -107,12 +112,27 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
             <div role="group" aria-label="Bölge">
               <div className="mb-1.5 text-sm font-medium">Bölge</div>
               <div className="flex flex-wrap gap-2">
-                {zones.map((z) => (
-                  <button key={z.id} type="button" aria-pressed={zoneId === z.id} onClick={() => setZoneId(z.id)} className={pill(zoneId === z.id)}>
-                    {z.name} <span className="text-xs text-muted">{z.fee ? `+${formatTL(z.fee)}` : "ücretsiz"}{z.minOrder ? ` · asgari ${formatTL(z.minOrder)}` : ""}</span>
-                  </button>
-                ))}
+                {zones.map((z) => {
+                  const open = zoneOpenAt(z);
+                  return (
+                    <button key={z.id} type="button" aria-pressed={zoneId === z.id} onClick={() => { setZoneId(z.id); if (z.perKm == null) setKm(""); }}
+                      className={`${pill(zoneId === z.id)} ${open ? "" : "opacity-50"}`}>
+                      {z.name} <span className="text-xs text-muted">{z.fee || z.perKm ? `+${formatTL(zoneFee(z, null))}${z.perKm ? ` + ${formatTL(z.perKm)}/km` : ""}` : "ücretsiz"}{z.minOrder ? ` · asgari ${formatTL(z.minOrder)}` : ""}{!open ? " · servis dışı" : ""}</span>
+                    </button>
+                  );
+                })}
               </div>
+              {(() => {
+                const z = zones.find((x) => x.id === zoneId);
+                if (!z?.perKm) return null;
+                const kmN = Math.max(0, Math.min(100, Number(km.replace(",", ".")) || 0));
+                return (
+                  <div className="mt-2 flex flex-wrap items-end gap-3">
+                    <div className="w-28"><Field label="Mesafe (km)"><Input value={km} onChange={(e) => setKm(e.target.value)} inputMode="decimal" placeholder="3,5" /></Field></div>
+                    <span className="pb-3 text-sm text-muted">Ücret: <b className="tabular text-ink">{formatTL(zoneFee(z, kmN))}</b></span>
+                  </div>
+                );
+              })()}
             </div>
           )}
           <div role="group" aria-label="Ödeme">

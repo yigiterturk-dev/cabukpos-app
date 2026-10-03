@@ -9,15 +9,19 @@ import { Button, Field, Input } from "@/components/ui";
 const Err = ({ s, f }: { s: DeliveryState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
 const Saved = ({ s }: { s: DeliveryState }) => (s.savedAt ? <span className="text-sm text-ok">{s.info ?? "Kaydedildi."}</span> : null);
 const tl = (k: number | undefined) => (k ? formatTL(k).replace(" ₺", "") : "");
+const hm = (m: number | null | undefined) => (m == null ? "" : `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
 
-export function ZoneForm({ initial }: { initial?: { id: string; name: string; fee: number; minOrder: number } }) {
+export function ZoneForm({ initial }: { initial?: { id: string; name: string; fee: number; minOrder: number; perKm: number | null; startMin: number | null; endMin: number | null } }) {
   const { state, pending, onSubmit } = useFormAction(saveZone.bind(null, initial?.id ?? null), {} as DeliveryState);
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
       <div key={initial?.id ?? state.savedAt ?? 0} className="flex flex-wrap items-end gap-3">
-        <div><Field label="Bölge adı"><Input name="name" defaultValue={initial?.name} placeholder="Merkez" className="w-48" required /></Field><Err s={state} f="name" /></div>
-        <div><Field label="Paket ücreti (TL)"><Input name="fee" inputMode="decimal" defaultValue={tl(initial?.fee)} placeholder="0" className="w-28 text-right" /></Field><Err s={state} f="fee" /></div>
-        <div><Field label="Asgari tutar (TL)"><Input name="minOrder" inputMode="decimal" defaultValue={tl(initial?.minOrder)} placeholder="0" className="w-28 text-right" /></Field><Err s={state} f="minOrder" /></div>
+        <div><Field label="Bölge adı"><Input name="name" defaultValue={initial?.name} placeholder="Merkez" className="w-40" required /></Field><Err s={state} f="name" /></div>
+        <div><Field label="Paket ücreti (TL)"><Input name="fee" inputMode="decimal" defaultValue={tl(initial?.fee)} placeholder="0" className="w-24 text-right" /></Field><Err s={state} f="fee" /></div>
+        <div><Field label="Asgari tutar (TL)"><Input name="minOrder" inputMode="decimal" defaultValue={tl(initial?.minOrder)} placeholder="0" className="w-24 text-right" /></Field><Err s={state} f="minOrder" /></div>
+        <div><Field label="Km başı (TL)" hint="boş = sabit"><Input name="perKm" inputMode="decimal" defaultValue={tl(initial?.perKm ?? undefined)} placeholder="—" className="w-24 text-right" /></Field><Err s={state} f="perKm" /></div>
+        <div><Field label="Servis başlangıç" hint="boş = sınırsız"><Input name="start" defaultValue={hm(initial?.startMin)} placeholder="11:00" className="w-24" /></Field><Err s={state} f="start" /></div>
+        <div><Field label="Servis bitiş"><Input name="end" defaultValue={hm(initial?.endMin)} placeholder="23:00" className="w-24" /></Field><Err s={state} f="end" /></div>
       </div>
       <Button type="submit" variant={initial ? "ghost" : "primary"} disabled={pending}>{initial ? "Kaydet" : "Bölge ekle"}</Button>
       <Saved s={state} /><Err s={state} />

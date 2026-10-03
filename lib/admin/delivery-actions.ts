@@ -28,6 +28,15 @@ async function firstStore(tenantId: string) {
 /** Boş → 0; aksi TL. */
 const money = (v: string) => (v === "" ? 0 : parseTL(v));
 
+/** #52: "09:30" → dakika; boşsa null (sınırsız); geçersizse undefined. */
+const parseWindow = (v: string): number | null | undefined => {
+  if (v === "") return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(v);
+  if (!m) return undefined;
+  const h = +m[1], min = +m[2];
+  return h > 23 || min > 59 ? undefined : h * 60 + min;
+};
+
 // — Teslimat bölgeleri —
 export async function saveZone(id: string | null, _: DeliveryState, form: FormData): Promise<DeliveryState> {
   const a = await requireWriter();
@@ -37,13 +46,21 @@ export async function saveZone(id: string | null, _: DeliveryState, form: FormDa
   if (fee === null) return { error: "Ücret geçersiz.", field: "fee" };
   const minOrder = money(str(form, "minOrder"));
   if (minOrder === null) return { error: "Asgari tutar geçersiz.", field: "minOrder" };
+  // #52: mesafe + servis penceresi (boş = özelliği kullanma).
+  const perKm = str(form, "perKm") === "" ? null : parseTL(str(form, "perKm"));
+  if (perKm === null) return { error: "Km başı ücret geçersiz.", field: "perKm" };
+  const startMin = parseWindow(str(form, "start"));
+  if (startMin === undefined) return { error: "Başlangıç saati geçersiz.", field: "start" };
+  const endMin = parseWindow(str(form, "end"));
+  if (endMin === undefined) return { error: "Bitiş saati geçersiz.", field: "end" };
+  if (startMin !== null && endMin !== null && startMin === endMin) return { error: "Başlangıç ve bitiş aynı olamaz.", field: "end" };
   if (id && !UUID.test(id)) return { error: "Bölge bulunamadı." };
   const storeId = await firstStore(a.tenantId);
   await withTenant(a.tenantId, async (tx) => {
     const Z = schema.deliveryZones;
-    if (id) await tx.update(Z).set({ name, fee, minOrder }).where(eq(Z.id, id));
-    else await tx.insert(Z).values({ tenantId: a.tenantId, storeId, name, fee, minOrder, sort: (await tx.select({ id: Z.id }).from(Z)).length });
-    await audit(tx, a.tenantId, `user:${a.id}`, id ? "zone.update" : "zone.create", { id, name, fee, minOrder });
+    if (id) await tx.update(Z).set({ name, fee, minOrder, perKm, startMin, endMin }).where(eq(Z.id, id));
+    else await tx.insert(Z).values({ tenantId: a.tenantId, storeId, name, fee, minOrder, perKm, startMin, endMin, sort: (await tx.select({ id: Z.id }).from(Z)).length });
+    await audit(tx, a.tenantId, `user:${a.id}`, id ? "zone.update" : "zone.create", { id, name, fee, minOrder, perKm, startMin, endMin });
   });
   revalidatePath("/yonetim/bolgeler");
   return { savedAt: Date.now() };

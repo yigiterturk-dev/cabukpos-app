@@ -337,6 +337,9 @@ export const deliveryZones = pgTable("delivery_zones", {
   name: text("name").notNull(),
   fee: integer("fee").notNull().default(0), // kuruş
   minOrder: integer("min_order").notNull().default(0),
+  perKm: integer("per_km"), // #52: kuruş/km; null = sabit ücret
+  startMin: integer("start_min"), // #52: servis penceresi (dakika); null = sınırsız; endMin <= startMin = gece yarısı aşımı
+  endMin: integer("end_min"),
   sort: integer("sort").notNull().default(0),
   active: boolean("active").notNull().default(true),
 });
