@@ -1,29 +1,38 @@
 import { PageHeader, Panel, Card } from "@/components/ui";
 import { TemaSecimi, SesToggle } from "@/components/admin/Preferences";
 import { InstallButton } from "@/components/InstallButton";
+import { LangSecimi } from "@/components/admin/LangSecimi";
+import { getLang } from "@/lib/admin/lang";
+import { tf } from "@/lib/core/i18n";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Tercihler — ÇabukPOS" };
 
-export default function Tercihler() {
+export default async function Tercihler() {
+  const lang = await getLang();
+  const tt = tf(lang);
   return (
     <>
-      <PageHeader title="Tercihler" desc="Görünüm ve uyarı ayarları bu cihazda saklanır; cihaz başına ayrı geçerlidir." />
+      <PageHeader title={tt("tercihler")} desc={tt("tercihDesc")} />
       <div className="grid max-w-3xl gap-4">
-        <Panel title="Tema">
+        <Panel title={tt("dil")}>
+          <LangSecimi lang={lang} />
+          <p className="mt-3 text-sm text-muted">{tt("dilHint")}</p>
+        </Panel>
+        <Panel title={tt("tema")}>
           <TemaSecimi />
-          <p className="mt-3 text-sm text-muted">Sistem seçiliyken işletim sisteminin koyu moduna uyar. Yazdırma her zaman açık kâğıtta yapılır.</p>
+          <p className="mt-3 text-sm text-muted">{tt("temaHint")}</p>
         </Panel>
-        <Panel title="Kasa uyarı sesi">
+        <Panel title={tt("kasaSesi")}>
           <SesToggle />
-          <p className="mt-3 text-sm text-muted">Kapalıyken yeni platform siparişi ve hazırlık uyarıları sessiz gelir; ekrandaki rozetler aynen çalışır.</p>
+          <p className="mt-3 text-sm text-muted">{tt("kasaSesiHint")}</p>
         </Panel>
-        <Card className="p-4 text-sm text-muted">Bildirimler sayfası: bekleyen sipariş, gecikme, mali belge hatası ve inceleme kayıtlarını toplar — <b className="text-ink-2">Genel → Bildirimler</b>.</Card>
-        <Panel title="Uygulama olarak kur">
+        <Card className="p-4 text-sm text-muted">{lang === "en" ? "Notifications page: pending orders, delays, fiscal document errors and review records — " : "Bildirimler sayfası: bekleyen sipariş, gecikme, mali belge hatası ve inceleme kayıtlarını toplar — "}<b className="text-ink-2">{lang === "en" ? "General → Notifications" : "Genel → Bildirimler"}</b>.</Card>
+        <Panel title={tt("uygulamaKur")}>
           <div className="flex flex-wrap items-center gap-3">
             <InstallButton />
-            <p className="text-sm text-muted">Düğme yalnız tarayıcının kurma izni verdiği durumda görünür. iPhone/iPad: Safari&apos;de <b className="text-ink-2">Paylaş → Ana Ekrana Ekle</b>.</p>
+            <p className="text-sm text-muted">{tt("uygulamaKurHint")}</p>
           </div>
         </Panel>
       </div>
