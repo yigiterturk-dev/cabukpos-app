@@ -158,6 +158,7 @@ export default function Home() {
             ))}
           </div>
           <p className="mt-4 text-sm text-muted">Deneme bitince ödeme yapmazsanız ücret doğmaz. Ayrıntı: <Link href="/yasal/iade-iptal" className="underline">İptal ve iade</Link>.</p>
+          <Link href="/fiyatlandirma" className="mt-4 inline-block text-sm font-medium text-brand hover:underline">Şube ve terminal sayınıza göre hesaplayın →</Link>
         </section>
 
         <section id="sss" className="border-t border-line bg-surface-2">

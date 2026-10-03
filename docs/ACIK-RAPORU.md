@@ -66,7 +66,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [ ] 54 | Kalite | CI-standardı E2E + mobil viewport testleri | Müdür
 - [ ] 55 | Güvenlik | RLS'siz tablolara DB seviyesinde koruma | Müdür
 - [ ] 60 | Pazar | Onboarding sihirbazı + yardım merkezi + kullanıcı dokümanı | Ajan-1
-- [ ] 61 | Pazar | Fiyatlandırma sayfası | Lead
+- [x] 61 | Pazar | ~~Fiyatlandırma sayfası~~ ✅ `/fiyatlandirma`: aylık/yıllık taban + ek şube/terminal birim fiyatları (#13 env'lerinden), şube+terminal sayısıyla dönem tutarı hesaplayıcı (saf `planBreakdown`), her pakette listesi, satış iletişimi fallback'i; root #fiyat bölümünden derin bağlantı + sitemap
 
 ## Tamamlananlar (bu dalda)
 

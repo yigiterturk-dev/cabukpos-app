@@ -6,6 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   return [
     { url: `${siteUrl()}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
+    { url: `${siteUrl()}/fiyatlandirma`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     ...["iade-iptal", "iletisim", "kullanim-kosullari", "kvkk", "mesafeli-satis"].map((p) => ({
       url: `${siteUrl()}/yasal/${p}`,
       lastModified: now,
