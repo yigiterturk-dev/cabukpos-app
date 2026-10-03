@@ -14,6 +14,7 @@ export const saleChannel = pgEnum("sale_channel", ["kasa", "masa", "paket", "pla
 export const saleStatus = pgEnum("sale_status", ["kapandi", "iptal", "iade"]);
 export const productKind = pgEnum("product_kind", ["adet", "tartili"]);
 export const stockKind = pgEnum("stock_kind", ["satis", "iade", "alis", "sayim", "fire", "recete", "uretim"]);
+export const stockCountStatus = pgEnum("stock_count_status", ["acik", "kapandi"]);
 export const stockUnit = pgEnum("stock_unit", ["adet", "kg", "lt"]);
 export const purchaseStatus = pgEnum("purchase_status", ["kayitli", "iptal"]);
 export const fiscalDocStatus = pgEnum("fiscal_doc_status", ["pending", "issued", "error", "cancelled", "cancel_rejected"]);
@@ -358,6 +359,28 @@ export const priceListItems = pgTable("price_list_items", {
   productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
   price: integer("price").notNull(), // kuruş
 }, (t) => [uniqueIndex("price_list_items_uq").on(t.listId, t.productId)]);
+
+/** #51 sayım oturumu: açılışta stok anlık görüntüsü, satır satır sayılan değer, kapanışta sapma onayıyla sayım hareketi (mutlak). */
+export const stockCounts = pgTable("stock_counts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  status: stockCountStatus("status").notNull().default("acik"),
+  openedBy: text("opened_by").notNull(), // "user:<id>"
+  closedBy: text("closed_by"),
+  closedAt: ts("closed_at"),
+  note: text("note"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const stockCountLines = pgTable("stock_count_lines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  countId: uuid("count_id").notNull().references(() => stockCounts.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  expectedMilli: integer("expected_milli").notNull(), // açılış anındaki beklenen
+  countedMilli: integer("counted_milli"), // null = henüz sayılmadı
+}, (t) => [uniqueIndex("stock_count_lines_uq").on(t.countId, t.productId)]);
 
 /** Müşteri defteri: kiracı + normalize telefon benzersiz. Bulut "order" olayından doldurur. */
 export const customers = pgTable("customers", {

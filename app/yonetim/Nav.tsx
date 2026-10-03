@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Armchair, Bell, Boxes, Building2, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu,
-  Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Tag, Ticket, TrendingUp, UserCog, X, Clock, type LucideIcon,
+  Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, type LucideIcon,
 } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
@@ -24,6 +24,7 @@ const groups: { title: string; items: Item[] }[] = [
   ] },
   { title: "Stok", items: [
     { href: "/yonetim/stok", label: "Stok", icon: Boxes },
+    { href: "/yonetim/sayim", label: "Sayım & zayi", icon: ClipboardList },
     { href: "/yonetim/alislar", label: "Alışlar", icon: PackagePlus },
     { href: "/yonetim/tedarikciler", label: "Tedarikçiler", icon: Handshake },
   ] },

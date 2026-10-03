@@ -35,3 +35,30 @@ export function formatQty(q: number, unit: QtyUnit): string {
   const a = Math.abs(q);
   return u === "adet" ? `${sign}${a / 1000}` : `${sign}${(a / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} ${u}`;
 }
+
+// #51 sayım oturumu: satır satır sayılan değer, sapma onayıyla kapanış.
+export type CountLineCore = { productId: string; expectedMilli: number; countedMilli: number | null };
+
+/** Sapma (sayılan − beklenen); sayılmayan satırda null — kapanışta sayım hareketi yazılmaz. */
+export const countVariance = (l: CountLineCore): number | null => (l.countedMilli === null ? null : l.countedMilli - l.expectedMilli);
+
+/** Kapanışta uygulanacak satımlar: sayılanı yazan mutlak "sayım" değeri (sadece sapması olanlar hareket alır). */
+export function countApply(l: CountLineCore): number | null {
+  const v = countVariance(l);
+  return v === 0 || v === null ? null : l.countedMilli;
+}
+
+export type WasteRow = { productId: string; name: string; unit: StockUnit; qtyMilli: number; cost: number | null };
+
+/** Zayi raporu: fire hareketlerini ürüne toplar; maliyet = birim maliyet × miktar (kuruş). Maliyetli ürünler önce. */
+export function wasteSummary(rows: { productId: string; name: string; unit: StockUnit; qtyMilli: number; cost: number | null }[]): WasteRow[] {
+  const by = new Map<string, WasteRow>();
+  for (const r of rows) {
+    const cur = by.get(r.productId) ?? { productId: r.productId, name: r.name, unit: r.unit, qtyMilli: 0, cost: r.cost };
+    cur.qtyMilli += r.qtyMilli; // fire negatif yazılır
+    by.set(r.productId, cur);
+  }
+  return [...by.values()]
+    .map((r) => ({ ...r, cost: r.cost != null ? Math.round((r.cost * -r.qtyMilli) / 1000) : null }))
+    .sort((a, b) => (b.cost ?? -1) - (a.cost ?? -1));
+}

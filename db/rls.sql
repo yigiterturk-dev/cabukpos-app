@@ -107,3 +107,13 @@ alter table price_list_items enable row level security;
 alter table price_list_items force row level security;
 drop policy if exists tenant_isolation on price_list_items;
 create policy tenant_isolation on price_list_items using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+
+-- #51 sayım oturumu
+alter table stock_counts enable row level security;
+alter table stock_counts force row level security;
+drop policy if exists tenant_isolation on stock_counts;
+create policy tenant_isolation on stock_counts using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+alter table stock_count_lines enable row level security;
+alter table stock_count_lines force row level security;
+drop policy if exists tenant_isolation on stock_count_lines;
+create policy tenant_isolation on stock_count_lines using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);

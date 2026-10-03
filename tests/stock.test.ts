@@ -62,3 +62,27 @@ test("stok miktarı ayrıştırma", async () => {
   assert.equal(formatQty(-3000, "adet"), "−3");
   assert.equal(formatQty(2250, "tartili"), "2,250 kg");
 });
+
+// #51 sayım oturumu + zayi
+import { countApply, countVariance, wasteSummary } from "../lib/core/stock";
+
+test("countVariance: sayılmayan null, sapma sayılan−beklenen", () => {
+  assert.equal(countVariance({ productId: "p", expectedMilli: 5000, countedMilli: null }), null);
+  assert.equal(countVariance({ productId: "p", expectedMilli: 5000, countedMilli: 4800 }), -200);
+  assert.equal(countVariance({ productId: "p", expectedMilli: 5000, countedMilli: 5000 }), 0);
+});
+
+test("countApply: yalnız sapmalı sayılanlar hareket alır (mutlak değer)", () => {
+  assert.equal(countApply({ productId: "p", expectedMilli: 5000, countedMilli: null }), null);
+  assert.equal(countApply({ productId: "p", expectedMilli: 5000, countedMilli: 5000 }), null);
+  assert.equal(countApply({ productId: "p", expectedMilli: 5000, countedMilli: 4750 }), 4750);
+});
+
+test("wasteSummary: ürün bazında toplar, maliyetli önce, toplam maliyet kuruş", () => {
+  const rows = wasteSummary([
+    { productId: "a", name: "Ekmek", unit: "adet", qtyMilli: -2000, cost: 1500 },
+    { productId: "a", name: "Ekmek", unit: "adet", qtyMilli: -3000, cost: 1500 },
+    { productId: "b", name: "Süt", unit: "lt", qtyMilli: -1500, cost: null },
+  ]);
+  assert.deepEqual(rows.map((r) => [r.productId, r.qtyMilli, r.cost]), [["a", -5000, 7500], ["b", -1500, null]]);
+});

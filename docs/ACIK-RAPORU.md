@@ -61,7 +61,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 
 - [ ] 49 | Şema | Rezervasyon, masa birleştirme, bahşiş | Ajan-1
 - [x] 50 | Şema | ~~Fiyat listesi / happy hour~~ ✅ `price_lists`/`price_list_items` (RLS'li, db:push uygulandı); saf `lib/core/pricelist.ts` (gün+saat penceresi, gece yarısı aşımı, şube kapsamı, ilk eşleşen kazanır — testli); katalog `priceLists` taşır (cihazın şubesine göre süzülü), kasa satır eklerken fiyatı dondurur (tek huni `SaleScreen.add`, tartılı dahil); panel `/yonetim/fiyatlistesi` (liste CRUD + ürün fiyatı, Menü nav'ında) | Lead
-- [ ] 51 | Stok | Sayım oturumu (sapma onayı) + zayi raporu | Lead
+- [x] 51 | Stok | ~~Sayım oturumu (sapma onayı) + zayi raporu~~ ✅ `stock_counts`/`stock_count_lines` (RLS'li, db:push uygulandı); açılışta `stockLevels` anlık görüntüsü, satır satır sayılan değer, kapanışta onay kutusu ile sapmalı satırlara mutlak `sayim` hareketi (sayılmayan dokunulmaz, ara satışlar kural gereği korunur); iptal = sil; zayi: son 30 gün fire özeti (ürün bazlı miktar + maliyet, `wasteSummary`); `/yonetim/sayim` + Stok nav'ı; saf katman testli
 - [ ] 52 | Teslimat | Mesafe bazlı ücret + saat dilimleri | Ajan-1
 - [ ] 54 | Kalite | CI-standardı E2E + mobil viewport testleri | Müdür
 - [ ] 55 | Güvenlik | RLS'siz tablolara DB seviyesinde koruma | Müdür
