@@ -466,9 +466,9 @@ export function KasaApp() {
     return r.ok ? afterSale(r.sale) : r;
   }, [cashier, afterSale]);
 
-  const onTabPay = useCallback(async (tab: TabState, part: PayLine[], saleId: string, payments: Payment[], buyer: Buyer | null) => {
+  const onTabPay = useCallback(async (tab: TabState, part: PayLine[], saleId: string, payments: Payment[], buyer: Buyer | null, tip: number) => {
     const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
-    const r = await recordSaleLocal(cashier!, part, payments, saleId, { tabId: tab.id, tableId: tab.tableId, tableName, paidLines: paidLinesOf(part), kind: tab.kind }, buyer);
+    const r = await recordSaleLocal(cashier!, part, payments, saleId, { tabId: tab.id, tableId: tab.tableId, tableName, paidLines: paidLinesOf(part), kind: tab.kind }, buyer, tip);
     if (!r.ok) return r;
     await tabsApi.reload();
     return afterSale(r.sale);
@@ -675,7 +675,7 @@ export function KasaApp() {
     if (view.name === "bill") {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
-      return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} onPay={(part, id, p, b) => onTabPay(tab, part, id, p, b)}
+      return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} onPay={(part, id, p, b, tip) => onTabPay(tab, part, id, p, b, tip)}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed || !tab.tableId ? { name: "home" } : { name: "tab", tableId: tab.tableId })} />;
     }
     return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
@@ -707,7 +707,7 @@ export function KasaApp() {
     if (view.name === "bill") {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
-      return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} onPay={(part, id, p, b) => onTabPay(tab, part, id, p, b)}
+      return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} onPay={(part, id, p, b, tip) => onTabPay(tab, part, id, p, b, tip)}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed ? { name: "paket" } : { name: "ptab", tabId: tab.id })} />;
     }
     return null;
