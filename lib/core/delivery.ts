@@ -82,3 +82,16 @@ export function renderDeliverySlip(s: SlipData, o: { width: PaperWidth; codepage
   p.feed(3).cut();
   return p.bytes();
 }
+
+// #39: ETA — geçmiş teslim sürelerinden (yolda→teslim) medyan; bölgeye yeterli örnek yoksa genel medyan.
+export type EtaSample = { zoneId: string | null; minutes: number };
+
+const sane = (s: EtaSample) => s.minutes > 0 && s.minutes < 180;
+
+export function etaMinutes(samples: EtaSample[], zoneId: string | null, cap = 30): number | null {
+  const all = samples.filter(sane).slice(-60);
+  const inZone = zoneId ? all.filter((s) => s.zoneId === zoneId) : [];
+  const pool = inZone.length >= 5 ? inZone : all;
+  const arr = pool.slice(-cap).map((s) => s.minutes).sort((a, b) => a - b);
+  return arr.length ? arr[Math.floor(arr.length / 2)] : null;
+}

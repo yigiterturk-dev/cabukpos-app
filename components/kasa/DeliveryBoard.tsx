@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { formatTL } from "@/lib/core/money";
 import { deliveryStatus, openDeliveries, tabLabel, type DeliveryStatus, type TabState } from "@/lib/core/tab";
 import { PLATFORM_NAMES, sendByStation } from "@/lib/core/platform";
-import { formatPhone, intentLabel } from "@/lib/core/delivery";
+import { etaMinutes, formatPhone, intentLabel } from "@/lib/core/delivery";
 import type { NewTabEvent } from "@/lib/offline/tabs";
 import type { Meta } from "@/lib/offline/state";
 import { Modal, type Waiter } from "./TabScreen";
@@ -42,6 +42,12 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   const couriers = meta.catalog.staff.filter((s) => s.role === "kurye");
   const staffName = (id: string | null) => meta.catalog.staff.find((s) => s.id === id)?.name ?? null;
   const waiting = list.filter((t) => deliveryStatus(t) === "onay_bekliyor").length;
+  // #39: geçmiş teslimlerden bölge bazlı ETA (yolda→teslim dk medyanı).
+  const samples = [...tabs.values()].flatMap((t) => (t.delivery.outAt && t.delivery.deliveredAt ? [{ zoneId: t.order?.zoneId ?? null, minutes: (Date.parse(t.delivery.deliveredAt) - Date.parse(t.delivery.outAt)) / 60_000 }] : []));
+  const etaFor = (t: TabState) => {
+    const eta = etaMinutes(samples, t.order?.zoneId ?? null);
+    return eta != null && t.delivery.outAt ? Math.max(0, Math.ceil((Date.parse(t.delivery.outAt) + eta * 60_000 - now) / 60_000)) : null;
+  };
 
   // Onay bekleyen platform siparişi varken 4 sn'de bir ses.
   useEffect(() => {
@@ -94,6 +100,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                           {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
                         </div>
                         {courier && <div className="mt-1 text-xs">Kurye: <span className="font-medium">{courier}</span></div>}
+                        {st === "yolda" && (() => { const e = etaFor(t); return e != null ? <div className="mt-1 text-xs font-medium text-ink-2" data-testid="eta">Tahmini teslim ~{e} dk</div> : null; })()}
                         {st === "onay_bekliyor" && deadline !== null && <div className={`mt-1 text-xs font-medium ${deadline <= 2 ? "text-bad" : "text-warn"}`}>Onay için {Math.max(0, deadline)} dk</div>}
                         {st === "iptal" && <div className="mt-1 text-xs text-bad">İptal: {t.delivery.cancelled}</div>}
                         {st === "reddedildi" && <div className="mt-1 text-xs text-bad">Red: {t.delivery.rejected}</div>}

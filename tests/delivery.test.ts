@@ -1,7 +1,7 @@
 // tests/delivery.test.ts — paket servis: telefon, bölge, kurye nakdi, paket fişi, platform eşleme. Saf.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { courierCash, feeLine, formatPhone, normalizePhone, renderDeliverySlip, zoneCheck } from "@/lib/core/delivery";
+import { courierCash, etaMinutes, feeLine, formatPhone, normalizePhone, renderDeliverySlip, zoneCheck } from "@/lib/core/delivery";
 import { sendByStation, toTabEvents, type IncomingOrder } from "@/lib/core/platform";
 import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
 
@@ -86,4 +86,18 @@ test("zoneOpenAt: pencere yoksa hep açık; gece yarısı aşımı", () => {
   assert.equal(zoneOpenAt(gece, new Date(2026, 9, 3, 1)), true);
   assert.equal(zoneOpenAt(gece, new Date(2026, 9, 3, 12)), false);
   assert.equal(zoneOpenAt({ ...z, startMin: 600, endMin: 600 }, new Date(2026, 9, 3, 12)), false);
+});
+
+test("etaMinutes: bölge medyanı; örnek azsa genel medyan", () => {
+  const s = (zoneId: string | null, minutes: number) => ({ zoneId, minutes });
+  const rows = [
+    s("a", 20), s("a", 30), s("a", 40), s("a", 25),
+    s("b", 60), s(null, 15), s(null, 35), s(null, 90),
+  ];
+  // bölge a'da 4 örnek (<5) → genel medyan: [15,20,25,30,35,40,60,90] → index 4 = 35
+  assert.equal(etaMinutes(rows, "a"), 35);
+  const rich = [...rows, s("a", 22), s("a", 28)]; // a: 6 örnek → medyan [20,22,25,28,30,40] → 28
+  assert.equal(etaMinutes(rich, "a"), 28);
+  assert.equal(etaMinutes([], "a"), null);
+  assert.equal(etaMinutes([s("a", 500), s("a", -5)], "a"), null); // saçma örnekler elenir
 });
