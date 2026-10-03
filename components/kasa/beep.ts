@@ -1,6 +1,7 @@
-/** Kısa iki ton (hazır bildirimi; high → yeni platform siparişi). Ses izni yoksa sessiz geçer. */
+/** Kısa iki ton (hazır bildirimi; high → yeni platform siparişi). Ses izni yoksa ya da Tercihler'den kapatıldıysa sessiz geçer. */
 export function beep(high = false) {
   try {
+    if (localStorage.getItem("sesli_uyari") === "kapali") return;
     const ctx = new AudioContext();
     [0, 0.18].forEach((t, i) => {
       const o = ctx.createOscillator(), g = ctx.createGain();

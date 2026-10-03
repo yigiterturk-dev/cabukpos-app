@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogOut, Monitor } from "lucide-react";
+import { Bell, LogOut, Monitor } from "lucide-react";
 import { withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { bannerText } from "@/lib/core/billing";
@@ -9,6 +9,7 @@ import { logout } from "@/lib/auth/actions";
 import { LogoMark } from "@/components/ui";
 import { PanelOffline } from "@/components/yonetim/panel-offline";
 import { MobileNav, Nav } from "./Nav";
+import { ThemeToggle } from "@/components/admin/Preferences";
 
 export default async function YonetimLayout({ children }: { children: React.ReactNode }) {
   const a = await requireAdmin();
@@ -53,6 +54,13 @@ export default async function YonetimLayout({ children }: { children: React.Reac
           <div className="mt-5">{footer}</div>
         </MobileNav>
         {brand(false)}
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
+          <Link href="/yonetim/bildirimler" className="relative inline-flex size-9 items-center justify-center rounded-lg border border-line text-muted hover:text-ink hover:border-line-strong" aria-label="Bildirimler">
+            <Bell aria-hidden className="size-4" />
+            {bildirim > 0 && <span data-testid="bildirim-sayi" className="absolute -right-1 -top-1 rounded-full bg-bad px-1.5 text-[10px] font-semibold text-white">{bildirim}</span>}
+          </Link>
+        </div>
       </header>
       <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">
         {a.billing.warn && (

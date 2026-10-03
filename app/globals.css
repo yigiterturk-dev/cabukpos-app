@@ -95,3 +95,37 @@ button:focus-visible, a:focus-visible, [role=tab]:focus-visible { outline: 2px s
 .legal ol { list-style: decimal; }
 .legal li + li { margin-top: 0.25rem; }
 .legal a { color: var(--color-brand); text-decoration: underline; }
+
+/* #46: koyu tema — espresso gecesinde sıcak turuncu. Tercih localStorage "tema": acik | koyu | sistem (varsayılan). */
+html.dark {
+  color-scheme: dark;
+  --color-canvas: #17120d;
+  --color-surface: #1e1913;
+  --color-surface-2: #251f17;
+  --color-surface-3: #2c251b;
+  --color-line: #3a3225;
+  --color-line-strong: #4d4230;
+  --color-ink: #ece4d4;
+  --color-ink-2: #c7bba3;
+  --color-muted: #93866c;
+  --color-brand: #f2731f;
+  --color-brand-hover: #ff8433;
+  --color-brand-soft: #38230e;
+  --color-brand-ring: #6b3c14;
+  --color-ok: #3fc483;
+  --color-ok-soft: #14291c;
+  --color-warn: #e2a336;
+  --color-warn-soft: #2e2308;
+  --color-bad: #ff7263;
+  --color-bad-soft: #331410;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 12px 32px -8px rgb(0 0 0 / 0.6), 0 4px 12px -4px rgb(0 0 0 / 0.4);
+  --shadow-glow: 0 6px 16px -6px rgb(242 115 31 / 0.35);
+}
+html.dark body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+/* Print her zaman açık kâğıt */
+@media print {
+  html.dark { --color-canvas: #ffffff; --color-surface: #ffffff; --color-ink: #000000; --color-ink-2: #333333; --color-muted: #666666; }
+}

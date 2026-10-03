@@ -2,10 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  Armchair, Bell, Boxes, Building2, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu,
-  Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, type LucideIcon,
-} from "lucide-react";
+import { Armchair, Bell, Boxes, Building2, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, type LucideIcon, Settings } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
 const groups: { title: string; items: Item[] }[] = [
@@ -13,6 +10,7 @@ const groups: { title: string; items: Item[] }[] = [
     { href: "/yonetim", label: "Bugün", icon: LayoutDashboard, exact: true },
     { href: "/yonetim/bildirimler", label: "Bildirimler", icon: Bell },
     { href: "/yonetim/raporlar", label: "Raporlar", icon: ChartColumn },
+    { href: "/yonetim/tercihler", label: "Tercihler", icon: Settings },
   ] },
   { title: "Menü", items: [
     { href: "/yonetim/urunler", label: "Ürünler", icon: Package },
