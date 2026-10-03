@@ -48,6 +48,7 @@ export type LocalSale = {
   id: string; shiftId: string; staffId: string; staffName: string; seq: number; receiptNo: string; at: string;
   lines: { productId: string | null; name: string; unitPrice: number; vatRate: VatRate; qtyMilli: number; options?: LineOption[]; note?: string | null; discount?: number }[];
   payments: Payment[]; total: number; change: number; vat: VatLine[];
+  tip?: number; // #49: bahşiş — toplamın içinde
   tabId?: string; tableName?: string; // M5: masadan parça ödeme (M6: paket/platform başlığı)
   refund?: boolean; refundOf?: string; refundOfNo?: string; approvedBy?: string; // iade fişi
   fiscal?: { token: string; buyer: Buyer | null; number: string | null; ettn: string | null }; // M8 e-Arşiv

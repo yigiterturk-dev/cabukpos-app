@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Armchair, Bell, Boxes, Building2, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, type LucideIcon, Settings } from "lucide-react";
+import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, type LucideIcon, Settings } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
 const groups: { title: string; items: Item[] }[] = [
@@ -28,6 +28,7 @@ const groups: { title: string; items: Item[] }[] = [
   ] },
   { title: "Satış kanalları", items: [
     { href: "/yonetim/salon", label: "Salon", icon: Armchair, only: "restoran" },
+    { href: "/yonetim/rezervasyonlar", label: "Rezervasyon", icon: CalendarClock, only: "restoran" },
     { href: "/yonetim/istasyonlar", label: "İstasyonlar", icon: Flame, only: "restoran" },
     { href: "/yonetim/bolgeler", label: "Bölgeler", icon: MapPin, only: "restoran" },
     { href: "/yonetim/musteriler", label: "Müşteriler", icon: Contact, only: "restoran" },

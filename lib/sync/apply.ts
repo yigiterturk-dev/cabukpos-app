@@ -175,7 +175,8 @@ async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checke
   const t = totals(c.lines);
   const receiptNo = await freeReceiptNo(tx, ctx, doc.receiptSeq, c.reasons);
   const at = clampAt(doc.at, c.reasons);
-  await tx.insert(schema.sales).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, receiptNo, total: t.total, change, vat: t.vat, createdAt: at, review: c.reasons.length ? c.reasons.join("; ") : null, ...extra });
+  const tip = doc.kind === "sale" ? doc.tip ?? 0 : 0; // #49: bahşiş toplamın içinde
+  await tx.insert(schema.sales).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, receiptNo, total: t.total + tip, tip, change, vat: t.vat, createdAt: at, review: c.reasons.length ? c.reasons.join("; ") : null, ...extra });
   const r = await recipeData(tx, c.lines);
   const recLines = c.lines.map((l) => ({ productId: l.known ? l.productId : null, qtyMilli: l.qtyMilli, options: l.options }));
   await tx.insert(schema.saleLines).values(c.lines.map((l, i) => ({ tenantId: ctx.tenantId, saleId: doc.id, productId: l.known ? l.productId : null, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli, total: lineTotal(l), options: l.options ?? null, note: l.note ?? null, discount: l.discount ?? 0, cost: lineCost(recLines[i], r.byProduct, r.byOption, r.costOf) })));
@@ -199,7 +200,8 @@ async function applySale(tx: Tx, ctx: DeviceCtx, doc: SaleDoc): Promise<string |
   const c = await precheck(tx, ctx, doc, state?.kind ?? null);
   if (c === null || typeof c === "string") return c;
   const total = totals(c.lines).total;
-  const s = settle(total, doc.payments);
+  const tip = doc.tip ?? 0;
+  const s = settle(total + tip, doc.payments);
   if (!s.ok) c.reasons.push(`ödeme: ${s.error}`);
   if (tab) {
     // Masadan parça ödeme: adisyonda kalandan fazlası (çift ödeme, çevrimdışı çakışma) → yine yazılır, incelenir.
@@ -243,7 +245,7 @@ async function applyTab(tx: Tx, ctx: DeviceCtx, doc: TabDoc): Promise<string | n
   const reasons: string[] = [];
   const ev = doc.ev;
   const state = foldTabs(await tabEventsOf(tx, doc.tabId)).get(doc.tabId);
-  if (state?.closed && ["add", "send", "comp", "discount", "move"].includes(ev.type)) reasons.push("kapanmış adisyona olay");
+  if (state?.closed && ["add", "send", "comp", "discount", "move", "merge"].includes(ev.type)) reasons.push("kapanmış adisyona olay");
   const kind = state?.kind ?? (ev.type === "open" ? (ev.kind ?? "masa") : "masa");
   if (ev.type === "add") {
     if (!ev.productId) { if (kind === "masa") reasons.push(`serbest satır: ${ev.name}`); }
@@ -261,6 +263,16 @@ async function applyTab(tx: Tx, ctx: DeviceCtx, doc: TabDoc): Promise<string | n
     if (!s) return "Kurye bulunamadı.";
   }
   if (ev.type === "order") await upsertCustomer(tx, ctx.tenantId, ev);
+  // #49: masa birleştirme — kaynak açık, ödemesiz ve aynı cihazın kiracısında olmalı; hedef olayıyla birlikte
+  // kaynak adisyona "merge_away" da aynı işlemde yazılır (satışlar tek olayla taşınır, kaynak kapanır).
+  let mergeSource: ReturnType<typeof foldTabs> extends Map<string, infer S> ? S | undefined : never;
+  if (ev.type === "merge") {
+    mergeSource = foldTabs(await tabEventsOf(tx, ev.fromTabId)).get(ev.fromTabId);
+    if (!mergeSource) reasons.push("birleştirilecek adisyon bulunamadı");
+    else if (mergeSource.closed) reasons.push("kapanmış adisyon birleştirilemez");
+    else if (mergeSource.paid > 0 || mergeSource.lines.some((l) => l.paidMilli > 0)) reasons.push("ödemesi başlamış adisyon birleştirilemez");
+    else if (!ev.lines.length) reasons.push("taşınacak satır yok");
+  }
   const sentVoid = ev.type === "void" && Boolean(state?.lines.find((l) => l.lineId === ev.lineId)?.sent);
   const guarded = NEEDS_MANAGER.has(ev.type) || sentVoid;
   if (guarded) {
@@ -271,6 +283,11 @@ async function applyTab(tx: Tx, ctx: DeviceCtx, doc: TabDoc): Promise<string | n
   }
   const at = clampAt(doc.at, reasons);
   await tx.insert(E).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, tabId: doc.tabId, tableId: doc.tableId, deviceId: ctx.deviceId, staffId: doc.staffId, approvedBy: doc.approvedBy, at, type: ev.type, payload: ev, review: reasons.length ? reasons.join("; ") : null });
+  if (ev.type === "merge" && !reasons.length) {
+    const { randomUUID } = await import("node:crypto");
+    await tx.insert(E).values({ id: randomUUID(), tenantId: ctx.tenantId, storeId: ctx.storeId, tabId: ev.fromTabId, tableId: mergeSource?.tableId ?? null, deviceId: ctx.deviceId, staffId: doc.staffId, approvedBy: null, at, type: "merge_away", payload: { type: "merge_away", toTabId: doc.tabId }, review: null });
+    await audit(tx, ctx.tenantId, `staff:${doc.staffId}`, "masa.merge", { from: ev.fromTabId, to: doc.tabId, staffId: doc.staffId });
+  }
   if (guarded) await audit(tx, ctx.tenantId, `staff:${doc.staffId}`, `masa.${ev.type}`, { tabId: doc.tabId, tableId: doc.tableId, approvedBy: doc.approvedBy, ev, review: reasons.length ? reasons : undefined });
   return null;
 }

@@ -76,7 +76,7 @@ export type SaleCartLine = AnyLine & { options?: LineOption[]; note?: string | n
 /** Masadan parça ödeme: satış belgesi tab alanı taşır, yerelde "paid" olayı aynı işlemde yazılır. */
 export type SaleTab = { tabId: string; tableId: string | null; tableName: string; paidLines: PaidLine[]; kind?: Channel };
 
-export async function recordSaleLocal(staff: { id: string; name: string }, cart: SaleCartLine[], payments: Payment[], saleId: string, tab?: SaleTab, buyer: Buyer | null = null): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
+export async function recordSaleLocal(staff: { id: string; name: string }, cart: SaleCartLine[], payments: Payment[], saleId: string, tab?: SaleTab, buyer: Buyer | null = null, tip = 0): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
   const d = kasaDb();
   return d.transaction("rw", [d.meta, d.sales, d.outbox, d.tabEvents], async () => {
     const done = await d.sales.get(saleId);
@@ -85,7 +85,7 @@ export async function recordSaleLocal(staff: { id: string; name: string }, cart:
     if (!m.device || !m.shift) return { ok: false as const, error: "Açık vardiya yok." };
     if (!cart.length) return { ok: false as const, error: "Sepet boş." };
     const t = totals(cart);
-    const s = settle(t.total, payments);
+    const s = settle(t.total + tip, payments);
     if (!s.ok) return s;
     const seq = m.nextSeq;
     const at = new Date().toISOString();
@@ -96,10 +96,10 @@ export async function recordSaleLocal(staff: { id: string; name: string }, cart:
     // M8: kanal e-Arşiv ya da "Fatura" istendiyse token şimdi üretilir → çevrimdışı fişe de bağlantı basılır.
     const earsiv = docModeFor(tab ? (tab.kind ?? "masa") : "kasa", m.catalog.fiscal?.modes, !!buyer) === "earsiv";
     const fiscal = earsiv ? { token: newFiscalToken(), buyer } : null;
-    const sale: LocalSale = { id: saleId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines, payments: s.payments, total: t.total, change: s.change, vat: t.vat, ...(tab ? { tabId: tab.tabId, tableName: tab.tableName } : {}), ...(fiscal ? { fiscal: { ...fiscal, number: null, ettn: null } } : {}) };
+    const sale: LocalSale = { id: saleId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines, payments: s.payments, total: t.total + tip, ...(tip ? { tip } : {}), change: s.change, vat: t.vat, ...(tab ? { tabId: tab.tabId, tableName: tab.tableName } : {}), ...(fiscal ? { fiscal: { ...fiscal, number: null, ettn: null } } : {}) };
     await d.sales.add(sale);
     const tabField = tab ? { tab: { tabId: tab.tabId, tableId: tab.tableId, paidLines: tab.paidLines } } : {};
-    await enqueue({ kind: "sale", id: saleId, shiftId: m.shift.id, staffId: staff.id, receiptSeq: seq, at, lines, payments: s.payments, ...tabField, ...(fiscal ? { fiscal } : {}) });
+    await enqueue({ kind: "sale", id: saleId, shiftId: m.shift.id, staffId: staff.id, receiptSeq: seq, at, lines, payments: s.payments, ...(tip ? { tip } : {}), ...tabField, ...(fiscal ? { fiscal } : {}) });
     if (tab) await d.tabEvents.put({ id: saleId, tabId: tab.tabId, tableId: tab.tableId, at, staffId: staff.id, approvedBy: null, seq: null, ev: { type: "paid", saleId, lines: tab.paidLines, amount: t.total } });
     await d.meta.put({ ...m, nextSeq: seq + 1 });
     return { ok: true as const, sale };

@@ -29,6 +29,12 @@ export const tabEv = z.discriminatedUnion("type", [
     type: z.literal("add"), lineId: uuid, productId: uuid.nullable(), name: z.string().min(1).max(120), unitPrice: kurus, vatRate,
     qtyMilli: z.number().int().min(1).max(1_000_000), options: saleLineDoc.shape.options.unwrap(), note: z.string().max(200).nullable(), stationId: uuid.nullable(),
   }),
+  // #49: masa birleştirme — hedefe satır kopyaları gelir; kaynak ayrıca merge_away alır (sunucu aynı işlemde ekler).
+  z.object({ type: z.literal("merge"), fromTabId: uuid, lines: z.array(z.object({
+    lineId: uuid, productId: uuid.nullable(), name: z.string().min(1).max(120), unitPrice: kurus, vatRate,
+    qtyMilli: z.number().int().min(1).max(1_000_000), options: saleLineDoc.shape.options.unwrap(), note: z.string().max(200).nullable(), stationId: uuid.nullable(),
+  })).min(1).max(500) }),
+  z.object({ type: z.literal("merge_away"), toTabId: uuid }),
   z.object({ type: z.literal("void"), lineId: uuid, reason }),
   z.object({ type: z.literal("send"), ticketId: uuid, lineIds: z.array(uuid).min(1).max(200), stationId: uuid.nullable() }),
   z.object({ type: z.literal("move"), toTableId: uuid }),
@@ -67,6 +73,7 @@ export const syncDoc = z.discriminatedUnion("kind", [
     at,
     lines: z.array(saleLineDoc).min(1).max(500),
     payments: z.array(z.object({ method: payMethod, amount: kurus.min(1) })).min(1).max(10),
+    tip: kurus.min(0).max(1_000_000).optional(), // #49: bahşiş — toplama eklenir, personele yazılır
     // M5: masa adisyonundan parça ödeme
     tab: z.object({ tabId: uuid, tableId: uuid.nullable(), paidLines: z.array(paidLine).min(1).max(500) }).optional(),
     // M8: e-Arşiv — token satış anında istemcide üretilir (çevrimdışı fişe de basılır); buyer = kasada "Fatura" isteği

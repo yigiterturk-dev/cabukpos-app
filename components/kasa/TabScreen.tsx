@@ -5,7 +5,7 @@ import { useState } from "react";
 import { formatTL, parseTL } from "@/lib/core/money";
 import { optionsText, validateOptions, type OptionGroup } from "@/lib/core/options";
 import { qtyText } from "@/lib/core/receipt";
-import { lineGross, openTabsByTable, type TabLine, type TabState } from "@/lib/core/tab";
+import { lineGross, mergeCandidates, mergeableLines, openTabsByTable, type TabLine, type TabState } from "@/lib/core/tab";
 import { sendByStation } from "@/lib/core/platform";
 import { FEE_NAME, formatPhone, intentLabel, zoneCheck } from "@/lib/core/delivery";
 import type { NewTabEvent } from "@/lib/offline/tabs";
@@ -117,7 +117,8 @@ type Dialog =
   | { k: "line"; line: TabLine }
   | { k: "approve"; title: string; discount?: boolean; run: (approvedBy: string | null, reason: string, d?: { percent: number | null; amount: number | null }) => NewTabEvent[] }
   | { k: "note"; line: TabLine }
-  | { k: "move" };
+  | { k: "move" }
+  | { k: "merge" };
 
 /** table null → paket/platform adisyonu (M6): taşı/hesap iste yok, sipariş bilgisi üstte, ilk gönderimde paket fişi (onFirstSend). */
 export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, canPay, add, now, onBill, onBack, onFirstSend }: {
@@ -234,6 +235,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             {ready.length > 0 && <button type="button" onClick={() => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })))} className="press min-h-11 w-full rounded-[10px] bg-ok text-sm font-medium text-white shadow-card">Hazır — teslim edildi</button>}
             <div className="grid grid-cols-3 gap-2">
               {table && <button type="button" onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>}
+              {table && <button type="button" onClick={() => setDialog({ k: "merge" })} className={btn}>Birleştir</button>}
               <button type="button" onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by)] })} className={btn}>İndirim</button>
               {!canPay && table && <button type="button" disabled={tab.billRequested} onClick={() => void run([ev({ type: "bill" })])} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
               {canPay && <button type="button" disabled={tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli)} onClick={() => onBill(tab.id)} className={`${btn} font-medium`}>Hesap</button>}
@@ -282,6 +284,29 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             ))}
           </div>
           <button type="button" onClick={() => setDialog(null)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-4 w-full">Vazgeç</button>
+        </Modal>
+      )}
+      {dialog?.k === "merge" && table && tab && (
+        <Modal label="Masayı birleştir" onClose={() => setDialog(null)}>
+          <p className="mb-3 text-sm text-muted">Bu adisyona katılacak masayı seçin: ödemesi başlamamış, açık masa adisyonları birleştirilebilir. Seçilen masadaki tüm satırlar buraya taşınır, o masa boşalır.</p>
+          <div className="grid gap-2">
+            {mergeCandidates(allTabs, tabId).map((src) => {
+              const name = tables.find((t) => t.id === src.tableId)?.name ?? "Masa";
+              return (
+                <button key={src.id} type="button" disabled={busy}
+                  onClick={() => void run([
+                    ev({ type: "merge", fromTabId: src.id, lines: mergeableLines(src) }),
+                    { tabId: src.id, tableId: src.tableId, staffId: waiter.id, ev: { type: "merge_away", toTabId: tabId } },
+                  ]).then(onBack)}
+                  className={`${btn} justify-between`}>
+                  <span className="font-medium">{name}</span>
+                  <span className="tabular text-muted">{formatTL(src.total)} · {src.lines.filter((l) => !l.voided).length} satır</span>
+                </button>
+              );
+            })}
+            {mergeCandidates(allTabs, tabId).length === 0 && <p className="text-sm text-muted">Birleştirilecek açık adisyon yok.</p>}
+            <button type="button" onClick={() => setDialog(null)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-2 w-full">Vazgeç</button>
+          </div>
         </Modal>
       )}
     </div>

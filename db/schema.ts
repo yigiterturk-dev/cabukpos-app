@@ -195,6 +195,7 @@ export const sales = pgTable("sales", {
   channel: saleChannel("channel").notNull().default("kasa"),
   status: saleStatus("status").notNull().default("kapandi"),
   total: integer("total").notNull(),
+  tip: integer("tip").notNull().default(0), // #49: bahşiş — toplamın içinde müşteri öder, personele kalır
   change: integer("change").notNull().default(0),
   vat: jsonb("vat").notNull().$type<{ rate: number; gross: number; net: number; vat: number }[]>(),
   refundOf: uuid("refund_of"), // iade: asıl satış (FK yok; asıl satış henüz eşitlenmemiş olabilir)
@@ -796,3 +797,19 @@ export const integrationKeys = pgTable("integration_keys", {
   lastUsedAt: ts("last_used_at"),
   revokedAt: ts("revoked_at"),
 }, (t) => [index("integration_keys_tenant_idx").on(t.tenantId)]);
+
+// — #49: rezervasyon —
+export const reservationStatus = pgEnum("reservation_status", ["bekliyor", "onaylandi", "geldi", "gelmedi", "iptal"]);
+export const reservations = pgTable("reservations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  guests: integer("guests").notNull(),
+  at: ts("at").notNull(),
+  tableId: uuid("table_id").references(() => tables.id, { onDelete: "set null" }),
+  status: reservationStatus("status").notNull().default("bekliyor"),
+  note: text("note"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [index("reservations_tenant_idx").on(t.tenantId, t.at)]);

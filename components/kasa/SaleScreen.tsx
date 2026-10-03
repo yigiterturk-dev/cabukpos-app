@@ -15,8 +15,8 @@ import { categoryTone } from "@/lib/ui/categoryTone";
 import { quickCash } from "@/lib/ui/quickCash";
 
 export type PayResult = { ok: true; saleId: string; receiptNo: string; change: number } | { ok: false; error: string };
-export type OnPay = (saleId: string, payments: Payment[], buyer: Buyer | null) => Promise<PayResult>;
-export type OnSale = (saleId: string, payments: Payment[], cart: CartLine[], buyer: Buyer | null) => Promise<PayResult>;
+export type OnPay = (saleId: string, payments: Payment[], buyer: Buyer | null, tip: number) => Promise<PayResult>;
+export type OnSale = (saleId: string, payments: Payment[], cart: CartLine[], buyer: Buyer | null, tip: number) => Promise<PayResult>;
 export type PrintView = { state: "printing" | "ok" | "fail"; error?: string | null };
 export type ReadScale = () => Promise<{ grams: number; stable: boolean }>;
 
@@ -29,23 +29,26 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
   const [pending, start] = useTransition();
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [invoicing, setInvoicing] = useState(false);
+  const [tip, setTip] = useState<string>(""); // #49: bahşiş — toplama eklenir
 
+  const tipK = tip ? parseTL(tip) ?? 0 : 0;
+  const grand = total + tipK;
   const payments: Payment[] = [];
   const add = (method: Payment["method"], v: string | null) => { const k = v === null ? null : parseTL(v); if (k) payments.push({ method, amount: k }); };
   add("nakit", cash); add("kart", card); add("yemek_karti", meal);
-  const s = settle(total, payments);
+  const s = settle(grand, payments);
   const paid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const remaining = Math.max(0, total - paid);
-  const all = (m: "nakit" | "kart" | "yemek_karti") => { const v = formatTL(total).replace(" ₺", ""); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
+  const remaining = Math.max(0, grand - paid);
+  const all = (m: "nakit" | "kart" | "yemek_karti") => { const v = formatTL(grand).replace(" ₺", ""); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
   const other = (card === null ? 0 : parseTL(card) ?? 0) + (meal === null ? 0 : parseTL(meal) ?? 0);
-  const due = Math.max(0, total - other); // nakitle kapanacak kalan
+  const due = Math.max(0, grand - other); // nakitle kapanacak kalan
   const setCashK = (k: number) => setCash(formatTL(k).replace(" ₺", ""));
-  const full = formatTL(total).replace(" ₺", "");
+  const full = formatTL(grand).replace(" ₺", "");
   const mode = cash === full && card === null && meal === null ? "nakit" : !cash && card === full && meal === null ? "kart" : !cash && card === null && meal === full ? "yemek_karti" : null;
   const submit = () => start(async () => {
     setError(null);
     try {
-      const r = await onPay(saleId, payments, buyer);
+      const r = await onPay(saleId, payments, buyer, tipK);
       if (r.ok) onDone(r); else setError(r.error);
     } catch {
       setError("Satış kaydedilemedi. Tekrar deneyin; satış iki kez kaydedilmez.");
@@ -59,7 +62,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
   ];
   const amount = "tabular h-14 flex-1 rounded-xl border border-line bg-white px-4 text-right text-2xl font-semibold outline-none transition-[border-color,box-shadow] hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
   return (
-    <Dialog label="Ödeme" title="Ödeme" aside={<span className="tabular text-3xl font-bold tracking-tight">{formatTL(total)}</span>} onClose={onClose}
+    <Dialog label="Ödeme" title="Ödeme" aside={<span className="tabular text-3xl font-bold tracking-tight">{formatTL(grand)}</span>} onClose={onClose}
       footer={<>
         <Button variant="secondary" size="lg" onClick={onClose} className="flex-1">Vazgeç</Button>
         <Button size="lg" disabled={!s.ok || pending || invoicing} onClick={submit} className="flex-[2]">{pending ? "Kaydediliyor…" : "Satışı tamamla"}</Button>
@@ -74,6 +77,16 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
       </div>
       <div className="mt-5 space-y-3">
         <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Alınan nakit</span><input name="amount-nakit" inputMode="decimal" value={cash} onChange={(e) => setCash(e.target.value)} placeholder="0,00" className={amount} /></label>
+        <div className="flex items-center gap-3">
+          <span className="w-28 text-sm font-medium text-ink-2">Bahşiş</span>
+          <input name="amount-bahsis" inputMode="decimal" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="0,00" aria-label="Bahşiş tutarı" className={amount} />
+          <div className="flex gap-1">
+            {[10, 15].map((p) => (
+              <Button key={p} variant="secondary" size="sm" type="button" onClick={() => setTip(formatTL(Math.round((total * p) / 100)).replace(" ₺", ""))}>{`%${p}`}</Button>
+            ))}
+            {tip && <IconButton label="Bahşişi kaldır" onClick={() => setTip("")}><X aria-hidden className="size-5" /></IconButton>}
+          </div>
+        </div>
         {due > 0 && (
           <div className="flex flex-wrap gap-2 pl-[7.75rem]">
             <Button variant="secondary" size="sm" onClick={() => setCashK(due)}>Tam tutar</Button>
@@ -317,7 +330,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
         </div>
       </aside>
       {weigh && <WeighDialog product={weigh} scale={scale} onClose={() => { setWeigh(null); refocus(); }} onOk={(g) => { add(weigh, g); setWeigh(null); refocus(); }} />}
-      {paying && <PayDialog total={t.total} onPay={(id, p, b) => onPay(id, p, cart, b)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setCart([]); setLast(r); refocus(); }} />}
+      {paying && <PayDialog total={t.total} onPay={(id, p, b, tip) => onPay(id, p, cart, b, tip)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setCart([]); setLast(r); refocus(); }} />}
     </div>
   );
 }

@@ -14,6 +14,8 @@ export type OrderInfo = {
   source: { platform: string; externalId: string; deadline: string | null; raw?: unknown } | null;
 };
 export type PaidLine = { lineId: string; qtyMilli: number; discount: Kurus };
+/** Birleştirmede taşınan satır: "add" olayının taşınabilir kısmı. */
+export type MergeLine = { lineId: string; productId: string | null; name: string; unitPrice: Kurus; vatRate: VatRate; qtyMilli: number; options: LineOption[]; note: string | null; stationId: string | null };
 
 export type TabEv =
   | { type: "open"; guests: number; kind?: TabKind }
@@ -28,6 +30,9 @@ export type TabEv =
   | { type: "printed"; ticketId: string }
   | { type: "close"; reason: string } // kalan 0 iken elle kapatma (tamamı ikram)
   | { type: "paid"; saleId: string; lines: PaidLine[]; amount: Kurus }
+  // #49: masa birleştirme — hedef adisyona "merge" (satır kopyalarıyla), kaynağa "merge_away"
+  | { type: "merge"; fromTabId: string; lines: MergeLine[] }
+  | { type: "merge_away"; toTabId: string }
   // M6 paket/platform
   | ({ type: "order" } & OrderInfo)
   | { type: "accept"; prepMin: number }
@@ -49,13 +54,21 @@ export type Delivery = {
 export type TabState = {
   id: string; tableId: string | null; kind: TabKind; order: OrderInfo | null; delivery: Delivery; openedAt: string; lastAt: string; guests: number; staffId: string | null;
   lines: TabLine[]; tickets: Ticket[]; discount: { percent: number | null; amount: Kurus | null } | null;
-  billRequested: boolean; closeRequested: boolean; gross: Kurus; discountAmount: Kurus; total: Kurus; paid: Kurus; remaining: Kurus; closed: boolean; closedAt: string | null;
+  billRequested: boolean; closeRequested: boolean; mergedAway: boolean; gross: Kurus; discountAmount: Kurus; total: Kurus; paid: Kurus; remaining: Kurus; closed: boolean; closedAt: string | null;
 };
 
 const ORDER = (a: TabEvent, b: TabEvent) =>
   a.seq !== null && b.seq !== null ? a.seq - b.seq : a.seq !== null ? -1 : b.seq !== null ? 1 : a.at.localeCompare(b.at);
 
 export const lineGross = (l: { unitPrice: Kurus; qtyMilli: number }) => Math.round((l.unitPrice * l.qtyMilli) / 1000);
+
+/** Adisyondaki ödenmemiş canlı satırları birleştirme kopyasına çevirir. */
+export const mergeableLines = (t: TabState): MergeLine[] =>
+  t.lines.filter((l) => !l.voided && l.paidMilli === 0).map((l) => ({ lineId: l.lineId, productId: l.productId, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli, options: l.options, note: l.note, stationId: l.stationId }));
+
+/** Birleştirme adayı: açık, ödemesiz masa adisyonu (kendisi hariç). */
+export const mergeCandidates = (tabs: Map<string, TabState>, excludeTabId: string): TabState[] =>
+  [...tabs.values()].filter((t) => !t.closed && t.id !== excludeTabId && t.kind === "masa" && t.paid === 0 && t.tableId !== null);
 
 export function sortEvents(events: TabEvent[]): TabEvent[] {
   // Aynı kimlik iki kez (yerel + sunucu yankısı) → sunucudaki kalır.
@@ -69,7 +82,7 @@ export function foldTabs(events: TabEvent[]): Map<string, TabState> {
   for (const e of sortEvents(events)) {
     let t = tabs.get(e.tabId);
     if (!t) {
-      t = { id: e.tabId, tableId: e.tableId, kind: "masa", order: null, delivery: { courierId: null, acceptedAt: null, prepMin: null, rejected: null, cancelled: null, outAt: null, deliveredAt: null, method: null, handedOver: false }, openedAt: e.at, lastAt: e.at, guests: 0, staffId: e.staffId, lines: [], tickets: [], discount: null, billRequested: false, closeRequested: false, gross: 0, discountAmount: 0, total: 0, paid: 0, remaining: 0, closed: false, closedAt: null };
+      t = { id: e.tabId, tableId: e.tableId, kind: "masa", order: null, delivery: { courierId: null, acceptedAt: null, prepMin: null, rejected: null, cancelled: null, outAt: null, deliveredAt: null, method: null, handedOver: false }, openedAt: e.at, lastAt: e.at, guests: 0, staffId: e.staffId, lines: [], tickets: [], discount: null, billRequested: false, closeRequested: false, mergedAway: false, gross: 0, discountAmount: 0, total: 0, paid: 0, remaining: 0, closed: false, closedAt: null };
       tabs.set(e.tabId, t);
     }
     if (e.at > t.lastAt) t.lastAt = e.at;
@@ -89,6 +102,14 @@ export function foldTabs(events: TabEvent[]): Map<string, TabState> {
         break;
       }
       case "move": t.tableId = ev.toTableId; break;
+      case "merge":
+        for (const l of ev.lines) if (!t.lines.some((x) => x.lineId === l.lineId)) t.lines.push({ type: "add" as const, ...l, addedAt: e.at, staffId: e.staffId, sent: false, voided: false, comped: false, paidMilli: 0, paidDiscount: 0 });
+        break;
+      case "merge_away":
+        // Kaynak adisyon: ödenmemiş satırlar hedefe taşındı → boşalsa (satırsız dahil) kapanır.
+        for (const l of t.lines) if (!l.voided && l.paidMilli === 0) l.voided = true;
+        t.mergedAway = true;
+        break;
       case "discount": t.discount = ev.percent === null && ev.amount === null ? null : { percent: ev.percent, amount: ev.amount }; break;
       case "bill": t.billRequested = true; break;
       case "kitchen": if (ticket) { ticket.status = ev.status; if (ev.status === "hazir") ticket.readyAt = e.at; } break;
@@ -120,7 +141,7 @@ export function foldTabs(events: TabEvent[]): Map<string, TabState> {
     // Tamamı ikram olan adisyon kendiliğinden kapanmaz: masada sipariş sürebilir.
     const settled = live.every((l) => l.comped || l.paidMilli >= l.qtyMilli);
     const ended = Boolean(t.delivery.cancelled || t.delivery.rejected); // iptal/red: ödemesiz kapanır
-    t.closed = ended || (t.lines.length > 0 && (live.length === 0 || (settled && (t.paid > 0 || live.some((l) => l.paidMilli > 0) || t.closeRequested))));
+    t.closed = ended || t.mergedAway || (t.lines.length > 0 && (live.length === 0 || (settled && (t.paid > 0 || live.some((l) => l.paidMilli > 0) || t.closeRequested))));
     t.closedAt = t.closed ? (wasClosed ? t.closedAt : e.at) : null;
   }
   return tabs;

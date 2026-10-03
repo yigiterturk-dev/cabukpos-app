@@ -28,6 +28,7 @@ export type ReceiptSale = {
   receiptNo: string; at: string; staffName: string;
   lines: { productId: string | null; name: string; unitPrice: number; qtyMilli: number; options?: { name: string }[]; note?: string | null; discount?: number }[];
   payments: Payment[]; total: number; change: number; vat: VatLine[];
+  tip?: number; // #49: bahşiş (toplamın içinde)
   refund?: boolean; refundOfNo?: string; tableName?: string;
   fiscal?: ReceiptFiscal;
   okc?: OkcSaleData | null; // #18: ÖKC mali fiş künyesi (sunucudan gelir, yeniden basımda basılır)
@@ -74,6 +75,7 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
   p.rule();
   for (const v of sale.vat) p.cols2(`KDV %${v.rate}  matrah ${formatTL(v.net)}`, formatTL(v.vat));
   p.rule().bold(true).size(2).cols2(sale.refund ? "İADE" : "TOPLAM", formatTL(sale.total)).size(1).bold(false);
+  if (sale.tip) p.cols2("Bahşiş (dahil)", formatTL(sale.tip)); // #49: müşteri öder, personele kalır
   for (const x of sale.payments) p.cols2(sale.refund ? `İade (${payLabel(x.method)})` : payLabel(x.method), formatTL(x.amount));
   if (sale.change > 0) p.cols2("Para üstü", formatTL(sale.change));
   const f = sale.fiscal && o.appUrl ? fiscalNotes(sale.fiscal, o.appUrl) : null;

@@ -461,8 +461,8 @@ export function KasaApp() {
     return { ok: true as const, saleId: sale.id, receiptNo: sale.receiptNo, change: sale.change };
   }, [trackPrint]);
 
-  const onSale: OnSale = useCallback(async (saleId, payments, cart, buyer) => {
-    const r = await recordSaleLocal(cashier!, cart, payments, saleId, undefined, buyer);
+  const onSale: OnSale = useCallback(async (saleId, payments, cart, buyer, tip) => {
+    const r = await recordSaleLocal(cashier!, cart, payments, saleId, undefined, buyer, tip);
     return r.ok ? afterSale(r.sale) : r;
   }, [cashier, afterSale]);
 
