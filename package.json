@@ -20,6 +20,7 @@
     "e2e:iade": "node --env-file-if-exists=.env.local e2e/iade.mjs",
     "e2e:m9b": "node --env-file-if-exists=.env.local e2e/m9b.mjs",
     "e2e:m9c": "node --env-file-if-exists=.env.local e2e/m9c.mjs",
+    "e2e:m49": "node --env-file-if-exists=.env.local e2e/m49.mjs",
     "e2e:critical": "npm run e2e:m8 && npm run e2e:m9a && npm run e2e:iade && npm run e2e:m9b && npm run e2e:m9c",
     "db:backup": "node --env-file-if-exists=.env.local scripts/backup-db.mjs",
     "db:backup:verify": "node scripts/verify-backup.mjs",
