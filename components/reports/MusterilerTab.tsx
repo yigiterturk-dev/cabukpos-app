@@ -28,13 +28,15 @@ export function MusterilerTab({ data }: { data: RfmData }) {
         <h2 className="mb-3 font-semibold">Kohort: ilk sipariş ayına göre tekrar sipariş</h2>
         <p className="mb-3 text-xs text-muted">Hücre = o ayda sipariş veren müşteri oranı. İlk ay %100; sonraki aylar düşüş retention kaybıdır.</p>
         <table className="w-full text-xs">
-          <thead>
-            <tr className="text-left text-muted">
-              <th className="py-1.5 pr-3 font-medium">Kohort</th>
-              <th className="py-1.5 pr-3 font-medium">Boy</th>
-              {cohorts[0]?.cells.map((c) => <th key={c.offset} className="py-1.5 px-2 text-center font-medium">+{c.offset} ay</th>)}
-            </tr>
-          </thead>
+          {cohorts.length > 0 && (
+            <thead>
+              <tr className="text-left text-muted">
+                <th className="py-1.5 pr-3 font-medium">Kohort</th>
+                <th className="py-1.5 pr-3 font-medium">Boy</th>
+                {cohorts[0]?.cells.map((c) => <th key={c.offset} className="py-1.5 px-2 text-center font-medium">+{c.offset} ay</th>)}
+              </tr>
+            </thead>
+          )}
           <tbody>
             {cohorts.map((row) => (
               <tr key={row.month} className="border-t border-line">

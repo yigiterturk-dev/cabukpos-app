@@ -252,3 +252,7 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - 36 dosyada sabit açık renkler token'lara çevrildi (`bg-white`→`bg-surface`, `bg/text-stone-*`→surface/ink/muted, `divide/border-stone-*`→line). Yazdırma/belge sayfaları (A4 /f, fatura, konsolide, etiket) bilinçli beyaz bırakıldı; `bg-white/10` (marka paneli) ve `bg-stone-900/40` (dialog perdesi) bilinçli.
 - Görsel durum: panel/mobil/giriş/kasa/ödeme ekranları tasarım diline uygun (gruplu ikonlu menü, stat kartlar, kategori şeridi, ödeme diyaloğu hızlı nakit + bahşiş). Bilinen küçük notlar: girişte 2FA alanı herkesin formunda (isteğe çekilebilir), boş kohort tablosu başlığı sadeleşebilir — sonraki tasarım turu.
 - 327/327 test; koyu tema probe ile token düzeyi + ekran düzeyi doğrulandı.
+
+## Sertifika: tam e2e maratonu — son build'de 14/14 (2026-10-05)
+- Koyu tema düzeltmesi (36 dosya) + #40/#43/#11 sonrası tam regresyon: **m1 m2 m3 m4 m5 m6 m7 m8 m9a m9b m9c iade lan sifre — hepsi OK** (son build, 327/327 unit).
+- UI denetimi notları kapandı: girişte 2FA alanı katlanabilir ("İki adımlı doğrulama kodu (varsa)"); boş kohort tablosunda başlık gizlenir.
