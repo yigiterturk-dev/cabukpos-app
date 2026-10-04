@@ -39,6 +39,8 @@ export const tenants = pgTable("tenants", {
   address: text("address"),
   trialEndsAt: ts("trial_ends_at").notNull().default(sql`now() + interval '14 days'`), // M9b: mevcut işletmeler yayından 14 gün
   paidUntil: ts("paid_until"),
+  cardToken: text("card_token"), // #11: saklanan kart jetonu (AES-256-GCM şifreli, card-vault)
+  cardMark: text("card_mark"), // ör. "Visa •••• 4242" — ham kart verisi ASLA tutulmaz
   billingRemindedEnd: ts("billing_reminded_end"), // hatırlatma gönderilen bitiş (aynı bitişe bir kez)
   createdAt: ts("created_at").notNull().defaultNow(),
 });

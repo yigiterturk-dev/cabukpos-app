@@ -1,6 +1,7 @@
 // PayTR "Bildirim URL" — ödeme sonucu buraya gelir. Yanıt düz "OK" olmalı; yoksa PayTR tekrar dener.
 import { paymentIdOf, paytrKeys, callbackValid as verifyAuth } from "@/lib/billing/paytr";
 import { completePayment } from "@/lib/billing/service";
+import { saveCardToken } from "@/lib/billing/renewal";
 import { getDb, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { clientIp, hit } from "@/lib/ratelimit";
@@ -21,5 +22,8 @@ export async function POST(req: Request) {
   const ok = b.status === "success" && paid === p.amount;
   if (b.status === "success" && !ok) console.error("[paytr] tutar uyuşmuyor", id, paid, p.amount);
   await completePayment(id, ok, `paytr-${b.merchant_oid}${ok ? "" : `-${String(f.get("failed_reason_code") ?? "tutar")}`}`);
+  // #11: kart saklama açıksa bildirim card_token taşır → şifreli kaydet (sonraki dönem otomatik yenileme).
+  const cardToken = String(f.get("card_token") ?? "");
+  if (ok && cardToken) await saveCardToken(p.tenantId, cardToken, String(f.get("card_type") ?? "") || null);
   return new Response("OK");
 }

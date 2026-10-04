@@ -81,7 +81,7 @@ Kural: rapordan kendi alanına düşen ilk açık `[ ]`'i al → yap → commit 
 
 - **Ajan-1 sıradaki:** #30 webhook URL kimliklendirme — [x] `1dbfe47` (`webhookToken` unique, `/api/platform/<p>/webhook?t=`, panelde jetonlu adres; eski `?c=` geçerliliği korumada)
 - **Müdür kuyruğu boş** (#40 kohort/RFM → Raporlar→Müşteriler; #43 aylık konsolide rapor → Raporlar→Özet bağlantısı + e-posta)
-- **Lead sıradaki:** #11+#12 PayTR otomatik yenileme + dunning → #1 2FA → #4 e-posta doğrulama
+- **Lead sıradaki:** #1 2FA → #4 e-posta doğrulama (#11 kartla otomatik yenileme + #12 dunning tamamlandı; PayTR Direct API uç doğrulaması canlı anahtarla insan işi)
 - **İnsan bekleyen:** PayTR canlı anahtar + **kart saklama (Direct API) sözleşmesi** (#11 için), e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi
 - **Müdür notu (#11 bağımlılığı):** `tenants` tablosuna `cardToken text` + `cardMark text` kolonu ekle (#11 otomatik yenileme bunu bekliyor); Lead sonra cron'da tokenli yenileme yazar
 

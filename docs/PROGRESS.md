@@ -238,3 +238,10 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - E-posta türü "aylik": geçen ayın 1'i–sonu (IST); cron ayın 1'i gönderir (`report_due_tenants` artık `monthly`/`last_monthly_at` dalı). İçerik: özet + ödemeler + kanallar + çok satanlar + personel top 5 + kritik stok + müşteri özeti (#40'tan).
 - Yazdırılabilir sayfa `/yonetim/raporlar/konsolide?ay=YYYY-MM` (A4, Yazdır/PDF) — e-posta ile aynı saf içerik (`konsolideData` → `digestContent("aylik")`). Raporlar→Özet'te bağlantı + ReportMailCard'a "Aylık konsolide" onay kutusu.
 - Şema: `report_settings.monthly + last_monthly_at` (db:push uygulandı, prod'da 1. adım). Test: `tests/konsolide.test.ts` — **323/323**; e2e m9a + m8 yeşil.
+
+## #11 — Kartla otomatik yenileme (2026-10-04)
+- `tenants.cardToken` (AES-256-GCM şifreli, `card-vault`; anahtar AUTH_SECRET'ten türetilir) + `cardMark` ("Visa •••• 4242" gösterimi; ham kart verisi tutulmaz).
+- `BillingProvider.chargeStored?` — fake: her zaman ok (yerel); paytr: Direct API çekim (`PAYTR_DIRECT_URL`, varsayılan paytr.com/odeme/api/odeme; ⚠️ uç/env canlı hesapta doğrulanacak — insan işi).
+- PayTR bildirimi `card_token` taşıyorsa (kart saklama) şifreli kaydedilir; Abonelik sayfasında kayıtlı kart gösterimi + silme.
+- `renewDue`: vade ≤3 gün + kartı olan kiracı → aylik dönem için çekim → `completePayment` (başarılıysa dönem uzar; e-Arşiv faturası mevcut cron akışından çıkar). Başarısızsa 24 saat içinde tekrar denenmez; dunning aşamaları (gecikme/kilit) zaten devrede. Cron `/api/cron/billing` yanıtı `renew` alanı taşır.
+- Test: `tests/renewal-db.test.ts` — **327/327**; e2e m9b yeşil. Şema: tenants 2 kolon (db:push ✓).

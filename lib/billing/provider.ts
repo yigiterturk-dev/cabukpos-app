@@ -7,12 +7,15 @@ export interface BillingProvider {
   name: string;
   test: boolean;
   start(p: CheckoutInput): Promise<{ redirectUrl: string }>;
+  /** #11: saklanan kart jetonuyla ücret çekme (otomatik yenileme). Desteklemeyen sağlayıcı tanımsız bırakır. */
+  chargeStored?(cardToken: string, amount: number, paymentId: string): Promise<{ ok: boolean; error?: string }>;
 }
 
 export const fakeBilling: BillingProvider = {
   name: "fake",
   test: true,
   start: async (p) => ({ redirectUrl: `/yonetim/abonelik/test-odeme/${p.paymentId}` }),
+  chargeStored: async () => ({ ok: true }), // yerel: ücretsiz uzatma (yalnız env BILLING_PROVIDER=fake ile)
 };
 
 /** BILLING_PROVIDER boşsa (ya da paytr anahtarları eksikse) ödeme kapalı (canlıda sahte sağlayıcı ücretsiz uzatma olurdu). */

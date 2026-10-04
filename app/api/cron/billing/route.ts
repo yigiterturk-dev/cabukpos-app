@@ -4,6 +4,7 @@ import { getDb, schema } from "@/db";
 import { billingInfo, reminderDue } from "@/lib/core/billing";
 import { dunningIcerik, dunningStage } from "@/lib/billing/dunning";
 import { dueSubscriptionInvoices, issueSubscriptionInvoice } from "@/lib/billing/invoice";
+import { renewDue } from "@/lib/billing/renewal";
 import { hit } from "@/lib/ratelimit";
 import { appUrl, esc, mailReady, sendEmail } from "@/lib/mail";
 
@@ -17,7 +18,9 @@ export async function GET(req: Request) {
   const invs = await dueSubscriptionInvoices();
   let invoices = 0;
   for (const i of invs) if (await issueSubscriptionInvoice(i.id)) invoices++;
-  if (!mailReady()) return Response.json({ invoices, skipped: "mail" });
+  // #11: saklanan kartla otomatik yenileme (vade ≤3 gün; sağlayıcı desteklemiyorsa boş döner).
+  const renew = await renewDue();
+  if (!mailReady()) return Response.json({ invoices, renew, skipped: "mail" });
   const T = schema.tenants, U = schema.users;
   const rows = await getDb().select({ id: T.id, name: T.name, trialEndsAt: T.trialEndsAt, paidUntil: T.paidUntil, remindedEnd: T.billingRemindedEnd }).from(T);
   let sent = 0;

@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Fragment } from "react";
 import { requireAdmin } from "@/lib/auth/session";
+import { getDb, schema } from "@/db";
+import { eq } from "drizzle-orm";
 import { formatTL } from "@/lib/core/money";
 import { PERIODS, STATE_LABEL, planBreakdown, refundWindowOk } from "@/lib/core/billing";
 import { unitPrices, salesContact } from "@/lib/billing/plans";
 import { getBillingProvider } from "@/lib/billing/provider";
 import { paymentsOf, salesSincePayment, tenantUnits } from "@/lib/billing/service";
+import { removeStoredCard } from "@/lib/billing/renewal";
 import { approveRefundAction, requestRefundAction, startCheckout, withdrawRefundAction } from "@/lib/billing/actions";
 import { Badge, Card, Field, Input, PageHeader } from "@/components/ui";
 
@@ -19,11 +22,22 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const b = a.billing, provider = getBillingProvider(), contact = salesContact();
   const pays = await paymentsOf(a.tenantId), units = await tenantUnits(a.tenantId);
+  const [card] = await getDb().select({ cardMark: schema.tenants.cardMark }).from(schema.tenants).where(eq(schema.tenants.id, a.tenantId));
   const sel = pays.find(({ p }) => p.id === sp.id);
   const hint = sel?.p.paidAt ? refundWindowOk(sel.p.paidAt, new Date(), await salesSincePayment(a.tenantId, sel.p.paidAt)) : null;
   return (
     <>
       <PageHeader title="Abonelik" desc="ÇabukPOS aboneliği. Abonelik bitse de kasa satışa devam eder; yalnız yönetim salt okunur olur." />
+      {card?.cardMark && (
+        <Card className="mb-4 p-4 text-sm" data-testid="saved-card">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-medium">Kayıtlı kart:</span>
+            <span className="tabular text-muted">{card.cardMark}</span>
+            <span className="text-xs text-muted">Vade 3 gün kalınca bu kartla otomatik yenilenir.</span>
+            <form action={removeStoredCard.bind(null, a.tenantId)} className="ml-auto"><button className="text-sm text-bad hover:underline">Kayıtlı kartı sil</button></form>
+          </div>
+        </Card>
+      )}
       {sp.kilit && b.locked && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Abonelik sona erdiği için değişiklik yapılamıyor. Ödeme yapınca yönetim hemen açılır.</Card>}
       {sp.sonuc === "ok" && <Card className="mb-4 border-emerald-200 bg-ok-soft p-4 text-sm text-ok" role="status">Ödeme alındı, teşekkürler.</Card>}
       {sp.sonuc === "isleniyor" && <Card className="mb-4 border-amber-200 bg-warn-soft p-4 text-sm text-warn" role="status">Ödeme işleniyor; banka onayı gelince abonelik birkaç saniye içinde uzar. Sayfayı yenileyebilirsin.</Card>}

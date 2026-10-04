@@ -56,6 +56,26 @@ export function callbackValid(k: PaytrKeys, b: { merchant_oid: string; status: s
   return want.length === got.length && timingSafeEqual(want, got);
 }
 
+/**
+ * #11: saklanan kart jetonuyla doğrudan çekim (PayTR Direct API / kart saklama).
+ * ⚠️ Uç/env canlı PayTR hesabında doğrulanacak (insan işi); anahtar eksikse None döner ve yenileme atlanır.
+ */
+export async function paytrChargeStored(k: PaytrKeys, cardToken: string, amount: number, paymentId: string): Promise<{ ok: boolean; error?: string }> {
+  const base = (process.env.PAYTR_DIRECT_URL ?? "https://www.paytr.com/odeme/api/odeme").replace(/\/$/, "");
+  const f = {
+    merchant_id: k.merchantId,
+    payment_amount: String(amount),
+    merchant_oid: oidOf(paymentId),
+    card_token: cardToken,
+    test_mode: k.testMode ? "1" : "0",
+  };
+  const hashStr = f.merchant_id + f.merchant_oid + f.payment_amount + f.card_token + f.test_mode;
+  const res = await fetch(base, { method: "POST", body: new URLSearchParams({ ...f, paytr_token: hmac(k.key, hashStr + k.salt) }) });
+  const j = (await res.json().catch(() => null)) as { status?: string; reason?: string; err_msg?: string } | null;
+  if (j?.status === "success") return { ok: true };
+  return { ok: false, error: j?.err_msg ?? j?.reason ?? `HTTP ${res.status}` };
+}
+
 export function paytrBilling(k: PaytrKeys): BillingProvider {
   return {
     name: "paytr",
@@ -67,5 +87,6 @@ export function paytrBilling(k: PaytrKeys): BillingProvider {
       if (j?.status !== "success" || !j.token) throw new Error(`PayTR token: ${j?.reason ?? res.status}`);
       return { redirectUrl: `/yonetim/abonelik/odeme/${p.paymentId}?t=${encodeURIComponent(j.token)}` };
     },
+    chargeStored: (cardToken, amount, paymentId) => paytrChargeStored(k, cardToken, amount, paymentId),
   };
 }
