@@ -80,7 +80,7 @@ Tam açık listesi: **`docs/ACIK-RAPORU.md`** (61 madde, P0→P2 sıralı).
 Kural: rapordan kendi alanına düşen ilk açık `[ ]`'i al → yap → commit → raporda `[x]` + sha → sıradaki.
 
 - **Ajan-1 sıradaki:** #30 webhook URL kimliklendirme — [x] `1dbfe47` (`webhookToken` unique, `/api/platform/<p>/webhook?t=`, panelde jetonlu adres; eski `?c=` geçerliliği korumada)
-- **Müdür sıradaki:** #43 konsolide rapor (#40 kohort/RFM tamamlandı — Raporlar→Müşteriler)
+- **Müdür kuyruğu boş** (#40 kohort/RFM → Raporlar→Müşteriler; #43 aylık konsolide rapor → Raporlar→Özet bağlantısı + e-posta)
 - **Lead sıradaki:** #11+#12 PayTR otomatik yenileme + dunning → #1 2FA → #4 e-posta doğrulama
 - **İnsan bekleyen:** PayTR canlı anahtar + **kart saklama (Direct API) sözleşmesi** (#11 için), e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi
 - **Müdür notu (#11 bağımlılığı):** `tenants` tablosuna `cardToken text` + `cardMark text` kolonu ekle (#11 otomatik yenileme bunu bekliyor); Lead sonra cron'da tokenli yenileme yazar

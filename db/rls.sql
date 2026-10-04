@@ -96,9 +96,9 @@ grant execute on function fiscal_pending_tenants() to cabukpos_app;
 create or replace function report_due_tenants(kind text, before timestamptz) returns setof uuid
 language sql stable security definer set search_path = public as $f$
   select tenant_id from report_settings
-  where (kind = 'gunluk' and daily or kind = 'haftalik' and weekly)
-    and (case when kind = 'gunluk' then last_daily_at else last_weekly_at end is null
-         or case when kind = 'gunluk' then last_daily_at else last_weekly_at end < before)
+  where (kind = 'gunluk' and daily or kind = 'haftalik' and weekly or kind = 'aylik' and monthly)
+    and (case when kind = 'gunluk' then last_daily_at when kind = 'haftalik' then last_weekly_at else last_monthly_at end is null
+         or case when kind = 'gunluk' then last_daily_at when kind = 'haftalik' then last_weekly_at else last_monthly_at end < before)
 $f$;
 revoke all on function report_due_tenants(text, timestamptz) from public;
 grant execute on function report_due_tenants(text, timestamptz) to cabukpos_app;

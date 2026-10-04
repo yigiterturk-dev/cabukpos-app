@@ -12,8 +12,9 @@ export async function saveReportMail(_: ReportMailState, form: FormData): Promis
   const a = await requireWriter();
   const daily = form.get("daily") === "on";
   const weekly = form.get("weekly") === "on";
+  const monthly = form.get("monthly") === "on";
   await withTenant(a.tenantId, async (tx) => {
-    const v = { daily, weekly };
+    const v = { daily, weekly, monthly };
     await tx.insert(schema.reportSettings).values({ tenantId: a.tenantId, ...v }).onConflictDoUpdate({ target: schema.reportSettings.tenantId, set: v });
     await audit(tx, a.tenantId, `user:${a.id}`, "report.mail", v);
   });

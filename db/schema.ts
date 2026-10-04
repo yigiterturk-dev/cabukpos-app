@@ -584,8 +584,10 @@ export const reportSettings = pgTable("report_settings", {
   tenantId: uuid("tenant_id").primaryKey().references(() => tenants.id, { onDelete: "cascade" }),
   daily: boolean("daily").notNull().default(false),
   weekly: boolean("weekly").notNull().default(false),
+  monthly: boolean("monthly").notNull().default(false), // #43: aylık konsolide rapor
   lastDailyAt: ts("last_daily_at"),
   lastWeeklyAt: ts("last_weekly_at"),
+  lastMonthlyAt: ts("last_monthly_at"),
 });
 
 export const fiscalDocuments = pgTable("fiscal_documents", {

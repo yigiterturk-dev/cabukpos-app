@@ -18,6 +18,7 @@ import { ShiftsTab } from "@/components/reports/ShiftsTab";
 import { ReviewTab } from "@/components/reports/ReviewTab";
 import { MusterilerTab } from "@/components/reports/MusterilerTab";
 import { rfmData } from "@/lib/admin/rfm";
+import { prevMonth } from "@/lib/admin/report-mail";
 
 export const dynamic = "force-dynamic";
 const DESC: Record<ReportTab, string> = {
@@ -75,7 +76,8 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
       {tab.key === "musteriler" ? (
         <div className="mb-4"><Link className="inline-block rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface-2" href="/yonetim/raporlar/csv?sekme=musteriler" download>CSV indir</Link></div>
       ) : tab.range ? <RangeBar sekme={tab.key} range={range} csv={tab.csv ? tab.key : null} print extra={tab.key === "urunler" ? { sirala: sp.sirala } : tab.key === "personel" ? { kisi: kisi ?? undefined } : {}} /> : null}
-      {mailSettings && <ReportMailCard initial={{ daily: mailSettings.daily, weekly: mailSettings.weekly }} />}
+      {mailSettings && <ReportMailCard initial={{ daily: mailSettings.daily, weekly: mailSettings.weekly, monthly: mailSettings.monthly }} />}
+      {tab.key === "ozet" && <Card className="mb-6 p-4 text-sm"><a className="font-medium text-brand hover:underline" href={`/yonetim/raporlar/konsolide?ay=${prevMonth()}`}>Aylık konsolide raporu aç ({prevMonth()})</a><span className="ml-2 text-muted">— yazdır/PDF; e-posta ayarı yukarıda.</span></Card>}
       {body}
     </>
   );

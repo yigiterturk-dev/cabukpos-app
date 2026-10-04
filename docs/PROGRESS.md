@@ -233,3 +233,8 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - Veri yolu: paket sipariş olayının telefonu (`upsertCustomer` normalize'ü) → müşteri; `sales.tabId` bağlantısıyla adet/harcama/son sipariş; iadeler düşük, 365 gün pencere, ilk 500 harcamaya göre.
 - Saf çekirdek `lib/core/rfm.ts` (puan/segment/grid/CSV — `rfmMonths` burada), DB `lib/admin/rfm.ts`, UI `components/reports/MusterilerTab.tsx`, CSV `reportCsv(..., tenantId, ...)` imzasına tenantId eklendi (arama rotası güncel).
 - Test: `tests/rfm.test.ts` + `tests/rfm-db.test.ts` — **321/321**; e2e m9a + m8 yeşil. Şema değişikliği yok.
+
+## #43 — Aylık konsolide rapor (2026-10-04)
+- E-posta türü "aylik": geçen ayın 1'i–sonu (IST); cron ayın 1'i gönderir (`report_due_tenants` artık `monthly`/`last_monthly_at` dalı). İçerik: özet + ödemeler + kanallar + çok satanlar + personel top 5 + kritik stok + müşteri özeti (#40'tan).
+- Yazdırılabilir sayfa `/yonetim/raporlar/konsolide?ay=YYYY-MM` (A4, Yazdır/PDF) — e-posta ile aynı saf içerik (`konsolideData` → `digestContent("aylik")`). Raporlar→Özet'te bağlantı + ReportMailCard'a "Aylık konsolide" onay kutusu.
+- Şema: `report_settings.monthly + last_monthly_at` (db:push uygulandı, prod'da 1. adım). Test: `tests/konsolide.test.ts` — **323/323**; e2e m9a + m8 yeşil.
