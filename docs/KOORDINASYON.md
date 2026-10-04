@@ -44,7 +44,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 13. [x] #29 marketplace'e geri push: `OrderSource.pushCatalog?` (opsiyonel adaptör metodu) + `lib/platform/outbound.ts` (`pushStoreCatalog`: eşlenmiş kod → ürün adı/fiyat/stok, stok `stockLevels`'ten, izlemesizde null; ağ DB işlemi dışında; audit) — mock sürücü anında ok (MOCK_PLATFORM_FAIL hata yolu), Getir sandbox `PUT /stores/:id/catalog` (GETIR_ENABLED kapalıysa error; `createGetirSource` artık test için config parametreli), kiosk/ys "unsupported"; Platformlar sayfasında "Menü/fiyat/stok gönder" butonu — `a2420ba`; not: `Conn` tipine + `cols`'a `active` eklendi (pushStoreCatalog kapalı bağlantıyı reddeder); canlı Getir/YS katalog onayı insan işi (sıradaki: #30 webhook kimliklendirme)
 
 ### Müdür ajan (DB/ops)
-1. Sentry/APM iskeleti + uptime kontrolü — `lib/observability` (#57)
+1. [x] Sentry/APM iskeleti + uptime kontrolü — `lib/observability` (#57) — `ed5db94` (telemetri env-kapalı OTLP; hata kancaları; `/api/cron/uptime`)
 2. [x] CI restore provası job'ı — `.github/workflows` (#58) — `ba57d7a`
 3. [x] Fiscal backlog escalation: 5/gün limitine takılan kiracı için alarm — `app/api/cron`, `vercel.json` (#21) — `6b79dfd`
 4. [x] `db/`: `users.emailVerified` + `users.totpSecret` kolon şeması (2FA/e-posta doğrulama ön hazırlığı; auth tarafını lead oturum yazar) (#1, #4 ön hazırlık) — `54e160a`; ⚠️ yayında `db:push` gerekir
@@ -79,7 +79,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 Tam açık listesi: **`docs/ACIK-RAPORU.md`** (61 madde, P0→P2 sıralı).
 Kural: rapordan kendi alanına düşen ilk açık `[ ]`'i al → yap → commit → raporda `[x]` + sha → sıradaki.
 
-- **Ajan-1 sıradaki:** #30 webhook URL kimliklendirme iyileştirme
+- **Ajan-1 sıradaki:** #30 webhook URL kimliklendirme — [x] `1dbfe47` (`webhookToken` unique, `/api/platform/<p>/webhook?t=`, panelde jetonlu adres; eski `?c=` geçerliliği korumada)
 - **Müdür sıradaki:** #57 Sentry/APM iskeleti + uptime → #40 kohort/RFM rapor → #43 konsolide rapor
 - **Lead sıradaki:** #11+#12 PayTR otomatik yenileme + dunning → #1 2FA → #4 e-posta doğrulama
 - **İnsan bekleyen:** PayTR canlı anahtar + **kart saklama (Direct API) sözleşmesi** (#11 için), e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi

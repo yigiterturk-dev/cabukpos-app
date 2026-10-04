@@ -33,6 +33,7 @@ export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   vertical: vertical("vertical").notNull(),
+  currency: text("currency").notNull().default("TRY"), // #16: TRY|USD|EUR|GBP (isCurrency); rapor/panelde formatMoney bunu kullanır
   taxId: text("tax_id"), // M8: e-Arşiv satıcı bilgisi
   taxOffice: text("tax_office"),
   address: text("address"),

@@ -8,7 +8,7 @@ import { scopedStoreId } from "@/lib/admin/store-scope";
 import { formatQty, isCriticalRow } from "@/lib/admin/stock-view";
 import { summaryData } from "@/lib/admin/report";
 import { istToday, pctChange } from "@/lib/core/report";
-import { formatTL } from "@/lib/core/money";
+import { moneyFormatter } from "@/lib/admin/currency";
 import { foldTabs } from "@/lib/core/tab";
 import { initialEvents } from "@/lib/tabs/stream";
 import { Badge, buttonClass, Card, Empty, PageHeader } from "@/components/ui";
@@ -40,6 +40,7 @@ export default async function Bugun() {
   const a = await requireAdmin();
   const today = istToday();
   const restoran = a.vertical === "restoran";
+  const formatTL = await moneyFormatter(a.tenantId); // #16: işletme para birimiyle biçimler
   const { sum, critical, recent, storeId, setup, attention } = await withTenant(a.tenantId, async (tx) => {
     const storeId = await scopedStoreId(tx, a.tenantId);
     const S = schema.sales;
