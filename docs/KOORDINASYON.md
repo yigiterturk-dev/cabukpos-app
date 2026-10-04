@@ -57,12 +57,12 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 5. [x] İlgili birim testleri (#53 kısmi) — `31d8e06`
 6. [x] Uygulama düzeyi CSRF katmanı (#2): `lib/auth/csrf.ts` saf `csrfVerdict` + `assertCsrf()` → `requireWriter`'da; çapraz site/same-site + origin↔host reddi, tüm yönetim aksiyonlarını tek merkezden kapatır (`f5b5386`)
 7. [x] Kayan oturum yenileme (#3): proxy'de 1 günü aşan jetona yeni 14 gün; `shouldRenewSession` saf + testli (`343fe1a`)
-8. [x] #7 raporlandı (mevcut `AUTH_SECRET|<aud>` türev anahtar tasarımı zaten kapatıyor); #8 yarısı: form tabanlı hassas işlemlerde `checkReauth` re-auth (`9e41459`, E2E m1+m9c yeşil); kalan: formsuz yıkıcı aksiyonlar + cz_device rotasyonu
+8. [x] #7 raporlandı (mevcut `AUTH_SECRET|<aud>` türev anahtar tasarımı zaten kapatıyor); #8 tamamlandı: form tabanlı hassas işlemlerde `checkReauth` (`9e41459`) + kalanı: yıkıcı iptaller (cihaz/ajan/ajans anahtarı) şifreli re-auth (`RevokeForm`) + `cz_device` jeton rotasyonu (30 günde bir, önceki jeton geçiş süresiyle; katalog çekiminde döner) (`c10af14`, E2E m1+m5 yeşil)
 9. [x] Merkezi API kimlik kapıları (#10): `lib/auth/api.ts` requireApiAdmin/Writer + apiRole + mutasyonda CSRF; 2 admin rotası taşındı (`ae9504f`)
 10. [x] SW sekmesiz outbox boşaltımı (#23): ham-IDB pusher + periodicsync (`969cfbb`); 14 gün prune + parti hizalama koruması (#26) (`f864f71`)
 11. [x] Re-pair sıfırlama bildirimi (#24): resetNotice + kasa rozeti (`49d5e19`, E2E m2 yeni build'de yeşil); fiş çakışması iade politikası (#25): çekirdek no → "-N" ikiz düşüşü (`443633c`, DB testli) — offline grubu (23-26) tamamlandı
-12. [x] #16 lead yarısı: Currency meta + formatMoney (`7bca038`) — müdür: `tenants.currency` kolonu bekleniyor; #36 tamamlandı: barkod + raster + marka profilleri (`5eb6f3d`+`0d392da`) + logo PNG→1bit (`aa044ce`: lib/core/png.ts çözücü, agentConfig.logo, Donanım yükleme/önizleme, fiş+gün sonu başlığı)
-13. [x] #9 aktif oturum listesi + tüm cihazlardan çıkış (`9deaf14`): lead istediği `sessions` şemasını kendisi yazdı (müdür yokken kilidi açmak için; RLS dışı kimlik tablosu çünkü lib/auth tenantsız bağlantı kullanıyor — istekteki "RLS'li" bu yüzden değişti). Girişte hash kaydı, getAdmin hash kapısı, çıkışta iptal, Güvenlik sayfasında liste + re-auth'lu düşme. ⚠️ yayında `db:push` gerekir. #8 kalanı yalnız cz_device rotasyonu
+12. [x] #16 tamamlandı: lead yarısı Currency meta + formatMoney (`7bca038`); müdür yarısı `tenants.currency` kolonu + Tercihler'de seçici (sahip/müdür) + Yönetim Bugün para birimi duyarlı biçim (`040990c`; kasa fişi/ESCPOS hâlâ ₺, ihtiyaç olursa ayrı iş); #36 tamamlandı: barkod + raster + marka profilleri (`5eb6f3d`+`0d392da`) + logo PNG→1bit (`aa044ce`: lib/core/png.ts çözücü, agentConfig.logo, Donanım yükleme/önizleme, fiş+gün sonu başlığı)
+13. [x] #9 aktif oturum listesi + tüm cihazlardan çıkış (`9deaf14`): lead istediği `sessions` şemasını kendisi yazdı (müdür yokken kilidi açmak için; RLS dışı kimlik tablosu çünkü lib/auth tenantsız bağlantı kullanıyor — istekteki "RLS'li" bu yüzden değişti). Girişte hash kaydı, getAdmin hash kapısı, çıkışta iptal, Güvenlik sayfasında liste + re-auth'lu düşme. ⚠️ yayında `db:push` gerekir.
 14. [x] #48 para kırılımı sayımı + safe-drop (`d5bb003`): sayım paneli Gün sonu'nda; seifeye alma → `safe_drop` outbox belgesi → `register_events` (yeni type, şema değişikliği yok) → beklenen kasa yerelde ve bulutta düşer. Rapor/fişte "Seifeye alınan" satırı
 
 ## Müdür için istek (lead)
@@ -80,7 +80,7 @@ Tam açık listesi: **`docs/ACIK-RAPORU.md`** (61 madde, P0→P2 sıralı).
 Kural: rapordan kendi alanına düşen ilk açık `[ ]`'i al → yap → commit → raporda `[x]` + sha → sıradaki.
 
 - **Ajan-1 sıradaki:** #30 webhook URL kimliklendirme — [x] `1dbfe47` (`webhookToken` unique, `/api/platform/<p>/webhook?t=`, panelde jetonlu adres; eski `?c=` geçerliliği korumada)
-- **Müdür sıradaki:** #57 Sentry/APM iskeleti + uptime → #40 kohort/RFM rapor → #43 konsolide rapor
+- **Müdür sıradaki:** #40 kohort/RFM rapor → #43 konsolide rapor (#57 tamamlandı, bkz. yukarı)
 - **Lead sıradaki:** #11+#12 PayTR otomatik yenileme + dunning → #1 2FA → #4 e-posta doğrulama
 - **İnsan bekleyen:** PayTR canlı anahtar + **kart saklama (Direct API) sözleşmesi** (#11 için), e-Arşiv/ÖKC entegratör hesabı, SMS/WhatsApp hesabı, Getir/YS API erişimi
 - **Müdür notu (#11 bağımlılığı):** `tenants` tablosuna `cardToken text` + `cardMark text` kolonu ekle (#11 otomatik yenileme bunu bekliyor); Lead sonra cron'da tokenli yenileme yazar

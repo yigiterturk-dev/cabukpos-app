@@ -197,3 +197,16 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 
 ## CSP düzeltmesi — canlıda ajan kırığı (2026-10-04)
 - Güvenlik sertleştirmesindeki `connect-src 'self' https:` yerel ajana (http://127.0.0.1:port) izin vermiyordu → **canlıda yazıcı/çekmece/terazi ve LAN sessizce çalışmıyordu**. `http://127.0.0.1:* http://localhost:* http://[::1]:*` eklendi (`next.config.ts`). Prod'a gidince kasa sekmesi tazelenmeli.
+
+## #8 kalanı — re-auth + cihaz jeton rotasyonu (2026-10-04)
+- Yıkıcı iptaller (cihaz, ajan, ajans anahtarı) artık hesap şifresi ister: `RevokeForm` (istemci, useActionState) + üç aksiyon `(id, state, form)` imzasına geçti, `checkReauth` boş/hatalı şifrede iptal etmez. `verifyReauth` çekirdeğe ayrıldı.
+- `cz_device` rotasyonu: `devices.prevTokenHash + tokenRotatedAt`; katalog çekiminde (`/api/sync/catalog`) 30 günde bir yeni jeton; eski jeton yeni yazılana dek geçerli (çoklu sekme/çakışma penceresi). Re-pair ve iptal önceki jetonu temizler. `next/headers` dinamik içe aktarılır (node testleri).
+- Test: `tests/device-rotate.test.ts`. Prod: şema (devices 2 kolon) → `prod-push.sh 1`.
+
+## #16 — çoklu para birimi (2026-10-04)
+- `tenants.currency` (TRY|USD|EUR|GBP, varsayılan TRY) + Tercihler'de "Para birimi" paneli (sahip/müdür, `setTenantCurrency`) + Yönetim Bugün tüm para değerleri `formatMoney(k, currency)` ile (`moneyFormatter`).
+- Kuruş tamsayıları dönüştürülmez; yalnız gösterim. Kasa fişi (ESCPOS) ve kasa ekranları hâlâ ₺ — ihtiyaç olursa ayrı iş. Test: `tests/currency-db.test.ts`. Prod: şema (tenants.currency) → `prod-push.sh 1`.
+
+## E2E tazeleme (2026-10-04)
+- `e2e/m5.mjs` yeni salon kurulum akışına uyarlandı (bölge adı "Masa" → masa adları M1-M4; tek düzeltmeyle koştu).
+- Dikkat: yerel e2e'lerde eşleme limiti `pair:<ip>` 10/15dk, kayıt `signup:%` 5/saat → `delete from login_attempts`.
