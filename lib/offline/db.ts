@@ -156,7 +156,7 @@ export async function safeDropLocal(staffId: string, amount: number): Promise<Me
 
 export async function closeShiftLocal(staffId: string, countedCash: number): Promise<Meta> {
   const d = kasaDb();
-  return d.transaction("rw", [d.meta, d.sales, d.outbox], async () => {
+  return d.transaction("rw", [d.meta, d.sales, d.outbox, d.rejected], async () => {
     const m = await loadMeta();
     if (!m.shift) return m;
     const sales = await d.sales.where("shiftId").equals(m.shift.id).toArray();

@@ -195,7 +195,7 @@ function KapanisForm({ onClose }: { onClose: (counted: number) => Promise<void> 
       if (k === null) return setError("Tutar geçersiz (ör. 500 ya da 500,00).");
       setError(null);
       setBusy(true);
-      void onClose(k).finally(() => setBusy(false));
+      void onClose(k).catch((e) => setError(e instanceof Error ? e.message : "Kapanış kaydedilemedi.")).finally(() => setBusy(false));
     }}>
       <CashCount onApply={setApplied} />
       <Field label="Sayılan nakit (TL)" hint="Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır.">
