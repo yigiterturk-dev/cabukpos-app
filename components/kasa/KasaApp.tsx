@@ -7,6 +7,7 @@ import { formatTL, parseTL } from "@/lib/core/money";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { countCash, summarizeShift, BANKNOTES, COINS, type CashBreakdown } from "@/lib/core/shift";
 import { clearResetNotice, closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, safeDropLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
+import { pauseSync } from "@/lib/offline/sync";
 import type { Buyer } from "@/lib/core/fiscal";
 import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, withTestFlag, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
 import { fiscalNotes } from "@/lib/core/receipt";
@@ -163,6 +164,23 @@ function CashCount({ onApply }: { onApply: (k: number) => void }) {
       <Button type="button" variant="secondary" className="mt-3 w-full" disabled={total <= 0} onClick={() => onApply(total)}>Sayılanı nakde aktar</Button>
     </details>
   );
+}
+
+/** Gün sonu kapanışı: eşitleme bandını durdurur, işlem zaman aşımına düşerse bir kez daha dener (IDB açlık koruması). */
+async function closeShiftGuarded(staffId: string, counted: number): Promise<Meta> {
+  pauseSync(true);
+  try {
+    for (let i = 0; ; i++) {
+      const m = await Promise.race([
+        closeShiftLocal(staffId, counted),
+        new Promise<null>((r) => setTimeout(() => r(null), 8000)),
+      ]);
+      if (m) return m;
+      if (i >= 2) throw new Error("Kapanış kaydedilemedi; tekrar deneyin.");
+    }
+  } finally {
+    pauseSync(false);
+  }
 }
 
 /** #48: gün sonu kapanış formu — kırılımlı sayım + sayılan nakit. */
@@ -624,7 +642,7 @@ export function KasaApp() {
     if (view.name === "kurye-gun-sonu" && meta.shift) {
       const by = view.by;
       return <>{kHeader}<GunSonu meta={meta} closed={false} onBack={() => setView({ name: "home" })} onClose={async (counted) => {
-        setMeta(await closeShiftLocal(by, counted));
+        setMeta(await closeShiftGuarded(by, counted));
         setCashier(null);
         setView({ name: "closed" });
         void sync.current?.kick();
@@ -736,7 +754,7 @@ export function KasaApp() {
           closed={false}
           onBack={() => setView({ name: "home" })}
           onClose={async (counted) => {
-            setMeta(await closeShiftLocal(cashier.id, counted));
+            setMeta(await closeShiftGuarded(cashier.id, counted));
             setCashier(null);
             setView({ name: "closed" });
             void sync.current?.kick();

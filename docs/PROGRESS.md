@@ -210,3 +210,8 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 ## E2E tazeleme (2026-10-04)
 - `e2e/m5.mjs` yeni salon kurulum akışına uyarlandı (bölge adı "Masa" → masa adları M1-M4; tek düzeltmeyle koştu).
 - Dikkat: yerel e2e'lerde eşleme limiti `pair:<ip>` 10/15dk, kayıt `signup:%` 5/saat → `delete from login_attempts`.
+
+## ⚠️ AÇIK HATA — m1 kapanış askıda (2026-10-04)
+- `e2e/m1.mjs` gün sonu kapanışı (sayılan nakit girilip kapat) kasanın `closeShiftLocal` IndexedDB işleminin **rastgele bir noktasında sonsuza kadar askıda** (bazı koşuda satış okuması, bazında budama). Raw IndexedDB aynı anda sağlıklı (count ms=1); hata JS istisnası üretmez; sayfa donmaz. #48 (para kırılımı, `d5bb003`) ile KapanisForm değişti; m1 o tarihten beri koşulmuyordu — hata büyük olasılık #48 sonrası, benim değişikliklerimden bağımsız.
+- Alınan önlem: `closeShiftGuarded` (KasaApp) — kapanış sırasında `pauseSync(true)` (eşitleme okuma bandı durur) + 8 sn zaman aşımında 2 yeniden deneme. Askıda kalma bununla da çözülmedi → kök neden Dexie işlem yaşam döngüsünde; Dexie debug modu / izole repro ile ayrı oturum gerekli.
+- Etki: canlıda tek seferlik kapanış formu askıda kalabilir; sayfa yenileyip tekrar denemek çalışabilir (işlem ya tam yazar ya hiç — IDB atomik). E2E m1 kapanış adımı kırmızı; m49/m5 kapanışları (sayım girmeden) yeşil.

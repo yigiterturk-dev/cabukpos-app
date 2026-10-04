@@ -9,6 +9,11 @@ type Listener = (s: SyncStatus, meta: Meta | null) => void;
 
 const PULL_EVERY_MS = 60_000;
 
+// Kapanış gibi uzun rw işlemleri süresince eşitleme okuma bandını durdurur:
+// IndexedDB işlemi yaş/açlıktan korumaz; sürekli gelen küçük readonly'lar rw'yi bekletir.
+let syncPaused = false;
+export function pauseSync(v: boolean) { syncPaused = v; }
+
 class HttpError extends Error {
   constructor(public status: number) { super(`HTTP ${status}`); }
 }
@@ -77,6 +82,7 @@ export function createSync(listener: Listener) {
   }
 
   async function run(): Promise<void> {
+    if (syncPaused) { again = true; return; }
     if (running) { again = true; return running; }
     running = (async () => {
       status = { ...status, syncing: true };
