@@ -187,3 +187,13 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - Yönetim: Raporlar → İncelenecek üstünde "Alıcının iade faturası bekleniyor (N)" + no/tarih formu (`resolveBuyerInvoice`); Mali → Belgeler satırında "İade tutanağı" / "Alıcı iade faturası …" bağlantısı → `/yonetim/mali/iade/<id>` A4 (yazdır).
 - 147/147 test; E2E `e2e/iade.mjs` İADE OK, regresyon M8 + M3 OK.
 - ⚠️ Tutanak metni taslak: mali müşavir onayı (Yiğit). Prod: `prod-push.sh 1..5` (şema → rls → kontrol → main → canlı E2E iade).
+
+## #49 — Bahşiş, masa birleştirme, rezervasyonlar (2026-10-04)
+- Bahşiş: `sales.tip` (toplamın içinde müşteri öder); satışta kasa PayDialog "Bahşiş" alanı, masada BillScreen→`onTabPay` zinciri; fişte "Bahşiş (dahil)" satırı. `applySale` toplam = satır toplamı + tip, payments farkı öder; bahşişsiz eski belge değişmez.
+- Masa birleştirme: `merge` (satır kopyaları hedefe, idempotent) + `merge_away` (kaynak kapanır; satırsız kaynak dahil — `mergedAway` bayrağı). Kasada adisyon ekranında "Birleştir" (adaylar: açık, ödemesiz masa adisyonları, kendisi/ödenmiş hariç). Bulut iki olayı tek hedef belgesiyle yazar.
+- Rezervasyonlar: `reservations` (RLS) + `/yonetim/rezervasyonlar` (gün çubuğu, ekle, Onayla/Geldi/Gelmedi/İptal), `lib/core/reservation.ts` (doğrulama + saat dönüşümü), `lib/admin/reservation-actions.ts`.
+- E2E `e2e/m49.mjs` (npm run e2e:m49): rezervasyon onayı → garson iki masa → kasada birleştirme → bahşişli kart ödemesi → fiş → gün sonu. E2E m5 yeni salon kurulumuna uyarlandı (bölge "Masa" → M1-M4).
+- 312/312 test. Prod: `prod-push.sh 1..5` (şema: reservations + sales.tip; rls: reservations).
+
+## CSP düzeltmesi — canlıda ajan kırığı (2026-10-04)
+- Güvenlik sertleştirmesindeki `connect-src 'self' https:` yerel ajana (http://127.0.0.1:port) izin vermiyordu → **canlıda yazıcı/çekmece/terazi ve LAN sessizce çalışmıyordu**. `http://127.0.0.1:* http://localhost:* http://[::1]:*` eklendi (`next.config.ts`). Prod'a gidince kasa sekmesi tazelenmeli.
