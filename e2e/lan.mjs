@@ -55,10 +55,10 @@ try {
   await admin.waitForURL(`${BASE}/yonetim**`);
 
   await admin.goto(`${BASE}/yonetim/salon`);
-  await admin.getByLabel("Bölge adı").fill("Salon");
-  await admin.getByRole("button", { name: "Bölge ekle" }).click();
-  await admin.getByLabel("Salon masa adları").fill("M1-M4");
-  await admin.getByRole("button", { name: "Masa ekle" }).click();
+  await admin.getByLabel("Bahçe bölümünü kaldır").click();
+  await admin.getByLabel("1. bölge adı").fill("Masa");
+  await admin.getByLabel("1. bölge masa sayısı").fill("4");
+  await admin.getByRole("button", { name: "Salonu kur" }).click();
   await admin.getByText("M4", { exact: true }).waitFor();
   step("salon: bölge Salon, masalar M1-M4");
 

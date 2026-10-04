@@ -51,7 +51,7 @@ try {
   await admin.fill("input[name=fee]", "15");
   await admin.fill("input[name=minOrder]", "100");
   await admin.getByRole("button", { name: "Bölge ekle" }).click();
-  await admin.getByRole("button", { name: "Kaydet" }).first().waitFor();
+  await admin.getByRole("button", { name: "Pasifleştir" }).waitFor();
   step("bölge Merkez: ücret 15, asgari 100");
 
   await admin.goto(`${BASE}/yonetim/urunler`);
@@ -75,9 +75,9 @@ try {
   const secretEl = admin.getByTestId("webhook-secret");
   await secretEl.waitFor();
   const secret = (await secretEl.innerText()).trim();
-  const hook = (await admin.locator("code", { hasText: "/webhook?c=" }).innerText()).trim().replace(/^https?:\/\/[^/]+/, BASE);
+  const hook = (await admin.locator("code", { hasText: "/webhook?t=" }).innerText()).trim().replace(/^https?:\/\/[^/]+/, BASE);
   await admin.fill("input[name=code]", "LAH");
-  await choose(admin, admin.getByRole("combobox").first(), "Lahmacun");
+  await choose(admin, admin.locator("form", { has: admin.locator("input[name=code]") }).getByRole("combobox"), "Lahmacun");
   await admin.getByRole("button", { name: "Eşle" }).click();
   await admin.locator("li", { hasText: "LAH" }).getByText("Lahmacun").waitFor();
   step("Deneme platformu bağlandı (otomatik kabul kapalı), LAH → Lahmacun");

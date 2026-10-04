@@ -221,3 +221,9 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - /f doğrulaması yeni `layout.tsx`'e taşındı (shell basılmadan 404; gelecekte loading eklenirse de korunur); belge sorgusu `doc.ts`'te React `cache()` ile layout+sayfa arasında tek sorgu. Sınır (30/dk) yalnız gerçek belge görünümünü sayar; bilinmeyen token ucuz 404.
 - `e2e/m9c.mjs` anahtar iptali artık şifreli re-auth (#8) ile: `key-row` içinde Şifreniz doldurulur.
 - Tam critical set yeşil: m8, m9a, iade, m9b, m9c (+ m1, m5, m49). Test 315/315.
+
+## Tam e2e maratonu + 2 bug daha (2026-10-04)
+- TÜM e2e seti son build'de tek tek koşuldu: **m1 m2 m3 m4 m5 m6 m7 m8 m9a m9b m9c iade lan sifre — 14/14 OK**. Unit 315/315, tsc/eslint sıfır uyarı.
+- **Bug: sabit ücretli teslimat bölgesi oluşturulamıyordu** (#52 sonrası): `saveZone` boş `perKm`'i ("boş = sabit") `null` sayıp hemen reddediyordu — boş meşru değer; yalnız dolu-çözümsüz girdi hata. `e2e/m6.mjs` bu yüzden hiç güncellenmemiş adımlarla koşuyordu; webhook URL (`?t=`) ve eşleme formu combobox'ı da yenilenendi.
+- e2e m6/m7/lan yeni salon kurulum akışına uyarlandı (bölge "Masa"); lint'in 4 ölü uyarısı temizlendi.
+- Prod push öncesi her şey yeşil: `prod-push.sh` (şema: reservations, sales.tip, tenants.currency, devices rotasyon kolonları → rls → kontrol → main → canlı e2e).

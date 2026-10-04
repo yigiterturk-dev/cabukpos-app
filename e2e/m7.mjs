@@ -122,10 +122,10 @@ try {
 
   // — Kasa: M1 masası, 3× Lahmacun (1'i ekstra) — seçenekler adisyonda (hızlı satışta seçenek yok) —
   await admin.goto(`${BASE}/yonetim/salon`);
-  await admin.getByLabel("Bölge adı").fill("Salon");
-  await admin.getByRole("button", { name: "Bölge ekle" }).click();
-  await admin.getByLabel("Salon masa adları").fill("M1");
-  await admin.getByRole("button", { name: "Masa ekle" }).click();
+  await admin.getByLabel("Bahçe bölümünü kaldır").click();
+  await admin.getByLabel("1. bölge adı").fill("Masa");
+  await admin.getByLabel("1. bölge masa sayısı").fill("1");
+  await admin.getByRole("button", { name: "Salonu kur" }).click();
   await admin.getByText("M1", { exact: true }).waitFor();
   await admin.goto(`${BASE}/yonetim/personel`);
   await admin.fill("input[name=name]", "Ali Kasiyer");

@@ -53,7 +53,7 @@ const groups: { title: string; items: Item[] }[] = [
   ] },
 ];
 
-export function Nav({ vertical, bildirim = 0 }: { vertical: "restoran" | "market"; bildirim?: number }) {
+export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
   const path = usePathname();
   return (
     <nav aria-label="Yönetim" className="space-y-5">

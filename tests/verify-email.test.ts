@@ -3,7 +3,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 process.env.AUTH_SECRET ??= "test-secret-test-secret-test-secret-123";
 const { checkDogrula, dogrulaToken } = await import("@/lib/auth/verify-email");
-const { signJwt } = await import("@/lib/auth/jwt");
 
 const u = { id: "22222222-2222-4222-8222-222222222222", email: "a@b.co", active: true, emailVerifiedAt: null as Date | null };
 const lookup = (row: typeof u | null) => async () => row;

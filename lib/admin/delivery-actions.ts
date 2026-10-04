@@ -46,9 +46,10 @@ export async function saveZone(id: string | null, _: DeliveryState, form: FormDa
   if (fee === null) return { error: "Ücret geçersiz.", field: "fee" };
   const minOrder = money(str(form, "minOrder"));
   if (minOrder === null) return { error: "Asgari tutar geçersiz.", field: "minOrder" };
-  // #52: mesafe + servis penceresi (boş = özelliği kullanma).
-  const perKm = str(form, "perKm") === "" ? null : parseTL(str(form, "perKm"));
-  if (perKm === null) return { error: "Km başı ücret geçersiz.", field: "perKm" };
+  // #52: mesafe + servis penceresi (boş = özelliği kullanma). Boş string meşru "yok" değeridir; yalnız DOLU ama çözümlenemeyen girdi hatalıdır.
+  const perKmRaw = str(form, "perKm");
+  const perKm = perKmRaw === "" ? null : parseTL(perKmRaw);
+  if (perKmRaw !== "" && perKm === null) return { error: "Km başı ücret geçersiz.", field: "perKm" };
   const startMin = parseWindow(str(form, "start"));
   if (startMin === undefined) return { error: "Başlangıç saati geçersiz.", field: "start" };
   const endMin = parseWindow(str(form, "end"));

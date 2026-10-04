@@ -1,6 +1,6 @@
 "use client";
 // components/admin/MfaForms.tsx — 2FA kurulum/kapatma formları (app/yonetim/guvenlik).
-import { useState, type FormEvent } from "react";
+import type { FormEvent } from "react";
 import { mfaBasla, mfaOnayla, mfaKapat, type MfaState } from "@/lib/auth/actions";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input } from "@/components/ui";

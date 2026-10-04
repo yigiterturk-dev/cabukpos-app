@@ -2,7 +2,7 @@
 // #49: rezervasyon eylemleri (sahip/müdür/garson — requireWriter).
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getDb, schema, withTenant } from "@/db";
+import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { RES_STATUSES, timeToAt, validateReservation, type ResStatus } from "@/lib/core/reservation";
