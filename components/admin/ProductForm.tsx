@@ -24,7 +24,7 @@ function Toggle<T extends string>({ name, value, set, items, label }: { name: st
       <input type="hidden" name={name} value={value} />
       <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
         {items.map(([v, l]) => (
-          <button key={v} type="button" aria-pressed={value === v} onClick={() => set(v)} className={`min-h-11 rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${value === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:border-line-strong hover:bg-surface-2"}`}>{l}</button>
+          <button key={v} type="button" aria-pressed={value === v} onClick={() => set(v)} className={`min-h-11 rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${value === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"}`}>{l}</button>
         ))}
       </div>
     </>
@@ -59,7 +59,7 @@ function Fields({ s, initial, categories, salon }: { s: CatalogState; initial?: 
         <input type="hidden" name="kind" value={kind} />
         <div className="flex flex-wrap gap-1" role="group" aria-label="Ürün türü">
           {([["adet", "Adet"], ["tartili", "Tartılı (kg)"]] as const).map(([v, l]) => (
-            <button key={v} type="button" aria-pressed={kind === v} onClick={() => setKind(v)} className={`min-h-11 rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${kind === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:border-line-strong hover:bg-surface-2"}`}>{l}</button>
+            <button key={v} type="button" aria-pressed={kind === v} onClick={() => setKind(v)} className={`min-h-11 rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${kind === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"}`}>{l}</button>
           ))}
         </div>
         <Err s={s} f="kind" />
@@ -70,7 +70,7 @@ function Fields({ s, initial, categories, salon }: { s: CatalogState; initial?: 
         <input type="hidden" name="vatRate" value={vat} />
         <div className="flex flex-wrap gap-1" role="group" aria-label="KDV oranı">
           {["1", "10", "20"].map((r) => (
-            <button key={r} type="button" aria-pressed={vat === r} onClick={() => setVat(r)} className={`min-h-11 rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${vat === r ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:border-line-strong hover:bg-surface-2"}`}>%{r}</button>
+            <button key={r} type="button" aria-pressed={vat === r} onClick={() => setVat(r)} className={`min-h-11 rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${vat === r ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"}`}>%{r}</button>
           ))}
         </div>
         <Err s={s} f="vatRate" />

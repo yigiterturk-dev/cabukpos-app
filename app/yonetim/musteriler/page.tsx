@@ -42,7 +42,7 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
           ["30 gündür gelmeyen", growth.dormant, "Geri kazanma listesi"],
           ["Kampanyaya uygun", growth.consented, "Açık iletişim izni"],
         ].map(([label, value, hint]) => (
-          <div key={label} className="rounded-[14px] border border-line bg-white p-4 shadow-card">
+          <div key={label} className="rounded-[14px] border border-line bg-surface p-4 shadow-card">
             <div className="text-sm text-muted">{label}</div>
             <div className="mt-1 text-2xl font-semibold tabular">{value}</div>
             <div className="mt-1 text-xs text-muted">{hint}</div>

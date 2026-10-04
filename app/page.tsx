@@ -41,7 +41,7 @@ function KasaMock() {
   const lines: [string, string, string][] = [["Adana Dürüm", "2", "360,00"], ["Ayran", "2", "60,00"], ["Künefe", "1", "140,00"]];
   return (
     <div aria-hidden className="relative mx-auto w-full max-w-md select-none">
-      <div className="rounded-2xl border border-line bg-white p-4 shadow-pop">
+      <div className="rounded-2xl border border-line bg-surface p-4 shadow-pop">
         <div className="mb-3 flex items-center justify-between text-xs">
           <span className="font-semibold">Masa 4 · Salon</span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-warn-soft px-2 py-0.5 font-medium text-warn"><span className="size-1.5 rounded-full bg-warn" />Çevrimdışı · 3 bekleyen</span>
@@ -56,7 +56,7 @@ function KasaMock() {
           <span className="rounded-lg bg-brand py-2.5 text-center text-white">Öde</span>
         </div>
       </div>
-      <div className="absolute -bottom-5 -left-8 hidden rounded-xl border border-line bg-white px-3 py-2 text-xs shadow-pop sm:block">
+      <div className="absolute -bottom-5 -left-8 hidden rounded-xl border border-line bg-surface px-3 py-2 text-xs shadow-pop sm:block">
         <div className="font-semibold">Mutfak · Izgara</div>
         <div className="text-muted">2 × Adana Dürüm · 4 dk</div>
       </div>
@@ -68,8 +68,8 @@ function KasaMock() {
 export default function Home() {
   const monthly = planPrice("aylik"), yearly = planPrice("yillik"), contact = salesContact();
   return (
-    <div className="bg-white">
-      <header className="sticky top-0 z-10 border-b border-line bg-white/90 backdrop-blur">
+    <div className="bg-surface">
+      <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
           <Link href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
           <nav aria-label="Ana" className="hidden gap-5 text-sm text-ink-2 md:flex">
@@ -105,7 +105,7 @@ export default function Home() {
         <section className="border-y border-line bg-surface-2">
           <div className="mx-auto grid max-w-6xl gap-4 px-4 py-16 md:grid-cols-2">
             {VERTICALS.map((v) => (
-              <div key={v.title} className="rounded-2xl border border-line bg-white p-7">
+              <div key={v.title} className="rounded-2xl border border-line bg-surface p-7">
                 <h2 className="text-2xl font-semibold tracking-tight">{v.title}</h2>
                 <p className="mt-1 text-ink-2">{v.lead}</p>
                 <ul className="mt-5 space-y-2.5 text-[15px]">
@@ -120,8 +120,8 @@ export default function Home() {
           <h2 className="max-w-2xl text-3xl font-semibold tracking-tight">Dükkânın gerçek hâli için yapıldı: yoğun saat, kopan internet, yazıcı sırası.</h2>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => (
-              <div key={f.title} className={`rounded-2xl border border-line p-6 ${i === 0 ? "bg-brand text-white sm:col-span-2 lg:col-span-1 lg:row-span-2" : "bg-white"}`}>
-                <div className={`mb-4 inline-flex rounded-xl p-2.5 ${i === 0 ? "bg-white/15" : "bg-brand-soft text-brand"}`}><f.icon aria-hidden className="size-5" /></div>
+              <div key={f.title} className={`rounded-2xl border border-line p-6 ${i === 0 ? "bg-brand text-white sm:col-span-2 lg:col-span-1 lg:row-span-2" : "bg-surface"}`}>
+                <div className={`mb-4 inline-flex rounded-xl p-2.5 ${i === 0 ? "bg-surface/15" : "bg-brand-soft text-brand"}`}><f.icon aria-hidden className="size-5" /></div>
                 <h3 className={`font-semibold ${i === 0 ? "text-2xl" : "text-lg"}`}>{f.title}</h3>
                 <p className={`mt-2 ${i === 0 ? "text-orange-50" : "text-ink-2"}`}>{f.text}</p>
               </div>
@@ -164,7 +164,7 @@ export default function Home() {
         <section id="sss" className="border-t border-line bg-surface-2">
           <div className="mx-auto max-w-3xl scroll-mt-20 px-4 py-20">
             <h2 className="text-3xl font-semibold tracking-tight">Sık sorulanlar</h2>
-            <div className="mt-8 divide-y divide-line rounded-2xl border border-line bg-white">
+            <div className="mt-8 divide-y divide-line rounded-2xl border border-line bg-surface">
               {FAQ.map((f) => (
                 <details key={f.q} className="group px-6 py-4">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">{f.q}<span className="text-muted transition-transform group-open:rotate-45" aria-hidden>+</span></summary>

@@ -10,7 +10,7 @@ import type { NewTabEvent } from "@/lib/offline/tabs";
 import type { Meta } from "@/lib/offline/state";
 import { Button, Field, Input } from "@/components/ui";
 
-const pill = (on: boolean) => `press min-h-11 rounded-[10px] border px-3 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`;
+const pill = (on: boolean) => `press min-h-11 rounded-[10px] border px-3 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`;
 const EMPTY: CustomerLookup = { customer: null, addresses: [], recent: [] };
 
 export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: Meta; staffId: string; add: (list: NewTabEvent[]) => Promise<unknown>; onCreated: (tabId: string) => void; onBack: () => void }) {

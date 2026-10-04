@@ -66,7 +66,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
         <span className="text-xs text-muted">{shown.length} ürün</span>
         <div className="flex gap-1" role="tablist" aria-label="Ürün listesi">
           {([["", "Satılan"], ["hammadde", "Hammadde / ara ürün"]] as const).map(([v, l]) => (
-            <Link key={v} role="tab" aria-selected={(tur ?? "") === v} href={v ? `/yonetim/urunler?tur=${v}${querySuffix}` : soldTabHref} className={`rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${(tur ?? "") === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>{l}</Link>
+            <Link key={v} role="tab" aria-selected={(tur ?? "") === v} href={v ? `/yonetim/urunler?tur=${v}${querySuffix}` : soldTabHref} className={`rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${(tur ?? "") === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:bg-surface-2"}`}>{l}</Link>
           ))}
         </div>
       </div>

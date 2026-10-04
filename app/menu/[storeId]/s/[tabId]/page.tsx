@@ -35,7 +35,7 @@ export default async function Siparis({ params }: { params: Promise<{ storeId: s
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand">{menu.tenant}</p>
         <h1 className="font-display text-2xl font-bold text-ink">{menu.store}</h1>
       </header>
-      <section aria-label="Durum" className="mb-6 rounded-[18px] border border-line bg-white p-5 text-center shadow-card">
+      <section aria-label="Durum" className="mb-6 rounded-[18px] border border-line bg-surface p-5 text-center shadow-card">
         <div className={`mx-auto mb-3 grid size-14 place-items-center rounded-full text-2xl ${st.step === "iptal" ? "bg-bad-soft" : st.step === "tamam" ? "bg-ok-soft" : "bg-brand-soft"}`}>
           {st.step === "iptal" ? "✕" : st.step === "tamam" ? "✓" : st.step === "yolda" ? "🛎️" : "⏳"}
         </div>
@@ -43,7 +43,7 @@ export default async function Siparis({ params }: { params: Promise<{ storeId: s
         {st.etaAt && !st.closed && <p className="mt-1 text-sm text-muted">Tahmini bitiş: ~{st.etaAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })}</p>}
         {order?.name && <p className="mt-1 text-sm text-muted">Sipariş: {order.name}</p>}
       </section>
-      <section aria-label="Sipariş içeriği" className="rounded-[18px] border border-line bg-white p-5 shadow-card">
+      <section aria-label="Sipariş içeriği" className="rounded-[18px] border border-line bg-surface p-5 shadow-card">
         <ul className="divide-y divide-line text-sm">
           {adds.map((l) => (
             <li key={l.lineId} className="flex items-center gap-3 py-2">

@@ -124,7 +124,7 @@ export default async function Platformlar() {
           <div className="flex flex-wrap items-center gap-3"><h2 className="font-semibold">{PLATFORM_NAMES[c.platform] ?? c.platform}</h2><ConnectionToggles id={c.id} autoAccept={c.autoAccept} active={c.active} /></div>
           {c.platform === "kiosk" ? (
             <div className="flex flex-wrap items-center gap-5">
-              {qr && <div className="size-[148px] shrink-0 rounded-xl border border-line bg-white p-1" data-testid="kiosk-qr" dangerouslySetInnerHTML={{ __html: qr }} />}
+              {qr && <div className="size-[148px] shrink-0 rounded-xl border border-line bg-surface p-1" data-testid="kiosk-qr" dangerouslySetInnerHTML={{ __html: qr }} />}
               <div className="space-y-1 text-sm">
                 <p><b>QR menü:</b> masalara koyacağın kod bu; telefonla açan müşteri kendi siparişini verir.</p>
                 <p>Menü adresi: <code className="break-all rounded bg-surface-2 px-1">{menuUrl}</code></p>

@@ -25,7 +25,7 @@ const COLUMNS: { key: DeliveryStatus[]; title: string }[] = [
 const PREP = [10, 20, 30, 45];
 const REJECT = ["Ürün kalmadı", "Yoğunluk", "Kapalıyız", "Adres bölge dışı"];
 
-const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-white px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
+const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
 const strong = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] bg-ink px-3 py-2 text-sm font-medium text-white shadow-card hover:bg-ink-2 disabled:opacity-40";
 
 type Dialog = { k: "accept" | "reject" | "courier" | "cancel"; tab: TabState };
@@ -87,7 +87,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                   const deadline = o?.source?.deadline ? Math.ceil((Date.parse(o.source.deadline) - now) / 60_000) : null;
                   const closed = st === "teslim" || st === "iptal" || st === "reddedildi";
                   return (
-                    <li key={t.id} data-testid="delivery-card" className={`rounded-xl border bg-white p-3 text-sm shadow-card ${st === "onay_bekliyor" ? "border-bad/40 ring-2 ring-bad-soft" : "border-line"} ${closed ? "opacity-70" : ""}`}>
+                    <li key={t.id} data-testid="delivery-card" className={`rounded-xl border bg-surface p-3 text-sm shadow-card ${st === "onay_bekliyor" ? "border-bad/40 ring-2 ring-bad-soft" : "border-line"} ${closed ? "opacity-70" : ""}`}>
                       <button type="button" onClick={() => !closed && onOpen(t.id)} className="block w-full text-left">
                         <div className="flex items-baseline gap-2">
                           <span className="font-semibold">{tabLabel(t, tables, PLATFORM_NAMES)}</span>
@@ -173,7 +173,7 @@ function CancelDialog({ meta, onMeta, waiter, onOk, onClose }: { meta: Meta; onM
     <Modal label="Siparişi iptal et" onClose={onClose}>
       {!pin ? (
         <>
-          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="w-full rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
+          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
             <button type="button" disabled={reason.trim().length < 2} onClick={() => (waiter.role === "mudur" ? onOk(null, reason.trim()) : setPin(true))} className="flex-[2] rounded-lg bg-bad px-4 py-2 text-sm font-medium text-white disabled:opacity-40">{waiter.role === "mudur" ? "İptal et" : "Müdür onayına"}</button>

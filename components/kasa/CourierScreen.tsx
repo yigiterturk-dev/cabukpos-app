@@ -11,7 +11,7 @@ import type { Cashier } from "./PinPad";
 import { Modal } from "./TabScreen";
 import { minutesSince } from "./useTabs";
 
-const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-white px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
+const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
 const strong = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] bg-ink px-3 py-2 text-sm font-medium text-white shadow-card hover:bg-ink-2 disabled:opacity-40";
 
 export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onCloseShift }: {
@@ -42,7 +42,7 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
           const zone = zones.find((z) => z.id === o?.zoneId);
           const addr = [o?.address, zone?.name].filter(Boolean).join(", ");
           return (
-            <li key={t.id} data-testid="courier-card" className="rounded-xl border border-line bg-white p-4 text-sm">
+            <li key={t.id} data-testid="courier-card" className="rounded-xl border border-line bg-surface p-4 text-sm">
               <div className="flex items-baseline gap-2">
                 <span className="font-semibold">{o?.name ?? "Paket"}</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs ${st === "yolda" ? "bg-sky-50 text-sky-800" : st === "hazir" ? "bg-ok-soft text-ok" : "bg-surface-3 text-ink-2"}`}>
@@ -68,7 +68,7 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
         {!active.length && <li className="rounded-xl border border-dashed border-line p-6 text-center text-muted">Üzerinizde sipariş yok.</li>}
       </ul>
 
-      <section className="mt-8 rounded-xl border border-line bg-white p-4 text-sm">
+      <section className="mt-8 rounded-xl border border-line bg-surface p-4 text-sm">
         <div className="flex items-baseline justify-between">
           <span>Bugün teslim: <span className="tabular font-medium">{done.length}</span></span>
           <span>Üzerimdeki nakit: <span className="tabular font-semibold" data-testid="courier-cash">{formatTL(cash)}</span></span>

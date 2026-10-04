@@ -245,3 +245,10 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - PayTR bildirimi `card_token` taşıyorsa (kart saklama) şifreli kaydedilir; Abonelik sayfasında kayıtlı kart gösterimi + silme.
 - `renewDue`: vade ≤3 gün + kartı olan kiracı → aylik dönem için çekim → `completePayment` (başarılıysa dönem uzar; e-Arşiv faturası mevcut cron akışından çıkar). Başarısızsa 24 saat içinde tekrar denenmez; dunning aşamaları (gecikme/kilit) zaten devrede. Cron `/api/cron/billing` yanıtı `renew` alanı taşır.
 - Test: `tests/renewal-db.test.ts` — **327/327**; e2e m9b yeşil. Şema: tenants 2 kolon (db:push ✓).
+
+## UI/UX denetimi + koyu tema kök düzeltmesi (2026-10-05)
+- İlk kez görsel denetim yapıldı (seed'li demo kiracı, 1440px + mobil 390px, açık/koyu): giriş, panel Bugün, raporlar (Müşteriler dahil), ürünler, abonelik, rezervasyon, platformlar, kasa satış/salon/ödeme.
+- **Kök bug: `@theme inline`** — Tailwind v4'te inline token değerleri utility'lere gömülür; `html.dark` override'ları hiç etki etmezdi. #46 koyu teması doğuşundan beri içerik alanlarında çalışamıyordu (açık zemin + krem metin = okunmaz). Çözüm: renk token'ları `@theme`'e (var referanslı) taşındı, fontlar inline kaldı; koyu tema artık gerçekten uygulanıyor (/giris koyu doğrulandı).
+- 36 dosyada sabit açık renkler token'lara çevrildi (`bg-white`→`bg-surface`, `bg/text-stone-*`→surface/ink/muted, `divide/border-stone-*`→line). Yazdırma/belge sayfaları (A4 /f, fatura, konsolide, etiket) bilinçli beyaz bırakıldı; `bg-white/10` (marka paneli) ve `bg-stone-900/40` (dialog perdesi) bilinçli.
+- Görsel durum: panel/mobil/giriş/kasa/ödeme ekranları tasarım diline uygun (gruplu ikonlu menü, stat kartlar, kategori şeridi, ödeme diyaloğu hızlı nakit + bahşiş). Bilinen küçük notlar: girişte 2FA alanı herkesin formunda (isteğe çekilebilir), boş kohort tablosu başlığı sadeleşebilir — sonraki tasarım turu.
+- 327/327 test; koyu tema probe ile token düzeyi + ekran düzeyi doğrulandı.

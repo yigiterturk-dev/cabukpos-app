@@ -63,13 +63,13 @@ export function Select({
         aria-controls={id}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onKey}
-        className="flex w-full items-center justify-between rounded-lg border border-line bg-white px-3 py-2 text-left text-sm outline-none focus:border-brand focus:ring-2 focus:ring-orange-100"
+        className="flex w-full items-center justify-between rounded-lg border border-line bg-surface px-3 py-2 text-left text-sm outline-none focus:border-brand focus:ring-2 focus:ring-orange-100"
       >
         <span className={selected ? "" : "text-muted"}>{selected?.label ?? placeholder}</span>
         <span aria-hidden className="text-muted">▾</span>
       </button>
       {open && (
-        <ul id={id} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-line bg-white py-1 shadow-lg">
+        <ul id={id} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-line bg-surface py-1 shadow-lg">
           {options.map((o, i) => (
             <li
               key={o.value}
@@ -80,7 +80,7 @@ export function Select({
                 e.preventDefault();
                 pick(o.value);
               }}
-              className={`cursor-pointer px-3 py-2 text-sm ${i === active ? "bg-stone-50" : ""} ${o.value === value ? "font-medium text-brand" : ""}`}
+              className={`cursor-pointer px-3 py-2 text-sm ${i === active ? "bg-surface-2" : ""} ${o.value === value ? "font-medium text-brand" : ""}`}
             >
               {o.label}
             </li>

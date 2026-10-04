@@ -8,7 +8,7 @@ import { minutesSince } from "./useTabs";
 import { MasaGlyph } from "@/components/MasaGlyph";
 
 const TONE: Record<TableStatus, string> = {
-  bos: "border-line bg-white",
+  bos: "border-line bg-surface",
   dolu: "border-brand/60 bg-brand-soft",
   hazir: "border-ok bg-ok-soft",
   uzun: "border-warn bg-warn-soft",
@@ -28,7 +28,7 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen }: { areas: Area[
         {areas.map((a) => {
           const busy = tables.filter((t) => t.areaId === a.id && byTable.has(t.id)).length;
           return (
-            <button key={a.id} type="button" role="tab" aria-selected={a.id === current} onClick={() => setAreaId(a.id)} className={`press h-10 whitespace-nowrap rounded-[9px] px-4 text-sm font-medium ${a.id === current ? "bg-white text-ink shadow-card" : "text-muted hover:text-ink"}`}>
+            <button key={a.id} type="button" role="tab" aria-selected={a.id === current} onClick={() => setAreaId(a.id)} className={`press h-10 whitespace-nowrap rounded-[9px] px-4 text-sm font-medium ${a.id === current ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink"}`}>
               {a.name}{busy > 0 && <span className="ml-1.5 opacity-80">({busy})</span>}
             </button>
           );

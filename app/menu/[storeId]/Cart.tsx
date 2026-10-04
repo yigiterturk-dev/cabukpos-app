@@ -51,7 +51,7 @@ export function Cart({ storeId, secret, vertical }: { storeId: string; secret: s
   }
 
   return (
-    <section aria-label="Sepet" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 shadow-[0_-8px_24px_rgb(0_0_0/0.06)] backdrop-blur">
+    <section aria-label="Sepet" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 shadow-[0_-8px_24px_rgb(0_0_0/0.06)] backdrop-blur">
       <div className="mx-auto w-full max-w-xl px-4 py-3">
         {items.length === 0 ? (
           <p className="py-1 text-center text-sm text-muted">Sipariş vermek için menüden seç.</p>

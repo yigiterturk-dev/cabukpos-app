@@ -60,7 +60,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
     { m: "kart" as const, label: "Tamamı kart", Icon: CreditCard },
     { m: "yemek_karti" as const, label: "Tamamı yemek kartı", Icon: Utensils },
   ];
-  const amount = "tabular h-14 flex-1 rounded-xl border border-line bg-white px-4 text-right text-2xl font-semibold outline-none transition-[border-color,box-shadow] hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
+  const amount = "tabular h-14 flex-1 rounded-xl border border-line bg-surface px-4 text-right text-2xl font-semibold outline-none transition-[border-color,box-shadow] hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
   return (
     <Dialog label="Ödeme" title="Ödeme" aside={<span className="tabular text-3xl font-bold tracking-tight">{formatTL(grand)}</span>} onClose={onClose}
       footer={<>
@@ -70,7 +70,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
       <div className="grid grid-cols-3 gap-2">
         {METHODS.map(({ m, label, Icon }) => (
           <button key={m} type="button" onClick={() => all(m)} aria-pressed={mode === m}
-            className={`press flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${mode === m ? "border-brand bg-brand-soft text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong hover:bg-surface-2"}`}>
+            className={`press flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${mode === m ? "border-brand bg-brand-soft text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"}`}>
             <Icon aria-hidden className="size-6" />{label}
           </button>
         ))}
@@ -226,7 +226,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
 
   const inCart = new Map(cart.map((l) => [l.productId, l.qtyMilli]));
   const count = cart.reduce((a, l) => a + (byId.get(l.productId)?.kind === "tartili" ? 1 : l.qtyMilli / 1000), 0);
-  const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-white text-ink-2 hover:border-line-strong"}`;
+  const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-surface text-ink-2 hover:border-line-strong"}`;
 
   return (
     <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1fr_400px]">
@@ -241,7 +241,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
         <div className="relative">
           <ScanBarcode aria-hidden className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted" />
           <input ref={search} value={q} onChange={(e) => { setQ(e.target.value); setScanError(null); }} onKeyDown={onScan} placeholder="Ürün ara ya da barkod okut (5* = 5 adet)" aria-label="Ürün ara ya da barkod okut" autoFocus
-            className="h-14 w-full rounded-2xl border border-line bg-white pl-12 pr-4 text-base shadow-card outline-none transition placeholder:text-stone-400 hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
+            className="h-14 w-full rounded-2xl border border-line bg-surface pl-12 pr-4 text-base shadow-card outline-none transition placeholder:text-muted hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
         </div>
         <div className="mb-2 mt-1 flex min-h-5 items-center justify-between gap-3 px-1">
           <p className="text-sm font-medium text-bad" role="alert">{scanError}</p>
@@ -256,7 +256,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
             const n = inCart.get(p.id);
             return (
               <button key={p.id} type="button" onClick={() => { pick(p); refocus(); }}
-                className={`press relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-white p-3.5 pt-4 text-left shadow-card outline-none hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${n ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
+                className={`press relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-surface p-3.5 pt-4 text-left shadow-card outline-none hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${n ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
                 <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
                 <span className="line-clamp-2 pr-7 text-[15px] font-semibold leading-snug">{p.name}</span>
                 <span className="tabular text-[15px] font-medium text-ink-2">{formatTL(p.price)}{p.kind === "tartili" && <span className="text-muted">/kg</span>}</span>
@@ -267,7 +267,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
           {shown.length === 0 && <p className="col-span-full py-12 text-center text-sm text-muted">{market && !q ? "Hızlı tuş yok. Barkod okutun ya da arayın." : "Ürün yok."}</p>}
         </div>
       </section>
-      <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+      <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <h2 className="font-semibold">Sepet</h2>
           {cart.length > 0 && <span className="tabular text-sm text-muted">{count.toLocaleString("tr-TR")} ürün</span>}
@@ -280,7 +280,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
           )}
           {cart.map((l) => {
             const weighed = byId.get(l.productId)?.kind === "tartili";
-            const step = "press grid size-11 place-items-center rounded-xl border border-line bg-white text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60";
+            const step = "press grid size-11 place-items-center rounded-xl border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60";
             return (
               <div key={l.productId} className="flex items-center gap-2 px-4 py-2.5" data-testid="cart-line">
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{l.name}</div><div className="tabular text-xs text-muted">{weighed ? `${kg(l.qtyMilli)} × ${formatTL(l.unitPrice)}/kg` : formatTL(l.unitPrice)}</div></div>

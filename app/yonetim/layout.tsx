@@ -26,13 +26,13 @@ export default async function YonetimLayout({ children }: { children: React.Reac
   );
   const footer = (
     <div className="space-y-1 border-t border-white/10 pt-3">
-      <Link href="/kasa" className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-cream-muted outline-none transition hover:bg-white/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+      <Link href="/kasa" className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-cream-muted outline-none transition hover:bg-surface/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
         <Monitor aria-hidden className="size-4" />Kasa ekranı
       </Link>
       <div className="flex items-center gap-2 px-3 pt-1">
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-cream">{a.name}</span>
         <form action={logout}>
-          <button className="press inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-cream-muted outline-none transition hover:bg-white/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+          <button className="press inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-cream-muted outline-none transition hover:bg-surface/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
             <LogOut aria-hidden className="size-3.5" />Çıkış
           </button>
         </form>

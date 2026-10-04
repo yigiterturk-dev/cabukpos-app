@@ -9,7 +9,7 @@ export function Segmented({ items, size = "md", className = "" }: { items: Segme
     <div className={`inline-flex rounded-xl bg-surface-3 p-1 ${className}`}>
       {items.map((it) => (
         <button key={it.key} type="button" aria-pressed={it.pressed} onClick={it.onClick}
-          className={`press inline-flex items-center gap-2 rounded-[9px] font-medium whitespace-nowrap ${h} ${it.pressed ? "bg-white text-ink shadow-card" : "text-muted hover:text-ink"}`}>
+          className={`press inline-flex items-center gap-2 rounded-[9px] font-medium whitespace-nowrap ${h} ${it.pressed ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink"}`}>
           {it.label}
         </button>
       ))}

@@ -249,13 +249,13 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
   return (
     <>
       <style>{`@page { size: 80mm auto; margin: 0 } @media print { body { background: #fff } }`}</style>
-      <div className="flex justify-center gap-2 border-b border-line bg-white p-3 print:hidden">
+      <div className="flex justify-center gap-2 border-b border-line bg-surface p-3 print:hidden">
         <Button variant="ghost" onClick={onBack}><ArrowLeft aria-hidden className="size-4" />Kasaya dön</Button>
         {meta.agent && <Button variant="ghost" onClick={() => window.print()}>Tarayıcıdan yazdır</Button>}
         <Button onClick={() => void print()}><Printer aria-hidden className="size-4" />Yazdır</Button>
       </div>
       {msg && <p className="p-2 text-center text-sm print:hidden" role="status">{msg}</p>}
-      <article className="mx-auto my-6 w-[80mm] bg-white p-[4mm] font-mono shadow-card print:shadow-none text-[12px] leading-snug print:my-0 print:p-[4mm]">
+      <article className="mx-auto my-6 w-[80mm] bg-surface p-[4mm] font-mono shadow-card print:shadow-none text-[12px] leading-snug print:my-0 print:p-[4mm]">
         <header className="text-center">
           <div className="text-[14px] font-bold">{d.tenantName}</div>
           {sale.refund && <div className="mt-1 text-[14px] font-bold">İADE FİŞİ</div>}
@@ -604,7 +604,7 @@ export function KasaApp() {
       {cashier && meta.shift && atHome && <Button variant="secondary" title="Seifeye para al" data-testid="safe-drop-btn" onClick={() => setView({ name: "safe-drop" })}><Landmark aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Seife</span></Button>}
       {cashier && meta.shift && atHome && <Button variant="secondary" title="Gün sonu" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Gün sonu</span></Button>}
       {cashier && (
-        <span className="flex h-10 items-center gap-1 rounded-full border border-line bg-white pl-1 shadow-card">
+        <span className="flex h-10 items-center gap-1 rounded-full border border-line bg-surface pl-1 shadow-card">
           <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{cashier.name.trim().charAt(0).toLocaleUpperCase("tr")}</span>
           <span className="max-w-32 truncate px-1 text-sm font-medium text-ink">{cashier.name}</span>
           <button type="button" title="Kasiyer değiştir" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted hover:bg-surface-3 hover:text-ink"><LogOut aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Kasiyer değiştir</span></button>

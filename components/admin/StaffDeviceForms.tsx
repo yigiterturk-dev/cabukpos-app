@@ -19,7 +19,7 @@ export function StaffForm({ initial }: { initial?: { id: string; name: string; r
           <input type="hidden" name="role" value={role} />
           <div className="flex flex-wrap gap-1" role="group" aria-label="Rol">
             {[["kasiyer", "Kasiyer"], ["garson", "Garson"], ["kurye", "Kurye"], ["mudur", "Müdür"]].map(([v, l]) => (
-              <button key={v} type="button" aria-pressed={role === v} onClick={() => setRole(v)} className={`rounded-lg border px-3 py-2 text-sm ${role === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>{l}</button>
+              <button key={v} type="button" aria-pressed={role === v} onClick={() => setRole(v)} className={`rounded-lg border px-3 py-2 text-sm ${role === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:bg-surface-2"}`}>{l}</button>
             ))}
           </div>
         </div>

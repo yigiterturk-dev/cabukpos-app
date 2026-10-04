@@ -22,9 +22,9 @@ export function Modal({ label, children, onClose }: { label: string; children: R
   return <Dialog label={label} title={label} onClose={onClose}>{children}</Dialog>;
 }
 
-const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-white px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
+const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
 const strong = "press inline-flex min-h-11 items-center justify-center rounded-[10px] bg-ink px-3 text-sm font-medium text-white shadow-card hover:bg-ink-2";
-const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-white text-ink-2 hover:border-line-strong"}`;
+const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-surface text-ink-2 hover:border-line-strong"}`;
 const primary = "press inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 font-semibold text-white shadow-card hover:bg-brand-hover disabled:opacity-40";
 
 function OptionsDialog({ product, groups, onAdd, onClose }: { product: KasaProduct; groups: OptionGroup[]; onAdd: (unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number) => void; onClose: () => void }) {
@@ -44,14 +44,14 @@ function OptionsDialog({ product, groups, onAdd, onClose }: { product: KasaProdu
           <legend className="mb-2 text-sm font-medium">{g.name} <span className="font-normal text-muted">{g.min > 0 ? "(zorunlu)" : ""}{g.max > 1 ? ` en çok ${g.max}` : ""}</span></legend>
           <div className="flex flex-wrap gap-2">
             {g.options.map((o) => (
-              <button key={o.id} type="button" aria-pressed={picked.includes(o.id)} onClick={() => toggle(g, o.id)} className={`rounded-lg border px-3 py-2 text-sm ${picked.includes(o.id) ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`}>
+              <button key={o.id} type="button" aria-pressed={picked.includes(o.id)} onClick={() => toggle(g, o.id)} className={`rounded-lg border px-3 py-2 text-sm ${picked.includes(o.id) ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>
                 {o.name}{o.delta ? ` ${o.delta > 0 ? "+" : "−"}${formatTL(Math.abs(o.delta))}` : ""}
               </button>
             ))}
           </div>
         </fieldset>
       ))}
-      <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Not</span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="ör. soğansız" className="w-full rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
+      <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Not</span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="ör. soğansız" className="w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
       <div className="mb-4 flex items-center gap-3">
         <button type="button" aria-label="Azalt" onClick={() => setQty((q) => Math.max(1, q - 1))} className={btn}>−</button>
         <span className="tabular w-8 text-center text-lg font-semibold">{qty}</span>
@@ -89,13 +89,13 @@ function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose }
             <div className="mb-4">
               <div className="mb-2 flex gap-1">
                 {([["yuzde", "Yüzde"], ["tutar", "Tutar (TL)"], ["kaldir", "İndirimi kaldır"]] as const).map(([k, l]) => (
-                  <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={`rounded-lg border px-3 py-2 text-sm ${kind === k ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`}>{l}</button>
+                  <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={`rounded-lg border px-3 py-2 text-sm ${kind === k ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>{l}</button>
                 ))}
               </div>
               {kind !== "kaldir" && <input aria-label={kind === "yuzde" ? "İndirim yüzdesi" : "İndirim tutarı"} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} className="tabular w-full rounded-lg border border-line px-3 py-2 text-right" />}
             </div>
           )}
-          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="w-full rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
+          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
           {waiter.role !== "mudur" && <p className="mb-3 text-sm text-muted">Müdür onayı gerekir.</p>}
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
@@ -171,7 +171,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
         </div>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
           {products.map((p) => (
-            <button key={p.id} type="button" disabled={busy} onClick={() => tapProduct(p)} className="press relative flex min-h-24 flex-col overflow-hidden rounded-2xl border border-line bg-white p-3.5 pt-4 text-left shadow-card hover:border-line-strong">
+            <button key={p.id} type="button" disabled={busy} onClick={() => tapProduct(p)} className="press relative flex min-h-24 flex-col overflow-hidden rounded-2xl border border-line bg-surface p-3.5 pt-4 text-left shadow-card hover:border-line-strong">
               <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
               <span className="line-clamp-2 font-semibold leading-snug">{p.name}</span>
               <span className="tabular mt-auto pt-2 text-sm font-medium text-ink-2">{formatTL(p.price)}{p.optionGroupIds?.length ? " ⋯" : ""}</span>
@@ -180,14 +180,14 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
         </div>
       </section>
 
-      <aside className="flex flex-col border-l border-line bg-white">
+      <aside className="flex flex-col border-l border-line bg-surface">
         <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
           <button type="button" onClick={onBack} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 -ml-2">← {table ? "Salon" : "Paket"}</button>
           <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
           {tab && <span className="text-sm text-muted">{minutesSince(tab.openedAt, now)} dk</span>}
           {tabs.length > 1 && (
             <div className="ml-auto flex gap-1">
-              {tabs.map((t, i) => <button key={t.id} type="button" aria-pressed={t.id === tabId} onClick={() => setPick(t.id)} className={`rounded px-2 py-1 text-xs ${t.id === tabId ? "bg-brand text-white" : "border border-line bg-white"}`}>Adisyon {i + 1}</button>)}
+              {tabs.map((t, i) => <button key={t.id} type="button" aria-pressed={t.id === tabId} onClick={() => setPick(t.id)} className={`rounded px-2 py-1 text-xs ${t.id === tabId ? "bg-brand text-white" : "border border-line bg-surface"}`}>Adisyon {i + 1}</button>)}
             </div>
           )}
         </div>
@@ -317,7 +317,7 @@ function NoteDialog({ line, onSave, onClose }: { line: TabLine; onSave: (note: s
   const [note, setNote] = useState(line.note ?? "");
   return (
     <Modal label={`Not: ${line.name}`} onClose={onClose}>
-      <input autoFocus aria-label="Not" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} className="mb-4 w-full rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
+      <input autoFocus aria-label="Not" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} className="mb-4 w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
       <div className="flex gap-2">
         <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
         <button type="button" onClick={() => onSave(note.trim() || null)} className={`flex-[2] ${primary}`}>Kaydet</button>

@@ -28,7 +28,7 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack }: { tab: 
 
   if (tab.closed) {
     return (
-      <div className="mx-auto mt-10 w-full max-w-md rounded-2xl border border-line bg-white p-8 text-center shadow-card">
+      <div className="mx-auto mt-10 w-full max-w-md rounded-2xl border border-line bg-surface p-8 text-center shadow-card">
         <h2 className="text-2xl font-semibold tracking-tight">{tableName} kapandı</h2>
         <ul className="my-4 space-y-1 text-sm">{paid.map((p) => <li key={p.saleId}><button type="button" onClick={() => onReceipt(p.saleId)} className="font-medium text-brand underline">{p.receiptNo}</button>{p.change > 0 && ` · para üstü ${formatTL(p.change)}`}</li>)}</ul>
         <button type="button" onClick={onBack} className="press rounded-xl bg-brand px-6 py-3 font-semibold text-white shadow-card hover:bg-brand-hover">Salona dön</button>
@@ -44,18 +44,18 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack }: { tab: 
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="Bölme">
         {([["tumu", "Tümü"], ["esit", "Eşit böl"], ["sec", "Ürün seç"]] as const).map(([m, l]) => (
-          <button key={m} type="button" aria-pressed={mode === m} onClick={() => { setMode(m); setDone(0); setPicks({}); }} className={`press min-h-11 rounded-[10px] border px-4 text-sm ${mode === m ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-white hover:border-line-strong"}`}>{l}</button>
+          <button key={m} type="button" aria-pressed={mode === m} onClick={() => { setMode(m); setDone(0); setPicks({}); }} className={`press min-h-11 rounded-[10px] border px-4 text-sm ${mode === m ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>{l}</button>
         ))}
         {mode === "esit" && (
           <span className="ml-2 flex items-center gap-2 text-sm">
-            <button type="button" aria-label="Kişi azalt" disabled={done > 0} onClick={() => setParts((n) => Math.max(2, n - 1))} className="press grid size-10 place-items-center rounded-[10px] border border-line bg-white text-lg font-medium hover:bg-surface-3 disabled:opacity-40">−</button>
+            <button type="button" aria-label="Kişi azalt" disabled={done > 0} onClick={() => setParts((n) => Math.max(2, n - 1))} className="press grid size-10 place-items-center rounded-[10px] border border-line bg-surface text-lg font-medium hover:bg-surface-3 disabled:opacity-40">−</button>
             <span className="tabular w-16 text-center" data-testid="split-count">{parts} kişi</span>
-            <button type="button" aria-label="Kişi artır" disabled={done > 0} onClick={() => setParts((n) => Math.min(20, n + 1))} className="press grid size-10 place-items-center rounded-[10px] border border-line bg-white text-lg font-medium hover:bg-surface-3 disabled:opacity-40">+</button>
+            <button type="button" aria-label="Kişi artır" disabled={done > 0} onClick={() => setParts((n) => Math.min(20, n + 1))} className="press grid size-10 place-items-center rounded-[10px] border border-line bg-surface text-lg font-medium hover:bg-surface-3 disabled:opacity-40">+</button>
             <span className="text-muted">parça {done + 1}/{parts}</span>
           </span>
         )}
       </div>
-      <ul className="mb-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white shadow-card">
+      <ul className="mb-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         {(mode === "sec" ? lines : part).map((l) => {
           const q = mode === "sec" ? picks[l.lineId] ?? 0 : l.qtyMilli;
           return (
@@ -63,9 +63,9 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack }: { tab: 
               <span className="flex-1">{l.name}{l.options.length > 0 && <span className="block text-xs text-muted">{optionsText(l.options)}</span>}</span>
               {mode === "sec" ? (
                 <span className="flex items-center gap-2">
-                  <button type="button" aria-label={`${l.name} azalt`} onClick={() => bump(l, -1000)} className="press grid size-10 place-items-center rounded-[10px] border border-line bg-white text-lg font-medium hover:bg-surface-3 disabled:opacity-40">−</button>
+                  <button type="button" aria-label={`${l.name} azalt`} onClick={() => bump(l, -1000)} className="press grid size-10 place-items-center rounded-[10px] border border-line bg-surface text-lg font-medium hover:bg-surface-3 disabled:opacity-40">−</button>
                   <span className="tabular w-14 text-center">{qtyText(q)} / {qtyText(l.qtyMilli)}</span>
-                  <button type="button" aria-label={`${l.name} artır`} onClick={() => bump(l, l.qtyMilli - q < 1000 ? l.qtyMilli - q : 1000)} className="press grid size-10 place-items-center rounded-[10px] border border-line bg-white text-lg font-medium hover:bg-surface-3 disabled:opacity-40">+</button>
+                  <button type="button" aria-label={`${l.name} artır`} onClick={() => bump(l, l.qtyMilli - q < 1000 ? l.qtyMilli - q : 1000)} className="press grid size-10 place-items-center rounded-[10px] border border-line bg-surface text-lg font-medium hover:bg-surface-3 disabled:opacity-40">+</button>
                 </span>
               ) : <span className="tabular text-sm text-muted">{qtyText(q)}×</span>}
               <span className="tabular w-24 text-right">{formatTL(Math.round((l.unitPrice * q) / 1000))}</span>

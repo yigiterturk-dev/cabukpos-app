@@ -27,8 +27,8 @@ export default function Fiyatlandirma() {
   const aylik = unitPrices("aylik"), yillik = unitPrices("yillik");
   const contact = salesContact();
   return (
-    <div className="bg-white">
-      <header className="sticky top-0 z-10 border-b border-line bg-white/90 backdrop-blur">
+    <div className="bg-surface">
+      <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
           <Link href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
           <div className="ml-auto flex items-center gap-2 text-sm">

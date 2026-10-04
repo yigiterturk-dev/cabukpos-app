@@ -15,7 +15,7 @@ function CodeBox({ s }: { s: AgentState }) {
       <div className="text-sm">{s.agentName} için eşleme kodu</div>
       <div data-testid="agent-code" className="mt-1 font-mono text-3xl font-bold tracking-[0.3em] text-brand">{s.code}</div>
       <p className="mt-2 text-sm text-ink-2">
-        Kasadaki bilgisayarda: <code className="rounded bg-white px-1">node cabukpos-agent.cjs pair {s.code}</code>, ardından <code className="rounded bg-white px-1">install</code>.{" "}
+        Kasadaki bilgisayarda: <code className="rounded bg-surface px-1">node cabukpos-agent.cjs pair {s.code}</code>, ardından <code className="rounded bg-surface px-1">install</code>.{" "}
         {new Date(s.expiresAt!).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })} saatine kadar geçerli.
       </p>
     </div>
@@ -58,7 +58,7 @@ function LogoPreview({ logo }: { logo: LogoConfig }) {
     ctx.fillStyle = "#000";
     for (let y = 0; y < logo.h; y++) for (let x = 0; x < logo.w; x++) if (bytes[y * stride + (x >> 3)] & (0x80 >> (x & 7))) ctx.fillRect(x, y, 1, 1);
   }, [logo]);
-  return <canvas ref={ref} className="h-24 w-auto border border-line bg-white" style={{ imageRendering: "pixelated" }} aria-label="Logo önizleme" data-testid="logo-preview" />;
+  return <canvas ref={ref} className="h-24 w-auto border border-line bg-surface" style={{ imageRendering: "pixelated" }} aria-label="Logo önizleme" data-testid="logo-preview" />;
 }
 const Seg = <T extends string | number>({ value, options, onChange, label }: { value: T; options: readonly { value: T; label: string }[]; onChange: (v: T) => void; label: string }) => (
   <div className="flex flex-wrap gap-1" role="group" aria-label={label}>

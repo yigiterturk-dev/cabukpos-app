@@ -35,7 +35,7 @@ export function IconButton({ label, variant = "ghost", size = "md", className = 
   return <button type="button" aria-label={label} title={label} {...p} className={`${buttonClass(variant, size)} ${sq} !px-0 ${className}`} />;
 }
 
-const FIELD = "min-h-11 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-stone-400 hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
+const FIELD = "min-h-11 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
 
 export function Input({ className = "", ...p }: ComponentProps<"input">) {
   return <input {...p} className={`${FIELD} ${className}`} />;

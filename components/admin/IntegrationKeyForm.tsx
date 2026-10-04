@@ -11,7 +11,7 @@ function KeyBox({ s, scope }: { s: KeyState; scope: "stats" | "growth" }) {
     <div className="mt-4 rounded-xl border border-brand bg-brand-soft p-4">
       <div className="text-sm">{s.name} için erişim anahtarı — <b>yalnız şimdi gösterilir</b>, kaydedin.</div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <code data-testid="integration-key" className="break-all rounded bg-white px-2 py-1 font-mono text-sm">{s.key}</code>
+        <code data-testid="integration-key" className="break-all rounded bg-surface px-2 py-1 font-mono text-sm">{s.key}</code>
         <button type="button" className="text-sm text-brand underline" onClick={() => navigator.clipboard.writeText(s.key!).then(() => setCopied(true))}>{copied ? "Kopyalandı" : "Kopyala"}</button>
       </div>
       <p className="mt-2 text-sm text-ink-2">{scope === "growth" ? "Büyüme Merkezi/Laya bağlantısında kullanılır. Yalnız toplu, PII'siz büyüme özelliklerini okur; hiçbir şeyi değiştiremez." : "Ajans panelinde Bağlantılar → ÇabukPOS alanına yapıştırılır. Anahtar yalnız günlük satış özetini okur; hiçbir şeyi değiştiremez."}</p>

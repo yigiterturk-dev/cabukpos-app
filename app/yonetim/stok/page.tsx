@@ -52,7 +52,7 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
         list={<>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <form className="min-w-48 flex-1 sm:max-w-sm"><Input name="q" defaultValue={q} placeholder="Ürün ara" aria-label="Stokta ürün ara" />{kritik && <input type="hidden" name="kritik" value="1" />}</form>
-        <Link href={kritik ? "/yonetim/stok" : "/yonetim/stok?kritik=1"} aria-pressed={Boolean(kritik)} className={`rounded-[10px] border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${kritik ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-white hover:bg-surface-2"}`}>Yalnız kritikler ({critical})</Link>
+        <Link href={kritik ? "/yonetim/stok" : "/yonetim/stok?kritik=1"} aria-pressed={Boolean(kritik)} className={`rounded-[10px] border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${kritik ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:bg-surface-2"}`}>Yalnız kritikler ({critical})</Link>
         <span className="text-xs text-muted">{shown.length} ürün gösteriliyor</span>
         {sel && <span className="ml-auto text-sm text-muted">Stok değeri <b className="tabular text-ink" data-testid="stock-value">{formatTL(value)}</b></span>}
       </div>

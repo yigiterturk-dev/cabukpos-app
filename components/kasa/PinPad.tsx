@@ -5,7 +5,7 @@ import { verifyPin } from "@/lib/auth/pin";
 import { kasaDb, loadMeta } from "@/lib/offline/db";
 import { PIN_LOCK_MS, PIN_MAX_FAILS, type KasaStaff, type Meta } from "@/lib/offline/state";
 
-const KEY = "press h-20 rounded-2xl border border-line bg-white text-3xl font-medium shadow-card hover:border-line-strong active:bg-surface-3";
+const KEY = "press h-20 rounded-2xl border border-line bg-surface text-3xl font-medium shadow-card hover:border-line-strong active:bg-surface-3";
 
 export type Cashier = { id: string; name: string };
 

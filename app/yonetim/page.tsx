@@ -100,7 +100,7 @@ export default async function Bugun() {
           </div>
           <div className="grid gap-px bg-brand-ring/60 sm:grid-cols-3">
             {setupSteps.map(({ label, href, done, Icon }, index) => (
-              <Link key={label} href={href} className="group flex items-center gap-3 bg-white/75 px-5 py-4 outline-none transition hover:bg-white focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+              <Link key={label} href={href} className="group flex items-center gap-3 bg-surface/75 px-5 py-4 outline-none transition hover:bg-surface focus-visible:ring-4 focus-visible:ring-brand-ring/60">
                 <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${done ? "bg-ok-soft text-ok" : "bg-brand-soft text-brand"}`}>
                   {done ? <CheckCircle2 aria-hidden className="size-5" /> : <Icon aria-hidden className="size-5" />}
                 </span>
@@ -122,9 +122,9 @@ export default async function Bugun() {
               <h2 className="font-semibold">Dikkat gerekenler <span className="text-warn">({attention.total})</span></h2>
               <p className="mt-1 text-sm text-ink-2">Satış akışı devam eder; aşağıdaki kayıtları uygun olduğunuzda kontrol edin.</p>
               <div className="mt-3 flex flex-wrap gap-2 text-sm">
-                {attention.review > 0 && <Link href="/yonetim/raporlar?sekme=inceleme" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-white px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">İncelenecek ({attention.review})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
-                {attention.fiscal > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=error" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-white px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">Mali belgeler ({attention.fiscal})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
-                {attention.buyer > 0 && <Link href="/yonetim/raporlar?sekme=inceleme" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-white px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">Alıcı iadeleri ({attention.buyer})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
+                {attention.review > 0 && <Link href="/yonetim/raporlar?sekme=inceleme" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">İncelenecek ({attention.review})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
+                {attention.fiscal > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=error" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">Mali belgeler ({attention.fiscal})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
+                {attention.buyer > 0 && <Link href="/yonetim/raporlar?sekme=inceleme" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">Alıcı iadeleri ({attention.buyer})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
               </div>
             </div>
           </div>
@@ -196,7 +196,7 @@ export default async function Bugun() {
               </ul>
             )}
           </Card>
-          <Link href="/yonetim/urunler" className="flex items-center gap-3 rounded-[14px] border border-line bg-white px-4 py-3 text-sm shadow-card hover:border-line-strong">
+          <Link href="/yonetim/urunler" className="flex items-center gap-3 rounded-[14px] border border-line bg-surface px-4 py-3 text-sm shadow-card hover:border-line-strong">
             <Package aria-hidden className="size-4 text-muted" /><span className="flex-1">Ürün ve fiyatlar</span><ArrowRight aria-hidden className="size-4 text-muted" />
           </Link>
         </div>

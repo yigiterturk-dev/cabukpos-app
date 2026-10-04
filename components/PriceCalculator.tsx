@@ -12,7 +12,7 @@ export function PriceCalculator({ prices }: { prices: Record<BillingPeriod, Unit
   const n = (v: string, max: number) => Math.min(max, Math.max(1, Math.floor(Number(v) || 1)));
   const bd = p ? planBreakdown(p, { stores, devices }) : null;
   return (
-    <div className="rounded-2xl border border-line bg-white p-7 shadow-card">
+    <div className="rounded-2xl border border-line bg-surface p-7 shadow-card">
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Dönem">
         {([["aylik", "Aylık"], ["yillik", "Yıllık"]] as const).map(([k, l]) => (
           <button key={k} type="button" aria-pressed={period === k} onClick={() => setPeriod(k)}

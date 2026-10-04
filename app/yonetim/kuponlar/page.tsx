@@ -26,7 +26,7 @@ export default async function Kuponlar({ searchParams }: { searchParams: Promise
               <Input name="code" placeholder="YAZ20" required className="uppercase" />
             </Field>
             <Field label="Tür">
-              <select name="kind" className="h-11 w-full rounded-lg border border-line bg-white px-3 text-sm">
+              <select name="kind" className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm">
                 <option value="yuzde">Yüzde indirim</option>
                 <option value="tutar">Sabit tutar</option>
                 <option value="teslimat">Teslimat bedava</option>

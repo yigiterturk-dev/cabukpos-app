@@ -114,7 +114,7 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
                     <form action={requestRefundAction} className="flex flex-wrap items-end gap-3">
                       <input type="hidden" name="id" value={p.id} />
                       <Field label="Neden">
-                        <select name="reason" className="h-11 rounded-lg border border-line bg-white px-3 text-sm">
+                        <select name="reason" className="h-11 rounded-lg border border-line bg-surface px-3 text-sm">
                           <option value="satissiz">7 gün içinde satışsız dönem</option>
                           <option value="hatali">Hatalı / mükerrer çekim</option>
                           <option value="diger">Diğer</option>
