@@ -61,6 +61,8 @@ try {
 
   await admin.reload();
   await admin.getByTestId("key-row").getByText(/son kullanım/).waitFor();
+  // #8: yıkıcı iptal şifreli re-auth ister (RevokeForm)
+  await admin.getByTestId("key-row").getByLabel("Şifreniz").fill("Cabukpos2026x");
   await admin.getByRole("button", { name: "İptal et" }).click();
   await admin.getByTestId("key-row").getByText("İptal", { exact: true }).waitFor();
   expect((await api(key)).status, 401, "iptal sonrası");

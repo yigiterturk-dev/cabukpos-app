@@ -1,36 +1,26 @@
 // Herkese açık e-Arşiv görünümü (alıcı QR/e-posta bağlantısıyla gelir). Kiracı bağlamı yok → SECURITY DEFINER fonksiyon.
-// loading.tsx YOK: notFound() gerçek 404 dönsün (soft 404 tuzağı).
+// 404 doğrulaması layout'ta (kök loading.tsx streaming'i 404'ü 200'e çevirmesin diye); belge sorgusu doc.ts'te (cache'li tek sorgu).
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { sql } from "drizzle-orm";
-import { getDb } from "@/db";
 import { formatTL } from "@/lib/core/money";
 import { qtyText } from "@/lib/core/receipt";
 import { clientIp, hit } from "@/lib/ratelimit";
 import { PrintButton } from "@/components/PrintButton";
+import { docByToken } from "./doc";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "e-Arşiv fatura — ÇabukPOS", robots: { index: false, follow: false } };
 
-type Doc = {
-  status: "pending" | "issued" | "error" | "cancelled" | "cancel_rejected"; number: string | null; ettn: string | null; provider: string | null;
-  buyer: { taxId: string; name: string; email?: string; address?: string }; issuedAt: string | null; createdAt: string;
-  sale: { receiptNo: string; total: number; vat: { rate: number; gross: number; net: number; vat: number }[]; createdAt: string };
-  lines: { name: string; qtyMilli: number; unitPrice: number; vatRate: number; total: number }[];
-  seller: { name: string; taxId: string | null; taxOffice: string | null; address: string | null };
-  store: { name: string; address: string | null };
-};
 const dt = (s: string) => new Date(s).toLocaleString("tr-TR", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Istanbul" });
 
 export default async function Fatura({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  if (!/^[A-Za-z0-9_-]{24}$/.test(token)) notFound();
+  const d = await docByToken(token);
+  if (!d) notFound();
+  // Sınır yalnız gerçek belge görünümünü tutar; bilinmeyen token ucuz dizinli aramayla 404 döner (e2e m8 de buna dayanır).
   if ((await hit(`fatura:${await clientIp()}`, 1)) > 30) {
     return <main className="mx-auto max-w-md p-8 text-center text-sm">Çok fazla istek. Bir dakika sonra tekrar deneyin.</main>;
   }
-  const [row] = (await getDb().execute(sql`select fiscal_doc_by_token(${token}) as d`)) as unknown as { d: Doc | null }[];
-  const d = row?.d;
-  if (!d) notFound();
   const test = (d.provider ?? "fake-earsiv") === "fake-earsiv";
   const ready = d.status === "issued" || d.status === "cancelled" || d.status === "cancel_rejected";
   const cancelled = d.status === "cancelled" && !!d.number;
