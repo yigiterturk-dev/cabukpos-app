@@ -7,10 +7,13 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 
-export async function checkReauth(userId: string, form: FormData): Promise<string | null> {
-  const sifre = String(form.get("sifre") ?? "");
+export async function verifyReauth(userId: string, sifre: string): Promise<string | null> {
   if (!sifre) return "Bu işlem için hesap şifrenizi girmeniz gerekir.";
   const [u] = await getDb().select({ passwordHash: schema.users.passwordHash }).from(schema.users).where(eq(schema.users.id, userId));
   if (!u || !(await bcrypt.compare(sifre, u.passwordHash))) return "Şifre hatalı.";
   return null;
+}
+
+export async function checkReauth(userId: string, form: FormData): Promise<string | null> {
+  return verifyReauth(userId, String(form.get("sifre") ?? ""));
 }

@@ -64,6 +64,8 @@ export const devices = pgTable("devices", {
   receiptPrefix: text("receipt_prefix").notNull(),
   nextReceiptNo: integer("next_receipt_no").notNull().default(1),
   tokenHash: text("token_hash").unique(),
+  prevTokenHash: text("prev_token_hash"), // #8: jeton rotasyonu — önceki jeton yeni yazılana dek geçerli
+  tokenRotatedAt: ts("token_rotated_at"),
   pairingCode: text("pairing_code").unique(),
   pairingExpiresAt: ts("pairing_expires_at"),
   pairedAt: ts("paired_at"),

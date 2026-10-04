@@ -18,7 +18,7 @@ export async function pairDevice(_: KasaState, form: FormData): Promise<KasaStat
   const d = schema.devices;
   const [row] = await getDb()
     .update(d)
-    .set({ tokenHash: await sha256(token), pairingCode: null, pairingExpiresAt: null, pairedAt: sql`now()`, lastSeenAt: sql`now()` })
+    .set({ tokenHash: await sha256(token), prevTokenHash: null, tokenRotatedAt: sql`now()`, pairingCode: null, pairingExpiresAt: null, pairedAt: sql`now()`, lastSeenAt: sql`now()` })
     .where(and(eq(d.pairingCode, code), sql`${d.pairingExpiresAt} > now()`, isNull(d.revokedAt)))
     .returning({ id: d.id, tenantId: d.tenantId });
   if (!row) return { error: "Kod geçersiz ya da süresi dolmuş.", field: "code" };

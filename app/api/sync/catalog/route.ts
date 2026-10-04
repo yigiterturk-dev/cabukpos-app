@@ -3,7 +3,7 @@
 import { billingInfo } from "@/lib/core/billing";
 import { and, asc, desc, eq, isNull, or } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
-import { getDevice as requireAuthDevice } from "@/lib/auth/kasa";
+import { getDevice as requireAuthDevice, rotateDeviceToken } from "@/lib/auth/kasa";
 import { sha256 } from "@/lib/auth/tokens";
 import { isVatRate } from "@/lib/core/money";
 import { kasaAgentFor } from "@/lib/agent/registry";
@@ -23,6 +23,7 @@ const noStore = { "Cache-Control": "no-store" };
 export async function GET(req: Request) {
   const device = await requireAuthDevice();
   if (!device) return Response.json({ error: "cihaz" }, { status: 401, headers: noStore });
+  await rotateDeviceToken(device); // #8: vadesi geldiyse yeni cihaz jetonu (route handler'da çerez yazılır)
   const d = schema.devices, sh = schema.shifts;
   const [[dv], [store, cats, prods, staff, [shift], [fs]], salon, agent, hub, [tn], priceLists] = await Promise.all([
     getDb().select({ next: d.nextReceiptNo }).from(d).where(eq(d.id, device.id)),

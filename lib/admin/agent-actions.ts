@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
+import { checkReauth } from "@/lib/auth/reauth";
 import { newPairingCode } from "@/lib/auth/tokens";
 import { audit } from "@/lib/audit";
 import { agentConfig, emptyAgentConfig } from "@/lib/agent/config";
@@ -50,12 +51,14 @@ export async function newAgentPairing(agentId: string): Promise<AgentState> {
   return { code: c.code, expiresAt: c.expiresAt.toISOString(), agentName: row.name };
 }
 
-export async function revokeAgent(agentId: string) {
+export async function revokeAgent(agentId: string, state: { error?: string } = {}, form?: FormData): Promise<{ error?: string }> {
   const u = await requireWriter();
-  if (!UUID.test(agentId)) return;
+  if (!UUID.test(agentId)) return {};
+  if (form && (await checkReauth(u.id, form))) { void state; return { error: "Şifre hatalı ya da boş; ajan iptal edilmedi." }; }
   await getDb().update(a).set({ revokedAt: sql`now()`, tokenHash: null, hubKeyEnc: null, pairingCode: null }).where(and(eq(a.id, agentId), eq(a.tenantId, u.tenantId)));
   await withTenant(u.tenantId, (tx) => audit(tx, u.tenantId, `user:${u.id}`, "agent.revoke", { id: agentId }));
   revalidatePath("/yonetim/donanim");
+  return {};
 }
 
 /** Yapılandırma formu JSON gönderir (dinamik yazıcı listesi). */

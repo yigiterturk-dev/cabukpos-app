@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
+import { checkReauth } from "@/lib/auth/reauth";
 import { newPairingCode } from "@/lib/auth/tokens";
 import { audit } from "@/lib/audit";
 
@@ -52,10 +53,12 @@ export async function newPairing(deviceId: string): Promise<DeviceState> {
   return { code: c.code, expiresAt: c.expiresAt.toISOString(), deviceName: d.name };
 }
 
-export async function revokeDevice(deviceId: string) {
+export async function revokeDevice(deviceId: string, state: { error?: string } = {}, form?: FormData): Promise<{ error?: string }> {
   const a = await requireWriter();
-  if (!UUID.test(deviceId)) return;
-  await getDb().update(schema.devices).set({ revokedAt: sql`now()`, tokenHash: null, pairingCode: null }).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId)));
+  if (!UUID.test(deviceId)) return {};
+  if (form && (await checkReauth(a.id, form))) { void state; return { error: "Şifre hatalı ya da boş; cihaz iptal edilmedi." }; }
+  await getDb().update(schema.devices).set({ revokedAt: sql`now()`, tokenHash: null, prevTokenHash: null, pairingCode: null }).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId)));
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "device.revoke", { id: deviceId }));
   revalidatePath("/yonetim/cihazlar");
+  return {};
 }

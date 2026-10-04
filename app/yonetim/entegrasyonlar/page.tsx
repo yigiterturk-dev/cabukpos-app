@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth/session";
 import { listKeys } from "@/lib/integrations/keys";
 import { revokeIntegrationKey } from "@/lib/admin/integration-actions";
+import { RevokeForm } from "@/components/admin/RevokeForms";
 import { IntegrationKeyForm } from "@/components/admin/IntegrationKeyForm";
 import { Badge, Card, Empty, PageHeader } from "@/components/ui";
 
@@ -28,7 +29,7 @@ export default async function Entegrasyonlar() {
               {k.revokedAt ? <Badge tone="bad">İptal</Badge> : <Badge tone="ok">Etkin</Badge>}
               <span className="text-xs text-muted">Oluşturma {dt(k.createdAt)}{k.lastUsedAt ? ` · son kullanım ${dt(k.lastUsedAt)}` : " · hiç kullanılmadı"}</span>
               {owner && !k.revokedAt && (
-                <form action={revokeIntegrationKey.bind(null, k.id)} className="ml-auto"><button className="text-sm text-bad hover:underline">İptal et</button></form>
+                <div className="ml-auto"><RevokeForm action={revokeIntegrationKey.bind(null, k.id)} /></div>
               )}
             </div>
           ))}

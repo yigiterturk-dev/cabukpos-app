@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { newPairing, revokeDevice } from "@/lib/admin/device-actions";
+import { RevokeForm } from "@/components/admin/RevokeForms";
 import { DeviceForm, NewPairingButton } from "@/components/admin/StaffDeviceForms";
 import { DeviceRoleForm } from "@/components/admin/SalonForms";
 import { Badge, Card, Empty, PageHeader, Panel, SplitView } from "@/components/ui";
@@ -30,7 +31,7 @@ export default async function Cihazlar() {
               {d.lastSeenAt && <span className="text-xs text-muted">Son görülme {dt(d.lastSeenAt)}</span>}
               <div className="ml-auto flex flex-wrap items-start gap-4 text-sm">
                 <NewPairingButton action={newPairing.bind(null, d.id)} />
-                {!d.revokedAt && <form action={revokeDevice.bind(null, d.id)}><button className="text-bad hover:underline">İptal et</button></form>}
+                {!d.revokedAt && <RevokeForm action={revokeDevice.bind(null, d.id)} />}
               </div>
               {restoran && !d.revokedAt && <div className="w-full"><DeviceRoleForm deviceId={d.id} role={d.role} stations={d.stations} stationOptions={stationOptions} /></div>}
             </div>

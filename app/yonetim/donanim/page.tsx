@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { newAgentPairing, revokeAgent } from "@/lib/admin/agent-actions";
+import { RevokeForm } from "@/components/admin/RevokeForms";
 import { agentConfig, emptyAgentConfig } from "@/lib/agent/config";
 import { agentHost } from "@/lib/agent/dns";
 import { AgentConfigForm, AgentCreateForm, AgentPairButton } from "@/components/admin/AgentForms";
@@ -48,7 +49,7 @@ export default async function Donanim() {
                   {r.lastSeenAt && <span className="text-xs text-muted">Son görülme {dt(r.lastSeenAt)}{r.version ? ` · sürüm ${r.version}` : ""}{r.lanIp ? ` · ${r.lanIp}` : ""}</span>}
                   <div className="ml-auto flex flex-wrap items-start gap-4 text-sm">
                     <AgentPairButton action={newAgentPairing.bind(null, r.id)} />
-                    {!r.revokedAt && <form action={revokeAgent.bind(null, r.id)}><button className="text-bad hover:underline">İptal et</button></form>}
+                    {!r.revokedAt && <RevokeForm action={revokeAgent.bind(null, r.id)} />}
                   </div>
                 </div>
                 {r.status && (

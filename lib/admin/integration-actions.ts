@@ -25,9 +25,11 @@ export async function createIntegrationKey(_: KeyState, form: FormData): Promise
   return { key, name };
 }
 
-export async function revokeIntegrationKey(id: string): Promise<void> {
+export async function revokeIntegrationKey(id: string, state: { error?: string } = {}, form?: FormData): Promise<{ error?: string }> {
   const a = await requireAdmin();
-  if (a.role !== "sahip") return;
+  if (a.role !== "sahip") return {};
+  if (form && (await checkReauth(a.id, form))) { void state; return { error: "Şifre hatalı ya da boş; anahtar iptal edilmedi." }; }
   if (await revokeKey(a.tenantId, id)) await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "integration_key.revoke", { id }));
   revalidatePath(PATH);
+  return {};
 }
