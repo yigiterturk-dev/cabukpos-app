@@ -2,6 +2,8 @@
 import { and, desc, eq, gte, inArray, lt, notInArray, sql, type SQL } from "drizzle-orm";
 import { alias, type PgColumn } from "drizzle-orm/pg-core";
 import { schema, type Tx } from "@/db";
+import { rfmData } from "@/lib/admin/rfm";
+import { rfmCsv } from "@/lib/core/rfm";
 import {
   byChannel, byMethod, categoryRows, dailyStats, csvQty, csvTL, EVENT_LABEL, heatmap, prevRange, productRows, rangeBounds, registerEventRow,
   staffRows, summarize, tabEventRow, toCsv, WEEKDAYS, type DailyStat, type PayRow, type Range, type SaleRow, type StaffEvent,
@@ -80,7 +82,7 @@ const pct = (n: number | null) => (n === null ? "" : n.toFixed(1).replace(".", "
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function reportCsv(tx: Tx, sekme: string, r: Range, kisi: string | null): Promise<string | null> {
+export async function reportCsv(tx: Tx, tenantId: string, sekme: string, r: Range, kisi: string | null): Promise<string | null> {
   if (sekme === "ozet") {
     const d = await summaryData(tx, r);
     return toCsv(["Kalem", "Değer", "Önceki dönem"], [
@@ -108,6 +110,10 @@ export async function reportCsv(tx: Tx, sekme: string, r: Range, kisi: string | 
     const { events, names } = await staffEvents(tx, r, kisi);
     return toCsv(["Zaman", "Tür", "İçerik", "Tutar", "Onaylayan", "Gerekçe"],
       events.map((e) => [dt(e.at), EVENT_LABEL[e.kind], e.text, e.amount === null ? null : csvTL(e.amount), e.approvedBy ? names.get(e.approvedBy) ?? "Bilinmeyen" : null, e.reason]));
+  }
+  if (sekme === "musteriler") {
+    const d = await rfmData(tx, tenantId);
+    return rfmCsv(d.rows.map((x) => ({ name: x.name, phone: x.phone, orders: x.orders, spend: x.spend, lastOrderAt: x.lastOrderAt, recencyDays: x.recencyDays, segment: x.segment })));
   }
   return null;
 }

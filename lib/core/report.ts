@@ -9,7 +9,7 @@ const IST = 3 * 3600_000;
 export const MAX_DAYS = 366;
 
 export type Range = { bas: string; bit: string };
-export type ReportTab = "ozet" | "yogunluk" | "urunler" | "personel" | "vardiyalar" | "karlilik" | "inceleme";
+export type ReportTab = "ozet" | "yogunluk" | "urunler" | "personel" | "vardiyalar" | "karlilik" | "inceleme" | "musteriler";
 export const REPORT_TABS: readonly { key: ReportTab; label: string; csv: boolean; range: boolean }[] = [
   { key: "ozet", label: "Özet", csv: true, range: true },
   { key: "yogunluk", label: "Yoğunluk", csv: true, range: true },
@@ -18,6 +18,7 @@ export const REPORT_TABS: readonly { key: ReportTab; label: string; csv: boolean
   { key: "vardiyalar", label: "Vardiyalar", csv: false, range: false },
   { key: "karlilik", label: "Kârlılık", csv: false, range: true },
   { key: "inceleme", label: "İncelenecek", csv: false, range: true },
+  { key: "musteriler", label: "Müşteriler", csv: true, range: false }, // #40: RFM + kohort
 ];
 
 export const istToday = (now = Date.now(), offsetDays = 0) => new Date(now + IST + offsetDays * DAY).toISOString().slice(0, 10);

@@ -16,6 +16,8 @@ import { StaffTab } from "@/components/reports/StaffTab";
 import { ProfitTab } from "@/components/reports/ProfitTab";
 import { ShiftsTab } from "@/components/reports/ShiftsTab";
 import { ReviewTab } from "@/components/reports/ReviewTab";
+import { MusterilerTab } from "@/components/reports/MusterilerTab";
+import { rfmData } from "@/lib/admin/rfm";
 
 export const dynamic = "force-dynamic";
 const DESC: Record<ReportTab, string> = {
@@ -26,7 +28,9 @@ const DESC: Record<ReportTab, string> = {
   vardiyalar: "Vardiya (gün sonu) raporları. Son 200 vardiya.",
   karlilik: "Ürün kârlılığı: KDV hariç net ciro, satış anındaki maliyet, brüt kâr. İadeler düşülür.",
   inceleme: "Çevrimdışı kasadan gelip kabul edilen ama işaretlenen kayıtlar: fiyat farkı, silinmiş ürün, fiş no çakışması, fazla iade, platform hatası.",
+  musteriler: "Kayıtlı müşteri, RFM segmentleri ve kohort retention. Paket sipariş telefonundan bağlanır; iadeler düşülür.",
 };
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function Raporlar({ searchParams }: { searchParams: Promise<{ sekme?: string; bas?: string; bit?: string; sirala?: string; kisi?: string }> }) {
@@ -51,8 +55,9 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
   else if (tab.key === "personel") {
     const [rows, events] = await withTenant(a.tenantId, async (tx) => [await staffData(tx, range), kisi ? await staffEvents(tx, range, kisi) : null] as const);
     body = <StaffTab rows={rows} range={range} kisi={kisi} events={events} />;
-  } else if (tab.key === "karlilik") body = <ProfitTab tenantId={a.tenantId} range={range} />;
+  }   else if (tab.key === "karlilik") body = <ProfitTab tenantId={a.tenantId} range={range} />;
   else if (tab.key === "inceleme") body = <ReviewTab tenantId={a.tenantId} range={range} />;
+  else if (tab.key === "musteriler") body = <MusterilerTab data={await withTenant(a.tenantId, (tx) => rfmData(tx, a.tenantId))} />;
   else body = <ShiftsTab tenantId={a.tenantId} />;
 
   return (
@@ -67,7 +72,9 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
       <div className="mb-4 flex flex-wrap gap-1" role="tablist" aria-label="Rapor">
         {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} role="tab" aria-selected={t.key === tab.key} className={`rounded-lg border px-3 py-1.5 text-sm ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{t.label}</Link>)}
       </div>
-      {tab.range && <RangeBar sekme={tab.key} range={range} csv={tab.csv ? tab.key : null} print extra={tab.key === "urunler" ? { sirala: sp.sirala } : tab.key === "personel" ? { kisi: kisi ?? undefined } : {}} />}
+      {tab.key === "musteriler" ? (
+        <div className="mb-4"><Link className="inline-block rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface-2" href="/yonetim/raporlar/csv?sekme=musteriler" download>CSV indir</Link></div>
+      ) : tab.range ? <RangeBar sekme={tab.key} range={range} csv={tab.csv ? tab.key : null} print extra={tab.key === "urunler" ? { sirala: sp.sirala } : tab.key === "personel" ? { kisi: kisi ?? undefined } : {}} /> : null}
       {mailSettings && <ReportMailCard initial={{ daily: mailSettings.daily, weekly: mailSettings.weekly }} />}
       {body}
     </>

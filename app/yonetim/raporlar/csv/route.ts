@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   const sekme = q.get("sekme") ?? "";
   const r = parseRange(q.get("bas") ?? undefined, q.get("bit") ?? undefined);
-  const body = await withTenant(a.tenantId, (tx) => reportCsv(tx, sekme, r, q.get("kisi")));
+  const body = await withTenant(a.tenantId, (tx) => reportCsv(tx, a.tenantId, sekme, r, q.get("kisi")));
   if (body === null) return new Response("Bilinmeyen rapor.", { status: 400 });
   return new Response(body, {
     headers: {

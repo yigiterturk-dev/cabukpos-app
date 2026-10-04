@@ -73,10 +73,10 @@ test("personel: iade, adisyon iptali, sepetten silme; olay listesi", async () =>
 });
 
 test("CSV: personel + bilinmeyen sekme + başka kiracı boş", async () => {
-  const csv = await withTenant(t.id, (tx) => reportCsv(tx, "personel", r, null));
+  const csv = await withTenant(t.id, (tx) => reportCsv(tx, t.id, "personel", r, null));
   assert.ok(csv!.startsWith("﻿Personel;"));
   assert.match(csv!, /Ali;385,00;1;/);
-  assert.equal(await withTenant(t.id, (tx) => reportCsv(tx, "yok", r, null)), null);
+  assert.equal(await withTenant(t.id, (tx) => reportCsv(tx, t.id, "yok", r, null)), null);
   const empty = await withTenant(t2.id, (tx) => staffData(tx, r));
   assert.equal(empty.length, 0);
 });

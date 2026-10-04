@@ -227,3 +227,9 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - **Bug: sabit ücretli teslimat bölgesi oluşturulamıyordu** (#52 sonrası): `saveZone` boş `perKm`'i ("boş = sabit") `null` sayıp hemen reddediyordu — boş meşru değer; yalnız dolu-çözümsüz girdi hata. `e2e/m6.mjs` bu yüzden hiç güncellenmemiş adımlarla koşuyordu; webhook URL (`?t=`) ve eşleme formu combobox'ı da yenilenendi.
 - e2e m6/m7/lan yeni salon kurulum akışına uyarlandı (bölge "Masa"); lint'in 4 ölü uyarısı temizlendi.
 - Prod push öncesi her şey yeşil: `prod-push.sh` (şema: reservations, sales.tip, tenants.currency, devices rotasyon kolonları → rls → kontrol → main → canlı e2e).
+
+## #40 — Müşteriler sekmesi: RFM + kohort (2026-10-04)
+- Raporlar'a "Müşteriler" sekmesi: RFM tablosu (R-F-M puanı + segment rozeti: Şampiyon/Sadık/Yeni/Büyüyen/Risk altında/Uyuyan/Kayıp; sabit eşikler), kohort gridi (ilk sipariş ayına göre aylık retention %), özet kartlar (kayıtlı, 30 gün aktif, 30 gün yeni, 30 gün müşteri cirosu), CSV.
+- Veri yolu: paket sipariş olayının telefonu (`upsertCustomer` normalize'ü) → müşteri; `sales.tabId` bağlantısıyla adet/harcama/son sipariş; iadeler düşük, 365 gün pencere, ilk 500 harcamaya göre.
+- Saf çekirdek `lib/core/rfm.ts` (puan/segment/grid/CSV — `rfmMonths` burada), DB `lib/admin/rfm.ts`, UI `components/reports/MusterilerTab.tsx`, CSV `reportCsv(..., tenantId, ...)` imzasına tenantId eklendi (arama rotası güncel).
+- Test: `tests/rfm.test.ts` + `tests/rfm-db.test.ts` — **321/321**; e2e m9a + m8 yeşil. Şema değişikliği yok.
