@@ -41,8 +41,8 @@ const restore = await run("pg_restore", ["--clean", "--if-exists", "--no-owner",
 if (restore.code !== 0) throw new Error(`pg_restore başarısız (kod ${restore.code}).`);
 
 const smoke = await run("psql", ["--dbname", target, "--tuples-only", "--no-align", "--command",
-  "select case when count(*) > 0 then 'OK' else 'BOS' end from tenants;"], { capture: true });
+  "select case when (select count(*) from tenants) > 0 and to_regclass('public.billing_invoices') is not null and to_regprocedure('public.report_due_tenants(text,timestamp with time zone)') is not null then 'OK' else 'INCOMPLETE' end;"], { capture: true });
 if (smoke.code !== 0) throw new Error("Restore sonrası sorgu çalışmadı.");
-if (smoke.out.trim() !== "OK") throw new Error("Restore edilen veritabanında tenants tablosu boş; dump eksik olabilir.");
+if (smoke.out.trim() !== "OK") throw new Error("Restore edilen veritabanı eksik: tenants dolu, billing_invoices ve report_due_tenants hazır olmalı.");
 
 console.log(`Restore provası tamam: ${file} -> izole DB'ye yüklendi, tenants dolu.`);
