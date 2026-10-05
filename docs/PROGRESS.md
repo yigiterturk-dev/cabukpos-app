@@ -1,5 +1,10 @@
 # İlerleme — ÇabukPOS
 
+## Kanıta dayalı ciro tahmini (2026-10-05)
+- `/yonetim` Bugün ekranına son 28 tam günün brüt cirosundan 7 günlük yerel tahmin eklendi; en az 14 günlük pencere ve 7 aktif gün yoksa tahmin üretilmiyor.
+- Tahmin günlük ortalama, örnek standart sapma, yaklaşık %80 aralık ve artış/azalış eğilimiyle gösteriliyor; UI kesinlik iddiasını açıkça reddediyor.
+- Kanıt: `tests/forecast.test.ts`; tam süit yetkili yerel DB koşusunda **344/344** geçti.
+
 ## Yardım metni güvenlik kapısı (2026-10-05)
 - Kullanım kılavuzu, gerçek e-Arşiv entegratörü olmadan canlı mali belge üretildiği izlenimini vermeyecek şekilde düzeltildi.
 - `tests/help.test.ts` başlık bütünlüğünü, `tests/help-content.test.ts` ise bilgi fişi/mali belge ayrımı ve production entegratör kapısını içerik drift'ine karşı doğruluyor.
