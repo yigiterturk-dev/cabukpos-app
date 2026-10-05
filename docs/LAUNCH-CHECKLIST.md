@@ -8,10 +8,12 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 ### Teknik kapı — mevcut durum
 
 - [x] `npm ci` temiz kurulum: 0 vulnerability
-- [x] `npm test`: 169/169
+- [x] `npm test`: 335/335
 - [x] `npm run qa:static`: lint + typecheck
 - [x] `npm run build`: Webpack production build
-- [x] Production `/api/health` ve `/api/ready`: 200
+- [~] Production `/api/health` ve `/api/ready`: eski deployment'ta 200; mevcut çalışma ağacının release'i için yeniden doğrulanacak
+- [ ] Mevcut release değişiklikleri deploy edildi; aynı deployment'ta health/ready ve kritik runtime audit geçti
+- [ ] Cron scheduler doğrulandı: GitHub Actions workflow'u için `APP_URL` + `CRON_SECRET` secret'ları ve beş zamanlama çalıştı (alternatif: Vercel Pro Cron)
 - [x] Growth feature-pack, insights ve event intake tenant/scope sınırları
 - [x] Production kritik anonim/korumalı uçlar: runtime audit 16/16 kontrol tanımı
 - [x] Neon migration ve FORCE RLS doğrulaması
@@ -35,13 +37,15 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 
 ### Mağaza pilot kapısı — ilk müşteriyle
 
-- [ ] Windows cihazda agent kurulumu ve otomatik başlatma
+- [ ] Windows cihazda agent kurulumu ve otomatik başlatma (indirme betiği hazır: `public/indir/cabukpos-agent-install.ps1`; gerçek Windows kanıtı bekliyor)
 - [ ] Termal yazıcıdan bilgi fişi ve iade tutanağı çıktısı
 - [ ] Barkod okuyucu, para çekmecesi ve terazi
 - [ ] İnternet kesintisi → satış → bağlantı dönüşü → eşitleme
 - [ ] Aynı mağazada ikinci kasa/garson cihazı ve LAN merkez akışı
 - [ ] Gün sonu, vardiya farkı, rapor ve veri export
 - [ ] İlk müşteride en az 3 iş günü hata/alert takibi
+
+Pilot uygulama adımları ve imza alanları: `docs/PILOT-REHEARSAL.md`.
 
 `LAUNCH_ENV=production npm run launch:check` eksik ayarları kontrol eder; değerleri
 ekrana basmaz. Deployment rotalarını da doğrulamak için `APP_URL` tanımlı olarak

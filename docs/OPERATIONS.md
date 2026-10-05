@@ -33,6 +33,18 @@ durumu ve cabukpos_app BYPASSRLS durumu birlikte doğrulanmalıdır.
   Repo secret'ına `BACKUP_DATABASE_URL` (okuma yetkili Neon bağlantısı) tanımlı olmalı;
   ilk koşuda Actions logundan "Yedek hazır" satırı doğrulanır.
 
+## Uygulama cron'ları
+
+- `/api/cron/agent-heartbeat`, `/api/cron/uptime`, `/api/cron/fiscal`,
+  `/api/cron/billing` ve `/api/cron/report` endpoint'leri `.github/workflows/cron.yml`
+  tarafından çağrılır; bu, Vercel Hobby'nin günlükten sık cron kısıtını aşmadan
+  5/10 dakika, 6 saat ve günlük iş aralıklarını korur.
+- Repository secret'ları `APP_URL` ve `CRON_SECRET` tanımlı olmadan workflow
+  bilerek başarısız olur. İlk açılışta her zamanlama en az bir kez çalıştırılmalı;
+  Actions logundaki HTTP yanıtı ve uygulama audit/alert kaydı saklanmalıdır.
+- Vercel Pro planı alınırsa zamanlamalar tekrar Vercel Cron'a taşınabilir; iki
+  scheduler'ı aynı anda açmayın, yoksa işler çift çalışır.
+
 ## Canlı kontrol
 
 - Deploy sonrası anonim ve korumalı kritik uçları tek komutla kontrol etmek için

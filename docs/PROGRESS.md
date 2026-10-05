@@ -1,5 +1,34 @@
 # İlerleme — ÇabukPOS
 
+## Deployment runtime kanıtı (2026-10-05)
+- Vercel deployment `dpl_Au7pGSjpMXEteaW959XfJ43soWkf` production hedefinde **Ready**; `cabukpos-app.vercel.app` ve `cabukpos-app-yamakyeter.vercel.app` alias'ları bağlı.
+- Vercel runtime logunda hem production alias hem deployment host için `GET /api/health` **200** görüldü; deployment 3 gün önce olduğu için bu, mevcut uncommitted çalışma ağacının runtime kanıtı değildir.
+- `curl`/Chrome ile doğrudan istek bu çalışma ortamının DNS/istemci ağ politikası nedeniyle doğrulanamadı; `/api/ready`, veritabanı ve authenticated akışlar ile mevcut değişikliklerin deploy edilmesi hâlâ canlı kanıt bekliyor.
+- Mevcut çalışma ağacı Vercel build ortamında da derlendi: Next production build, TypeScript ve 20 statik sayfa başarılı. Deploy aşaması Vercel Hobby hesabının günlükten sık cron kısıtında durdu (`0 */6`, ayrıca `*/5`/`*/10` cron'ları); cron'ları günlükleştirip operasyon güvencesini düşürmek yerine Pro planı veya harici scheduler gerekiyor.
+
+## Pilot onboarding — CSV ürün aktarımı (2026-10-05)
+- Yönetim → Ürünler'e CSV'den toplu ürün aktarımı eklendi; Türkçe/İngilizce başlıklar, tırnaklı TL fiyatları ve kategori adları destekleniyor.
+- Ürün/kategori yazımı tenant işleminde yapılır; tüm satırlar doğrulanmadan hiçbir ürün kaydedilmez. Kategori yoksa oluşturulur; PLU ve barkod çakışmaları mevcut veriye karşı reddedilir.
+- Sınırlar: dosya en fazla 1 MB, aktarım en fazla 500 ürün. Şablon `public/indir/cabukpos-urun-sablonu.csv`; saf parser testi `tests/product-csv.test.ts`.
+- Kanıt: `npm run qa:static`, `npm run build`, parser testleri yeşil. DB entegrasyon testi gerçek PostgreSQL bekler.
+
+## Production mali güvenlik kapısı (2026-10-05)
+- `fake-earsiv` ve `fake-okc` sağlayıcıları `NODE_ENV=production` veya `LAUNCH_ENV=production` altında fail-closed olur; sahte belge/künye üretmez.
+- Testler: `tests/fiscal.test.ts`, `tests/okc.test.ts`; 16/16 ilgili saf test yeşil.
+- Mali ayarlarda production + sahte sağlayıcı durumunda e-Arşiv düğmesi devre dışı; server action da e-Arşiv ayarını reddediyor, işletme bilgi fişiyle devam edebiliyor.
+
+## Production abonelik fail-closed (2026-10-05)
+- `getBillingProvider()` artık `NODE_ENV=production` veya `LAUNCH_ENV=production` altında `BILLING_PROVIDER=fake` için sağlayıcı döndürmüyor; launch-check atlanmış olsa bile sahte ücretsiz abonelik/yenileme akışı açılmıyor.
+- Kanıt: `tests/billing-provider.test.ts` 1/1 ve `npm run qa:static` yeşil.
+
+## CI workflow provenance (2026-10-05)
+- CI, backup ve restore workflow'larındaki GitHub Actions referansları tam commit SHA'larına sabitlendi; workflow scanner artık aday bulmuyor.
+- `actions/checkout` v4.2.2 (`11bd719…`), `actions/setup-node` v4.4.0 ve `actions/upload-artifact` v4.6.2 pinleri kullanılıyor.
+
+## Dependency release evidence (2026-10-05)
+- Dependency supply-chain scanner manifest/lockfile, Git/path bağımlılığı, install hook ve registry override adayı bulmadı.
+- `npm audit --omit=dev --audit-level=high`: **0 vulnerability** (npm advisory verisi, 2026-10-05).
+
 ## Büyüme Merkezi / M9d (2026-10-01)
 - Tenant içi ve yalnız restoran dikeyinde feature-pack, baseline/Laya advisor, kampanya taslağı, kampanya listesi/durumu ve idempotent ölçüm olayları tamamlandı.
 - İletişim izni değişimleri audit edilir; kampanya hedefi yalnız açık izinli müşterilerden hesaplanır; ham müşteri PII'si harici API'ye çıkmaz.
