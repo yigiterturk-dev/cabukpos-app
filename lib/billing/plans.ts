@@ -13,4 +13,6 @@ export const unitPrices = (p: BillingPeriod): UnitPrices | null => {
   return { base, store: price(env(p, "PLAN_PRICE_STORE_AYLIK", "PLAN_PRICE_STORE_YILLIK")), device: price(env(p, "PLAN_PRICE_DEVICE_AYLIK", "PLAN_PRICE_DEVICE_YILLIK")) };
 };
 export const planPriceFor = (p: BillingPeriod, c: UnitCounts): number | null => { const u = unitPrices(p); return u ? planBreakdown(u, c).total : null; };
-export const salesContact = () => process.env.SALES_CONTACT || null;
+// Production launch zaten LEGAL_EMAIL ister; ayrı bir satış adresi yoksa
+// fiyatlandırma ve teklif CTA'ları tamamen kaybolmasın.
+export const salesContact = () => process.env.SALES_CONTACT || process.env.LEGAL_EMAIL || null;
