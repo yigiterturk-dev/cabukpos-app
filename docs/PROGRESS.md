@@ -260,3 +260,7 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 ## 2FA e2e + kurulum butonu bug'ı (2026-10-05)
 - **Gerçek bug**: `MfaAc`'ın "Kurulumu başlat" butonu `onClick` ile sahte FormEvent gönderiyordu → `FormData(e.currentTarget)` patlıyor → **2FA kurulumu UI'dan hiç başlamıyordu** (kimse e2e'lemediği için 3 gündür duruyordu). Gerçek `<form>`'a çevrildi.
 - `e2e/mfa.mjs` (npm run e2e:mfa): kayıt → TOTP kur (kod e2e içinde RFC 6238 ile hesaplanır) → çıkış → yanlış kod reddi → doğru kodla giriş → şifreli re-auth ile kapatma. **MFA OK**.
+
+## #4 e-posta doğrulama e2e'si (2026-10-05)
+- `e2e/dogrula.mjs` (npm run e2e:dogrula): kayıt → panelde banner → yerelde imzalanmış bağlantı (/dogrula) → doğrulandı → banner kalkar → ikinci kullanım "Zaten doğrulanmış" → bozuk bağlantı başarısız sayfası. **DOGRULA OK**. Kasa koyu tema da görsel doğrulandı (salon ekranı).
+- Auth yüzeylerinin tamamı artık e2e'li: giriş, şifre sıfırlama, 2FA, e-posta doğrulama.
