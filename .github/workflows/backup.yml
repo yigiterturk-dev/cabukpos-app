@@ -1,8 +1,8 @@
 name: Yedekleme
 
 # Günlük backup gate: canlı DB'den custom-format dump alır, pg_restore katalog
-# provası yapar ve dump'ı workflow artifact olarak 30 gün saklar.
-# Gerekli secret: BACKUP_DATABASE_URL (Neon MIGRATE_DATABASE_URL ile aynı rol, okuma yeterli).
+# provasını yapar ve şifreli dump'ı workflow artifact olarak 30 gün saklar.
+# Gerekli secret'lar: BACKUP_DATABASE_URL ve BACKUP_ENCRYPTION_KEY.
 on:
   schedule:
     - cron: "15 3 * * *" # her gün 03:15 UTC (Türkiye sabahı)
@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MIGRATE_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
       BACKUP_DIR: /tmp/cabukpos-backups
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -25,11 +26,24 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Yedek al ve katalog provasını çalıştır
-        run: npm run db:backup
-      - name: Artifact'a yükle (30 gün)
+        run: |
+          set -euo pipefail
+          test -n "$MIGRATE_DATABASE_URL" || { echo "BACKUP_DATABASE_URL repository secret eksik" >&2; exit 1; }
+          test -n "$BACKUP_ENCRYPTION_KEY" || { echo "BACKUP_ENCRYPTION_KEY repository secret eksik" >&2; exit 1; }
+          npm run db:backup
+      - name: Yedeği şifrele
+        run: |
+          set -euo pipefail
+          dump="$(find /tmp/cabukpos-backups -maxdepth 1 -type f -name '*.dump' -print -quit)"
+          test -n "$dump" || { echo "Şifrelenecek dump bulunamadı" >&2; exit 1; }
+          umask 077
+          openssl enc -aes-256-cbc -pbkdf2 -salt -iter 310000 \
+            -in "$dump" -out "${dump}.enc" -pass env:BACKUP_ENCRYPTION_KEY
+          shred -u "$dump"
+      - name: Şifreli artifact'a yükle (30 gün)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: cabukpos-dump-${{ github.run_id }}
-          path: /tmp/cabukpos-backups/*.dump
+          path: /tmp/cabukpos-backups/*.dump.enc
           retention-days: 30
           if-no-files-found: error

@@ -8,15 +8,16 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 ### Teknik kapı — mevcut durum
 
 - [x] `npm ci` temiz kurulum: 0 vulnerability
-- [x] `npm test`: 335/335
+- [x] `npm test`: 337/337
 - [x] `npm run qa:static`: lint + typecheck
 - [x] `npm run build`: Webpack production build
-- [~] Production `/api/health` ve `/api/ready`: eski deployment'ta 200; mevcut çalışma ağacının release'i için yeniden doğrulanacak
+- [~] Production `/api/health` ve `/api/ready`: mevcut production-target deployment'ta health `ok:true`, ready `database:ok`; ana alias'a promote edilmesi bekliyor
 - [ ] Mevcut release değişiklikleri deploy edildi; aynı deployment'ta health/ready ve kritik runtime audit geçti
 - [ ] Cron scheduler doğrulandı: GitHub Actions workflow'u için `APP_URL` + `CRON_SECRET` secret'ları ve beş zamanlama çalıştı (alternatif: Vercel Pro Cron)
 - [x] Growth feature-pack, insights ve event intake tenant/scope sınırları
 - [x] Production kritik anonim/korumalı uçlar: runtime audit 16/16 kontrol tanımı
 - [x] Neon migration ve FORCE RLS doğrulaması
+- [x] Kaynak RLS coverage gate ve `audit_log` append-only yetki testi
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
 - [x] `npm run launch:check` ile sırları göstermeden production ayar kontrolü
@@ -24,7 +25,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 ### Canlı işletme kapısı — açılıştan önce zorunlu
 
 - [ ] Production `AGENT_ALERT_WEBHOOK_URL` tanımlandı; başarısız heartbeat alarmı görüldü
-- [ ] Günlük backup scheduler çalışıyor; son dump `npm run db:backup:verify` ile doğrulandı
+- [ ] Günlük backup scheduler çalışıyor; `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY` ile şifreli artifact üretildi, son dump `npm run db:backup:verify` ile doğrulandı
 - [ ] İzole staging veritabanına gerçek restore yapıldı ve uygulama açıldı
 - [ ] Growth recipient_ref/approval şeması production'a uygulandı; db:growth:verify, owner approval 403/200 akışı ve signed webhook staging'de doğrulandı
 - [ ] Growth scope'lu key ile `RUNTIME_GROWTH_KEY=... BASE=<production> npm run audit:runtime` authenticated feature-pack/insights/campaign contract'ı geçti

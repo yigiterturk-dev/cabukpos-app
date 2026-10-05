@@ -1,10 +1,26 @@
 # İlerleme — ÇabukPOS
 
+## M54 mobil/kiosk E2E (2026-10-05)
+- Gerçek Chrome ile `npm run e2e:m54` geçti: 390×844 mobil kayıt/panel render, çekmece navigasyonu, ürün oluşturma, Kiosk/QR bağlantısı, herkese açık menüden sipariş ve durum ekranı; 1440px masaüstü menü taşma kontrolü de geçti (`M54 OK`).
+- CI workflow'u production smoke testinden sonra `e2e:critical` ve `e2e:m54` çalıştıracak şekilde kapsıyor.
+
+## Yedek artifact gizliliği (2026-10-05)
+- Günlük backup workflow'u ham PostgreSQL dump'ını artifact'a yüklemiyor; `BACKUP_ENCRYPTION_KEY` ile AES-256-CBC/PBKDF2 şifreleyip yalnız `.dump.enc` saklıyor.
+- Workflow, `BACKUP_DATABASE_URL` veya şifreleme anahtarı yoksa kontrollü biçimde duruyor; restore öncesi güvenli runner'da çözme ve katalog/restore provası adımları operasyon belgesine işlendi.
+
+## RLS kapsam ve audit append-only kapısı (2026-10-05)
+- `tests/rls-coverage.test.ts` tenant_id taşıyan tüm tabloları kaynak şema/RLS SQL'iyle karşılaştırıyor; yalnız gerekçeli kimlik/abonelik istisnaları allowlist'te kalabiliyor.
+- `db/rls.sql` uygulama rolü için `audit_log` UPDATE/DELETE/TRUNCATE yetkilerini kaldırıyor; ekleme ve okuma dışındaki değişiklikler DB seviyesinde reddediliyor.
+- Kanıt: RLS coverage testi 2/2; tam `npm test` toplamı **337/337**, statik kalite geçişi.
+
 ## Deployment runtime kanıtı (2026-10-05)
 - Vercel deployment `dpl_Au7pGSjpMXEteaW959XfJ43soWkf` production hedefinde **Ready**; `cabukpos-app.vercel.app` ve `cabukpos-app-yamakyeter.vercel.app` alias'ları bağlı.
 - Vercel runtime logunda hem production alias hem deployment host için `GET /api/health` **200** görüldü; deployment 3 gün önce olduğu için bu, mevcut uncommitted çalışma ağacının runtime kanıtı değildir.
 - `curl`/Chrome ile doğrudan istek bu çalışma ortamının DNS/istemci ağ politikası nedeniyle doğrulanamadı; `/api/ready`, veritabanı ve authenticated akışlar ile mevcut değişikliklerin deploy edilmesi hâlâ canlı kanıt bekliyor.
 - Mevcut çalışma ağacı Vercel build ortamında da derlendi: Next production build, TypeScript ve 20 statik sayfa başarılı. Deploy aşaması Vercel Hobby hesabının günlükten sık cron kısıtında durdu (`0 */6`, ayrıca `*/5`/`*/10` cron'ları); cron'ları günlükleştirip operasyon güvencesini düşürmek yerine Pro planı veya harici scheduler gerekiyor.
+- Cron'lar GitHub Actions workflow'una taşındı (`.github/workflows/cron.yml`); Vercel `vercel.json` artık cron tanımlamıyor. Workflow scanner: 4 workflow, 0 aday; gerçek çalışması `APP_URL` ve `CRON_SECRET` repository secret'larının varlığına bağlı.
+- GitHub Actions secret API kontrolü (2026-10-05): `total_count: 0`; `APP_URL` ve `CRON_SECRET` henüz tanımlı değil. Workflow'un canlı scheduler olarak kanıtlanması için secret kurulumu ve bu workflow'un uzak repoya push edilmesi gerekiyor.
+- Mevcut çalışma ağacı production env ile `dpl_5pxPbtsHJmvy5XePu64kzG86pedc` olarak deploy edildi (ana kullanıcı alias'ı bilerek promote edilmedi): authenticated Vercel curl ile `/api/health` `ok:true`, `/api/ready` `database:ok`, secretsiz `/api/cron/fiscal` `yetkisiz` döndü.
 
 ## Pilot onboarding — CSV ürün aktarımı (2026-10-05)
 - Yönetim → Ürünler'e CSV'den toplu ürün aktarımı eklendi; Türkçe/İngilizce başlıklar, tırnaklı TL fiyatları ve kategori adları destekleniyor.

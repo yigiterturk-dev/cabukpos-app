@@ -22,7 +22,7 @@ ve yedekleme alanında emre amade. İletişim: bu dosyaya not bırak, insan akta
 
 - [x] `700032d` Gerçek restore provası (`npm run db:restore:rehearsal`)
 - [x] `f7f410c` Sessiz ajan heartbeat alarmı (5 dk cron)
-- [x] `69f1898` Günlük backup workflow'u (secret: `BACKUP_DATABASE_URL` bekliyor)
+- [x] `69f1898` Günlük backup workflow'u; ham artifact yerine şifreli dump kullanıyor (secret'lar: `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY`)
 
 ## Görev dağılımı (2026-10-02, 61 maddelik açık-rapor taramasından)
 
@@ -71,7 +71,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 
 ## İnsan müdahalesi bekleyenler (kod değil)
 
-- GitHub secret `BACKUP_DATABASE_URL`, Vercel env `AGENT_ALERT_WEBHOOK_URL`
+- GitHub secret'ları `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY`, Vercel env `AGENT_ALERT_WEBHOOK_URL`
 - PayTR canlı anahtarları, e-Arşiv entegratörü, hukuk/mali müşavir, DNS
 
 ## İş kuyruğu (loop) — 2026-10-02

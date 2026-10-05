@@ -29,9 +29,13 @@ durumu ve cabukpos_app BYPASSRLS durumu birlikte doğrulanmalıdır.
   gerçek restore provası için `REHEARSAL_DATABASE_URL=<izole staging DB> npm run db:restore:rehearsal -- --file=<dump>`
   komutu dump'ı izole veritabanına yükler, canlı URL ile aynı olduğunu reddeder ve tenants duman testini çalıştırır.
 - Komut yedeği üretir, zamanlamayı `.github/workflows/backup.yml` üstlenir: her gün
-  03:15 UTC'de dump alır, katalog provası yapar, artifact olarak 30 gün saklar.
-  Repo secret'ına `BACKUP_DATABASE_URL` (okuma yetkili Neon bağlantısı) tanımlı olmalı;
-  ilk koşuda Actions logundan "Yedek hazır" satırı doğrulanır.
+  03:15 UTC'de dump alır, katalog provası yapar, ardından AES-256-CBC + PBKDF2 ile
+  şifreleyip yalnız `.dump.enc` artifact'ını 30 gün saklar. Repository secret'ları
+  `BACKUP_DATABASE_URL` (okuma yetkili Neon bağlantısı) ve güçlü rastgele
+  `BACKUP_ENCRYPTION_KEY` olmalıdır; ham dump artifact'a yüklenmez. Restore için
+  artifact'ı güvenli runner'da `openssl enc -d -aes-256-cbc -pbkdf2 -iter 310000`
+  ile açıp `npm run db:backup:verify -- --file=<dump>` ve gerçek restore provasını
+  çalıştırın. İlk koşuda Actions logundan "Yedek hazır" satırı doğrulanır.
 
 ## Uygulama cron'ları
 
