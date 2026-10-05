@@ -19,7 +19,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [x] Neon migration ve FORCE RLS doğrulaması
 - [x] Kaynak RLS coverage gate ve `audit_log` append-only yetki testi
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
-- [~] Pilot E2E komutu CI kapısına bağlı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`); yeni CI koşusunun yeşil kanıtı bekleniyor
+- [x] Pilot E2E komutu CI kapısına bağlı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`); son 5 CI koşusu (2026-10-05 09:06–09:12) **success**
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
 - [~] `npm run launch:check` ile sırları göstermeden production ayar kontrolü; canlı alias'ta fiyatlar ve satıcı bilgileri hâlâ placeholder olduğu için production env kanıtı bekleniyor
 
@@ -28,7 +28,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [ ] Production `AGENT_ALERT_WEBHOOK_URL` tanımlandı; başarısız heartbeat alarmı görüldü
 - [ ] Günlük backup scheduler çalışıyor; `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY` ile şifreli artifact üretildi, son dump `npm run db:backup:verify` ile doğrulandı
 - [ ] İzole staging veritabanına gerçek restore yapıldı ve uygulama açıldı
-- [ ] Growth recipient_ref/approval şeması production'a uygulandı; db:growth:verify, owner approval 403/200 akışı ve signed webhook staging'de doğrulandı
+- [~] Growth recipient_ref/approval şeması production'a uygulandı — ✅ owner ile `db:growth:verify` **9/9 OK** (kolonlar + RLS/FORCE + `tenant_isolation` + BYPASSRLS kapalı); ⏳ kalan: owner approval 403/200 akışı ve signed webhook'un staging'de canlı provası
 - [ ] Growth scope'lu key ile `RUNTIME_GROWTH_KEY=... BASE=<production> npm run audit:runtime` authenticated feature-pack/insights/campaign contract'ı geçti
 - [ ] `BILLING_PROVIDER=paytr` için canlı PayTR anahtarları ve bildirim URL'si doğrulandı
 - [ ] Gerçek e-Arşiv entegratörü seçildi; sandbox kesim, iptal ve e-posta testleri tamamlandı
