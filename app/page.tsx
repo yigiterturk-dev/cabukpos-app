@@ -76,6 +76,7 @@ export default function Home() {
             <a href="#ozellikler" className="hover:text-ink">Özellikler</a>
             <a href="#fiyat" className="hover:text-ink">Fiyat</a>
             <a href="#sss" className="hover:text-ink">Sorular</a>
+            <Link href="/yardim" className="hover:text-ink">Yardım</Link>
           </nav>
           <div className="ml-auto flex items-center gap-2 text-sm">
             <Link href="/kasa" className={`${buttonClass("ghost", "sm")} hidden sm:inline-flex`}>Kasayı aç</Link>
