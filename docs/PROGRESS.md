@@ -30,7 +30,7 @@
 - Production deployment `dpl_7B1h2jvuMgMrFxhECqoQWJFDyeqt` **Ready** ve `cabukpos-app.vercel.app` alias'ına bağlı; `/api/health` ve `/api/ready` 200 (`database:ok`).
 - `BASE=https://cabukpos-app.vercel.app npm run audit:runtime` 16/16 geçti: login/kayıt 200/307, anonim export/growth/fiscal/billing korumaları 401.
 - GitHub Actions cron workflow'una `APP_URL` ve `CRON_SECRET` repository secret'ları eklendi. Manuel `uptime`, `agent-heartbeat` ve `fiscal` koşuları 200 geçti.
-- Production cron logları `billing` için eksik `billing_invoices` tablosunu, `report` için eksik `report_due_tenants(text,timestamptz)` fonksiyonunu gösteriyor; canlı Neon migration owner bağlantısı olmadan bu iki iş tamamlanmış sayılmıyor.
+- Production şema açığı kapatıldı: kod 58 tablo beklerken canlı Neon'da yalnız 39 tablo vardı (19 eksik: `billing_invoices`, `billing_invoice_counters`, `report_settings`, `sessions`, `fiscal_envelopes`, loyalty (4), `reservations`, `price_lists` (2), `stock_counts` (2), growth (3)). Owner (`neondb_owner`) bağlantısıyla `drizzle-kit push --force` + `db-rls.mjs` uygulandı; canlıda 58 tablo / 47 RLS / `report_due_tenants` hazır, veri korundu (22 işletme, 30 satış). Önce Neon branch yedeği alındı (`pre-schema-fix-1135`). Cron: `billing`+`report` 08:14 failure → 08:37 success.
 - Cron'lar GitHub Actions workflow'una taşındı (`.github/workflows/cron.yml`); Vercel `vercel.json` cron tanımlamıyor. Backup workflow'u için ayrıca `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY` secret'ları gerekiyor.
 
 ## Pilot onboarding — CSV ürün aktarımı (2026-10-05)
