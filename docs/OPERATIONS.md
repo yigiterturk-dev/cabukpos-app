@@ -32,6 +32,8 @@ Bu komut yalnızca okur; `billing_invoices`, `billing_invoice_counters`,
   dump dosyasını repoya veya uygulama storage'ına koymayın.
 - Yedeği canlıya geri yüklemeden doğrulamak için `pg_restore --list <dosya>`;
   gerçek restore provası için `REHEARSAL_DATABASE_URL=<izole staging DB> npm run db:restore:rehearsal -- --file=<dump>`
+  (PostgreSQL sunucusu 18 ise `pg_dump`/`pg_restore` de 18 olmalı — `PATH=/opt/homebrew/opt/postgresql@18/bin:$PATH`.
+  Yedek `--no-privileges`, restore `--no-acl` kullanır: Neon'a özel ACL/ownership ifadeleri taşınamaz, `db:rls` zaten kurar.)
   komutu dump'ı izole veritabanına yükler, canlı URL ile aynı olduğunu reddeder,
   `pg_restore --exit-on-error` ile kısmi restore'u başarısız sayar ve tenants +
   billing/report şema duman testini çalıştırır.

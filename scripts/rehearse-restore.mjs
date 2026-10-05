@@ -37,7 +37,9 @@ const run = (cmd, args, opts = {}) =>
 
 // Do not allow pg_restore to continue past a failed object and report a false
 // positive based only on the later tenants smoke query.
-const restore = await run("pg_restore", ["--clean", "--if-exists", "--no-owner", "--exit-on-error", "--dbname", target, file]);
+// --no-owner + --no-acl: yedekteki ACL/ownership ifadelerini atla (bunlar zaten
+// db:rls ile kurulur; farklı ortama taşınamaz) — veri ve şema tam yüklenir.
+const restore = await run("pg_restore", ["--clean", "--if-exists", "--no-owner", "--no-acl", "--exit-on-error", "--dbname", target, file]);
 if (restore.code !== 0) throw new Error(`pg_restore başarısız (kod ${restore.code}).`);
 
 const smoke = await run("psql", ["--dbname", target, "--tuples-only", "--no-align", "--command",

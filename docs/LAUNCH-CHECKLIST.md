@@ -27,7 +27,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 
 - [ ] Production `AGENT_ALERT_WEBHOOK_URL` tanımlandı; başarısız heartbeat alarmı görüldü
 - [ ] Günlük backup scheduler çalışıyor; `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY` ile şifreli artifact üretildi, son dump `npm run db:backup:verify` ile doğrulandı
-- [ ] İzole staging veritabanına gerçek restore yapıldı ve uygulama açıldı
+- [x] İzole staging veritabanına gerçek restore yapıldı — ✅ owner yedeği (`pg_dump --no-owner --no-privileges`, PG18) → yeni Neon branch'e `pg_restore --no-acl --exit-on-error`; STAGE=PROD (58 tablo, 47 RLS, 22 işletme, 30 satış, `report_due_tenants`). `scripts/backup-db.mjs`/`rehearse-restore.mjs` taşınabilirlik için güncellendi.
 - [~] Growth recipient_ref/approval şeması production'a uygulandı — ✅ owner ile `db:growth:verify` **9/9 OK** (kolonlar + RLS/FORCE + `tenant_isolation` + BYPASSRLS kapalı); ⏳ kalan: owner approval 403/200 akışı ve signed webhook'un staging'de canlı provası
 - [ ] Growth scope'lu key ile `RUNTIME_GROWTH_KEY=... BASE=<production> npm run audit:runtime` authenticated feature-pack/insights/campaign contract'ı geçti
 - [ ] `BILLING_PROVIDER=paytr` için canlı PayTR anahtarları ve bildirim URL'si doğrulandı

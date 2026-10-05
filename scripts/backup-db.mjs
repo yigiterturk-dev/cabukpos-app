@@ -15,7 +15,10 @@ const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 const file = resolve(dir, `cabukpos-${stamp}.dump`);
 await mkdir(dirname(file), { recursive: true });
 
-const child = spawn("pg_dump", ["--format=custom", "--no-owner", "--file", file, url], { stdio: "inherit" });
+// --no-owner + --no-privileges: taşınabilir yedek. Neon yedeğinde bulunan
+// cloud_admin/neon_superuser ALTER DEFAULT PRIVILEGES ifadeleri farklı ortama
+// restore edilemez ve --exit-on-error ile provayı kırar; ACL'ler zaten db:rls uygular.
+const child = spawn("pg_dump", ["--format=custom", "--no-owner", "--no-privileges", "--file", file, url], { stdio: "inherit" });
 const code = await new Promise((resolveExit, reject) => {
   child.once("error", reject);
   child.once("exit", (status, signal) => resolveExit(status ?? (signal ? 1 : 0)));
