@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CircleCheck, ExternalLink, Printer, WifiOff } from "lucide-react";
+import { ArrowRight, BookOpen, CircleCheck, ExternalLink, Printer, WifiOff } from "lucide-react";
 import { Card, PageHeader, buttonClass } from "@/components/ui";
 
 export const metadata = { title: "Yardım ve kurulum — ÇabukPOS" };
@@ -51,6 +51,12 @@ export default function Yardim() {
       </div>
 
       <Card className="flex flex-wrap items-center gap-4 p-5">
+        <span className="grid size-10 place-items-center rounded-xl bg-surface-3 text-muted"><BookOpen aria-hidden className="size-5" /></span>
+        <div className="min-w-0 flex-1"><h2 className="font-semibold">Tüm kullanım kılavuzu</h2><p className="mt-1 text-sm text-muted">Kurulum, kasa, çevrimdışı, restoran, market, donanım, mali belgeler, raporlar, abonelik ve güvenlik başlıklarının tamamı adım adım.</p></div>
+        <Link href="/yardim" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand hover:underline">Kılavuzu aç<ExternalLink aria-hidden className="size-3.5" /></Link>
+      </Card>
+
+      <Card className="mt-4 flex flex-wrap items-center gap-4 p-5">
         <span className="grid size-10 place-items-center rounded-xl bg-surface-3 text-muted"><Printer aria-hidden className="size-5" /></span>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">Donanım notu</h2><p className="mt-1 text-sm text-muted">Termal yazıcı, barkod okuyucu, çekmece ve terazi gerçek cihazla pilot öncesi denenmelidir.</p></div>
         <Link href="/yonetim/donanim" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand hover:underline">Donanım sayfası<ExternalLink aria-hidden className="size-3.5" /></Link>

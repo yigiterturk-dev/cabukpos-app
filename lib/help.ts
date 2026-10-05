@@ -45,7 +45,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     steps: [
       "Kasa ekranında personel PIN'i girilir; vardiya açılış tutarıyla başlar.",
       "Ürünler eklenir; nakit dışı ödemelerde karma ödeme ve para üstü desteklenir.",
-      "Ödeme diyaloğundan bahşiş eklenebilir ve satış anında e-Arşiv faturası kesilebilir.",
+      "Ödeme diyaloğundan bahşiş eklenebilir; gerçek e-Arşiv bağlantısı ve işletme ayarı varsa satış anında fatura kesilebilir.",
       "Satış sonrası fiş otomatik yazıcıdan basılır; nakit satışta çekmece açılır.",
       "Vardiya sonunda Gün sonu ekranından sayım yapılır; fark raporlanır.",
     ],
@@ -111,7 +111,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     summary: "Bilgi fişi, e-Arşiv fatura ve ÖKC.",
     steps: [
       "Her satış için bilgi fişi basılır (yasal mali belge değildir).",
-      "Ödemede \"Fatura\" seçilirse e-Arşiv fatura kesilir; fişte numara, ETTN ve QR yer alır.",
+      "Gerçek entegratör ve işletme ayarı hazırsa ödemede \"Fatura\" seçilir; fişte numara, ETTN ve QR yer alır. Hazır değilse bu akış production'da kapalıdır.",
       "Belgeler Yönetim → Mali'den görüntülenir, yeniden denenir ve e-postayla gönderilir.",
       "Kısmi iadede İADE TUTANAĞI düzenlenir; VKN'li alıcıda iade faturası notu basılır.",
     ],

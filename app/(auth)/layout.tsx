@@ -40,6 +40,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <LogoMark size="sm" />ÇabukPOS
         </Link>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">{children}</div>
+        <Link href="/yardim" className="mx-auto mb-2 text-xs text-muted underline hover:text-ink">Kullanım kılavuzu</Link>
         <LegalFooter />
       </main>
     </div>
