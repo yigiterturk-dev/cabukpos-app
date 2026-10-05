@@ -65,7 +65,7 @@ Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum:
 - [x] 52 | Teslimat | ~~Mesafe bazlı ücret + saat dilimleri~~ ✅ bölgeye `perKm` (kuruş/km, boş = sabit) + `startMin`/`endMin` servis penceresi (gece yarısı aşımı destekli, saf `zoneFee`/`zoneOpenAt` — testli); kasada bölge pill'i saat dışında "servis dışı" der, km'li bölgede mesafe girişi + canlı ücret önizleme, ücret satırı km ile yazılır; bölge formunda km/saat alanları
 - [x] 54 | Kalite | ~~CI-standardı E2E + mobil viewport testleri~~ ✅ `.github/workflows/ci.yml` production smoke sonrası `npm run e2e:critical` + `npm run e2e:m54` çalıştırıyor; M54 gerçek Chrome ile kayıt → mobil çekmece → ürün → QR menü → sipariş/durum → masaüstü taşma akışı geçti
 - [x] 55 | Güvenlik | ~~RLS'siz tablolara DB seviyesinde koruma~~ ✅ `tests/rls-coverage.test.ts` tenant tablolarını kaynak şema/RLS SQL'iyle karşılaştırıyor; gerekçeli allowlist drift'i yakalıyor; `audit_log` UPDATE/DELETE/TRUNCATE yetkileri `db/rls.sql` ile kapalı
-- [ ] 60 | Pazar | Onboarding sihirbazı + yardım merkezi + kullanıcı dokümanı | Ajan-1
+- [x] 60 | Pazar | ~~Onboarding sihirbazı + yardım merkezi + kullanıcı dokümanı~~ ✅ Yönetim ana sayfasında 4 adımlı kurulum rehberi; `/yonetim/yardim` içinde ürün/cihaz/PIN/test satışı onboarding'i, offline, mali belge ve donanım yardım kartları
 - [x] 61 | Pazar | ~~Fiyatlandırma sayfası~~ ✅ `/fiyatlandirma`: aylık/yıllık taban + ek şube/terminal birim fiyatları (#13 env'lerinden), şube+terminal sayısıyla dönem tutarı hesaplayıcı (saf `planBreakdown`), her pakette listesi, satış iletişimi fallback'i; root #fiyat bölümünden derin bağlantı + sitemap
 
 ## Tamamlananlar (bu dalda)
