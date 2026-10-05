@@ -62,6 +62,9 @@ if (billing === "paytr") {
 
 if (production && billing !== "paytr") checks.push({ ok: false, label: "Production abonelik sağlayıcısı", detail: "BILLING_PROVIDER=paytr olmalı; fake sağlayıcı yalnız yerel/test içindir" });
 
+// Sahte sağlayıcı kaçış kapısı yalnız yerel production E2E'si içindir; canlıda açık olamaz.
+if (production) checks.push({ ok: process.env.ALLOW_FAKE_PROVIDERS !== "1", label: "Sahte sağlayıcı kaçış kapısı", detail: process.env.ALLOW_FAKE_PROVIDERS === "1" ? "ALLOW_FAKE_PROVIDERS=1 production'da kullanılamaz" : "kapalı" });
+
 const advisorUrl = process.env.GROWTH_ADVISOR_URL?.trim();
 const advisorToken = process.env.GROWTH_ADVISOR_TOKEN?.trim();
 if (advisorUrl || advisorToken) {

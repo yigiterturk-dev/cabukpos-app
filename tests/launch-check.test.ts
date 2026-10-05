@@ -43,6 +43,12 @@ function runAsync(overrides: Record<string, string>) {
   });
 }
 
+test("launch check: sahte sağlayıcı kaçış kapısı production'da yasak", () => {
+  const withGate = run({ APP_URL: "https://cabukpos.test", AGENT_ALERT_WEBHOOK_URL: "https://alerts.test/hook", GROWTH_ADVISOR_URL: "https://laya.test/advise", GROWTH_ADVISOR_TOKEN: "test-token", ALLOW_FAKE_PROVIDERS: "1" });
+  assert.notEqual(withGate.status, 0, "ALLOW_FAKE_PROVIDERS=1 production'da reddedilmeli");
+  assert.match(withGate.stdout, /Sahte sağlayıcı kaçış kapısı/);
+});
+
 test("launch check production HTTPS ayarlarını kabul eder", () => {
   const result = run({ APP_URL: "https://cabukpos.test", AGENT_ALERT_WEBHOOK_URL: "https://alerts.test/hook", GROWTH_ADVISOR_URL: "https://laya.test/advise", GROWTH_ADVISOR_TOKEN: "test-token" });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);

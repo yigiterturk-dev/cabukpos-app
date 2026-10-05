@@ -1,6 +1,7 @@
 // lib/fiscal/provider.ts — Mali belge sağlayıcı arayüzü ve kayıt defteri.
 import type { Buyer } from "@/lib/core/fiscal";
 import { fakeEarsiv } from "./fake";
+import { fakeProvidersBlocked } from "@/lib/fake-providers";
 
 export type IssueInput = {
   seller: { taxId: string; name: string; taxOffice: string | null; address: string | null };
@@ -27,7 +28,7 @@ export interface FiscalProvider {
 
 export function getProvider(name: string, opts: { fakeFail: boolean }): FiscalProvider {
   if (name === "fake-earsiv") {
-    if (process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production") throw new Error("Sahte e-Arşiv sağlayıcısı production'da kullanılamaz.");
+    if (fakeProvidersBlocked()) throw new Error("Sahte e-Arşiv sağlayıcısı production'da kullanılamaz.");
     return fakeEarsiv(opts);
   }
   throw new Error(`Bilinmeyen mali sağlayıcı: ${name}`);

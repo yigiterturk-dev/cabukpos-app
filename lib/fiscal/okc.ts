@@ -4,6 +4,7 @@
 import { eq, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";import { okcFiscalNo, zNoOf, type OkcSaleData } from "@/lib/core/okc";
 import { audit } from "@/lib/audit";
+import { fakeProvidersBlocked } from "@/lib/fake-providers";
 
 export type OkcReceiptInput = {
   serial: string;
@@ -28,7 +29,7 @@ export interface OkcProvider {
 
 export function getOkc(name: string, opts: { fakeFail: boolean }): OkcProvider {
   if (name === "fake-okc") {
-    if (process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production") throw new Error("Sahte ÖKC sağlayıcısı production'da kullanılamaz.");
+    if (fakeProvidersBlocked()) throw new Error("Sahte ÖKC sağlayıcısı production'da kullanılamaz.");
     return fakeOkc(opts);
   }
   throw new Error(`Bilinmeyen ÖKC sağlayıcı: ${name}`);

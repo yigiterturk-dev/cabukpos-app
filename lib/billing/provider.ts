@@ -1,6 +1,7 @@
 // lib/billing/provider.ts — Ödeme sağlayıcı arayüzü. Gerçek sağlayıcı (PayTR/iyzico) = yeni dosya + webhook route → completePayment.
 import type { BillingPeriod } from "@/lib/core/billing";
 import { paytrBilling, paytrKeys } from "./paytr";
+import { fakeProvidersBlocked } from "@/lib/fake-providers";
 
 export type CheckoutInput = { paymentId: string; amount: number; period: BillingPeriod; tenantName: string; email: string; userIp: string; phone?: string; address?: string | null };
 export interface BillingProvider {
@@ -21,8 +22,7 @@ export const fakeBilling: BillingProvider = {
 /** BILLING_PROVIDER boşsa veya canlıda sahte/paytr anahtarları eksikse ödeme kapalıdır. */
 export function getBillingProvider(): BillingProvider | null {
   const v = process.env.BILLING_PROVIDER;
-  const production = process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production";
-  if (v === "fake") return production ? null : fakeBilling;
+  if (v === "fake") return fakeProvidersBlocked() ? null : fakeBilling;
   if (v === "paytr") { const k = paytrKeys(); return k ? paytrBilling(k) : null; }
   return null;
 }

@@ -9,6 +9,7 @@ import { FiscalRowActions, FiscalSettingsForm } from "@/components/admin/FiscalF
 import { queryEnvelopes } from "@/lib/admin/fiscal-actions";
 import { currentIstMonth } from "@/lib/admin/accounting";
 import { Badge, Card, Empty, PageHeader } from "@/components/ui";
+import { fakeProvidersBlocked } from "@/lib/fake-providers";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,7 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
   const fake = (fs?.provider ?? "fake-earsiv") === "fake-earsiv";
+  const blockEarsiv = fake && fakeProvidersBlocked();
   return (
     <>
       <PageHeader title="Mali belge" desc="Bilgi fişi ya da e-Arşiv fatura. Kesilemeyen belgeler otomatik yeniden denenir; tam iade edilen faturalar iptal edilir, kısmi iadede iade tutanağı düzenlenir." />
@@ -85,7 +87,7 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
         </Card>
       ) : tab === "ayarlar" ? (
         <Card className="p-5">
-          <FiscalSettingsForm fake={fake} channels={a.vertical === "market" ? ["kasa"] : FISCAL_CHANNELS}
+          <FiscalSettingsForm fake={fake} blockEarsiv={blockEarsiv} channels={a.vertical === "market" ? ["kasa"] : FISCAL_CHANNELS}
             initial={{ taxId: t?.taxId ?? "", taxOffice: t?.taxOffice ?? "", address: t?.address ?? "", series: fs?.series ?? "CBP", modes: { ...DEFAULT_MODES, ...fs?.channelModes }, fakeFail: fs?.fakeFail ?? false }}
             okc={fs?.okcProvider ? { provider: fs.okcProvider, serial: fs.okcSerial ?? "" } : null} />
         </Card>
