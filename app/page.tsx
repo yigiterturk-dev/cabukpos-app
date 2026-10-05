@@ -70,7 +70,7 @@ export default function Home() {
   return (
     <div className="bg-surface">
       <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:gap-6">
           <Link href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
           <nav aria-label="Ana" className="hidden gap-5 text-sm text-ink-2 md:flex">
             <a href="#ozellikler" className="hover:text-ink">Özellikler</a>
@@ -79,8 +79,10 @@ export default function Home() {
             <Link href="/yardim" className="hover:text-ink">Yardım</Link>
           </nav>
           <div className="ml-auto flex items-center gap-2 text-sm">
-            <Link href="/kasa" className={`${buttonClass("ghost", "sm")} hidden sm:inline-flex`}>Kasayı aç</Link>
-            <Link href="/giris" className={buttonClass("ghost", "sm")}>Giriş</Link>
+            <span className="hidden items-center gap-2 print:hidden sm:flex">
+              <Link href="/kasa" className={buttonClass("ghost", "sm")}>Kasayı aç</Link>
+              <Link href="/giris" className={buttonClass("ghost", "sm")}>Giriş</Link>
+            </span>
             <Link data-cta="nav-signup" href="/kayit" className={buttonClass("primary", "sm")}>Ücretsiz dene</Link>
           </div>
         </div>
