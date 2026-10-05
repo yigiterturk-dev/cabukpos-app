@@ -11,8 +11,8 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [x] `npm test`: 344/344
 - [x] `npm run qa:static`: lint + typecheck
 - [x] `npm run build`: Webpack production build
-- [~] Production `/api/health` ve `/api/ready`: mevcut production-target deployment'ta health `ok:true`, ready `database:ok`; ana alias'a promote edilmesi bekliyor
-- [ ] Mevcut release değişiklikleri deploy edildi; aynı deployment'ta health/ready ve kritik runtime audit geçti
+- [x] Production `/api/health` ve `/api/ready`: `https://cabukpos-app.vercel.app` üzerinde health `ok:true`, ready `database:ok`
+- [x] Mevcut release değişiklikleri deploy edildi; aynı production alias'ta health/ready ve `BASE=https://cabukpos-app.vercel.app npm run audit:runtime` geçti (16/16)
 - [ ] Cron scheduler doğrulandı: GitHub Actions workflow'u için `APP_URL` + `CRON_SECRET` secret'ları ve beş zamanlama çalıştı (alternatif: Vercel Pro Cron)
 - [x] Growth feature-pack, insights ve event intake tenant/scope sınırları
 - [x] Production kritik anonim/korumalı uçlar: runtime audit 16/16 kontrol tanımı
