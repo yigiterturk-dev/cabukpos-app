@@ -47,7 +47,7 @@ export default function Fiyatlandirma() {
               <div key={label} className={`rounded-2xl border p-7 shadow-card ${label === "Yıllık" ? "border-brand ring-4 ring-brand-ring/40" : "border-line"}`}>
                 <h2 className="font-semibold">{label}</h2>
                 <div className="mt-3 text-4xl font-semibold tracking-tight tabular">{p ? formatTL(p.base) : "—"}</div>
-                <p className="mt-1 text-sm text-muted">{p ? `${per} · 1 şube + 1 terminal dahil` : contact ? `Fiyat için: ${contact}` : "Fiyat yakında açıklanacak"}</p>
+                <p className="mt-1 text-sm text-muted">{p ? `${per} · 1 şube + 1 terminal dahil` : contact ? `Fiyat için: ${contact}` : <Link href="/yasal/iletisim" className="underline underline-offset-4">Teklif için iletişime geçin</Link>}</p>
                 {p?.store != null && <div className="mt-3 text-sm text-ink-2 tabular">Ek şube: {formatTL(p.store)}/ay</div>}
                 {p?.device != null && <div className="text-sm text-ink-2 tabular">Ek kasa/terminal: {formatTL(p.device)}/ay</div>}
                 {p && <div className="text-xs text-muted">Birim fiyatı girilmeyen bileşen ek ücretsizdir.</div>}
@@ -68,7 +68,7 @@ export default function Fiyatlandirma() {
           <h2 className="text-xl font-semibold tracking-tight">Sorularınız mı var?</h2>
           <p className="mt-2 text-ink-2">Çok şubeli işletmeler için özel teklif ve veri aktarımı desteği sunuyoruz.</p>
           <div className="mt-4 flex flex-wrap gap-3">
-            {contact && <a href={contact.startsWith("http") ? contact : `mailto:${contact}`} className={buttonClass("secondary", "md")}>Bize yazın</a>}
+            {contact ? <a href={contact.startsWith("http") ? contact : `mailto:${contact}`} className={buttonClass("secondary", "md")}>Bize yazın</a> : <Link href="/yasal/iletisim" className={buttonClass("secondary", "md")}>İletişim sayfası</Link>}
             <Link href="/kayit" className={buttonClass("primary", "md")}>14 gün ücretsiz başla</Link>
           </div>
         </section>
