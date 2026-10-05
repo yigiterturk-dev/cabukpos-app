@@ -49,7 +49,8 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 Pilot uygulama adımları ve imza alanları: `docs/PILOT-REHEARSAL.md`.
 
 `LAUNCH_ENV=production npm run launch:check` eksik ayarları kontrol eder; değerleri
-ekrana basmaz. Deployment rotalarını da doğrulamak için `APP_URL` tanımlı olarak
+ekrana basmaz ve `AUTH_SECRET`/`CRON_SECRET` için en az 32 karakter şartını uygular.
+Deployment rotalarını da doğrulamak için `APP_URL` tanımlı olarak
 `LAUNCH_RUNTIME_CHECK=1` eklenir; bu varyant health/ready ve korumalı Growth
 rotalarının 404 yerine beklenen auth yanıtını verdiğini test eder. `RUNTIME_GROWTH_KEY`
 verilirse üç authenticated Growth contract kontrolü de eklenir.
