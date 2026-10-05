@@ -23,6 +23,11 @@ export default async function Donanim() {
       <Card className="mb-6 p-5">
         <AgentCreateForm />
         <p className="mt-4 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn" data-testid="lna-note">Kasa ekranında Chrome “yerel ağ erişimi” izni sorduğunda <strong>İzin ver</strong> deyin; aksi halde ajan “kapalı” görünür.</p>
+        <div className="mt-4 rounded-lg border border-line bg-surface-2 px-3 py-3 text-sm">
+          <p className="font-medium">Windows’ta hızlı kurulum</p>
+          <p className="mt-1 text-ink-2">Node.js LTS kuruluysa betiği indirip çalıştırın; eşleme kodunu soracak, ajanı indirip bilgisayar açılışına ekleyecek.</p>
+          <a href="/indir/cabukpos-agent-install.ps1" download className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-brand px-3 py-2 font-medium text-white hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/50">Windows kurulum betiğini indir</a>
+        </div>
         <details className="mt-4 text-sm text-ink-2">
           <summary className="cursor-pointer font-medium">Kurulum adımları</summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5">

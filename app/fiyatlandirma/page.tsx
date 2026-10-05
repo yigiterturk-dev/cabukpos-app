@@ -19,7 +19,7 @@ const INCLUDED = [
   "Çevrimdışı satış — internet gitse de kasa durmaz",
   "Sınırsız ürün, personel ve cihaz eşleme",
   "Stok, reçete, maliyet ve raporlar",
-  "e-Arşiv fatura ve bilgi fişi",
+  "Bilgi fişi ve e-Arşiv altyapısı",
   "14 gün ücretsiz deneme, kart bilgisi istenmez",
 ];
 
@@ -39,7 +39,7 @@ export default function Fiyatlandirma() {
       </header>
       <main className="mx-auto max-w-6xl px-4 py-16">
         <h1 className="text-4xl font-semibold tracking-tight">Fiyatlandırma</h1>
-        <p className="mt-3 max-w-2xl text-lg text-ink-2">Taban paket 1 şube ve 1 kasa terminali kapsar; büyürken yalnız eklediğiniz birimler için ödersiniz. Fiyatlara KDV dahildir.</p>
+        <p className="mt-3 max-w-2xl text-lg text-ink-2">Taban paket 1 şube ve 1 kasa terminali kapsar; büyürken yalnız eklediğiniz birimler için ödersiniz. Fiyatlara KDV dahildir. Bilgi fişi hemen kullanılabilir; e-Arşiv için canlı entegratör bağlantısı ayrıca tanımlanır.</p>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_1.1fr]">
           <div className="space-y-4">

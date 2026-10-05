@@ -20,7 +20,7 @@ const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: Box, title: "Stok ve maliyet", text: "Son alış fiyatından maliyet, kritik stok uyarısı, ara ürün ve üretim." },
   { icon: Users, title: "Personel ve yetki", text: "Kasiyer, garson, müdür rolleri; PIN ile giriş, iade ve indirimde müdür onayı." },
   { icon: TabletSmartphone, title: "Sınırsız cihaz", text: "Kasa, garson telefonu, mutfak ekranı ve kurye telefonu; hepsi tek kodla eşlenir, ek ücret yok." },
-  { icon: Receipt, title: "Bilgi fişi ve e-Arşiv", text: "Fişte e-Arşiv numarası ve karekod. Entegratör bağlantısı hazırlanıyor (yakında)." },
+  { icon: Receipt, title: "Bilgi fişi ve e-Arşiv altyapısı", text: "Bilgi fişini hemen basın; e-Arşiv akışı hazır, canlı kullanım için işletmenizin seçtiği entegratör bağlantısı gerekir." },
 ];
 
 const STEPS = [
@@ -90,7 +90,7 @@ export default function Home() {
           <div>
             <p className="mb-4 inline-flex rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">Restoran ve market için bulut kasa</p>
             <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">İnternet gitse de <span className="text-brand">kasa durmaz.</span></h1>
-            <p className="mt-5 max-w-xl text-lg text-ink-2">Masa, mutfak, paket servis, barkod ve terazi; stok, reçete ve raporlar. Tablette, bilgisayarda ya da POS cihazında, kurulum derdi olmadan.</p>
+            <p className="mt-5 max-w-xl text-lg text-ink-2">Masa, mutfak, paket servis, barkod ve terazi; stok, reçete ve raporlar. Tablette, bilgisayarda ya da POS cihazında, birkaç dakikalık kurulumla.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/kayit" className={buttonClass("primary", "lg")}>14 gün ücretsiz deneyin</Link>
               <a href="#ozellikler" className={buttonClass("secondary", "lg")}>Neler var?</a>

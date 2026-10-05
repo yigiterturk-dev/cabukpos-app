@@ -46,10 +46,11 @@ export default async function Bugun() {
     const S = schema.sales;
     const recent = await tx.select({ id: S.id, receiptNo: S.receiptNo, channel: S.channel, status: S.status, total: S.total, at: S.createdAt, staff: schema.staff.name })
       .from(S).innerJoin(schema.staff, eq(schema.staff.id, S.staffId)).where(inArray(S.status, ["kapandi", "iade"])).orderBy(desc(S.createdAt)).limit(8);
-    const [productSeed, deviceSeed, staffSeed, reviewSales, reviewEvents, rejectedDocs, fiscalErrors, buyerInvoices] = await Promise.all([
+    const [productSeed, deviceSeed, staffSeed, saleSeed, reviewSales, reviewEvents, rejectedDocs, fiscalErrors, buyerInvoices] = await Promise.all([
       tx.select({ id: schema.products.id }).from(schema.products).limit(1),
       tx.select({ id: schema.devices.id }).from(schema.devices).limit(1),
       tx.select({ id: schema.staff.id }).from(schema.staff).limit(1),
+      tx.select({ id: schema.sales.id }).from(schema.sales).limit(1),
       tx.select({ value: count() }).from(schema.sales).where(isNotNull(schema.sales.review)),
       tx.select({ value: count() }).from(schema.tabEvents).where(isNotNull(schema.tabEvents.review)),
       tx.select({ value: count() }).from(schema.auditLog).where(eq(schema.auditLog.action, "sync.red")),
@@ -64,7 +65,7 @@ export default async function Bugun() {
       sum: await summaryData(tx, { bas: today, bit: today }),
       critical: storeId ? (await stockLevels(tx, storeId)).filter(isCriticalRow) : [],
       recent,
-      setup: { product: productSeed.length > 0, device: deviceSeed.length > 0, staff: staffSeed.length > 0 },
+      setup: { product: productSeed.length > 0, device: deviceSeed.length > 0, staff: staffSeed.length > 0, sale: saleSeed.length > 0 },
       attention: { review, fiscal, buyer, total: review + fiscal + buyer },
     };
   });
@@ -72,10 +73,12 @@ export default async function Bugun() {
   const openTotal = open.reduce((t, x) => t + x.remaining, 0);
   const dateLabel = new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Istanbul" });
   const setupSteps = [
-    { label: "İlk ürünü ekle", href: "/yonetim/urunler", done: setup.product, Icon: Plus },
+    { label: "Ürün ekle veya CSV aktar", href: "/yonetim/urunler", done: setup.product, Icon: Plus },
     { label: "Kasa cihazını eşleştir", href: "/yonetim/cihazlar", done: setup.device, Icon: Monitor },
     { label: "Personel PIN'i oluştur", href: "/yonetim/personel", done: setup.staff, Icon: UserPlus },
+    { label: "İlk test satışını yap", href: "/kasa", done: setup.sale, Icon: CheckCircle2 },
   ];
+  const setupDone = setupSteps.filter((step) => step.done).length;
 
   return (
     <>
@@ -93,12 +96,12 @@ export default async function Bugun() {
         <Card className="mb-6 overflow-hidden border-brand-ring bg-brand-soft/30" data-testid="setup-guide">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-ring/70 px-5 py-4">
             <div>
-              <h2 className="font-semibold">İlk kurulumu tamamlayın</h2>
-              <p className="mt-1 text-sm text-ink-2">ÇabukPOS’u satışa hazır hale getirmek için üç kısa adım.</p>
+              <h2 className="font-semibold">İlk kurulumu tamamlayın <span className="ml-1 text-sm font-normal text-muted">({setupDone}/4)</span></h2>
+              <p className="mt-1 text-sm text-ink-2">ÇabukPOS’u satışa hazır hale getirmek için dört kısa adım. Ürünleri tek tek ekleyebilir veya CSV şablonunu kullanabilirsiniz.</p>
             </div>
             <Link href="/kasa" className={buttonClass("primary", "sm")}>Kasayı aç<ArrowRight aria-hidden className="size-4" /></Link>
           </div>
-          <div className="grid gap-px bg-brand-ring/60 sm:grid-cols-3">
+          <div className="grid gap-px bg-brand-ring/60 sm:grid-cols-2 lg:grid-cols-4">
             {setupSteps.map(({ label, href, done, Icon }, index) => (
               <Link key={label} href={href} className="group flex items-center gap-3 bg-surface/75 px-5 py-4 outline-none transition hover:bg-surface focus-visible:ring-4 focus-visible:ring-brand-ring/60">
                 <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${done ? "bg-ok-soft text-ok" : "bg-brand-soft text-brand"}`}>
