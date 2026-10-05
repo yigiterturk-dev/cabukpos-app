@@ -11,7 +11,13 @@ const required = {
   LEGAL_ADDRESS: "Test adres",
   LEGAL_EMAIL: "test@example.com",
   LEGAL_PHONE: "+905550000000",
-  BILLING_PROVIDER: "fake",
+  BILLING_PROVIDER: "paytr",
+  PAYTR_MERCHANT_ID: "merchant",
+  PAYTR_MERCHANT_KEY: "key",
+  PAYTR_MERCHANT_SALT: "salt",
+  PAYTR_TEST_MODE: "0",
+  PLAN_PRICE_AYLIK: "29900",
+  PLAN_PRICE_YILLIK: "299000",
   GROWTH_ADVISOR_URL: "",
   GROWTH_ADVISOR_TOKEN: "",
 };
@@ -50,6 +56,25 @@ test("launch check HTTP veya bozuk URL'yi reddeder", () => {
   assert.match(result.stdout, /Agent alarm webhook'u: AGENT_ALERT_WEBHOOK_URL geçerli URL olmalı/);
   assert.match(result.stdout, /Growth\/Laya danışmanı: URL\/token birlikte/);
   assert.match(result.stdout, /Yasal e-posta: LEGAL_EMAIL geçerli e-posta olmalı/);
+});
+
+test("launch check production fiyatları olmadan reddeder", () => {
+  const result = run({ APP_URL: "https://cabukpos.test", AGENT_ALERT_WEBHOOK_URL: "https://alerts.test/hook", PLAN_PRICE_AYLIK: "", PLAN_PRICE_YILLIK: "" });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /Aylık plan fiyatı: PLAN_PRICE_AYLIK pozitif tamsayı kuruş tutarı olmalı/);
+  assert.match(result.stdout, /Yıllık plan fiyatı: PLAN_PRICE_YILLIK pozitif tamsayı kuruş tutarı olmalı/);
+});
+
+test("launch check fake sağlayıcıyı production'da reddeder", () => {
+  const result = run({ APP_URL: "https://cabukpos.test", AGENT_ALERT_WEBHOOK_URL: "https://alerts.test/hook", BILLING_PROVIDER: "fake" });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /Production abonelik sağlayıcısı: BILLING_PROVIDER=paytr olmalı/);
+});
+
+test("launch check PayTR test modunu production'da reddeder", () => {
+  const result = run({ APP_URL: "https://cabukpos.test", AGENT_ALERT_WEBHOOK_URL: "https://alerts.test/hook", PAYTR_TEST_MODE: "1" });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /PayTR canlı modu: PAYTR_TEST_MODE=1 production'da kullanılamaz/);
 });
 
 test("launch check isteğe bağlı runtime route doğrulaması yapar", async () => {

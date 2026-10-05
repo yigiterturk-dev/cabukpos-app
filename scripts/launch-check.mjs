@@ -26,6 +26,13 @@ function requiredEmail(name, label = name) {
   checks.push({ ok, label, detail: ok ? "tanımlı" : `${name} geçerli e-posta olmalı` });
 }
 
+function requiredPrice(name, label = name) {
+  const value = process.env[name]?.trim();
+  const amount = Number(value);
+  const ok = Number.isInteger(amount) && amount > 0;
+  checks.push({ ok, label, detail: ok ? "pozitif kuruş tutarı" : `${name} pozitif tamsayı kuruş tutarı olmalı` });
+}
+
 const production = process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production";
 const billing = (process.env.BILLING_PROVIDER || "").trim().toLowerCase();
 
@@ -40,15 +47,20 @@ if (production) {
   required("LEGAL_ADDRESS", "Yasal adres");
   requiredEmail("LEGAL_EMAIL", "Yasal e-posta");
   required("LEGAL_PHONE", "Yasal telefon");
+  requiredPrice("PLAN_PRICE_AYLIK", "Aylık plan fiyatı");
+  requiredPrice("PLAN_PRICE_YILLIK", "Yıllık plan fiyatı");
 }
 
 if (billing === "paytr") {
   required("PAYTR_MERCHANT_ID", "PayTR merchant ID");
   required("PAYTR_MERCHANT_KEY", "PayTR merchant key");
   required("PAYTR_MERCHANT_SALT", "PayTR merchant salt");
+  if (production) checks.push({ ok: process.env.PAYTR_TEST_MODE !== "1", label: "PayTR canlı modu", detail: process.env.PAYTR_TEST_MODE === "1" ? "PAYTR_TEST_MODE=1 production'da kullanılamaz" : "canlı mod" });
 } else if (billing && billing !== "fake") {
   checks.push({ ok: false, label: "Abonelik sağlayıcısı", detail: `desteklenmeyen değer: ${billing}` });
 }
+
+if (production && billing !== "paytr") checks.push({ ok: false, label: "Production abonelik sağlayıcısı", detail: "BILLING_PROVIDER=paytr olmalı; fake sağlayıcı yalnız yerel/test içindir" });
 
 const advisorUrl = process.env.GROWTH_ADVISOR_URL?.trim();
 const advisorToken = process.env.GROWTH_ADVISOR_TOKEN?.trim();
