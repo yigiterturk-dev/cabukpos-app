@@ -13,17 +13,13 @@ export function MfaAc() {
   if (onayla.state.ok) return <p role="status" className="rounded-[14px] bg-ok-soft p-4 text-sm text-ok">{onayla.state.ok}</p>;
   if (!hazir) {
     return (
-      <div className="space-y-3">
+      <form onSubmit={baslat.onSubmit} className="space-y-3">
         <p className="text-sm text-muted">Kimlik doğrulayıcı uygulamanız (Google Authenticator, Aegis vb.) ile ekleyin.</p>
-        <Button
-          type="button"
-          onClick={(e) => baslat.onSubmit(e as unknown as FormEvent<HTMLFormElement>)}
-          disabled={baslat.pending}
-        >
+        <Button type="submit" disabled={baslat.pending}>
           {baslat.pending ? "Üretiliyor…" : "Kurulumu başlat"}
         </Button>
         {s.error && <p className="text-sm text-bad">{s.error}</p>}
-      </div>
+      </form>
     );
   }
   return (

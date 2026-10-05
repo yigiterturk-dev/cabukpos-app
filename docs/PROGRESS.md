@@ -256,3 +256,7 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 ## Sertifika: tam e2e maratonu — son build'de 14/14 (2026-10-05)
 - Koyu tema düzeltmesi (36 dosya) + #40/#43/#11 sonrası tam regresyon: **m1 m2 m3 m4 m5 m6 m7 m8 m9a m9b m9c iade lan sifre — hepsi OK** (son build, 327/327 unit).
 - UI denetimi notları kapandı: girişte 2FA alanı katlanabilir ("İki adımlı doğrulama kodu (varsa)"); boş kohort tablosunda başlık gizlenir.
+
+## 2FA e2e + kurulum butonu bug'ı (2026-10-05)
+- **Gerçek bug**: `MfaAc`'ın "Kurulumu başlat" butonu `onClick` ile sahte FormEvent gönderiyordu → `FormData(e.currentTarget)` patlıyor → **2FA kurulumu UI'dan hiç başlamıyordu** (kimse e2e'lemediği için 3 gündür duruyordu). Gerçek `<form>`'a çevrildi.
+- `e2e/mfa.mjs` (npm run e2e:mfa): kayıt → TOTP kur (kod e2e içinde RFC 6238 ile hesaplanır) → çıkış → yanlış kod reddi → doğru kodla giriş → şifreli re-auth ile kapatma. **MFA OK**.
