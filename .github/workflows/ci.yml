@@ -48,6 +48,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - name: Start production server
+        env:
+          # Yalnız CI E2E sunucusu sahte mali sağlayıcıyla akış testi yapar.
+          ALLOW_FAKE_PROVIDERS: "1"
         run: |
           nohup npm start -- -p 3810 > /tmp/cabukpos-next.log 2>&1 &
           for i in {1..30}; do
