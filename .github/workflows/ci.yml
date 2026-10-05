@@ -75,4 +75,5 @@ jobs:
           ALLOW_FAKE_PROVIDERS: "1"
         run: |
           npm run e2e:critical
+          npm run e2e:pilot
           npm run e2e:m54

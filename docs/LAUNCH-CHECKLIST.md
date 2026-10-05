@@ -19,6 +19,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [x] Neon migration ve FORCE RLS doğrulaması
 - [x] Kaynak RLS coverage gate ve `audit_log` append-only yetki testi
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
+- [~] Pilot E2E komutu CI kapısına bağlı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`); yeni CI koşusunun yeşil kanıtı bekleniyor
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
 - [x] `npm run launch:check` ile sırları göstermeden production ayar kontrolü
 
