@@ -31,7 +31,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [ ] Growth scope'lu key ile `RUNTIME_GROWTH_KEY=... BASE=<production> npm run audit:runtime` authenticated feature-pack/insights/campaign contract'ı geçti
 - [ ] `BILLING_PROVIDER=paytr` için canlı PayTR anahtarları ve bildirim URL'si doğrulandı
 - [ ] Gerçek e-Arşiv entegratörü seçildi; sandbox kesim, iptal ve e-posta testleri tamamlandı
-- [ ] Bilgi fişi ile mali belge ayrımı mali müşavir tarafından onaylandı
+- [ ] Bilgi fişi ile mali belge ayrımı mali müşavir tarafından onaylandı (`docs/MALI-UYUM-GATE.md`)
 - [ ] ÖKC kullanım/entegrasyon sorumluluğu işletme bazında yazılı olarak netleştirildi
 - [ ] `cabukpos.com` DNS, SSL, e-posta ve yasal iletişim adresleri doğrulandı
 - [ ] KVKK, kullanım şartları, mesafeli satış ve iade metinleri onaylandı

@@ -1,5 +1,9 @@
 # İlerleme — ÇabukPOS
 
+## Mali uyum kapısı (2026-10-05)
+- GİB/YN ÖKC ve e-Arşiv kaynakları incelendi; ürünün "bilgi fişi" ile gerçek mali belge ayrımı, entegratör/ÖKC sorumluluğu ve pilot imza kapıları `docs/MALI-UYUM-GATE.md` içinde resmileştirildi.
+- Resmî kaynaklar ürünün tek başına ÖKC veya gerçek e-Arşiv yerine geçtiğini kanıtlamıyor; bu nedenle canlı satış iddiası bilinçli olarak entegratör, cihaz ve mali müşavir kanıtına bağlı tutuluyor.
+
 ## M54 mobil/kiosk E2E (2026-10-05)
 - Gerçek Chrome ile `npm run e2e:m54` geçti: 390×844 mobil kayıt/panel render, çekmece navigasyonu, ürün oluşturma, Kiosk/QR bağlantısı, herkese açık menüden sipariş ve durum ekranı; 1440px masaüstü menü taşma kontrolü de geçti (`M54 OK`).
 - CI workflow'u production smoke testinden sonra `e2e:critical` ve `e2e:m54` çalıştıracak şekilde kapsıyor.
