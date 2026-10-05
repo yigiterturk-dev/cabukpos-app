@@ -19,6 +19,11 @@ Growth şeması değiştiyse migration sahibi bağlantısıyla db:growth:verify
 çalıştırılmalı; recipient_ref kolonu, iki growth tablosunun FORCE RLS/policy
 durumu ve cabukpos_app BYPASSRLS durumu birlikte doğrulanmalıdır.
 
+Billing/report cronlarının canlı şema kapısı için migration sahibi bağlantısıyla
+`MIGRATE_DATABASE_URL=<owner-url> npm run db:verify:billing-report` çalıştırın.
+Bu komut yalnızca okur; `billing_invoices`, `billing_invoice_counters`,
+`report_settings` ve `report_due_tenants(text,timestamptz)` nesnelerini doğrular.
+
 ## Yedekleme
 
 - `MIGRATE_DATABASE_URL` ile `npm run db:backup` çalıştırın. Komut custom-format

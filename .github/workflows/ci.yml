@@ -43,6 +43,7 @@ jobs:
           CREATE DATABASE cabukpos_test;
           SQL
           npm run db:push:test
+          MIGRATE_DATABASE_URL="$TEST_DATABASE_URL" npm run db:verify:billing-report
       - run: npm test
       - run: npm run lint
       - run: npm run typecheck
