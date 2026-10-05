@@ -7,6 +7,7 @@ import { stockLevels } from "@/lib/admin/stock";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { formatQty, isCriticalRow } from "@/lib/admin/stock-view";
 import { summaryData } from "@/lib/admin/report";
+import { demandForecast } from "@/lib/admin/forecast";
 import { istToday, pctChange } from "@/lib/core/report";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { foldTabs } from "@/lib/core/tab";
@@ -41,7 +42,7 @@ export default async function Bugun() {
   const today = istToday();
   const restoran = a.vertical === "restoran";
   const formatTL = await moneyFormatter(a.tenantId); // #16: işletme para birimiyle biçimler
-  const { sum, critical, recent, storeId, setup, attention } = await withTenant(a.tenantId, async (tx) => {
+  const { sum, critical, recent, storeId, setup, attention, forecast } = await withTenant(a.tenantId, async (tx) => {
     const storeId = await scopedStoreId(tx, a.tenantId);
     const S = schema.sales;
     const recent = await tx.select({ id: S.id, receiptNo: S.receiptNo, channel: S.channel, status: S.status, total: S.total, at: S.createdAt, staff: schema.staff.name })
@@ -63,6 +64,7 @@ export default async function Bugun() {
     return {
       storeId,
       sum: await summaryData(tx, { bas: today, bit: today }),
+      forecast: await demandForecast(tx),
       critical: storeId ? (await stockLevels(tx, storeId)).filter(isCriticalRow) : [],
       recent,
       setup: { product: productSeed.length > 0, device: deviceSeed.length > 0, staff: staffSeed.length > 0, sale: saleSeed.length > 0 },
@@ -146,6 +148,34 @@ export default async function Bugun() {
           </Card>
         )}
       </div>
+
+      {forecast && (
+        <Card className="mb-6 p-5" data-testid="forecast-card">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <h2 className="font-semibold">Önümüzdeki 7 gün tahmini</h2>
+              <p className="mt-1 text-sm text-muted">Son {forecast.basisDays} günün günlük cirosundan kanıta dayalı tahmin. Aralık dışında kesinlik iddia edilmez.</p>
+            </div>
+            <Badge tone={forecast.trend === "artiyor" ? "ok" : forecast.trend === "azaliyor" ? "bad" : "neutral"}>
+              {forecast.trend === "artiyor" ? "Eğilim artıyor" : forecast.trend === "azaliyor" ? "Eğilim azalıyor" : "Eğilim düz"}
+            </Badge>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-brand/25 bg-brand-soft/40 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand">Beklenen ciro</div>
+              <div className="mt-1 font-display text-2xl font-bold tabular" data-testid="forecast-estimate">{formatTL(forecast.periodEstimate)}</div>
+            </div>
+            <div className="rounded-xl border border-line bg-surface-2 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted">Aralık (~%80)</div>
+              <div className="mt-1 tabular text-sm font-medium text-ink-2">{formatTL(forecast.low)} – {formatTL(forecast.high)}</div>
+            </div>
+            <div className="rounded-xl border border-line bg-surface-2 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted">Günlük ortalama</div>
+              <div className="mt-1 tabular text-sm font-medium text-ink-2">{formatTL(forecast.dailyMean)} <span className="text-xs text-muted">± {formatTL(forecast.dailyStd)}</span></div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <Card className="overflow-hidden">
