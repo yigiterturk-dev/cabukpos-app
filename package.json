@@ -70,6 +70,6 @@
     "fake-indexeddb": "^6.2.5",
     "playwright-core": "^1.63.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^7"
   }
 }
