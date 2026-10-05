@@ -18,10 +18,11 @@ export const fakeBilling: BillingProvider = {
   chargeStored: async () => ({ ok: true }), // yerel: ücretsiz uzatma (yalnız env BILLING_PROVIDER=fake ile)
 };
 
-/** BILLING_PROVIDER boşsa (ya da paytr anahtarları eksikse) ödeme kapalı (canlıda sahte sağlayıcı ücretsiz uzatma olurdu). */
+/** BILLING_PROVIDER boşsa veya canlıda sahte/paytr anahtarları eksikse ödeme kapalıdır. */
 export function getBillingProvider(): BillingProvider | null {
   const v = process.env.BILLING_PROVIDER;
-  if (v === "fake") return fakeBilling;
+  const production = process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production";
+  if (v === "fake") return production ? null : fakeBilling;
   if (v === "paytr") { const k = paytrKeys(); return k ? paytrBilling(k) : null; }
   return null;
 }
