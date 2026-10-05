@@ -81,7 +81,7 @@ export default function Home() {
           <div className="ml-auto flex items-center gap-2 text-sm">
             <Link href="/kasa" className={`${buttonClass("ghost", "sm")} hidden sm:inline-flex`}>Kasayı aç</Link>
             <Link href="/giris" className={buttonClass("ghost", "sm")}>Giriş</Link>
-            <Link href="/kayit" className={buttonClass("primary", "sm")}>Ücretsiz dene</Link>
+            <Link data-cta="nav-signup" href="/kayit" className={buttonClass("primary", "sm")}>Ücretsiz dene</Link>
           </div>
         </div>
       </header>
@@ -93,12 +93,12 @@ export default function Home() {
             <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">İnternet gitse de <span className="text-brand">kasa durmaz.</span></h1>
             <p className="mt-5 max-w-xl text-lg text-ink-2">Masa, mutfak, paket servis, barkod ve terazi; stok, reçete ve raporlar. Tablette, bilgisayarda ya da POS cihazında, birkaç dakikalık kurulumla.</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/kayit" className={buttonClass("primary", "lg")}>14 gün ücretsiz deneyin</Link>
+              <Link data-cta="hero-signup" href="/kayit" className={buttonClass("primary", "lg")}>14 gün ücretsiz deneyin</Link>
               <a href="#ozellikler" className={buttonClass("secondary", "lg")}>Neler var?</a>
             </div>
             <p className="mt-4 text-sm text-muted">
               Randevulu bir hizmet işletmesi misiniz?{" "}
-              <a href="https://yanindapos.com" target="_blank" rel="noopener noreferrer" className="font-medium text-brand underline underline-offset-4">
+              <a data-cta="cross-sell-yanindapos" href="https://yanindapos.com" target="_blank" rel="noopener noreferrer" className="font-medium text-brand underline underline-offset-4">
                 YanındaPOS’a bakın →
               </a>
             </p>
@@ -160,7 +160,7 @@ export default function Home() {
                 <h3 className="font-semibold">{label}</h3>
                 <div className="mt-3 text-4xl font-semibold tracking-tight tabular">{price ? formatTL(price) : "—"}</div>
                 <p className="mt-1 text-sm text-muted">{price ? `${per}, peşin` : contact ? `Fiyat için: ${contact}` : "Fiyat yakında açıklanacak"}</p>
-                <Link href="/kayit" className={`${buttonClass(label === "Yıllık" ? "primary" : "secondary", "md")} mt-6 w-full`}>14 gün ücretsiz başla</Link>
+                <Link data-cta={`pricing-${label.toLowerCase()}-signup`} href="/kayit" className={`${buttonClass(label === "Yıllık" ? "primary" : "secondary", "md")} mt-6 w-full`}>14 gün ücretsiz başla</Link>
               </div>
             ))}
           </div>
@@ -184,7 +184,7 @@ export default function Home() {
 
         <section className="mx-auto max-w-6xl px-4 py-20 text-center">
           <h2 className="text-3xl font-semibold tracking-tight">Bugün kurun, bu akşamki yoğunlukta kullanın.</h2>
-          <Link href="/kayit" className={`${buttonClass("primary", "lg")} mt-6`}>Ücretsiz hesap açın</Link>
+          <Link data-cta="footer-signup" href="/kayit" className={`${buttonClass("primary", "lg")} mt-6`}>Ücretsiz hesap açın</Link>
         </section>
       </main>
 

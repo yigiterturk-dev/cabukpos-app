@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { indexable } from "@/lib/site";
+import CtaAnalytics from "@/components/CtaAnalytics";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin", "latin-ext"] });
@@ -20,7 +21,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
-      <body className="min-h-full bg-canvas font-sans">{children}</body>
+      <body className="min-h-full bg-canvas font-sans">
+        <CtaAnalytics />
+        {children}
+      </body>
     </html>
   );
 }
