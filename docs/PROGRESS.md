@@ -1,5 +1,9 @@
 # İlerleme — ÇabukPOS
 
+## Pilot E2E CI kapısı (2026-10-05)
+- İlk tek mağaza akışlarının otomatik regresyon komutu `e2e:pilot` olarak tanımlandı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`).
+- `.github/workflows/ci.yml` bu komutu kritik E2E'lerden sonra çalıştırıyor; yeni koşunun gerçek Postgres + Chrome yeşil kanıtı gelene kadar pilot kapısı tamamlanmış sayılmıyor.
+
 ## Kanıta dayalı ciro tahmini (2026-10-05)
 - `/yonetim` Bugün ekranına son 28 tam günün brüt cirosundan 7 günlük yerel tahmin eklendi; en az 14 günlük pencere ve 7 aktif gün yoksa tahmin üretilmiyor.
 - Tahmin günlük ortalama, örnek standart sapma, yaklaşık %80 aralık ve artış/azalış eğilimiyle gösteriliyor; UI kesinlik iddiasını açıkça reddediyor.
