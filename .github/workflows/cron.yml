@@ -1,0 +1,58 @@
+name: Zamanlanmış uygulama işleri
+
+# Vercel Hobby sık cron aralıklarını kabul etmediği için uygulama cron'ları
+# GitHub Actions'tan çağrılır. Gerekli repository secret'ları: APP_URL, CRON_SECRET.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+    - cron: "*/10 * * * *"
+    - cron: "0 */6 * * *"
+    - cron: "0 6 * * *"
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Elle çalıştırılacak iş"
+        required: true
+        type: choice
+        options:
+          - agent-heartbeat
+          - uptime
+          - fiscal
+          - billing
+          - report
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cabukpos-cron-${{ github.event.schedule || inputs.job }}
+  cancel-in-progress: true
+
+jobs:
+  invoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      APP_URL: ${{ secrets.APP_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SCHEDULE: ${{ github.event.schedule || inputs.job }}
+    steps:
+      - name: Uygulama cron işini çağır
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$APP_URL" || { echo "APP_URL repository secret eksik" >&2; exit 1; }
+          test -n "$CRON_SECRET" || { echo "CRON_SECRET repository secret eksik" >&2; exit 1; }
+          case "$SCHEDULE" in
+            "*/5 * * * *"|"agent-heartbeat") PATHNAME="/api/cron/agent-heartbeat" ;;
+            "*/10 * * * *"|"uptime") PATHNAME="/api/cron/uptime" ;;
+            "0 */6 * * *"|"fiscal") PATHNAME="/api/cron/fiscal" ;;
+            "0 6 * * *"|"billing") PATHNAME="/api/cron/billing" ;;
+            "30 7 * * *"|"report") PATHNAME="/api/cron/report" ;;
+            *) echo "Bilinmeyen zamanlama: $SCHEDULE" >&2; exit 1 ;;
+          esac
+          BASE="${APP_URL%/}"
+          curl --fail-with-body --silent --show-error --retry 2 --retry-delay 5 --max-time 45 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${BASE}${PATHNAME}"
