@@ -2,6 +2,7 @@
   "name": "cabukpos-app",
   "version": "0.1.0",
   "private": true,
+  "license": "UNLICENSED",
   "overrides": {
     "@esbuild-kit/core-utils": {
       "esbuild": "^0.25.12"
