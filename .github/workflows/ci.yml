@@ -69,3 +69,4 @@ jobs:
           BASE: http://127.0.0.1:3810
         run: |
           npm run e2e:critical
+          npm run e2e:m54

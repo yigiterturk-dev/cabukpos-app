@@ -143,3 +143,16 @@ language sql stable security definer set search_path = public as $f$
   union
   select distinct tenant_id from fiscal_envelopes where status in ('hazir','gonderildi','iletildi')
 $f$;
+
+-- #55: audit_log yalnız eklenebilir (append-only). Uygulama kodu bu tabloyu hiç
+-- güncellemez/silmez; DB seviyesinde de yasaklanır ki bir hata ya da ele geçirilmiş
+-- oturum denetim izini silemesin. RLS yalnız satır okumayı/yazmayı kiracıya bağlar,
+-- UPDATE/DELETE'i kapatmaz — bu GRANT onu kapatır.
+revoke update, delete, truncate on audit_log from cabukpos_app;
+grant select, insert on audit_log to cabukpos_app;
+
+-- #55: kimlik/RLS dışı tablolarda (tokens global aranır: devices, agents, sessions,
+-- login_attempts, platform_connections, integration_keys, billing_*) tenant kapsamı
+-- uygulama katmanında zorunludur. Yeni bir tenant tablosu RLS'siz eklenirse
+-- `tests/rls-coverage.test.ts` kapıyı kırar; bu yüzden burada yalnız append-only
+-- ve drift denetimi vardır.

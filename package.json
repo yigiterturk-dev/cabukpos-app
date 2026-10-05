@@ -22,6 +22,7 @@
     "e2e:m9c": "node --env-file-if-exists=.env.local e2e/m9c.mjs",
     "e2e:m49": "node --env-file-if-exists=.env.local e2e/m49.mjs",
     "e2e:mfa": "node --env-file-if-exists=.env.local e2e/mfa.mjs",
+    "e2e:m54": "node --env-file-if-exists=.env.local e2e/m54.mjs",
     "e2e:dogrula": "node --env-file-if-exists=.env.local e2e/dogrula.mjs",
     "e2e:critical": "npm run e2e:m8 && npm run e2e:m9a && npm run e2e:iade && npm run e2e:m9b && npm run e2e:m9c",
     "db:backup": "node --env-file-if-exists=.env.local scripts/backup-db.mjs",
