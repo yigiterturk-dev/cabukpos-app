@@ -8,7 +8,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 ### Teknik kapı — mevcut durum
 
 - [x] `npm ci` temiz kurulum: 0 vulnerability
-- [x] `npm test`: 337/337
+- [x] `npm test`: 344/344
 - [x] `npm run qa:static`: lint + typecheck
 - [x] `npm run build`: Webpack production build
 - [~] Production `/api/health` ve `/api/ready`: mevcut production-target deployment'ta health `ok:true`, ready `database:ok`; ana alias'a promote edilmesi bekliyor

@@ -96,6 +96,12 @@ export default function Home() {
               <Link href="/kayit" className={buttonClass("primary", "lg")}>14 gün ücretsiz deneyin</Link>
               <a href="#ozellikler" className={buttonClass("secondary", "lg")}>Neler var?</a>
             </div>
+            <p className="mt-4 text-sm text-muted">
+              Randevulu bir hizmet işletmesi misiniz?{" "}
+              <a href="https://yanindapos.com" target="_blank" rel="noopener noreferrer" className="font-medium text-brand underline underline-offset-4">
+                YanındaPOS’a bakın →
+              </a>
+            </p>
             <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-2">
               {["Kart bilgisi istenmez", "Otomatik yenileme yok", "Veriler sizin"].map((t) => <li key={t} className="inline-flex items-center gap-1.5"><Check aria-hidden className="size-4 text-ok" />{t}</li>)}
             </ul>

@@ -1,5 +1,9 @@
 # İlerleme — ÇabukPOS
 
+## Yardım metni güvenlik kapısı (2026-10-05)
+- Kullanım kılavuzu, gerçek e-Arşiv entegratörü olmadan canlı mali belge üretildiği izlenimini vermeyecek şekilde düzeltildi.
+- `tests/help.test.ts` başlık bütünlüğünü, `tests/help-content.test.ts` ise bilgi fişi/mali belge ayrımı ve production entegratör kapısını içerik drift'ine karşı doğruluyor.
+
 ## Mali uyum kapısı (2026-10-05)
 - GİB/YN ÖKC ve e-Arşiv kaynakları incelendi; ürünün "bilgi fişi" ile gerçek mali belge ayrımı, entegratör/ÖKC sorumluluğu ve pilot imza kapıları `docs/MALI-UYUM-GATE.md` içinde resmileştirildi.
 - Resmî kaynaklar ürünün tek başına ÖKC veya gerçek e-Arşiv yerine geçtiğini kanıtlamıyor; bu nedenle canlı satış iddiası bilinçli olarak entegratör, cihaz ve mali müşavir kanıtına bağlı tutuluyor.
@@ -15,7 +19,7 @@
 ## RLS kapsam ve audit append-only kapısı (2026-10-05)
 - `tests/rls-coverage.test.ts` tenant_id taşıyan tüm tabloları kaynak şema/RLS SQL'iyle karşılaştırıyor; yalnız gerekçeli kimlik/abonelik istisnaları allowlist'te kalabiliyor.
 - `db/rls.sql` uygulama rolü için `audit_log` UPDATE/DELETE/TRUNCATE yetkilerini kaldırıyor; ekleme ve okuma dışındaki değişiklikler DB seviyesinde reddediliyor.
-- Kanıt: RLS coverage testi 2/2; tam `npm test` toplamı **337/337**, statik kalite geçişi.
+- Kanıt: RLS coverage testi 2/2; tam `npm test` toplamı **344/344**, statik kalite geçişi.
 
 ## Deployment runtime kanıtı (2026-10-05)
 - Vercel deployment `dpl_Au7pGSjpMXEteaW959XfJ43soWkf` production hedefinde **Ready**; `cabukpos-app.vercel.app` ve `cabukpos-app-yamakyeter.vercel.app` alias'ları bağlı.
