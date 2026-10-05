@@ -1,7 +1,8 @@
 name: Restore Provası
 
-# Haftalık restore provası: canlı DB'den taze dump alır, izole Postgres 16 service
+# Haftalık restore provası: canlı DB'den taze dump alır, izole Postgres 18 service
 # container'ına gerçekten geri yükler, tenants duman testini çalıştırır.
+# (Neon sunucusu PG18; dump ancak >=18 sunucuya restore edilebilir.)
 # Gerekli secret: BACKUP_DATABASE_URL (backup işiyle aynı).
 # REHEARSAL_DATABASE_URL gizli değildir (efemera container); sızdırma riski yok.
 on:
@@ -17,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_USER: provali
           POSTGRES_PASSWORD: provali
@@ -39,10 +40,23 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: PostgreSQL 18 client kur (Neon sunucusu PG18)
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+          for tool in pg_dump pg_restore psql; do
+            sudo update-alternatives --install "/usr/bin/${tool}" "${tool}" "/usr/lib/postgresql/18/bin/${tool}" 100
+          done
+          pg_dump --version
       - run: npm ci
       - name: Taze dump al
         run: npm run db:backup
-      - name: İzole Postgres 16'ya restore provası
+      - name: İzole Postgres 18'e restore provası
         run: npm run db:restore:rehearsal
       - name: Restore edilen DB ile uygulama readiness provası
         run: |

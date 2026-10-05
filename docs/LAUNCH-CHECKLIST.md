@@ -26,7 +26,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 ### Canlı işletme kapısı — açılıştan önce zorunlu
 
 - [~] `AGENT_ALERT_WEBHOOK_URL` alarm hattı — ✅ mekanizma uçtan uca kanıtlandı: sessiz ajan kaydı → `GET /api/cron/agent-heartbeat` (yetkisiz 401 / yetkili `{alerted:1}`) → webhook'a `{service,event:agent.heartbeat.stale,detail}` düştü; `tests/alerts.test.ts` (no-op/iletim/hata yutma). ⏳ kalan (insan): production'a gerçek alarm kanalı URL'i (Slack/Discord/ops) tanımla
-- [ ] Günlük backup scheduler çalışıyor; `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY` ile şifreli artifact üretildi, son dump `npm run db:backup:verify` ile doğrulandı
+- [~] Günlük backup scheduler — ✅ mekanizma kanıtlandı: owner yedeği + `openssl enc -aes-256-cbc -pbkdf2` şifrele/çöz → dump katalog doğrulaması OK; workflow PG18 client kurar (Neon PG18), artifact 30 gün. ⏳ kalan (insan): GitHub secret `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY` tanımla
 - [x] İzole staging veritabanına gerçek restore yapıldı — ✅ owner yedeği (`pg_dump --no-owner --no-privileges`, PG18) → yeni Neon branch'e `pg_restore --no-acl --exit-on-error`; STAGE=PROD (58 tablo, 47 RLS, 22 işletme, 30 satış, `report_due_tenants`). `scripts/backup-db.mjs`/`rehearse-restore.mjs` taşınabilirlik için güncellendi.
 - [~] Growth recipient_ref/approval şeması production'a uygulandı — ✅ owner ile `db:growth:verify` **9/9 OK** (kolonlar + RLS/FORCE + `tenant_isolation` + BYPASSRLS kapalı); ⏳ kalan: owner approval 403/200 akışı ve signed webhook'un staging'de canlı provası
 - [ ] Growth scope'lu key ile `RUNTIME_GROWTH_KEY=... BASE=<production> npm run audit:runtime` authenticated feature-pack/insights/campaign contract'ı geçti
