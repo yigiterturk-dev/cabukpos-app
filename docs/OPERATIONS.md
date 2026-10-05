@@ -32,7 +32,9 @@ Bu komut yalnızca okur; `billing_invoices`, `billing_invoice_counters`,
   dump dosyasını repoya veya uygulama storage'ına koymayın.
 - Yedeği canlıya geri yüklemeden doğrulamak için `pg_restore --list <dosya>`;
   gerçek restore provası için `REHEARSAL_DATABASE_URL=<izole staging DB> npm run db:restore:rehearsal -- --file=<dump>`
-  komutu dump'ı izole veritabanına yükler, canlı URL ile aynı olduğunu reddeder ve tenants duman testini çalıştırır.
+  komutu dump'ı izole veritabanına yükler, canlı URL ile aynı olduğunu reddeder,
+  `pg_restore --exit-on-error` ile kısmi restore'u başarısız sayar ve tenants +
+  billing/report şema duman testini çalıştırır.
 - Komut yedeği üretir, zamanlamayı `.github/workflows/backup.yml` üstlenir: her gün
   03:15 UTC'de dump alır, katalog provası yapar, ardından AES-256-CBC + PBKDF2 ile
   şifreleyip yalnız `.dump.enc` artifact'ını 30 gün saklar. Repository secret'ları
