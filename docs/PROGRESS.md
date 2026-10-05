@@ -27,13 +27,11 @@
 - Kanıt: RLS coverage testi 2/2; tam `npm test` toplamı **344/344**, statik kalite geçişi.
 
 ## Deployment runtime kanıtı (2026-10-05)
-- Vercel deployment `dpl_Au7pGSjpMXEteaW959XfJ43soWkf` production hedefinde **Ready**; `cabukpos-app.vercel.app` ve `cabukpos-app-yamakyeter.vercel.app` alias'ları bağlı.
-- Vercel runtime logunda hem production alias hem deployment host için `GET /api/health` **200** görüldü; deployment 3 gün önce olduğu için bu, mevcut uncommitted çalışma ağacının runtime kanıtı değildir.
-- `curl`/Chrome ile doğrudan istek bu çalışma ortamının DNS/istemci ağ politikası nedeniyle doğrulanamadı; `/api/ready`, veritabanı ve authenticated akışlar ile mevcut değişikliklerin deploy edilmesi hâlâ canlı kanıt bekliyor.
-- Mevcut çalışma ağacı Vercel build ortamında da derlendi: Next production build, TypeScript ve 20 statik sayfa başarılı. Deploy aşaması Vercel Hobby hesabının günlükten sık cron kısıtında durdu (`0 */6`, ayrıca `*/5`/`*/10` cron'ları); cron'ları günlükleştirip operasyon güvencesini düşürmek yerine Pro planı veya harici scheduler gerekiyor.
-- Cron'lar GitHub Actions workflow'una taşındı (`.github/workflows/cron.yml`); Vercel `vercel.json` artık cron tanımlamıyor. Workflow scanner: 4 workflow, 0 aday; gerçek çalışması `APP_URL` ve `CRON_SECRET` repository secret'larının varlığına bağlı.
-- GitHub Actions secret API kontrolü (2026-10-05): `total_count: 0`; `APP_URL` ve `CRON_SECRET` henüz tanımlı değil. Workflow'un canlı scheduler olarak kanıtlanması için secret kurulumu ve bu workflow'un uzak repoya push edilmesi gerekiyor.
-- Mevcut çalışma ağacı production env ile `dpl_5pxPbtsHJmvy5XePu64kzG86pedc` olarak deploy edildi (ana kullanıcı alias'ı bilerek promote edilmedi): authenticated Vercel curl ile `/api/health` `ok:true`, `/api/ready` `database:ok`, secretsiz `/api/cron/fiscal` `yetkisiz` döndü.
+- Production deployment `dpl_7B1h2jvuMgMrFxhECqoQWJFDyeqt` **Ready** ve `cabukpos-app.vercel.app` alias'ına bağlı; `/api/health` ve `/api/ready` 200 (`database:ok`).
+- `BASE=https://cabukpos-app.vercel.app npm run audit:runtime` 16/16 geçti: login/kayıt 200/307, anonim export/growth/fiscal/billing korumaları 401.
+- GitHub Actions cron workflow'una `APP_URL` ve `CRON_SECRET` repository secret'ları eklendi. Manuel `uptime`, `agent-heartbeat` ve `fiscal` koşuları 200 geçti.
+- Production cron logları `billing` için eksik `billing_invoices` tablosunu, `report` için eksik `report_due_tenants(text,timestamptz)` fonksiyonunu gösteriyor; canlı Neon migration owner bağlantısı olmadan bu iki iş tamamlanmış sayılmıyor.
+- Cron'lar GitHub Actions workflow'una taşındı (`.github/workflows/cron.yml`); Vercel `vercel.json` cron tanımlamıyor. Backup workflow'u için ayrıca `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY` secret'ları gerekiyor.
 
 ## Pilot onboarding — CSV ürün aktarımı (2026-10-05)
 - Yönetim → Ürünler'e CSV'den toplu ürün aktarımı eklendi; Türkçe/İngilizce başlıklar, tırnaklı TL fiyatları ve kategori adları destekleniyor.

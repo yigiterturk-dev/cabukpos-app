@@ -13,7 +13,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [x] `npm run build`: Webpack production build
 - [x] Production `/api/health` ve `/api/ready`: `https://cabukpos-app.vercel.app` üzerinde health `ok:true`, ready `database:ok`
 - [x] Mevcut release değişiklikleri deploy edildi; aynı production alias'ta health/ready ve `BASE=https://cabukpos-app.vercel.app npm run audit:runtime` geçti (16/16)
-- [ ] Cron scheduler doğrulandı: GitHub Actions workflow'u için `APP_URL` + `CRON_SECRET` secret'ları ve beş zamanlama çalıştı (alternatif: Vercel Pro Cron)
+- [~] Cron scheduler: GitHub Actions `APP_URL` + `CRON_SECRET` secret'ları tanımlı; `uptime`, `agent-heartbeat` ve `fiscal` manuel koşuları 200 geçti. `billing` ve `report` production şemasındaki eksik `billing_invoices` / `report_due_tenants` nedeniyle 500; migration owner bağlantısı bekleniyor.
 - [x] Growth feature-pack, insights ve event intake tenant/scope sınırları
 - [x] Production kritik anonim/korumalı uçlar: runtime audit 16/16 kontrol tanımı
 - [x] Neon migration ve FORCE RLS doğrulaması
