@@ -27,7 +27,10 @@ export interface OkcProvider {
 }
 
 export function getOkc(name: string, opts: { fakeFail: boolean }): OkcProvider {
-  if (name === "fake-okc") return fakeOkc(opts);
+  if (name === "fake-okc") {
+    if (process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production") throw new Error("Sahte ÖKC sağlayıcısı production'da kullanılamaz.");
+    return fakeOkc(opts);
+  }
   throw new Error(`Bilinmeyen ÖKC sağlayıcı: ${name}`);
 }
 

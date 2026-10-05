@@ -15,7 +15,9 @@ export function FiscalSettingsForm({ initial, channels, fake, okc }: {
   okc?: { provider: string; serial: string } | null;
 }) {
   const { state, pending, onSubmit } = useFormAction(saveFiscalSettings, {} as FiscalState);
-  const [modes, setModes] = useState(initial.modes);
+  const [modes, setModes] = useState<ChannelModes>(() => fake
+    ? Object.fromEntries(channels.map((c) => [c, "info"])) as ChannelModes
+    : initial.modes);
   const [okcOn, setOkcOn] = useState(!!okc);
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -35,7 +37,7 @@ export function FiscalSettingsForm({ initial, channels, fake, okc }: {
               <input type="hidden" name={`mode-${c}`} value={modes[c]} />
               <div className="flex gap-1" role="group" aria-label={CH_LABEL[c]}>
                 {([["info", "Bilgi fişi"], ["earsiv", "e-Arşiv"]] as [DocMode, string][]).map(([v, l]) => (
-                  <button key={v} type="button" aria-pressed={modes[c] === v} onClick={() => setModes((m) => ({ ...m, [c]: v }))} className={`rounded-lg border px-3 py-2 text-sm ${modes[c] === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{l}</button>
+                  <button key={v} type="button" aria-pressed={modes[c] === v} disabled={v === "earsiv" && fake} onClick={() => setModes((m) => ({ ...m, [c]: v }))} className={`rounded-lg border px-3 py-2 text-sm ${modes[c] === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"} ${v === "earsiv" && fake ? "cursor-not-allowed opacity-50" : ""}`}>{l}</button>
                 ))}
               </div>
             </div>
@@ -45,7 +47,7 @@ export function FiscalSettingsForm({ initial, channels, fake, okc }: {
       {fake && (
         <div className="rounded-lg border border-amber-300 bg-warn-soft p-3 text-sm">
           <p className="font-medium">TEST sağlayıcısı: kesilen belgelerin mali değeri yoktur.</p>
-          <p className="mt-1 text-muted">Gerçek entegratör (Paraşüt/Uyumsoft/İzibiz) anahtarı gelince bağlanacak.</p>
+          <p className="mt-1 text-muted">Gerçek entegratör (Paraşüt/Uyumsoft/İzibiz) bağlanmadan e-Arşiv kullanılamaz; bilgi fişi satışa devam eder.</p>
           <label className="mt-2 flex items-center gap-2"><input type="checkbox" name="fakeFail" defaultChecked={initial.fakeFail} className="size-4 accent-[var(--color-brand)]" />Hata simülasyonu (her kesim hata verir)</label>
         </div>
       )}

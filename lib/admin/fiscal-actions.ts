@@ -22,6 +22,7 @@ export async function saveFiscalSettings(_: FiscalState, form: FormData): Promis
   const modes = Object.fromEntries(FISCAL_CHANNELS.map((c) => [c, str(form, `mode-${c}`) === "earsiv" ? "earsiv" : "info"])) as ChannelModes;
   if (a.vertical === "market") { modes.masa = "info"; modes.paket = "info"; modes.platform = "info"; }
   const earsiv = Object.values(modes).includes("earsiv");
+  if (earsiv && (process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production")) return { error: "Production'da e-Arşiv için gerçek entegratör bağlantısı gerekir; bağlantı hazır olana kadar Bilgi fişi kullanın." };
   if (taxId && !validateTaxId(taxId)) return { error: "Vergi no geçersiz (10 hane VKN ya da 11 hane TCKN).", field: "taxId" };
   if (earsiv && !taxId) return { error: "e-Arşiv için işletme vergi no gerekli.", field: "taxId" };
   if (earsiv && !taxOffice) return { error: "e-Arşiv için vergi dairesi gerekli.", field: "taxOffice" };

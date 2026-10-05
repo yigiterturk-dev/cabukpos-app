@@ -80,6 +80,14 @@ test("sahte sürücü: başarı, hata simülasyonu, 7 gün iptal", async () => {
   assert.equal(typeof getProvider("fake-earsiv", { fakeFail: false }).issue, "function");
 });
 
+test("sahte e-Arşiv production'da fail-closed olur", () => {
+  const env = process.env as Record<string, string | undefined>;
+  const old = env.NODE_ENV;
+  env.NODE_ENV = "production";
+  assert.throws(() => getProvider("fake-earsiv", { fakeFail: false }), /production'da kullanılamaz/);
+  if (old === undefined) delete env.NODE_ENV; else env.NODE_ENV = old;
+});
+
 // #19: sahte zarf yaşam döngüsü — gönderim → 1dk iletildi → 5dk kabul|red
 test("fake zarf: gönderim, iletme, kabul", async () => {
   const t0 = new Date("2026-10-03T10:00:00Z");

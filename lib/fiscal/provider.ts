@@ -26,6 +26,9 @@ export interface FiscalProvider {
 }
 
 export function getProvider(name: string, opts: { fakeFail: boolean }): FiscalProvider {
-  if (name === "fake-earsiv") return fakeEarsiv(opts);
+  if (name === "fake-earsiv") {
+    if (process.env.NODE_ENV === "production" || process.env.LAUNCH_ENV === "production") throw new Error("Sahte e-Arşiv sağlayıcısı production'da kullanılamaz.");
+    return fakeEarsiv(opts);
+  }
   throw new Error(`Bilinmeyen mali sağlayıcı: ${name}`);
 }

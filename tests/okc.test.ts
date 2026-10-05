@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 const { okcFiscalNo, okcNotes, zNoOf, OKC_PROVIDERS } = await import("@/lib/core/okc");
+const { getOkc } = await import("@/lib/fiscal/okc");
 
 test("okcFiscalNo: seri-Z-sıra biçimi ve sıfır dolgu", () => {
   assert.equal(okcFiscalNo("TRA123", 7, 42), "TRA123-0007-000042");
@@ -32,4 +33,12 @@ test("zNoOf: satış gününden durumsuz, 4 haneye sarmalanır", () => {
 
 test("sağlayıcı listesi sandbox'ı içerir", () => {
   assert.ok(OKC_PROVIDERS.some((p) => p.value === "fake-okc"));
+});
+
+test("sahte ÖKC production'da fail-closed olur", () => {
+  const env = process.env as Record<string, string | undefined>;
+  const old = env.NODE_ENV;
+  env.NODE_ENV = "production";
+  assert.throws(() => getOkc("fake-okc", { fakeFail: false }), /production'da kullanılamaz/);
+  if (old === undefined) delete env.NODE_ENV; else env.NODE_ENV = old;
 });
