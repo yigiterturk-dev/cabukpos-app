@@ -5,8 +5,8 @@ import test from "node:test";
 
 const required = {
   DATABASE_URL: "postgres://app:test@localhost/db",
-  AUTH_SECRET: "test-auth-secret",
-  CRON_SECRET: "test-cron-secret",
+  AUTH_SECRET: "test-auth-secret-012345678901234567890123",
+  CRON_SECRET: "test-cron-secret-012345678901234567890123",
   LEGAL_NAME: "Test Şirket",
   LEGAL_ADDRESS: "Test adres",
   LEGAL_EMAIL: "test@example.com",
@@ -75,6 +75,13 @@ test("launch check fake sağlayıcıyı production'da reddeder", () => {
   const result = run({ APP_URL: "https://cabukpos.test", AGENT_ALERT_WEBHOOK_URL: "https://alerts.test/hook", BILLING_PROVIDER: "fake" });
   assert.equal(result.status, 1);
   assert.match(result.stdout, /Production abonelik sağlayıcısı: BILLING_PROVIDER=paytr olmalı/);
+});
+
+test("launch check kısa güvenlik sırlarını production'da reddeder", () => {
+  const result = run({ APP_URL: "https://cabukpos.test", AGENT_ALERT_WEBHOOK_URL: "https://alerts.test/hook", AUTH_SECRET: "too-short", CRON_SECRET: "also-short" });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /Oturum sırrı: AUTH_SECRET en az 32 karakter olmalı/);
+  assert.match(result.stdout, /Cron sırrı: CRON_SECRET en az 32 karakter olmalı/);
 });
 
 test("launch check PayTR test modunu production'da reddeder", () => {

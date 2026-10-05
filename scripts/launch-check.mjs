@@ -5,6 +5,12 @@ function required(name, label = name) {
   checks.push({ ok: Boolean(value), label, detail: value ? "tanımlı" : `${name} eksik` });
 }
 
+function requiredSecret(name, label = name, minLength = 32) {
+  const value = process.env[name]?.trim();
+  const ok = Boolean(value && value.length >= minLength);
+  checks.push({ ok, label, detail: ok ? `en az ${minLength} karakter` : `${name} en az ${minLength} karakter olmalı` });
+}
+
 function requiredUrl(name, label, httpsInProduction = false) {
   const value = process.env[name]?.trim();
   let ok = Boolean(value);
@@ -38,8 +44,8 @@ const billing = (process.env.BILLING_PROVIDER || "").trim().toLowerCase();
 
 requiredUrl("APP_URL", "Uygulama URL'si", true);
 required("DATABASE_URL", "Uygulama veritabanı");
-required("AUTH_SECRET", "Oturum sırrı");
-required("CRON_SECRET", "Cron sırrı");
+requiredSecret("AUTH_SECRET", "Oturum sırrı");
+requiredSecret("CRON_SECRET", "Cron sırrı");
 
 if (production) {
   requiredUrl("AGENT_ALERT_WEBHOOK_URL", "Agent alarm webhook'u", true);
