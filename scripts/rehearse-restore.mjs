@@ -35,7 +35,9 @@ const run = (cmd, args, opts = {}) =>
     child.once("exit", (status, signal) => resolveExit({ code: status ?? (signal ? 1 : 0), out }));
   });
 
-const restore = await run("pg_restore", ["--clean", "--if-exists", "--no-owner", "--dbname", target, file]);
+// Do not allow pg_restore to continue past a failed object and report a false
+// positive based only on the later tenants smoke query.
+const restore = await run("pg_restore", ["--clean", "--if-exists", "--no-owner", "--exit-on-error", "--dbname", target, file]);
 if (restore.code !== 0) throw new Error(`pg_restore başarısız (kod ${restore.code}).`);
 
 const smoke = await run("psql", ["--dbname", target, "--tuples-only", "--no-align", "--command",
