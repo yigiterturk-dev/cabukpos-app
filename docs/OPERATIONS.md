@@ -42,7 +42,9 @@ Bu komut yalnızca okur; `billing_invoices`, `billing_invoice_counters`,
   `BACKUP_ENCRYPTION_KEY` olmalıdır; ham dump artifact'a yüklenmez. Restore için
   artifact'ı güvenli runner'da `openssl enc -d -aes-256-cbc -pbkdf2 -iter 310000`
   ile açıp `npm run db:backup:verify -- --file=<dump>` ve gerçek restore provasını
-  çalıştırın. İlk koşuda Actions logundan "Yedek hazır" satırı doğrulanır.
+  çalıştırın. Restore workflow'u ayrıca production build'i izole DB ile başlatıp
+  `/api/ready` kontrolünü geçmeden başarılı olmaz. İlk koşuda Actions logundan
+  "Yedek hazır" ve readiness başarı satırları doğrulanır.
 
 ## Uygulama cron'ları
 
