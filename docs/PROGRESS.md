@@ -1,5 +1,10 @@
 # İlerleme — ÇabukPOS
 
+## Tam E2E maratonu — 14/14 yeşil (2026-10-05)
+- m1 m2 m3 m4 m5 m6 m7 m8 m9a m9b m9c iade lan mfa m54 dogrula sifre + m49: hepsi gerçek Chrome ile yerel production sunucuda geçti.
+- Eksik `npm run e2e:m1|m2|m4|m6|m7|sifre` script'leri eklendi (dosyalar vardı, komut yoktu).
+- Not: art arda koşularda `login_attempts` birikince pairing/signup rate-limit e2e'yi kırar; yerelde `delete from login_attempts` ile sıfırlanır.
+
 ## Pilot E2E CI kapısı (2026-10-05)
 - İlk tek mağaza akışlarının otomatik regresyon komutu `e2e:pilot` olarak tanımlandı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`).
 - `.github/workflows/ci.yml` bu komutu kritik E2E'lerden sonra çalıştırıyor; yeni koşunun gerçek Postgres + Chrome yeşil kanıtı gelene kadar pilot kapısı tamamlanmış sayılmıyor.

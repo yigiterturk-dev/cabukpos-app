@@ -43,7 +43,13 @@
     "db:push:test": "DATABASE_URL=${TEST_DATABASE_URL:-postgres://yigiterturk@localhost:5432/cabukpos_test} node node_modules/drizzle-kit/bin.cjs push --force && npm run db:rls:test",
     "db:rls:test": "MIGRATE_DATABASE_URL=${TEST_DATABASE_URL:-postgres://yigiterturk@localhost:5432/cabukpos_test} node scripts/db-rls.mjs",
     "agent:build": "esbuild agent/src/main.ts --bundle --platform=node --target=node20 --format=cjs --minify --legal-comments=none --outfile=public/indir/cabukpos-agent.cjs --alias:@=.",
-    "agent:dev": "node --import ./tests/ts-resolve.mjs agent/src/main.ts"
+    "agent:dev": "node --import ./tests/ts-resolve.mjs agent/src/main.ts",
+    "e2e:m1": "node --env-file-if-exists=.env.local e2e/m1.mjs",
+    "e2e:m2": "node --env-file-if-exists=.env.local e2e/m2.mjs",
+    "e2e:m4": "node --env-file-if-exists=.env.local e2e/m4.mjs",
+    "e2e:m6": "node --env-file-if-exists=.env.local e2e/m6.mjs",
+    "e2e:m7": "node --env-file-if-exists=.env.local e2e/m7.mjs",
+    "e2e:sifre": "node --env-file-if-exists=.env.local e2e/sifre.mjs"
   },
   "engines": {
     "node": ">=20 <23"
