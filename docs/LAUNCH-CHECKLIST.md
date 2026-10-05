@@ -21,7 +21,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
 - [~] Pilot E2E komutu CI kapısına bağlı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`); yeni CI koşusunun yeşil kanıtı bekleniyor
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
-- [x] `npm run launch:check` ile sırları göstermeden production ayar kontrolü
+- [~] `npm run launch:check` ile sırları göstermeden production ayar kontrolü; canlı alias'ta fiyatlar ve satıcı bilgileri hâlâ placeholder olduğu için production env kanıtı bekleniyor
 
 ### Canlı işletme kapısı — açılıştan önce zorunlu
 

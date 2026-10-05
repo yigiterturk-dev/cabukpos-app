@@ -4,6 +4,11 @@
 - İlk tek mağaza akışlarının otomatik regresyon komutu `e2e:pilot` olarak tanımlandı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`).
 - `.github/workflows/ci.yml` bu komutu kritik E2E'lerden sonra çalıştırıyor; yeni koşunun gerçek Postgres + Chrome yeşil kanıtı gelene kadar pilot kapısı tamamlanmış sayılmıyor.
 
+## Canlı satış yüzeyi doğrulaması (2026-10-05)
+- `https://cabukpos-app.vercel.app/fiyatlandirma` canlı sayfasında aylık/yıllık tutarlar `—` ve "Fiyat yakında açıklanacak" görünüyor.
+- `https://cabukpos-app.vercel.app/yasal/iletisim` satıcı unvanı, adres, vergi ve e-posta alanlarında kuruluş placeholder'ları gösteriyor.
+- Bu nedenle teknik ürün kanıtlı olsa da ticari satış kapısı tamamlanmış sayılmıyor; gerçek fiyat ve satıcı tüzel kişi bilgileri owner kararı + production env ile doldurulmalı.
+
 ## Kanıta dayalı ciro tahmini (2026-10-05)
 - `/yonetim` Bugün ekranına son 28 tam günün brüt cirosundan 7 günlük yerel tahmin eklendi; en az 14 günlük pencere ve 7 aktif gün yoksa tahmin üretilmiyor.
 - Tahmin günlük ortalama, örnek standart sapma, yaklaşık %80 aralık ve artış/azalış eğilimiyle gösteriliyor; UI kesinlik iddiasını açıkça reddediyor.
