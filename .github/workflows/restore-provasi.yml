@@ -44,3 +44,26 @@ jobs:
         run: npm run db:backup
       - name: İzole Postgres 16'ya restore provası
         run: npm run db:restore:rehearsal
+      - name: Restore edilen DB ile uygulama readiness provası
+        run: |
+          set -euo pipefail
+          npm run build
+          port=3199
+          log_file=/tmp/cabukpos-restore-start.log
+          DATABASE_URL="$REHEARSAL_DATABASE_URL" \
+            AUTH_SECRET="$(openssl rand -hex 32)" \
+            CRON_SECRET="$(openssl rand -hex 32)" \
+            APP_URL="http://127.0.0.1:${port}" \
+            NODE_ENV=production PORT="$port" \
+            npm run start >"$log_file" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error "http://127.0.0.1:${port}/api/ready" | grep -q '"ok":true'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$log_file"
+          echo "Restore edilen veritabanıyla uygulama readiness kontrolü başarısız." >&2
+          exit 1
