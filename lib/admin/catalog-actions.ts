@@ -5,10 +5,26 @@ import { revalidatePath } from "next/cache";
 import { schema, withTenant, type Tx } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
-import { parseProduct } from "./catalog";
+import { parseProduct, type ProductValue } from "./catalog";
+import { parseProductCsv, type ProductCsvRow } from "@/lib/core/product-csv";
 
 export type CatalogState = { error?: string; field?: string; savedAt?: number };
+export type ProductImportState = { error?: string; imported?: number; savedAt?: number };
 const UUID = /^[0-9a-f-]{36}$/i;
+
+const yes = (v: string) => /^(1|true|evet|e|yes)$/iu.test(v.trim()) ? "true" : /^(0|false|hayır|hayir|h|no)$/iu.test(v.trim()) ? "false" : v;
+const kind = (v: string) => /^(tartılı|tartili|kg|ağırlık|agirlik)$/iu.test(v.trim()) ? "tartili" : v;
+const unit = (v: string) => /^(litre|liter|l)$/iu.test(v.trim()) ? "lt" : v;
+const categoryKey = (v: string) => v.trim().toLocaleLowerCase("tr-TR");
+
+function productFields(row: ProductCsvRow, categoryId: string | null) {
+  return {
+    name: row.name, price: row.price, vatRate: row.vatRate || "10", categoryId: categoryId ?? "",
+    barcodes: row.barcodes, kind: kind(row.kind || "adet"), plu: row.plu, trackStock: yes(row.trackStock),
+    quick: yes(row.quick), sellable: yes(row.sellable || "true"), unit: unit(row.unit || "adet"),
+    cost: row.cost, minStock: row.minStock, yieldMilli: row.yieldMilli,
+  };
+}
 
 export async function saveCategory(_: CatalogState, form: FormData): Promise<CatalogState> {
   const a = await requireWriter();
@@ -73,6 +89,61 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
   if (err) return err;
   revalidatePath("/yonetim/urunler");
   return { savedAt: Date.now() };
+}
+
+export async function importProducts(_: ProductImportState, form: FormData): Promise<ProductImportState> {
+  const a = await requireWriter();
+  const upload = form.get("file");
+  if (!upload || typeof upload !== "object" || !("text" in upload) || typeof upload.text !== "function") return { error: "Bir CSV dosyası seçin." };
+  const text = await (upload as { text: () => Promise<string> }).text();
+  if (text.length > 1_000_000) return { error: "CSV dosyası en fazla 1 MB olabilir." };
+  const parsed = parseProductCsv(text);
+  if (!parsed.ok) return { error: parsed.error };
+  if (parsed.rows.length > 500) return { error: "Tek seferde en fazla 500 ürün aktarılabilir." };
+
+  const prepared = parsed.rows.map((row) => ({ row, parsed: parseProduct(productFields(row, null)) }));
+  const invalid = prepared.find((x) => !x.parsed.ok);
+  if (invalid && !invalid.parsed.ok) return { error: `Satır ${invalid.row.line}: ${invalid.parsed.error}` };
+  const valid = prepared.filter((x): x is { row: ProductCsvRow; parsed: { ok: true; value: ProductValue } } => x.parsed.ok);
+  const plUs = valid.map((x) => x.parsed.value.plu).filter((v): v is string => !!v);
+  if (new Set(plUs).size !== plUs.length) return { error: "CSV içinde aynı PLU birden fazla kez kullanılmış." };
+  const barcodes = valid.flatMap((x) => x.parsed.value.barcodes);
+  if (new Set(barcodes).size !== barcodes.length) return { error: "CSV içinde aynı barkod birden fazla kez kullanılmış." };
+
+  const result = await withTenant(a.tenantId, async (tx) => {
+    const P = schema.products;
+    if (plUs.length) {
+      const existing = await tx.select({ name: P.name, plu: P.plu }).from(P).where(inArray(P.plu, plUs));
+      if (existing.length) throw new Error(`PLU zaten kullanımda: ${existing[0].plu} (${existing[0].name}).`);
+    }
+    const importedBarcodes = new Set(barcodes);
+    if (importedBarcodes.size) {
+      const existing = await tx.select({ name: P.name, barcodes: P.barcodes }).from(P);
+      const duplicate = existing.find((p) => p.barcodes.some((barcode) => importedBarcodes.has(barcode)));
+      if (duplicate) throw new Error(`Barkod zaten kullanımda: ${duplicate.name}.`);
+    }
+    const categories = await tx.select({ id: schema.categories.id, name: schema.categories.name }).from(schema.categories);
+    const byName = new Map(categories.map((c) => [categoryKey(c.name), c.id]));
+    for (const item of valid) {
+      const categoryName = item.row.category.trim();
+      if (categoryName && (categoryName.length < 2 || categoryName.length > 40)) throw new Error(`Satır ${item.row.line}: kategori adı 2-40 karakter olmalı.`);
+      if (categoryName && !byName.has(categoryKey(categoryName))) {
+        const [created] = await tx.insert(schema.categories).values({ tenantId: a.tenantId, name: categoryName }).returning({ id: schema.categories.id });
+        byName.set(categoryKey(categoryName), created.id);
+      }
+    }
+    const values = valid.map(({ row, parsed: p }) => ({
+      tenantId: a.tenantId,
+      ...p.value,
+      categoryId: row.category.trim() ? byName.get(categoryKey(row.category)) ?? null : null,
+      costAt: p.value.cost === null ? null : new Date(),
+    }));
+    await tx.insert(P).values(values);
+    await audit(tx, a.tenantId, `user:${a.id}`, "product.import", { count: values.length, source: "csv" });
+  }).catch((error: unknown) => ({ error: error instanceof Error ? error.message : "Ürün aktarımı başarısız." }));
+  if (result?.error) return result;
+  revalidatePath("/yonetim/urunler");
+  return { imported: valid.length, savedAt: Date.now() };
 }
 
 export async function setProductActive(id: string, active: boolean) {

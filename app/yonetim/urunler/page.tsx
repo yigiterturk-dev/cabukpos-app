@@ -6,6 +6,7 @@ import { deleteCategory, setProductActive } from "@/lib/admin/catalog-actions";
 import { formatTL } from "@/lib/core/money";
 import { stockUnitOf } from "@/lib/core/stock";
 import { CategoryForm, ProductForm } from "@/components/admin/ProductForm";
+import { ProductImportForm } from "@/components/admin/ProductImportForm";
 import { Plus, X } from "lucide-react";
 import { Badge, buttonClass, Card, Empty, Input, PageHeader, Panel, SplitView, TABLE_HEAD } from "@/components/ui";
 
@@ -40,6 +41,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
       <PageHeader title="Ürünler" desc="Fiyatlar KDV dahil. Kasada satıştaki ürünler görünür." actions={editing && <Link href="/yonetim/urunler" className={buttonClass("secondary")}><Plus aria-hidden className="size-4" />Yeni ürün</Link>} />
       <SplitView wide panel={
         <div className="space-y-4">
+          <ProductImportForm />
           <Panel title={editing ? `Düzenle: ${editing.name}` : "Ürün ekle"} tone={editing ? "edit" : undefined}>
             <ProductForm key={editing?.id ?? "yeni"} categories={options} salon={salon} initial={productInitial} />
           </Panel>

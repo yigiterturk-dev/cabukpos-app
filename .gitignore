@@ -43,4 +43,8 @@ yarn-error.log*
 next-env.d.ts
 !.env.example
 .claude/settings.local.json
-public/indir/
+public/indir/*
+!public/indir/
+public/indir/*
+!public/indir/cabukpos-agent-install.ps1
+!public/indir/cabukpos-urun-sablonu.csv
