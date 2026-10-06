@@ -28,15 +28,16 @@ test("alarm: env tanımsızsa hiç istek gitmez (no-op)", async () => {
 });
 
 test("alarm: env tanımlıysa service/event/detail gövdesi POST edilir", async () => {
-  let body: any = null;
-  const hook = await withHook((b) => { body = b; });
+  let body: { service: string; event: string; detail: unknown; at: string } | null = null;
+  const hook = await withHook((b) => { body = b as typeof body; });
   process.env.AGENT_ALERT_WEBHOOK_URL = hook.url;
   try {
     await dispatchAlert("agent.heartbeat.stale", { agentId: "abc", tenantId: "t1" });
-    assert.equal(body?.service, "cabukpos");
-    assert.equal(body?.event, "agent.heartbeat.stale");
-    assert.deepEqual(body?.detail, { agentId: "abc", tenantId: "t1" });
-    assert.match(body?.at, /^\d{4}-\d{2}-\d{2}T/);
+    assert.ok(body, "webhook gövdesi alınmalı");
+    assert.equal(body.service, "cabukpos");
+    assert.equal(body.event, "agent.heartbeat.stale");
+    assert.deepEqual(body.detail, { agentId: "abc", tenantId: "t1" });
+    assert.match(body.at, /^\d{4}-\d{2}-\d{2}T/);
   } finally { delete process.env.AGENT_ALERT_WEBHOOK_URL; await hook.close(); }
 });
 
