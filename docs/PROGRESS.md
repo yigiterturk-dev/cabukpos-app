@@ -1,5 +1,10 @@
 # İlerleme — ÇabukPOS
 
+## CI kırmızısı düzeltildi — yeşil kanıt (2026-10-06)
+- 2026-10-05 20:06-20:10 arası 3 CI koşusu "runner not acquired" ile düştü (GitHub altyapı kesintisi; iş hiç başlamadı). Yeniden koşulan iş gerçek hatayı verdi: `tests/alerts.test.ts` içinde `any` (lint kapısı) — `31f46a1` + closure narrowing tsc düzeltmesi `89f67ba`.
+- CI run 37482757665 **success** (89f67ba, main). Launch kapısındaki "runner bekleyen" CI kanıtı kapandı.
+- Not: `Yedekleme` workflow'u `BACKUP_DATABASE_URL`/`BACKUP_ENCRYPTION_KEY` secret'ları tanımlı olmadığı için her gün failure basıyor (beklenen, insan işi).
+
 ## Tam E2E maratonu — 14/14 yeşil (2026-10-05)
 - m1 m2 m3 m4 m5 m6 m7 m8 m9a m9b m9c iade lan mfa m54 dogrula sifre + m49: hepsi gerçek Chrome ile yerel production sunucuda geçti.
 - Eksik `npm run e2e:m1|m2|m4|m6|m7|sifre` script'leri eklendi (dosyalar vardı, komut yoktu).
