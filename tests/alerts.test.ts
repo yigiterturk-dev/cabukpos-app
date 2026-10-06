@@ -28,11 +28,12 @@ test("alarm: env tanımsızsa hiç istek gitmez (no-op)", async () => {
 });
 
 test("alarm: env tanımlıysa service/event/detail gövdesi POST edilir", async () => {
-  let body: { service: string; event: string; detail: unknown; at: string } | null = null;
-  const hook = await withHook((b) => { body = b as typeof body; });
+  let raw: unknown = null;
+  const hook = await withHook((b) => { raw = b; });
   process.env.AGENT_ALERT_WEBHOOK_URL = hook.url;
   try {
     await dispatchAlert("agent.heartbeat.stale", { agentId: "abc", tenantId: "t1" });
+    const body = raw as { service: string; event: string; detail: unknown; at: string } | null;
     assert.ok(body, "webhook gövdesi alınmalı");
     assert.equal(body.service, "cabukpos");
     assert.equal(body.event, "agent.heartbeat.stale");
