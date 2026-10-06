@@ -1,5 +1,9 @@
 # İlerleme — ÇabukPOS
 
+## Ajan 0.6.0 — prova komutları (2026-10-06)
+- `test-scale` (teraziden kararlı okuma, kg + kararlılık) ve `test-drawer` (ESC p 0 çekmece sinyali, yazıcı RJ11) eklendi — mağaza pilot kapısındaki "barkod/çekmece/terazi" provası artık terminalden tek komut.
+- Kurulum betiği, Donanım sayfası talimatı ve `docs/AGENT.md` güncellendi; canlı `public/indir/cabukpos-agent.cjs` 0.6.0 servis ediyor (CI run 37495857492 success, main 0e64611). Gerçek donanımda koşusu hâlâ pilot provada (insan).
+
 ## CI kırmızısı düzeltildi — yeşil kanıt (2026-10-06)
 - 2026-10-05 20:06-20:10 arası 3 CI koşusu "runner not acquired" ile düştü (GitHub altyapı kesintisi; iş hiç başlamadı). Yeniden koşulan iş gerçek hatayı verdi: `tests/alerts.test.ts` içinde `any` (lint kapısı) — `31f46a1` + closure narrowing tsc düzeltmesi `89f67ba`.
 - CI run 37482757665 **success** (89f67ba, main). Launch kapısındaki "runner bekleyen" CI kanıtı kapandı.
