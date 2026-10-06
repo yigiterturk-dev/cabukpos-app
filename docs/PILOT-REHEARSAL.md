@@ -10,8 +10,10 @@ Bu form ilk restoran pilotunda teknik akışı kanıtlamak için kullanılır. R
 - [ ] Kasa cihazı eşlendi
 - [ ] Windows ajanı kuruldu ve Donanım ekranında çevrimiçi göründü
 - [ ] Chrome yerel ağ erişimi verildi
-- [ ] Termal yazıcıdan Türkçe deneme fişi çıktı
-- [ ] Para çekmecesi açıldı
+- [ ] Termal yazıcıdan Türkçe deneme fişi çıktı (`node cabukpos-agent.cjs test-print`)
+- [ ] Para çekmecesi açıldı (`node cabukpos-agent.cjs test-drawer`)
+- [ ] Terazi varsa kararlı okuma alındı (`node cabukpos-agent.cjs test-scale`) ve ağırlıklı ürün satışı denendi (market pilotu)
+- [ ] Barkod okuyucu kasada ürünü bulup satıra düşürdü
 
 ## Satış akışı
 
