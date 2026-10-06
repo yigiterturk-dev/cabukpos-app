@@ -8,6 +8,7 @@ Kasadaki bilgisayarda çalışır; fiş yazıcısını, para çekmecesini ve ter
 3. Aynı sayfadaki **Windows kurulum betiğini indir** bağlantısını çalıştırın; betik ajanı indirir, eşler ve oturum açılışına ekler.
 4. Betik kullanılamıyorsa manuel olarak `cabukpos-agent.cjs` indirip `node cabukpos-agent.cjs pair KOD` ve `node cabukpos-agent.cjs install` komutlarını çalıştırın.
 5. Donanım'da yazıcıyı tanımla (bir dakika içinde ajana iner), `node cabukpos-agent.cjs test-print` ile Türkçe deneme fişi.
+6. Prova komutları: `test-scale` (teraziden kararlı okuma), `test-drawer` (para çekmecesi açılışı; yazıcı RJ11'e bağlı olmalı).
 
 Mac/Linux: aynı komutlar; `install` yok, `node cabukpos-agent.cjs run` servis yöneticisine eklenir.
 

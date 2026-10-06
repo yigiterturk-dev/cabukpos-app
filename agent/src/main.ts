@@ -1,4 +1,4 @@
-// agent/src/main.ts — ÇabukPOS yerel ajanı. Komutlar: pair <kod> [--url], run, install, uninstall, test-print [yazıcı].
+// agent/src/main.ts — ÇabukPOS yerel ajanı. Komutlar: pair <kod> [--url], run, install, uninstall, test-print [yazıcı], test-scale, test-drawer [yazıcı].
 // Seçenekler: --dir <klasör> (varsayılan %APPDATA%\cabukpos | ~/.config/cabukpos), --port <n>.
 import { execFile } from "node:child_process";
 import path from "node:path";
@@ -9,6 +9,7 @@ import { ensureCert } from "./cert";
 import { createHub, VERSION } from "./server";
 import { defaultDir, lanIp, loadState, saveState, type AgentState } from "./state";
 import { sendToPrinter } from "./printers";
+import { readStable } from "./scale-io";
 
 const args = process.argv.slice(2);
 const opt = (n: string) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
@@ -72,12 +73,36 @@ async function cmdRun() {
   setInterval(() => void tick(), Number(process.env.CABUKPOS_HEARTBEAT_MS ?? 60_000));
 }
 
-async function cmdTestPrint(sel: string | undefined) {
-  const s = need();
+function pickPrinter(s: AgentState, sel: string | undefined) {
   const p = s.config?.printers.find((x) => x.id === sel || x.name === sel) ?? s.config?.printers[0];
   if (!p) die("Tanımlı yazıcı yok (yönetim → Donanım).");
-  const e = new EscPos(p!.codepage, p!.width).align("center").bold(true).line("ÇabukPOS deneme").bold(false).line("Türkçe: ĞÜŞİÖÇ ğüşıöç").line(new Date().toLocaleString("tr-TR")).feed(3).cut();
-  await sendToPrinter(p!, e.bytes()).then(() => console.log(`Gönderildi: ${p!.name}`), (x: Error) => die(`Yazdırılamadı: ${x.message}`));
+  return p!;
+}
+
+async function cmdTestPrint(sel: string | undefined) {
+  const s = need();
+  const p = pickPrinter(s, sel);
+  const e = new EscPos(p.codepage, p.width).align("center").bold(true).line("ÇabukPOS deneme").bold(false).line("Türkçe: ĞÜŞİÖÇ ğüşıöç").line(new Date().toLocaleString("tr-TR")).feed(3).cut();
+  await sendToPrinter(p, e.bytes()).then(() => console.log(`Gönderildi: ${p.name}`), (x: Error) => die(`Yazdırılamadı: ${x.message}`));
+}
+
+async function cmdTestScale() {
+  const s = need();
+  const c = s.config?.scale;
+  if (!c || c.kind === "yok") die("Terazi tanımlı değil (yönetim → Donanım).");
+  console.log(`Terazi okunuyor (${c!.kind})…`);
+  const r = await readStable(c!).catch((x: Error) => die(`Terazi okunamadı: ${x.message}`));
+  console.log(`Okuma: ${(r!.grams / 1000).toFixed(3)} kg · ${r!.stable ? "kararlı" : "KARARSIZ (US)"}`);
+}
+
+async function cmdTestDrawer(sel: string | undefined) {
+  const s = need();
+  const p = pickPrinter(s, sel);
+  // ESC p 0 — 2 numaralı pin, 250 ms aç / 250 ms kapat (genel standart; çekmece yazıcının RJ11 çıkışındadır)
+  await sendToPrinter(p, Buffer.from([0x1b, 0x70, 0x00, 0x19, 0xfa])).then(
+    () => console.log(`Çekmece sinyali gönderildi: ${p.name}`),
+    (x: Error) => die(`Gönderilemedi: ${x.message}`),
+  );
 }
 
 const TASK = "CabukPOS Ajan";
@@ -95,5 +120,7 @@ const cmd = args[0];
 if (cmd === "pair") void cmdPair(args[1]);
 else if (cmd === "run") void cmdRun();
 else if (cmd === "test-print") void cmdTestPrint(args[1]);
+else if (cmd === "test-scale") void cmdTestScale();
+else if (cmd === "test-drawer") void cmdTestDrawer(args[1]);
 else if (cmd === "install" || cmd === "uninstall") cmdInstall(cmd === "uninstall");
-else console.log(`ÇabukPOS ajanı ${VERSION}\nKomutlar: pair <KOD> [--url URL] · run · install · uninstall · test-print [yazıcı]\nSeçenekler: --dir <klasör> --port <n>`);
+else console.log(`ÇabukPOS ajanı ${VERSION}\nKomutlar: pair <KOD> [--url URL] · run · install · uninstall · test-print [yazıcı] · test-scale · test-drawer [yazıcı]\nSeçenekler: --dir <klasör> --port <n>`);

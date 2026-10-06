@@ -11,7 +11,7 @@ import { readStable } from "./scale-io";
 import type { ScaleReading } from "./scale";
 import { createTabBuffer, MAX_BATCH, validEvent, type Entry } from "./tabs";
 
-export const VERSION = "0.5.0";
+export const VERSION = "0.6.0";
 
 export type Hub = {
   hubKey: string;

@@ -35,7 +35,7 @@ export default async function Donanim() {
             <li><a href="/indir/cabukpos-agent.cjs" download className="font-medium text-brand underline">cabukpos-agent.cjs</a> dosyasını indirip bir klasöre koyun (ör. <code>C:\CabukPOS</code>).</li>
             <li>O klasörde komut satırı açıp <code>node cabukpos-agent.cjs pair KOD</code> yazın.</li>
             <li><code>node cabukpos-agent.cjs install</code> — bilgisayar açılınca ajan kendiliğinden başlar.</li>
-            <li>Aşağıda yazıcıyı tanımlayın; <code>node cabukpos-agent.cjs test-print</code> ile deneme fişi basın.</li>
+            <li>Aşağıda yazıcıyı tanımlayın; <code>node cabukpos-agent.cjs test-print</code> ile deneme fişi basın. Terazi ve çekmece provası: <code>test-scale</code>, <code>test-drawer</code>.</li>
             <li>Kasayı Chrome&apos;da açın. Chrome “yerel ağdaki cihazlara erişmek istiyor” diye sorarsa <strong>İzin ver</strong> deyin; yoksa yazıcı, çekmece ve terazi çalışmaz. Yanlışlıkla engellendiyse: adres çubuğundaki kilit simgesi → Site ayarları → Yerel ağ erişimi → İzin ver, sonra sayfayı yenileyin.</li>
           </ol>
         </details>
