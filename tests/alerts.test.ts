@@ -48,3 +48,61 @@ test("alarm: uç erişilemezse sessizce yutulur (heartbeat bozulmaz)", async () 
     await assert.doesNotReject(dispatchAlert("agent.heartbeat.stale", { agentId: "x" }));
   } finally { delete process.env.AGENT_ALERT_WEBHOOK_URL; }
 });
+
+test("alarm: webhook yoksa e-posta yedeği (RESEND üçlüsüyle) gönderilir", async () => {
+  delete process.env.AGENT_ALERT_WEBHOOK_URL;
+  process.env.ALERT_EMAIL = "ops@ornek.com";
+  process.env.RESEND_API_KEY = "re_x";
+  process.env.MAIL_FROM = "alarm@cabukpos.com";
+  const original = globalThis.fetch;
+  const calls: { url: string; body: unknown }[] = [];
+  globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+    return new Response("{}", { status: 200 });
+  }) as typeof fetch;
+  try {
+    await dispatchAlert("fiscal_backlog", { bekleyen: 7 });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "https://api.resend.com/emails");
+    const body = calls[0].body as { from: string; to: string[]; subject: string };
+    assert.equal(body.from, "alarm@cabukpos.com");
+    assert.deepEqual(body.to, ["ops@ornek.com"]);
+    assert.match(body.subject, /fiscal_backlog/);
+  } finally {
+    globalThis.fetch = original;
+    for (const k of ["ALERT_EMAIL", "RESEND_API_KEY", "MAIL_FROM"]) delete process.env[k];
+  }
+});
+
+test("alarm: webhook başarılıysa e-posta yapılmaz; webhook başarısızsa yedeğe düşer; üçlü eksikse sessiz", async () => {
+  const original = globalThis.fetch;
+  const calls: string[] = [];
+  let hookStatus = 200;
+  globalThis.fetch = (async (url: string | URL | Request) => {
+    calls.push(String(url));
+    return String(url).includes("resend") ? new Response("{}", { status: 200 }) : new Response("{}", { status: hookStatus });
+  }) as typeof fetch;
+  process.env.ALERT_EMAIL = "ops@ornek.com";
+  process.env.RESEND_API_KEY = "re_x";
+  process.env.MAIL_FROM = "alarm@cabukpos.com";
+  const hook = await withHook(() => {});
+  try {
+    process.env.AGENT_ALERT_WEBHOOK_URL = hook.url;
+    await dispatchAlert("e1", {});
+    assert.deepEqual(calls, [hook.url]); // webhook 200 → e-posta yok
+    calls.length = 0;
+    hookStatus = 500; // webhook cevabı bozuk → yedeğe düş
+    await dispatchAlert("e2", {});
+    assert.deepEqual(calls, [hook.url, "https://api.resend.com/emails"]);
+    for (const k of ["ALERT_EMAIL", "RESEND_API_KEY", "MAIL_FROM"]) delete process.env[k];
+    calls.length = 0;
+    hookStatus = 200;
+    await dispatchAlert("e3", {});
+    assert.deepEqual(calls, [hook.url]); // üçlü yok → webhook var, e-posta yok
+  } finally {
+    globalThis.fetch = original;
+    delete process.env.AGENT_ALERT_WEBHOOK_URL;
+    for (const k of ["ALERT_EMAIL", "RESEND_API_KEY", "MAIL_FROM"]) delete process.env[k];
+    await hook.close();
+  }
+});
