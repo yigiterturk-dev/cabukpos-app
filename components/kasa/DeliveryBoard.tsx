@@ -2,7 +2,7 @@
 // Paket panosu: paket + platform siparişleri durum sütunlarında. Kabul/red (platform), kurye ata, kuryeye verildi, iptal (müdür).
 // Her işlem bir adisyon olayıdır; kurye tahsilatı kurye telefonunda (CourierScreen), gel-al paket kasada "Hesap" ile.
 import { useEffect, useState } from "react";
-import { formatTL } from "@/lib/core/money";
+import { kasaFmt } from "./kasa-format";
 import { deliveryStatus, openDeliveries, tabLabel, type DeliveryStatus, type TabState } from "@/lib/core/tab";
 import { PLATFORM_NAMES, sendByStation } from "@/lib/core/platform";
 import { etaMinutes, formatPhone, intentLabel } from "@/lib/core/delivery";
@@ -35,6 +35,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   onNew: () => void; onOpen: (tabId: string) => void; onBill: (tabId: string) => void; onHandover: (tab: TabState) => Promise<void>;
 }) {
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const { TL } = kasaFmt(meta);
   const [busy, setBusy] = useState(false);
   const list = openDeliveries(tabs, now);
   const tables = meta.catalog.tables ?? [];
@@ -96,7 +97,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                         {o && <div className="truncate text-ink-2">{t.kind === "platform" ? o.name : formatPhone(o.phone)}</div>}
                         {o && <div className="truncate text-xs text-muted">{[zone?.name, o.address].filter(Boolean).join(" · ")}</div>}
                         <div className="mt-1 flex items-center gap-2">
-                          <span className="tabular font-semibold">{formatTL(t.total)}</span>
+                          <span className="tabular font-semibold">{TL(t.total)}</span>
                           {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
                         </div>
                         {courier && <div className="mt-1 text-xs">Kurye: <span className="font-medium">{courier}</span></div>}

@@ -1,7 +1,8 @@
 "use client";
 // Masa planı: bölge sekmeleri, masa kartları (durum rengi, toplam, süre, hazır/hesap rozetleri).
 import { useState } from "react";
-import { formatTL } from "@/lib/core/money";
+import type { Currency } from "@/lib/core/money";
+import { kasaFmt } from "./kasa-format";
 import { openTabsByTable, tableStatus, type TabState, type TableStatus } from "@/lib/core/tab";
 import type { Area, Table } from "@/lib/offline/state";
 import { minutesSince } from "./useTabs";
@@ -17,7 +18,8 @@ const BAR: Record<TableStatus, string> = { bos: "bg-transparent", dolu: "bg-bran
 const LABEL: Record<TableStatus, string> = { bos: "Boş", dolu: "Dolu", hazir: "Hazır bekliyor", uzun: "Uzun süredir açık" };
 const GLYPH: Record<TableStatus, string> = { bos: "text-line", dolu: "text-brand", hazir: "text-ok", uzun: "text-warn" };
 
-export function SalonScreen({ areas, tables, tabs, now, onOpen }: { areas: Area[]; tables: Table[]; tabs: Map<string, TabState>; now: number; onOpen: (tableId: string) => void }) {
+export function SalonScreen({ areas, tables, tabs, now, onOpen, currency }: { areas: Area[]; tables: Table[]; tabs: Map<string, TabState>; now: number; onOpen: (tableId: string) => void; currency?: Currency }) {
+  const { TL } = kasaFmt({ device: { currency } });
   const [areaId, setAreaId] = useState(areas[0]?.id ?? "");
   const byTable = openTabsByTable(tabs);
   if (!areas.length) return <p className="p-8 text-center text-muted">Masa tanımlı değil. Yönetim → Salon sayfasından bölge ve masa ekleyin.</p>;
@@ -47,7 +49,7 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen }: { areas: Area[
               <MasaGlyph className={`absolute right-3 top-3.5 ${GLYPH[st]}`} size={30} />
               <span className="text-xl font-semibold tracking-tight">{t.name}</span>
               {open.length === 0 && <span className="mt-auto text-xs font-medium text-muted">Boş</span>}
-              {open.length > 0 && <span className="tabular mt-auto text-lg font-bold">{formatTL(total)}</span>}
+              {open.length > 0 && <span className="tabular mt-auto text-lg font-bold">{TL(total)}</span>}
               {open.length > 0 && <span className="text-xs text-muted">{since} dk{open.length > 1 ? ` · ${open.length} adisyon` : ""}</span>}
               <span className="mt-1 flex flex-wrap gap-1 text-[11px] font-medium">
                 {st === "hazir" && <span className="rounded bg-ok px-1.5 py-0.5 text-white">Hazır</span>}

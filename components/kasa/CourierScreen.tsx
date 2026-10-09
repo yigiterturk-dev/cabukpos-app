@@ -2,7 +2,7 @@
 // Kurye ekranı (kuryenin kendi telefonu): üzerine atanan paketler, toplu "Yola çıktım", "Teslim ettim" (tahsilat yöntemi) → satış + delivered.
 // Üzerindeki nakit = teslim edilen nakit siparişler; "Hesap kapat" kasiyer/müdür PIN'iyle gün sonuna gider (KasaApp).
 import { useState } from "react";
-import { formatTL } from "@/lib/core/money";
+import { kasaFmt } from "./kasa-format";
 import { deliveryStatus, type PayIntent, type TabState } from "@/lib/core/tab";
 import { courierCash, formatPhone, intentLabel, PAY_INTENTS } from "@/lib/core/delivery";
 import type { NewTabEvent } from "@/lib/offline/tabs";
@@ -18,6 +18,7 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
   meta: Meta; courier: Cashier; tabs: Map<string, TabState>; now: number; add: (list: NewTabEvent[]) => Promise<unknown>;
   onDeliver: (tab: TabState, method: PayIntent) => Promise<void>; onCloseShift: () => void;
 }) {
+  const { TL } = kasaFmt(meta);
   const [busy, setBusy] = useState(false);
   const [deliver, setDeliver] = useState<TabState | null>(null);
   const zones = meta.catalog.deliveryZones ?? [];
@@ -54,7 +55,7 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
               {o?.directions && <div className="text-xs text-muted">{o.directions}</div>}
               {o?.note && <div className="mt-1 text-xs font-medium text-warn">Not: {o.note}</div>}
               <div className="mt-2 flex items-center gap-2">
-                <span className="tabular text-base font-semibold">{formatTL(t.remaining)}</span>
+                <span className="tabular text-base font-semibold">{TL(t.remaining)}</span>
                 {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -71,14 +72,14 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
       <section className="mt-8 rounded-xl border border-line bg-surface p-4 text-sm">
         <div className="flex items-baseline justify-between">
           <span>Bugün teslim: <span className="tabular font-medium">{done.length}</span></span>
-          <span>Üzerimdeki nakit: <span className="tabular font-semibold" data-testid="courier-cash">{formatTL(cash)}</span></span>
+          <span>Üzerimdeki nakit: <span className="tabular font-semibold" data-testid="courier-cash">{TL(cash)}</span></span>
         </div>
         <button type="button" disabled={busy || active.some((t) => t.delivery.outAt)} onClick={onCloseShift} className={`mt-3 w-full ${btn}`}>Hesap kapat (kasiyer onayı)</button>
       </section>
 
       {deliver && (
         <Modal label="Nasıl ödendi?" onClose={() => setDeliver(null)}>
-          <p className="mb-3 text-sm">{deliver.order?.name} · <span className="tabular font-semibold">{formatTL(deliver.remaining)}</span></p>
+          <p className="mb-3 text-sm">{deliver.order?.name} · <span className="tabular font-semibold">{TL(deliver.remaining)}</span></p>
           <div className="grid grid-cols-2 gap-2">
             {PAY_INTENTS.map((p) => (
               <button key={p.value} type="button" disabled={busy} onClick={() => void run(() => onDeliver(deliver, p.value))}

@@ -3,7 +3,7 @@
 // Çevrimdışıyken yalnız bu cihazda kesilmiş fişler bulunur.
 import { useState } from "react";
 import { totals } from "@/lib/core/cart";
-import { formatTL } from "@/lib/core/money";
+import { kasaFmt } from "./kasa-format";
 import { SELECTABLE_METHODS, type PayMethod } from "@/lib/core/payment";
 import type { RefLine } from "@/lib/core/refund";
 import { findLocalSale, recordRefundLocal } from "@/lib/offline/db";
@@ -17,6 +17,7 @@ import { PinPad, type Cashier } from "./PinPad";
 const kgText = (g: number) => `${(g / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;
 
 export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: { meta: Meta; cashier: Cashier; online: boolean; onMeta: (m: Meta) => void; onDone: (s: LocalSale) => void; onBack: () => void }) {
+  const { TL } = kasaFmt(meta);
   const [no, setNo] = useState("");
   const [sale, setSale] = useState<LookedUpSale | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
@@ -74,7 +75,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
     return (
       <main className="mx-auto w-full max-w-sm px-4 py-8 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">Müdür onayı</h1>
-        <p className="mb-6 text-sm text-muted">{formatTL(total)} iade · müdür PIN&apos;i girsin</p>
+        <p className="mb-6 text-sm text-muted">{TL(total)} iade · müdür PIN&apos;i girsin</p>
         <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => void record(m.id)} />
         <button type="button" onClick={() => setApproving(false)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-6 w-full">Vazgeç</button>
       </main>
@@ -101,7 +102,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
                 <div key={l.productId} className="flex items-center gap-3 p-3" data-testid="refund-line">
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{l.name}</div>
-                    <div className="tabular text-xs text-muted">İade edilebilir: {weighed(l) ? kgText(l.qtyMilli) : l.qtyMilli / 1000} · {formatTL(l.unitPrice)}{weighed(l) && "/kg"}</div>
+                    <div className="tabular text-xs text-muted">İade edilebilir: {weighed(l) ? kgText(l.qtyMilli) : l.qtyMilli / 1000} · {TL(l.unitPrice)}{weighed(l) && "/kg"}</div>
                   </div>
                   {weighed(l) ? (
                     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={q > 0} onChange={(e) => set(e.target.checked ? l.qtyMilli : 0)} className="size-4 accent-[var(--color-brand)]" />Tamamı</label>
@@ -123,7 +124,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
             ))}
           </div>
           <div className="mt-5 flex items-center justify-between">
-            <span data-testid="refund-total" className="tabular text-2xl font-bold">{formatTL(total)}</span>
+            <span data-testid="refund-total" className="tabular text-2xl font-bold">{TL(total)}</span>
             <Button disabled={!picked.length || busy} onClick={() => (role === "mudur" ? void record(cashier.id) : setApproving(true))}>İadeyi onayla</Button>
           </div>
         </section>

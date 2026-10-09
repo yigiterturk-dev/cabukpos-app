@@ -13,6 +13,11 @@ export function parseTL(input: string): Kurus | null {
   return Number(int) * 100 + Number(frac.padEnd(2, "0"));
 }
 
+/** Biçimli tutarı (sonekli de olur: "12,50 ₺", "12,50 USD", "₺12,50") kuruşa çözer; parseTL'nin para birimi duyarlısı. */
+export function parseMoney(input: string): Kurus | null {
+  return parseTL(input.replace(/(TL|TRY|USD|EUR|GBP)/gi, ""));
+}
+
 const fmt = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const formatTL = (k: Kurus) => `${fmt.format(k / 100)} ₺`;
 
@@ -38,6 +43,12 @@ export function formatMoney(k: Kurus, c: Currency = "TRY"): string {
     currencyFmt.set(c, f);
   }
   return f.format(k / 100);
+}
+
+/** Fiş tarzı sonekli biçim. TRY "12,50 ₺" (yazıcıda "TL"); TRY dışı ISO koduyla "12,50 USD" —
+ *  €/£ PC857'de yok, $ ise belirsiz; kod son eki her kod sayfasında basılır. */
+export function formatReceipt(k: Kurus, c: Currency = "TRY"): string {
+  return `${fmt.format(k / 100)} ${c === "TRY" ? "₺" : c}`;
 }
 
 /** KDV dahil tutardan net + KDV (net yuvarlanır, KDV = fark → toplam her zaman tutar). */

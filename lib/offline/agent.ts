@@ -39,8 +39,8 @@ export async function agentStatus(a: KasaAgent): Promise<AgentStatus> {
 
 const receiptPrinter = (a: KasaAgent) => a.printers.find((p) => p.role === "fis");
 const logoOf = (a: KasaAgent, width: 58 | 80) => a.logo && a.logo.w <= (width === 58 ? 384 : 576) ? a.logo : null;
-const printOpts = (a: KasaAgent, p: { width: 58 | 80; codepage: "pc857" | "ascii"; brand: "genel" | "epson" | "xprinter" }) =>
-  ({ width: p.width, codepage: p.codepage, brand: p.brand, appUrl: location.origin, logo: logoOf(a, p.width) });
+const printOpts = (meta: Meta, a: KasaAgent, p: { width: 58 | 80; codepage: "pc857" | "ascii"; brand: "genel" | "epson" | "xprinter" }) =>
+  ({ width: p.width, codepage: p.codepage, brand: p.brand, appUrl: location.origin, logo: logoOf(a, p.width), currency: meta.device?.currency });
 
 async function send(a: KasaAgent, printer: string, data: Uint8Array, drawer: boolean): Promise<PrintResult> {
   try {
@@ -61,7 +61,7 @@ export function printSale(meta: Meta, sale: ReceiptSale, drawer = false): Promis
   const p = a && receiptPrinter(a);
   if (!a || !p || !d) return null;
   const weighed = (id: string) => meta.catalog.products.find((x) => x.id === id)?.kind === "tartili";
-  return send(a, p.id, renderReceipt(withTestFlag(meta, sale), d, printOpts(a, p), weighed), drawer && a.drawer);
+  return send(a, p.id, renderReceipt(withTestFlag(meta, sale), d, printOpts(meta, a, p), weighed), drawer && a.drawer);
 }
 
 /** Mutfak fişi: istasyonun ajan yazıcısına. Yazıcı ajanda tanımlı değilse null. */
@@ -83,7 +83,7 @@ export function printShift(meta: Meta, s: ShiftPrint): Promise<PrintResult> | nu
   const a = meta.agent, d = meta.device;
   const p = a && receiptPrinter(a);
   if (!a || !p || !d) return null;
-  return send(a, p.id, renderShiftReport(s, d, printOpts(a, p)), false);
+  return send(a, p.id, renderShiftReport(s, d, printOpts(meta, a, p)), false);
 }
 
 export async function retryPrint(a: KasaAgent, jobId: string): Promise<PrintResult> {

@@ -2,7 +2,8 @@
 // Masa adisyonu: ürün ızgarası (seçenek penceresi), adisyon satırları, mutfağa gönder, taşı, ikram/indirim/iptal (müdür onayı), hesap.
 // Her dokunuş bir adisyon olayıdır (yerel + giden kutusu) → çökmede kaybolmaz, diğer cihazlara akışla gider.
 import { useState } from "react";
-import { formatTL, parseTL } from "@/lib/core/money";
+import { parseMoney, type Currency } from "@/lib/core/money";
+import { kasaFmt } from "./kasa-format";
 import { optionsText, validateOptions, type OptionGroup } from "@/lib/core/options";
 import { qtyText } from "@/lib/core/receipt";
 import { lineGross, mergeCandidates, mergeableLines, openTabsByTable, type TabLine, type TabState } from "@/lib/core/tab";
@@ -27,7 +28,8 @@ const strong = "press inline-flex min-h-11 items-center justify-center rounded-[
 const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-surface text-ink-2 hover:border-line-strong"}`;
 const primary = "press inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 font-semibold text-white shadow-card hover:bg-brand-hover disabled:opacity-40";
 
-function OptionsDialog({ product, groups, onAdd, onClose }: { product: KasaProduct; groups: OptionGroup[]; onAdd: (unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number) => void; onClose: () => void }) {
+function OptionsDialog({ product, groups, onAdd, onClose, currency }: { product: KasaProduct; groups: OptionGroup[]; onAdd: (unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number) => void; onClose: () => void; currency?: Currency }) {
+  const { TL } = kasaFmt({ device: { currency } });
   const [picked, setPicked] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [qty, setQty] = useState(1);
@@ -45,7 +47,7 @@ function OptionsDialog({ product, groups, onAdd, onClose }: { product: KasaProdu
           <div className="flex flex-wrap gap-2">
             {g.options.map((o) => (
               <button key={o.id} type="button" aria-pressed={picked.includes(o.id)} onClick={() => toggle(g, o.id)} className={`rounded-lg border px-3 py-2 text-sm ${picked.includes(o.id) ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>
-                {o.name}{o.delta ? ` ${o.delta > 0 ? "+" : "−"}${formatTL(Math.abs(o.delta))}` : ""}
+                {o.name}{o.delta ? ` ${o.delta > 0 ? "+" : "−"}${TL(Math.abs(o.delta))}` : ""}
               </button>
             ))}
           </div>
@@ -56,7 +58,7 @@ function OptionsDialog({ product, groups, onAdd, onClose }: { product: KasaProdu
         <button type="button" aria-label="Azalt" onClick={() => setQty((q) => Math.max(1, q - 1))} className={btn}>−</button>
         <span className="tabular w-8 text-center text-lg font-semibold">{qty}</span>
         <button type="button" aria-label="Artır" onClick={() => setQty((q) => Math.min(99, q + 1))} className={btn}>+</button>
-        <span className="tabular ml-auto font-semibold">{r.ok ? formatTL(r.unitPrice * qty) : ""}</span>
+        <span className="tabular ml-auto font-semibold">{r.ok ? TL(r.unitPrice * qty) : ""}</span>
       </div>
       {!r.ok && picked.length > 0 && <p className="mb-2 text-sm text-bad">{r.error}</p>}
       <div className="flex gap-2">
@@ -76,7 +78,7 @@ function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose }
   const [kind, setKind] = useState<"yuzde" | "tutar" | "kaldir">("yuzde");
   const [value, setValue] = useState("");
   const [step, setStep] = useState<"form" | "pin">("form");
-  const pct = Number(value), amt = parseTL(value);
+  const pct = Number(value), amt = parseMoney(value);
   const d = !discount ? undefined : kind === "kaldir" ? { percent: null, amount: null } : kind === "yuzde" ? { percent: Number.isInteger(pct) && pct >= 1 && pct <= 100 ? pct : NaN, amount: null } : { percent: null, amount: amt ?? NaN };
   const valid = reason.trim().length >= 2 || kind === "kaldir" && discount;
   const dValid = !d || (d.percent === null || !Number.isNaN(d.percent)) && (d.amount === null || !Number.isNaN(d.amount));
@@ -125,6 +127,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   meta: Meta; onMeta: (m: Meta) => void; table: Table | null; title: string; tabs: TabState[]; allTabs: Map<string, TabState>; waiter: Waiter; canPay: boolean; add: Add; now: number;
   onBill: (tabId: string) => void; onBack: () => void; onFirstSend?: (tab: TabState) => void;
 }) {
+  const { TL } = kasaFmt(meta);
   const [newTabId] = useState(() => crypto.randomUUID());
   const [pick, setPick] = useState<string | null>(null);
   const tab = tabs.find((t) => t.id === pick) ?? tabs[0] ?? null;
@@ -174,7 +177,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             <button key={p.id} type="button" disabled={busy} onClick={() => tapProduct(p)} className="press relative flex min-h-24 flex-col overflow-hidden rounded-2xl border border-line bg-surface p-3.5 pt-4 text-left shadow-card hover:border-line-strong">
               <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
               <span className="line-clamp-2 font-semibold leading-snug">{p.name}</span>
-              <span className="tabular mt-auto pt-2 text-sm font-medium text-ink-2">{formatTL(p.price)}{p.optionGroupIds?.length ? " ⋯" : ""}</span>
+              <span className="tabular mt-auto pt-2 text-sm font-medium text-ink-2">{TL(p.price)}{p.optionGroupIds?.length ? " ⋯" : ""}</span>
             </button>
           ))}
         </div>
@@ -196,7 +199,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             <div className="font-medium">{order.name} · <span className="tabular">{formatPhone(order.phone)}</span></div>
             <div className="text-ink-2">{order.address}{order.directions ? ` · ${order.directions}` : ""}</div>
             <div className="text-xs text-muted">{[zone?.name, intentLabel(order.payIntent), order.note].filter(Boolean).join(" · ")}</div>
-            {belowMin && zone && <div className="mt-1 text-xs font-medium text-warn">Asgari tutar {formatTL(zone.minOrder)} altında</div>}
+            {belowMin && zone && <div className="mt-1 text-xs font-medium text-warn">Asgari tutar {TL(zone.minOrder)} altında</div>}
           </div>
         )}
         <ul className="flex-1 divide-y divide-line overflow-y-auto" aria-label="Adisyon">
@@ -218,7 +221,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
                       {l.paidMilli > 0 && <span className="rounded bg-surface-3 px-1.5">ödendi {qtyText(l.paidMilli)}</span>}
                     </span>
                   </span>
-                  <span className="tabular">{l.comped ? formatTL(0) : formatTL(lineGross(l))}</span>
+                  <span className="tabular">{l.comped ? TL(0) : TL(lineGross(l))}</span>
                 </button>
               </li>
             );
@@ -226,9 +229,9 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
         </ul>
         {tab && (
           <div className="space-y-2 border-t border-line bg-surface-2 p-3">
-            {tab.discountAmount > 0 && <div className="flex justify-between text-sm"><span>İndirim</span><span className="tabular">−{formatTL(tab.discountAmount)}</span></div>}
-            {tab.paid > 0 && <div className="flex justify-between text-sm"><span>Ödenen</span><span className="tabular">−{formatTL(tab.paid)}</span></div>}
-            <div className="flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">Kalan</span><span className="tabular text-3xl font-bold tracking-tight" data-testid="tab-remaining">{formatTL(tab.remaining)}</span></div>
+            {tab.discountAmount > 0 && <div className="flex justify-between text-sm"><span>İndirim</span><span className="tabular">−{TL(tab.discountAmount)}</span></div>}
+            {tab.paid > 0 && <div className="flex justify-between text-sm"><span>Ödenen</span><span className="tabular">−{TL(tab.paid)}</span></div>}
+            <div className="flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">Kalan</span><span className="tabular text-3xl font-bold tracking-tight" data-testid="tab-remaining">{TL(tab.remaining)}</span></div>
             {tab.remaining === 0 && live.length > 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli) && (
               <button type="button" onClick={() => void run([ev({ type: "close", reason: "ödenecek tutar yok" })]).then(onBack)} className={`w-full ${strong}`}>Masayı kapat</button>
             )}
@@ -248,7 +251,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
       </aside>
 
       {dialog?.k === "options" && (
-        <OptionsDialog product={dialog.product} groups={(dialog.product.optionGroupIds ?? []).map((id) => groups.find((g) => g.id === id)).filter((g): g is OptionGroup => Boolean(g))}
+        <OptionsDialog product={dialog.product} currency={meta.device?.currency} groups={(dialog.product.optionGroupIds ?? []).map((id) => groups.find((g) => g.id === id)).filter((g): g is OptionGroup => Boolean(g))}
           onClose={() => setDialog(null)} onAdd={(unit, opts, note, q) => void addLine(dialog.product, unit, opts, note, q)} />
       )}
       {dialog?.k === "line" && (
@@ -300,7 +303,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
                   ]).then(onBack)}
                   className={`${btn} justify-between`}>
                   <span className="font-medium">{name}</span>
-                  <span className="tabular text-muted">{formatTL(src.total)} · {src.lines.filter((l) => !l.voided).length} satır</span>
+                  <span className="tabular text-muted">{TL(src.total)} · {src.lines.filter((l) => !l.voided).length} satır</span>
                 </button>
               );
             })}

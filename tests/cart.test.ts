@@ -1,7 +1,7 @@
 // tests/cart.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CURRENCIES, formatTL, isCurrency, formatMoney, parseTL, splitVat } from "@/lib/core/money";
+import { CURRENCIES, formatTL, isCurrency, formatMoney, parseTL, parseMoney, splitVat } from "@/lib/core/money";
 import { addProduct, lineTotal, removedLines, setQty, totals } from "@/lib/core/cart";
 
 const doner = { id: "d", name: "Döner", price: 18000, vatRate: 10 as const };
@@ -16,6 +16,13 @@ test("TL ayrıştırma ve biçim", () => {
   assert.equal(parseTL("0,005"), null);
   assert.equal(parseTL("-3"), null);
   assert.equal(parseTL("abc"), null);
+  // #16: sonekli/öneki para birimi etiketli biçimler de çözülür
+  assert.equal(parseMoney("12,50 ₺"), 1250);
+  assert.equal(parseMoney("12,50 USD"), 1250);
+  assert.equal(parseMoney("₺12,50"), 1250);
+  assert.equal(parseMoney("1.234,56 TL"), 123456);
+  assert.equal(parseMoney("12,50 GBP"), 1250);
+  assert.equal(parseMoney("12,50 XYP"), null); // bilinmeyen etiket → çöp
   assert.equal(formatTL(123456), "1.234,56 ₺");
   assert.equal(formatTL(-500), "-5,00 ₺");
   assert.equal(parseTL("$ 25"), 2500);

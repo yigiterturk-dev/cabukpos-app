@@ -5,6 +5,7 @@ import { getDevice } from "@/lib/auth/kasa";
 import { hit } from "@/lib/ratelimit";
 import { audit } from "@/lib/audit";
 import { normalizePhone } from "@/lib/core/delivery";
+import { isCurrency, type Currency } from "@/lib/core/money";
 import { receiptSmsText } from "@/lib/core/receipt";
 import { messagingProvider } from "@/lib/growth/messaging";
 
@@ -27,7 +28,9 @@ export async function POST(req: Request) {
     if (!s || s.channel !== "kasa") return null;
     const lines = await tx.select({ name: schema.saleLines.name, qtyMilli: schema.saleLines.qtyMilli }).from(schema.saleLines).where(eq(schema.saleLines.saleId, saleId));
     const [store] = await tx.select({ name: schema.stores.name }).from(schema.stores).where(eq(schema.stores.id, s.storeId));
-    return { ...s, lines, storeName: store?.name ?? "" };
+    const [tn] = await tx.select({ currency: schema.tenants.currency }).from(schema.tenants); // #16: fiş SMS'i işletme para birimiyle
+    const currency: Currency | undefined = isCurrency(tn?.currency) ? tn.currency : undefined;
+    return { ...s, lines, storeName: store?.name ?? "", currency };
   });
   if (!row) return Response.json({ error: "Satış bulunamadı." }, { status: 404, headers: noStore });
 
@@ -36,7 +39,7 @@ export async function POST(req: Request) {
   let result: { error?: string } | undefined;
   try {
     [result] = await provider.send({
-      body: receiptSmsText({ storeName: row.storeName, receiptNo: row.receiptNo, at: row.at.toISOString(), total: row.total, lines: row.lines }),
+      body: receiptSmsText({ storeName: row.storeName, receiptNo: row.receiptNo, at: row.at.toISOString(), total: row.total, lines: row.lines, currency: row.currency }),
       targets: [{ recipientRef: `receipt:${saleId}`, phone }],
     });
   } catch (e) {

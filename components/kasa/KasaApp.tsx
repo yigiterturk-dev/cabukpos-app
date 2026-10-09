@@ -3,7 +3,8 @@
 // yazılır ve arka planda /api/sync ile eşitlenir. Kasiyer oturumu yalnız bellekte (sayfa yenilenince PIN yeniden).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatTL, parseTL } from "@/lib/core/money";
+import { formatReceipt, parseTL, type Currency } from "@/lib/core/money";
+import { kasaFmt } from "./kasa-format";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { countCash, summarizeShift, BANKNOTES, COINS, type CashBreakdown } from "@/lib/core/shift";
 import { clearResetNotice, closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, safeDropLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
@@ -142,7 +143,8 @@ function MoneyForm({ label, hint, submit, onSubmit, defaultValue = "" }: { label
 }
 
 /** #48: banknot/bozuk kırılımıyla sayım; toplamı sayılan nakde aktarır. */
-function CashCount({ onApply }: { onApply: (k: number) => void }) {
+function CashCount({ onApply, currency }: { onApply: (k: number) => void; currency?: Currency }) {
+  const { TL } = kasaFmt({ device: { currency } });
   const [b, setB] = useState<CashBreakdown>({});
   const total = countCash(b);
   return (
@@ -159,7 +161,7 @@ function CashCount({ onApply }: { onApply: (k: number) => void }) {
       </div>
       <div className="mt-3 flex items-center justify-between text-sm">
         <span className="text-muted">Sayılan toplam</span>
-        <span className="tabular font-semibold" data-testid="cash-count-total">{formatTL(total)}</span>
+        <span className="tabular font-semibold" data-testid="cash-count-total">{TL(total)}</span>
       </div>
       <Button type="button" variant="secondary" className="mt-3 w-full" disabled={total <= 0} onClick={() => onApply(total)}>Sayılanı nakde aktar</Button>
     </details>
@@ -184,7 +186,7 @@ async function closeShiftGuarded(staffId: string, counted: number): Promise<Meta
 }
 
 /** #48: gün sonu kapanış formu — kırılımlı sayım + sayılan nakit. */
-function KapanisForm({ onClose }: { onClose: (counted: number) => Promise<void> }) {
+function KapanisForm({ onClose, currency }: { onClose: (counted: number) => Promise<void>; currency?: Currency }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [applied, setApplied] = useState<number | null>(null);
@@ -197,7 +199,7 @@ function KapanisForm({ onClose }: { onClose: (counted: number) => Promise<void> 
       setBusy(true);
       void onClose(k).catch((e) => setError(e instanceof Error ? e.message : "Kapanış kaydedilemedi.")).finally(() => setBusy(false));
     }}>
-      <CashCount onApply={setApplied} />
+      <CashCount onApply={setApplied} currency={currency} />
       <Field label="Sayılan nakit (TL)" hint="Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır.">
         <Input key={applied ?? "bos"} name="amount" inputMode="decimal" defaultValue={applied ? String(applied / 100).replace(".", ",") : ""} className="tabular h-14 text-right text-2xl font-semibold" required />
       </Field>
@@ -232,6 +234,7 @@ async function issueFiscal(sale: LocalSale, pushed: Promise<void> | undefined): 
 
 function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSale; onBack: () => void; onPrinted: (r: PrintResult) => void }) {
   const d = meta.device!;
+  const TL = (k: number) => formatReceipt(k, d.currency); // ekrandaki fiş = basılan fiş (#16)
   const [msg, setMsg] = useState<string | null>(null);
   const print = async () => {
     const job = printSale(meta, sale);
@@ -274,19 +277,19 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
             <div key={i} className="py-0.5">
               <div>{l.name}</div>
               {l.options?.map((o) => <div key={o.id} className="pl-2">+ {o.name}</div>)}
-              <div className="flex justify-between pl-2"><span>{qty(l.qtyMilli, Boolean(l.productId && weighed(l.productId)))} × {formatTL(l.unitPrice)}</span><span>{formatTL(Math.round((l.unitPrice * l.qtyMilli) / 1000))}</span></div>
-              {l.discount ? <div className="flex justify-between pl-2"><span>İndirim</span><span>-{formatTL(l.discount)}</span></div> : null}
+              <div className="flex justify-between pl-2"><span>{qty(l.qtyMilli, Boolean(l.productId && weighed(l.productId)))} × {TL(l.unitPrice)}</span><span>{TL(Math.round((l.unitPrice * l.qtyMilli) / 1000))}</span></div>
+              {l.discount ? <div className="flex justify-between pl-2"><span>İndirim</span><span>-{TL(l.discount)}</span></div> : null}
             </div>
           ))}
         </div>
         <table className="mt-1 w-full border-t border-dashed border-ink">
           <thead><tr><th className="text-left font-normal">KDV</th><th className="text-right font-normal">Matrah</th><th className="text-right font-normal">KDV</th></tr></thead>
-          <tbody>{sale.vat.map((v) => <tr key={v.rate}><td>%{v.rate}</td><td className="text-right">{formatTL(v.net)}</td><td className="text-right">{formatTL(v.vat)}</td></tr>)}</tbody>
+          <tbody>{sale.vat.map((v) => <tr key={v.rate}><td>%{v.rate}</td><td className="text-right">{TL(v.net)}</td><td className="text-right">{TL(v.vat)}</td></tr>)}</tbody>
         </table>
-        <div className="mt-1 flex justify-between border-t border-dashed border-ink pt-1 text-[14px] font-bold"><span>{sale.refund ? "İADE TOPLAMI" : "TOPLAM"}</span><span>{formatTL(sale.total)}</span></div>
+        <div className="mt-1 flex justify-between border-t border-dashed border-ink pt-1 text-[14px] font-bold"><span>{sale.refund ? "İADE TOPLAMI" : "TOPLAM"}</span><span>{TL(sale.total)}</span></div>
         <div className="mt-1">
-          {sale.payments.map((p) => <div key={p.method} className="flex justify-between"><span>{sale.refund ? `İade (${payLabel(p.method)})` : payLabel(p.method)}</span><span>{formatTL(p.amount)}</span></div>)}
-          {sale.change > 0 && <div className="flex justify-between"><span>Para üstü</span><span>{formatTL(sale.change)}</span></div>}
+          {sale.payments.map((p) => <div key={p.method} className="flex justify-between"><span>{sale.refund ? `İade (${payLabel(p.method)})` : payLabel(p.method)}</span><span>{TL(p.amount)}</span></div>)}
+          {sale.change > 0 && <div className="flex justify-between"><span>Para üstü</span><span>{TL(sale.change)}</span></div>}
         </div>
         {fiscal && (
           <div className="mt-2 border-t border-dashed border-ink pt-1" data-testid="receipt-fiscal">
@@ -322,6 +325,7 @@ function reportData(meta: Meta, sales: LocalSale[], closed: boolean): ShiftRepor
     openedByName: name(sh.openedBy),
     closedByName: name(c?.closedBy ?? null),
     sales: sales.map((s) => ({ id: s.id, receiptNo: s.receiptNo, createdAt: new Date(s.at), total: s.refund ? -s.total : s.total })),
+    currency: meta.device?.currency,
   };
 }
 
@@ -360,14 +364,14 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
           <h2 className="mb-2 font-medium">Seifeye alınan</h2>
           <ul className="divide-y divide-line text-sm">
             {meta.drops!.map((d) => (
-              <li key={d.id} className="flex justify-between py-1.5"><span>{new Date(d.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span><span className="tabular-nums">-{formatTL(d.amount)}</span></li>
+              <li key={d.id} className="flex justify-between py-1.5"><span>{new Date(d.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span><span className="tabular-nums">-{formatReceipt(d.amount, meta.device?.currency)}</span></li>
             ))}
           </ul>
         </Card>
       )}
       {!closed && (
         <Card className="mt-6 p-5 print:hidden">
-          <KapanisForm onClose={onClose} />
+          <KapanisForm onClose={onClose} currency={meta.device?.currency} />
         </Card>
       )}
     </main>
@@ -671,7 +675,7 @@ export function KasaApp() {
         <Center title="Seifeye para al" sub="Kasadaki fazlalığı seifeye alın; tutar beklenen kasadan düşer, gün sonunda ayrı satır olarak görünür.">
           {drops.length > 0 && (
             <ul className="mb-4 w-full divide-y divide-line rounded-[10px] border border-line px-4 text-sm">
-              {drops.map((d) => <li key={d.id} className="flex justify-between py-1.5"><span>{new Date(d.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span><span className="tabular-nums">-{formatTL(d.amount)}</span></li>)}
+              {drops.map((d) => <li key={d.id} className="flex justify-between py-1.5"><span>{new Date(d.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span><span className="tabular-nums">-{formatReceipt(d.amount, meta.device?.currency)}</span></li>)}
             </ul>
           )}
           <MoneyForm label="Seifeye alınan tutar (TL)" submit="Seifeye al" onSubmit={async (k) => { const m2 = await safeDropLocal(cashier.id, k); if (m2) setMeta(m2); setView({ name: "gun-sonu" }); }} />
@@ -693,10 +697,10 @@ export function KasaApp() {
     if (view.name === "bill") {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
-      return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} onPay={(part, id, p, b, tip) => onTabPay(tab, part, id, p, b, tip)}
+      return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} currency={d.currency} onPay={(part, id, p, b, tip) => onTabPay(tab, part, id, p, b, tip)}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed || !tab.tableId ? { name: "home" } : { name: "tab", tableId: tab.tableId })} />;
     }
-    return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
+    return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} currency={d.currency} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
   };
   // Masa tanımlı değilse restoran kasası da doğrudan hızlı satışta açılır. Paket sekmesi restoran kasasında hep var (M6).
   const hasSalon = restoran && tables.length > 0;
@@ -725,12 +729,12 @@ export function KasaApp() {
     if (view.name === "bill") {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
-      return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} onPay={(part, id, p, b, tip) => onTabPay(tab, part, id, p, b, tip)}
+      return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} currency={d.currency} onPay={(part, id, p, b, tip) => onTabPay(tab, part, id, p, b, tip)}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed ? { name: "paket" } : { name: "ptab", tabId: tab.id })} />;
     }
     return null;
   };
-  if (restoran && role === "garson") return <>{header}{salonView() ?? <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} onOpen={(tableId) => setView({ name: "tab", tableId })} />}</>;
+  if (restoran && role === "garson") return <>{header}{salonView() ?? <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} currency={d.currency} onOpen={(tableId) => setView({ name: "tab", tableId })} />}</>;
   if (!meta.shift) {
     return (
       <>

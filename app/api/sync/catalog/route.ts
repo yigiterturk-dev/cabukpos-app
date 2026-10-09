@@ -5,7 +5,7 @@ import { and, asc, desc, eq, isNull, or } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { getDevice as requireAuthDevice, rotateDeviceToken } from "@/lib/auth/kasa";
 import { sha256 } from "@/lib/auth/tokens";
-import { isVatRate } from "@/lib/core/money";
+import { isCurrency, isVatRate } from "@/lib/core/money";
 import { kasaAgentFor } from "@/lib/agent/registry";
 import type { KasaAgent, LanLink } from "@/lib/agent/config";
 import { DEFAULT_MODES } from "@/lib/core/fiscal";
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     device.vertical === "restoran" ? salonCatalog(device) : null,
     device.role === "kasa" ? kasaAgentFor(device) : null, // tablet/mutfak ekranı ajana ulaşamaz (127.0.0.1); yazıcıyı kasa sürer
     device.role !== "kasa" && device.vertical === "restoran" ? kasaAgentFor(device) : null, // LAN merkezi (yalnız adisyon akışı)
-    getDb().select({ taxId: schema.tenants.taxId }).from(schema.tenants).where(eq(schema.tenants.id, device.tenantId)), // iade tutanağında satıcı VKN
+    getDb().select({ taxId: schema.tenants.taxId, currency: schema.tenants.currency }).from(schema.tenants).where(eq(schema.tenants.id, device.tenantId)), // iade tutanağında satıcı VKN + fiş para birimi (#16)
     priceListCatalog(device),
   ]);
   const products = prods.filter((p) => isVatRate(p.vatRate)).map(({ stationId, ...p }) => ({
@@ -63,7 +63,7 @@ export async function GET(req: Request) {
   return Response.json(
     {
       v,
-      device: { id: device.id, name: device.name, receiptPrefix: device.receiptPrefix, tenantName: device.tenantName, vertical: device.vertical, role: device.role, stations: device.stations, storeName: store?.name ?? "", storeAddress: store?.address ?? null, nextReceiptNo: dv?.next ?? 1, billing: bi?.warn ? { state: bi.state, daysLeft: bi.daysLeft } : null },
+      device: { id: device.id, name: device.name, receiptPrefix: device.receiptPrefix, tenantName: device.tenantName, vertical: device.vertical, role: device.role, stations: device.stations, storeName: store?.name ?? "", storeAddress: store?.address ?? null, nextReceiptNo: dv?.next ?? 1, currency: isCurrency(tn?.currency) ? tn.currency : "TRY", billing: bi?.warn ? { state: bi.state, daysLeft: bi.daysLeft } : null },
       openShift: shift ? { ...shift, openedAt: shift.openedAt.toISOString() } : null,
       catalog: since === v ? null : catalog,
       agent, // her çekişte yeni bilet (30 gün geçerli)

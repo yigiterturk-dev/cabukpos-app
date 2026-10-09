@@ -2,9 +2,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cols, encodeText, EscPos, wrap, DRAWER_PULSE, toBase64, fromBase64, packBits, BRANDS } from "@/lib/core/escpos";
-import { renderReceipt, renderShiftReport } from "@/lib/core/receipt";
+import { renderReceipt, renderShiftReport, receiptSmsText } from "@/lib/core/receipt";
 import { summarizeShift } from "@/lib/core/shift";
 import { totals } from "@/lib/core/cart";
+import { formatReceipt, formatTL } from "@/lib/core/money";
 
 const ascii = (u: Uint8Array) => String.fromCharCode(...u);
 
@@ -66,6 +67,26 @@ test("fiş: iade ve gün sonu", () => {
   const summary = summarizeShift(10000, [sale]);
   const z = ascii(renderShiftReport({ deviceName: "Kasa 1", openedByName: "Ayşe", closedByName: "Ayşe", openingCash: 10000, openedAt: new Date(), closedAt: new Date(), countedCash: 10000 + t.total, expectedCash: null, summary }, head, { width: 58, codepage: "ascii" }));
   assert.ok(z.includes("GUN SONU") && z.includes("Beklenen kasa") && z.includes("Fark"));
+});
+
+test("fiş: para birimi (#16) — USD fişte ISO kodu, TRY'de ₺/TL; kod sayfasından bağımsız", () => {
+  // formatReceipt: TRY → "12,50 ₺" (formatTL ile aynı), diğerleri ISO kodu
+  assert.equal(formatReceipt(1250), formatTL(1250));
+  assert.equal(formatReceipt(1250, "USD"), "12,50 USD");
+  assert.equal(formatReceipt(1250, "EUR"), "12,50 EUR");
+  const u = ascii(renderReceipt(sale, head, { width: 80, codepage: "ascii", currency: "USD" }));
+  assert.ok(u.includes(formatReceipt(t.total, "USD")));
+  assert.ok(!u.includes("TL") && !u.includes("₺"));
+  // pc857'de de aynı (kod ASCII güvenli)
+  const g = ascii(renderReceipt(sale, head, { width: 80, codepage: "pc857", currency: "GBP" }));
+  assert.ok(g.includes(formatReceipt(t.total, "GBP")) && !g.includes("USD"));
+  // gün sonu raporu
+  const summary = summarizeShift(10000, [sale]);
+  const z = ascii(renderShiftReport({ deviceName: "Kasa 1", openedByName: "Ayşe", closedByName: "Ayşe", openingCash: 10000, openedAt: new Date(), closedAt: new Date(), countedCash: null, expectedCash: null, summary }, head, { width: 58, codepage: "ascii", currency: "USD" }));
+  assert.ok(z.includes("Ciro") && z.includes("USD") && !z.includes("TL"));
+  // SMS fişi
+  assert.ok(receiptSmsText({ storeName: "Çınar Market", receiptNo: "K1-000042", at: sale.at, total: t.total, lines: [{ name: "Ekmek", qtyMilli: 2000 }], currency: "USD" }).includes(`TOPLAM: ${formatReceipt(t.total, "USD")}`));
+  assert.ok(receiptSmsText({ storeName: "Çınar Market", receiptNo: "K1-000042", at: sale.at, total: t.total, lines: [] }).includes(`TOPLAM: ${formatReceipt(t.total)}`));
 });
 
 test("escpos: QR (GS ( k model 2, boyut, hata M, sakla, bas)", () => {

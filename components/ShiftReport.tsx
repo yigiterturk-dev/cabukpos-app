@@ -1,5 +1,5 @@
 // Vardiya (gün sonu) raporu — kasa gün sonu ve yönetim raporlarında aynı görünüm.
-import { formatTL } from "@/lib/core/money";
+import { formatReceipt, type Currency } from "@/lib/core/money";
 import { shownMethods } from "@/lib/core/payment";
 import type { summarizeShift } from "@/lib/core/shift";
 
@@ -11,11 +11,12 @@ export type ShiftReportData = {
   closedByName: string;
   sales: { id: string; receiptNo: string; createdAt: Date; total: number }[];
   fiscalErrors?: number; // M8: vardiyada kesilemeyen e-Arşiv (0/undefined → gösterilmez)
+  currency?: Currency; // #16: kasada cihazdan; bulutta/TRY'de yok → ₺
 };
 
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 const tm = (d: Date) => d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
-export const signedTL = (k: number) => `${k < 0 ? "-" : k > 0 ? "+" : ""}${formatTL(Math.abs(k))}`;
+export const signedTL = (k: number, c?: Currency) => `${k < 0 ? "-" : k > 0 ? "+" : ""}${formatReceipt(Math.abs(k), c)}`;
 
 function Row({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: "ok" | "bad" }) {
   const c = tone === "bad" ? "text-bad" : tone === "ok" ? "text-ok" : "";
@@ -29,6 +30,7 @@ function Row({ label, value, strong, tone }: { label: string; value: string; str
 
 export function ShiftReport({ data, deviceName, showSales = false }: { data: ShiftReportData; deviceName?: string; showSales?: boolean }) {
   const { shift, summary: s } = data;
+  const TL = (k: number) => formatReceipt(k, data.currency); // #16
   const expected = shift.expectedCash ?? s.expectedCash;
   const diff = shift.countedCash === null ? null : shift.countedCash - expected;
   return (
@@ -43,10 +45,10 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
         <div className="divide-y divide-line border-y border-line">
           <Row label="Satış sayısı" value={`${s.saleCount} satış`} />
           {data.fiscalErrors ? <Row label="Kesilemeyen e-Arşiv" value={`${data.fiscalErrors} belge`} tone="bad" /> : null}
-          {s.refundCount > 0 && <Row label="İade" value={`${s.refundCount} iade · -${formatTL(s.refundTotal)}`} tone="bad" />}
-          <Row label={s.refundCount > 0 ? "Ciro (iadeler düşülmüş)" : "Ciro (KDV dahil)"} value={formatTL(s.gross)} strong />
+          {s.refundCount > 0 && <Row label="İade" value={`${s.refundCount} iade · -${TL(s.refundTotal)}`} tone="bad" />}
+          <Row label={s.refundCount > 0 ? "Ciro (iadeler düşülmüş)" : "Ciro (KDV dahil)"} value={TL(s.gross)} strong />
           {shownMethods(s.byMethod).map((m) => (
-            <Row key={m.value} label={m.value === "nakit" ? (s.refundCount > 0 ? "Nakit (para üstü ve iade düşülmüş)" : "Nakit (para üstü düşülmüş)") : m.label} value={formatTL(s.byMethod[m.value])} />
+            <Row key={m.value} label={m.value === "nakit" ? (s.refundCount > 0 ? "Nakit (para üstü ve iade düşülmüş)" : "Nakit (para üstü düşülmüş)") : m.label} value={TL(s.byMethod[m.value])} />
           ))}
         </div>
       </section>
@@ -56,7 +58,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
           <table className="w-full border-y border-line">
             <thead className="text-left text-xs text-muted"><tr><th className="py-1.5 font-medium">Oran</th><th className="text-right font-medium">Matrah</th><th className="text-right font-medium">KDV</th><th className="text-right font-medium">Toplam</th></tr></thead>
             <tbody className="tabular-nums">
-              {s.vat.map((v) => <tr key={v.rate} className="border-t border-line"><td className="py-1.5">%{v.rate}</td><td className="text-right">{formatTL(v.net)}</td><td className="text-right">{formatTL(v.vat)}</td><td className="text-right">{formatTL(v.gross)}</td></tr>)}
+              {s.vat.map((v) => <tr key={v.rate} className="border-t border-line"><td className="py-1.5">%{v.rate}</td><td className="text-right">{TL(v.net)}</td><td className="text-right">{TL(v.vat)}</td><td className="text-right">{TL(v.gross)}</td></tr>)}
             </tbody>
           </table>
         </section>
@@ -64,18 +66,18 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
       <section>
         <h2 className="mb-1 font-semibold">Kasa</h2>
         <div className="divide-y divide-line border-y border-line">
-          <Row label="Açılış nakdi" value={formatTL(shift.openingCash)} />
-          {s.dropped > 0 && <Row label="Seifeye alınan" value={`-${formatTL(s.dropped)}`} />}
-          <Row label="Beklenen kasa" value={formatTL(expected)} strong />
-          {shift.countedCash !== null && <Row label="Sayılan nakit" value={formatTL(shift.countedCash)} />}
-          {diff !== null && <Row label="Fark" value={signedTL(diff)} strong tone={diff < 0 ? "bad" : diff > 0 ? "ok" : undefined} />}
+          <Row label="Açılış nakdi" value={TL(shift.openingCash)} />
+          {s.dropped > 0 && <Row label="Seifeye alınan" value={`-${TL(s.dropped)}`} />}
+          <Row label="Beklenen kasa" value={TL(expected)} strong />
+          {shift.countedCash !== null && <Row label="Sayılan nakit" value={TL(shift.countedCash)} />}
+          {diff !== null && <Row label="Fark" value={signedTL(diff, data.currency)} strong tone={diff < 0 ? "bad" : diff > 0 ? "ok" : undefined} />}
         </div>
       </section>
       {showSales && data.sales.length > 0 && (
         <section>
           <h2 className="mb-1 font-semibold">Fişler</h2>
           <div className="divide-y divide-line border-y border-line">
-            {data.sales.map((x) => <Row key={x.id} label={`${x.receiptNo} · ${tm(x.createdAt)}`} value={formatTL(x.total)} />)}
+            {data.sales.map((x) => <Row key={x.id} label={`${x.receiptNo} · ${tm(x.createdAt)}`} value={TL(x.total)} />)}
           </div>
         </section>
       )}

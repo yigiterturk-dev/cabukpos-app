@@ -1,5 +1,5 @@
 // lib/core/receipt.ts — Bilgi fişi ve gün sonu raporunun ESC/POS hâli (ekrandaki fişle aynı içerik).
-import { formatTL } from "./money";
+import { formatReceipt, type Currency } from "./money";
 import { PAY_METHODS, shownMethods } from "./payment";
 import type { Payment } from "./payment";
 import type { VatLine } from "./cart";
@@ -9,7 +9,7 @@ import type { LogoImg } from "./png";
 import { refundNote, type RefundFiscal } from "./refundNote";
 import { okcNotes, type OkcSaleData } from "./okc";
 
-export type PrintOpts = { width: PaperWidth; codepage: Codepage; brand?: PrinterBrand; drawer?: boolean; appUrl?: string; logo?: LogoImg | null };
+export type PrintOpts = { width: PaperWidth; codepage: Codepage; brand?: PrinterBrand; drawer?: boolean; appUrl?: string; logo?: LogoImg | null; currency?: Currency };
 /** M8: e-Arşiv. number yoksa henüz kesilmedi (çevrimdışı/gecikme) → bağlantı ya da e-posta notu. */
 export type ReceiptFiscal = { token: string; number: string | null; ettn: string | null; buyer: { name: string; email?: string } | null; test?: boolean };
 export const fiscalLink = (appUrl: string, token: string) => `${appUrl.replace(/\/$/, "")}/f/${token}`;
@@ -58,6 +58,7 @@ function header(p: EscPos, h: ReceiptHeader, logo: LogoImg | null | undefined) {
 /** weighed(productId): tartılı ürün mü (miktar kg gösterilir). */
 export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts, weighed: (id: string) => boolean = () => false): Uint8Array {
   const p = new EscPos(o.codepage, o.width, o.brand ?? "genel");
+  const TL = (k: number) => formatReceipt(k, o.currency); // #16: işletmenin para birimi (varsayılan TRY)
   const at = new Date(sale.at);
   if (o.drawer) p.drawer();
   header(p, h, o.logo);
@@ -69,15 +70,15 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
   for (const l of sale.lines) {
     p.lines(l.name);
     for (const o of l.options ?? []) p.lines(`  + ${o.name}`);
-    p.cols2(`  ${qtyText(l.qtyMilli, Boolean(l.productId && weighed(l.productId)))} x ${formatTL(l.unitPrice)}`, formatTL(Math.round((l.unitPrice * l.qtyMilli) / 1000)));
-    if (l.discount) p.cols2("  İndirim", `-${formatTL(l.discount)}`);
+    p.cols2(`  ${qtyText(l.qtyMilli, Boolean(l.productId && weighed(l.productId)))} x ${TL(l.unitPrice)}`, TL(Math.round((l.unitPrice * l.qtyMilli) / 1000)));
+    if (l.discount) p.cols2("  İndirim", `-${TL(l.discount)}`);
   }
   p.rule();
-  for (const v of sale.vat) p.cols2(`KDV %${v.rate}  matrah ${formatTL(v.net)}`, formatTL(v.vat));
-  p.rule().bold(true).size(2).cols2(sale.refund ? "İADE" : "TOPLAM", formatTL(sale.total)).size(1).bold(false);
-  if (sale.tip) p.cols2("Bahşiş (dahil)", formatTL(sale.tip)); // #49: müşteri öder, personele kalır
-  for (const x of sale.payments) p.cols2(sale.refund ? `İade (${payLabel(x.method)})` : payLabel(x.method), formatTL(x.amount));
-  if (sale.change > 0) p.cols2("Para üstü", formatTL(sale.change));
+  for (const v of sale.vat) p.cols2(`KDV %${v.rate}  matrah ${TL(v.net)}`, TL(v.vat));
+  p.rule().bold(true).size(2).cols2(sale.refund ? "İADE" : "TOPLAM", TL(sale.total)).size(1).bold(false);
+  if (sale.tip) p.cols2("Bahşiş (dahil)", TL(sale.tip)); // #49: müşteri öder, personele kalır
+  for (const x of sale.payments) p.cols2(sale.refund ? `İade (${payLabel(x.method)})` : payLabel(x.method), TL(x.amount));
+  if (sale.change > 0) p.cols2("Para üstü", TL(sale.change));
   const f = sale.fiscal && o.appUrl ? fiscalNotes(sale.fiscal, o.appUrl) : null;
   if (f) {
     p.rule();
@@ -117,6 +118,7 @@ export type ShiftPrint = {
 
 export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts): Uint8Array {
   const p = new EscPos(o.codepage, o.width, o.brand ?? "genel");
+  const TL = (k: number) => formatReceipt(k, o.currency);
   const m = s.summary;
   const expected = s.expectedCash ?? m.expectedCash;
   header(p, h, o.logo);
@@ -124,15 +126,15 @@ export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts)
   p.cols2("Kasa", s.deviceName).cols2("Açan", s.openedByName).cols2("Açılış", `${date(s.openedAt)} ${time(s.openedAt)}`);
   if (s.closedAt) p.cols2("Kapatan", s.closedByName).cols2("Kapanış", `${date(s.closedAt)} ${time(s.closedAt)}`);
   p.rule().cols2("Satış sayısı", String(m.saleCount));
-  if (m.dropped) p.cols2("Seifeye alınan", `-${formatTL(m.dropped)}`);
-  if (m.refundCount > 0) p.cols2(`İade (${m.refundCount})`, `-${formatTL(m.refundTotal)}`);
-  p.bold(true).cols2("Ciro", formatTL(m.gross)).bold(false);
-  for (const x of shownMethods(m.byMethod)) p.cols2(x.label, formatTL(m.byMethod[x.value]));
-  if (m.vat.length) { p.rule(); for (const v of m.vat) p.cols2(`KDV %${v.rate}  matrah ${formatTL(v.net)}`, formatTL(v.vat)); }
-  p.rule().cols2("Açılış nakdi", formatTL(s.openingCash)).bold(true).cols2("Beklenen kasa", formatTL(expected)).bold(false);
+  if (m.dropped) p.cols2("Seifeye alınan", `-${TL(m.dropped)}`);
+  if (m.refundCount > 0) p.cols2(`İade (${m.refundCount})`, `-${TL(m.refundTotal)}`);
+  p.bold(true).cols2("Ciro", TL(m.gross)).bold(false);
+  for (const x of shownMethods(m.byMethod)) p.cols2(x.label, TL(m.byMethod[x.value]));
+  if (m.vat.length) { p.rule(); for (const v of m.vat) p.cols2(`KDV %${v.rate}  matrah ${TL(v.net)}`, TL(v.vat)); }
+  p.rule().cols2("Açılış nakdi", TL(s.openingCash)).bold(true).cols2("Beklenen kasa", TL(expected)).bold(false);
   if (s.countedCash !== null) {
     const d = s.countedCash - expected;
-    p.cols2("Sayılan nakit", formatTL(s.countedCash)).bold(true).cols2("Fark", `${d < 0 ? "-" : d > 0 ? "+" : ""}${formatTL(Math.abs(d))}`).bold(false);
+    p.cols2("Sayılan nakit", TL(s.countedCash)).bold(true).cols2("Fark", `${d < 0 ? "-" : d > 0 ? "+" : ""}${TL(Math.abs(d))}`).bold(false);
   }
   if (s.fiscalErrors) p.rule().bold(true).cols2("Kesilemeyen e-Arşiv", String(s.fiscalErrors)).bold(false);
   p.rule().align("center").lines("Mali Z raporu değildir.").align("left").feed(3).cut();
@@ -140,12 +142,12 @@ export function renderShiftReport(s: ShiftPrint, h: ReceiptHeader, o: PrintOpts)
 }
 
 // #38: SMS fiş — düz metin, SMS uzunluğuna sığar (satır listesi taşarsa kırpılır).
-export type SmsSale = { storeName: string; receiptNo: string; at: string; total: number; lines: { name: string; qtyMilli: number }[] };
+export type SmsSale = { storeName: string; receiptNo: string; at: string; total: number; lines: { name: string; qtyMilli: number }[]; currency?: Currency };
 const smsDt = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 
 export function receiptSmsText(s: SmsSale, max = 320): string {
   const head = `${s.storeName} · Fiş ${s.receiptNo} · ${smsDt.format(new Date(s.at))}`;
-  const tail = `TOPLAM: ${formatTL(s.total)}`;
+  const tail = `TOPLAM: ${formatReceipt(s.total, s.currency)}`;
   let body = "";
   for (const l of s.lines) {
     const piece = `${body ? body + ", " : ""}${l.qtyMilli !== 1000 ? `${(l.qtyMilli / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 3 })}x ` : ""}${l.name}`;

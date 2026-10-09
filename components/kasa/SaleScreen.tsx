@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { addProduct, lineTotal, removedLines, setQty, totals, type CartLine, type RemovedLine } from "@/lib/core/cart";
-import { formatTL, parseTL } from "@/lib/core/money";
+import type { Currency } from "@/lib/core/money";
+import { kasaFmt } from "./kasa-format";
 import { settle, type Payment } from "@/lib/core/payment";
 import { buildIndex, parseKg, resolveScan } from "@/lib/core/scan";
 import { effectivePrice, type PriceListCore } from "@/lib/core/pricelist";
@@ -20,7 +21,8 @@ export type OnSale = (saleId: string, payments: Payment[], cart: CartLine[], buy
 export type PrintView = { state: "printing" | "ok" | "fail"; error?: string | null };
 export type ReadScale = () => Promise<{ grams: number; stable: boolean }>;
 
-export function PayDialog({ total, onPay, onClose, onDone }: { total: number; onPay: OnPay; onClose: () => void; onDone: (r: { saleId: string; receiptNo: string; change: number }) => void }) {
+export function PayDialog({ total, onPay, onClose, onDone, currency }: { total: number; onPay: OnPay; onClose: () => void; onDone: (r: { saleId: string; receiptNo: string; change: number }) => void; currency?: Currency }) {
+  const { TL, parse, bare } = kasaFmt({ device: { currency } });
   const [saleId] = useState(() => crypto.randomUUID()); // diyalog başına bir kez → tekrar denemede aynı satış (idempotent)
   const [cash, setCash] = useState("");
   const [card, setCard] = useState<string | null>(null);
@@ -31,19 +33,19 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
   const [invoicing, setInvoicing] = useState(false);
   const [tip, setTip] = useState<string>(""); // #49: bahşiş — toplama eklenir
 
-  const tipK = tip ? parseTL(tip) ?? 0 : 0;
+  const tipK = tip ? parse(tip) ?? 0 : 0;
   const grand = total + tipK;
   const payments: Payment[] = [];
-  const add = (method: Payment["method"], v: string | null) => { const k = v === null ? null : parseTL(v); if (k) payments.push({ method, amount: k }); };
+  const add = (method: Payment["method"], v: string | null) => { const k = v === null ? null : parse(v); if (k) payments.push({ method, amount: k }); };
   add("nakit", cash); add("kart", card); add("yemek_karti", meal);
   const s = settle(grand, payments);
   const paid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const remaining = Math.max(0, grand - paid);
-  const all = (m: "nakit" | "kart" | "yemek_karti") => { const v = formatTL(grand).replace(" ₺", ""); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
-  const other = (card === null ? 0 : parseTL(card) ?? 0) + (meal === null ? 0 : parseTL(meal) ?? 0);
+  const all = (m: "nakit" | "kart" | "yemek_karti") => { const v = bare(grand); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
+  const other = (card === null ? 0 : parse(card) ?? 0) + (meal === null ? 0 : parse(meal) ?? 0);
   const due = Math.max(0, grand - other); // nakitle kapanacak kalan
-  const setCashK = (k: number) => setCash(formatTL(k).replace(" ₺", ""));
-  const full = formatTL(grand).replace(" ₺", "");
+  const setCashK = (k: number) => setCash(bare(k));
+  const full = bare(grand);
   const mode = cash === full && card === null && meal === null ? "nakit" : !cash && card === full && meal === null ? "kart" : !cash && card === null && meal === full ? "yemek_karti" : null;
   const submit = () => start(async () => {
     setError(null);
@@ -62,7 +64,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
   ];
   const amount = "tabular h-14 flex-1 rounded-xl border border-line bg-surface px-4 text-right text-2xl font-semibold outline-none transition-[border-color,box-shadow] hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
   return (
-    <Dialog label="Ödeme" title="Ödeme" aside={<span className="tabular text-3xl font-bold tracking-tight">{formatTL(grand)}</span>} onClose={onClose}
+    <Dialog label="Ödeme" title="Ödeme" aside={<span className="tabular text-3xl font-bold tracking-tight">{TL(grand)}</span>} onClose={onClose}
       footer={<>
         <Button variant="secondary" size="lg" onClick={onClose} className="flex-1">Vazgeç</Button>
         <Button size="lg" disabled={!s.ok || pending || invoicing} onClick={submit} className="flex-[2]">{pending ? "Kaydediliyor…" : "Satışı tamamla"}</Button>
@@ -82,7 +84,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
           <input name="amount-bahsis" inputMode="decimal" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="0,00" aria-label="Bahşiş tutarı" className={amount} />
           <div className="flex gap-1">
             {[10, 15].map((p) => (
-              <Button key={p} variant="secondary" size="sm" type="button" onClick={() => setTip(formatTL(Math.round((total * p) / 100)).replace(" ₺", ""))}>{`%${p}`}</Button>
+              <Button key={p} variant="secondary" size="sm" type="button" onClick={() => setTip(bare(Math.round((total * p) / 100)))}>{`%${p}`}</Button>
             ))}
             {tip && <IconButton label="Bahşişi kaldır" onClick={() => setTip("")}><X aria-hidden className="size-5" /></IconButton>}
           </div>
@@ -90,7 +92,7 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
         {due > 0 && (
           <div className="flex flex-wrap gap-2 pl-[7.75rem]">
             <Button variant="secondary" size="sm" onClick={() => setCashK(due)}>Tam tutar</Button>
-            {quickCash(due).map((k) => <Button key={k} variant="secondary" size="sm" className="tabular" onClick={() => setCashK(k)}>{formatTL(k).replace(",00", "")}</Button>)}
+            {quickCash(due).map((k) => <Button key={k} variant="secondary" size="sm" className="tabular" onClick={() => setCashK(k)}>{bare(k).replace(",00", "")}</Button>)}
           </div>
         )}
         {card !== null && <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Kart</span><input name="amount-kart" inputMode="decimal" value={card} onChange={(e) => setCard(e.target.value)} className={amount} /><IconButton label="Kartı kaldır" onClick={() => setCard(null)}><X aria-hidden className="size-5" /></IconButton></label>}
@@ -105,12 +107,12 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
       {invoicing && <InvoiceForm initial={buyer} onSave={(b) => { setBuyer(b); setInvoicing(false); }} onCancel={() => { setBuyer(null); setInvoicing(false); }} />}
       <div className="mt-5" aria-live="polite">
         {s.ok ? (
-          <div className="flex items-baseline justify-between rounded-xl bg-ok-soft px-4 py-3 text-ok"><span className="font-medium">Para üstü</span>{" "}<span className="tabular text-2xl font-bold">{formatTL(s.change)}</span></div>
+          <div className="flex items-baseline justify-between rounded-xl bg-ok-soft px-4 py-3 text-ok"><span className="font-medium">Para üstü</span>{" "}<span className="tabular text-2xl font-bold">{TL(s.change)}</span></div>
         ) : payments.length > 0 ? (
           <div className="rounded-xl bg-warn-soft px-4 py-3 text-warn">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-sm font-medium">Kalan tutar</span>
-              <span className="tabular text-xl font-bold">{formatTL(remaining)}</span>
+              <span className="tabular text-xl font-bold">{TL(remaining)}</span>
             </div>
             <p className="mt-1 text-xs">{s.error}</p>
           </div>
@@ -123,7 +125,8 @@ export function PayDialog({ total, onPay, onClose, onDone }: { total: number; on
   );
 }
 
-function WeighDialog({ product, onOk, onClose, scale }: { product: KasaProduct; onOk: (grams: number) => void; onClose: () => void; scale?: ReadScale }) {
+function WeighDialog({ product, onOk, onClose, scale, currency }: { product: KasaProduct; onOk: (grams: number) => void; onClose: () => void; scale?: ReadScale; currency?: Currency }) {
+  const { TL } = kasaFmt({ device: { currency } });
   const [v, setV] = useState("");
   const [scaleMsg, setScaleMsg] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
@@ -142,7 +145,7 @@ function WeighDialog({ product, onOk, onClose, scale }: { product: KasaProduct; 
     setReading(false);
   };
   return (
-    <Dialog label="Tartım" title={product.name} aside={<span className="tabular text-sm text-muted">{formatTL(product.price)}/kg</span>} onClose={onClose} size="sm"
+    <Dialog label="Tartım" title={product.name} aside={<span className="tabular text-sm text-muted">{TL(product.price)}/kg</span>} onClose={onClose} size="sm"
       footer={<>
         <Button variant="secondary" size="lg" onClick={onClose} className="flex-1">Vazgeç</Button>
         <Button type="submit" form="weigh-form" size="lg" disabled={!g} className="flex-[2]">Sepete ekle</Button>
@@ -156,7 +159,7 @@ function WeighDialog({ product, onOk, onClose, scale }: { product: KasaProduct; 
             {scaleMsg && <span className="text-sm text-bad" role="alert">{scaleMsg}</span>}
           </div>
         )}
-        <div className="tabular mt-4 min-h-8 text-right text-2xl font-bold">{g ? formatTL(Math.round((product.price * g) / 1000)) : v && <span className="text-sm font-medium text-bad">Ağırlık geçersiz.</span>}</div>
+        <div className="tabular mt-4 min-h-8 text-right text-2xl font-bold">{g ? TL(Math.round((product.price * g) / 1000)) : v && <span className="text-sm font-medium text-bad">Ağırlık geçersiz.</span>}</div>
       </form>
     </Dialog>
   );
@@ -165,7 +168,8 @@ function WeighDialog({ product, onOk, onClose, scale }: { product: KasaProduct; 
 const MAX_SHOWN = 60;
 const kg = (g: number) => `${(g / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;
 
-export function SaleScreen({ categories, products, priceLists = [], market, onPay, onReceipt, prints = {}, onRetryPrint, scale, onRemove }: { categories: { id: string; name: string }[]; products: KasaProduct[]; priceLists?: PriceListCore[]; market: boolean; onPay: OnSale; onReceipt: (saleId: string) => void; prints?: Record<string, PrintView>; onRetryPrint?: (saleId: string) => void; scale?: ReadScale; onRemove?: (type: "line_removed" | "cart_cleared", lines: RemovedLine[]) => void }) {
+export function SaleScreen({ categories, products, priceLists = [], market, onPay, onReceipt, prints = {}, onRetryPrint, scale, onRemove, currency }: { categories: { id: string; name: string }[]; products: KasaProduct[]; priceLists?: PriceListCore[]; market: boolean; onPay: OnSale; onReceipt: (saleId: string) => void; prints?: Record<string, PrintView>; onRetryPrint?: (saleId: string) => void; scale?: ReadScale; onRemove?: (type: "line_removed" | "cart_cleared", lines: RemovedLine[]) => void; currency?: Currency }) {
+  const { TL } = kasaFmt({ device: { currency } });
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cat, setCat] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -259,7 +263,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
                 className={`press relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-surface p-3.5 pt-4 text-left shadow-card outline-none hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${n ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
                 <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
                 <span className="line-clamp-2 pr-7 text-[15px] font-semibold leading-snug">{p.name}</span>
-                <span className="tabular text-[15px] font-medium text-ink-2">{formatTL(p.price)}{p.kind === "tartili" && <span className="text-muted">/kg</span>}</span>
+                <span className="tabular text-[15px] font-medium text-ink-2">{TL(p.price)}{p.kind === "tartili" && <span className="text-muted">/kg</span>}</span>
                 {n !== undefined && <span aria-hidden className="tabular absolute right-2.5 top-3 grid min-w-7 place-items-center rounded-full bg-brand px-1.5 py-0.5 text-xs font-bold text-white">{p.kind === "tartili" ? <Scale className="size-3.5" /> : n / 1000}</span>}
               </button>
             );
@@ -283,7 +287,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
             const step = "press grid size-11 place-items-center rounded-xl border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60";
             return (
               <div key={l.productId} className="flex items-center gap-2 px-4 py-2.5" data-testid="cart-line">
-                <div className="min-w-0 flex-1"><div className="truncate font-medium">{l.name}</div><div className="tabular text-xs text-muted">{weighed ? `${kg(l.qtyMilli)} × ${formatTL(l.unitPrice)}/kg` : formatTL(l.unitPrice)}</div></div>
+                <div className="min-w-0 flex-1"><div className="truncate font-medium">{l.name}</div><div className="tabular text-xs text-muted">{weighed ? `${kg(l.qtyMilli)} × ${TL(l.unitPrice)}/kg` : TL(l.unitPrice)}</div></div>
                 {weighed ? (
                   <button type="button" aria-label={`${l.name} sil`} onClick={() => shrink(setQty(cart, l.productId, 0))} className={`${step} text-bad`}><Trash2 aria-hidden className="size-4" /></button>
                 ) : (
@@ -293,19 +297,19 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
                     <button type="button" aria-label={`${l.name} artır`} onClick={() => setCart((c) => setQty(c, l.productId, l.qtyMilli + 1000))} className={step}>+</button>
                   </>
                 )}
-                <span className="tabular w-24 text-right font-semibold">{formatTL(lineTotal(l))}</span>
+                <span className="tabular w-24 text-right font-semibold">{TL(lineTotal(l))}</span>
               </div>
             );
           })}
         </div>
         <div className="border-t border-line bg-surface-2 p-4">
-          {t.vat.map((v) => <div key={v.rate} className="tabular flex justify-between text-xs text-muted"><span>KDV %{v.rate}</span><span>{formatTL(v.vat)}</span></div>)}
-          <div data-testid="cart-total" className="tabular mt-1 flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">TOPLAM</span><span className="text-4xl font-bold tracking-tight">{formatTL(t.total)}</span></div>
+          {t.vat.map((v) => <div key={v.rate} className="tabular flex justify-between text-xs text-muted"><span>KDV %{v.rate}</span><span>{TL(v.vat)}</span></div>)}
+          <div data-testid="cart-total" className="tabular mt-1 flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">TOPLAM</span><span className="text-4xl font-bold tracking-tight">{TL(t.total)}</span></div>
           {last && (
             <div className="mt-3 rounded-xl border border-ok/30 bg-ok-soft p-3 text-sm text-ok">
               <div className="flex items-center gap-2">
                 <CheckCircle2 aria-hidden className="size-5 shrink-0" />
-                <span className="flex-1 font-medium">Fiş {last.receiptNo} · Para üstü {formatTL(last.change)}</span>
+                <span className="flex-1 font-medium">Fiş {last.receiptNo} · Para üstü {TL(last.change)}</span>
                 <Button variant="secondary" size="sm" onClick={() => onReceipt(last.saleId)}><Printer aria-hidden className="size-4" />Fişi yazdır</Button>
               </div>
               {prints[last.saleId] && (
@@ -329,8 +333,8 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
           </div>
         </div>
       </aside>
-      {weigh && <WeighDialog product={weigh} scale={scale} onClose={() => { setWeigh(null); refocus(); }} onOk={(g) => { add(weigh, g); setWeigh(null); refocus(); }} />}
-      {paying && <PayDialog total={t.total} onPay={(id, p, b, tip) => onPay(id, p, cart, b, tip)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setCart([]); setLast(r); refocus(); }} />}
+      {weigh && <WeighDialog product={weigh} scale={scale} currency={currency} onClose={() => { setWeigh(null); refocus(); }} onOk={(g) => { add(weigh, g); setWeigh(null); refocus(); }} />}
+      {paying && <PayDialog total={t.total} currency={currency} onPay={(id, p, b, tip) => onPay(id, p, cart, b, tip)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setCart([]); setLast(r); refocus(); }} />}
     </div>
   );
 }

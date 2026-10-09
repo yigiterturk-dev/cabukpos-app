@@ -2,7 +2,7 @@
 // Yeni paket: telefon → müşteri defteri (/api/musteri; çevrimdışı → boş form) → adres + bölge + ödeme niyeti → adisyon açılır.
 // Olaylar: open{kind:paket} + order + (bölge ücreti varsa) ücret satırı + (tekrarla seçildiyse) eski satırlar yeni kimlikle.
 import { useState } from "react";
-import { formatTL } from "@/lib/core/money";
+import { kasaFmt } from "./kasa-format";
 import { feeLine, formatPhone, normalizePhone, PAY_INTENTS, zoneFee, zoneOpenAt } from "@/lib/core/delivery";
 import type { PayIntent } from "@/lib/core/tab";
 import type { CustomerLookup } from "@/lib/delivery/customers";
@@ -14,6 +14,7 @@ const pill = (on: boolean) => `press min-h-11 rounded-[10px] border px-3 py-2 te
 const EMPTY: CustomerLookup = { customer: null, addresses: [], recent: [] };
 
 export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: Meta; staffId: string; add: (list: NewTabEvent[]) => Promise<unknown>; onCreated: (tabId: string) => void; onBack: () => void }) {
+  const { TL } = kasaFmt(meta);
   const [phoneInput, setPhoneInput] = useState("");
   const [phone, setPhone] = useState<string | null>(null);
   const [found, setFound] = useState<CustomerLookup | null>(null);
@@ -117,7 +118,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
                   return (
                     <button key={z.id} type="button" aria-pressed={zoneId === z.id} onClick={() => { setZoneId(z.id); if (z.perKm == null) setKm(""); }}
                       className={`${pill(zoneId === z.id)} ${open ? "" : "opacity-50"}`}>
-                      {z.name} <span className="text-xs text-muted">{z.fee || z.perKm ? `+${formatTL(zoneFee(z, null))}${z.perKm ? ` + ${formatTL(z.perKm)}/km` : ""}` : "ücretsiz"}{z.minOrder ? ` · asgari ${formatTL(z.minOrder)}` : ""}{!open ? " · servis dışı" : ""}</span>
+                      {z.name} <span className="text-xs text-muted">{z.fee || z.perKm ? `+${TL(zoneFee(z, null))}${z.perKm ? ` + ${TL(z.perKm)}/km` : ""}` : "ücretsiz"}{z.minOrder ? ` · asgari ${TL(z.minOrder)}` : ""}{!open ? " · servis dışı" : ""}</span>
                     </button>
                   );
                 })}
@@ -129,7 +130,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
                 return (
                   <div className="mt-2 flex flex-wrap items-end gap-3">
                     <div className="w-28"><Field label="Mesafe (km)"><Input value={km} onChange={(e) => setKm(e.target.value)} inputMode="decimal" placeholder="3,5" /></Field></div>
-                    <span className="pb-3 text-sm text-muted">Ücret: <b className="tabular text-ink">{formatTL(zoneFee(z, kmN))}</b></span>
+                    <span className="pb-3 text-sm text-muted">Ücret: <b className="tabular text-ink">{TL(zoneFee(z, kmN))}</b></span>
                   </div>
                 );
               })()}
@@ -148,7 +149,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
               <div className="grid gap-2">
                 {found.recent.map((r) => (
                   <button key={r.tabId} type="button" aria-pressed={repeat === r.tabId} onClick={() => setRepeat((x) => (x === r.tabId ? null : r.tabId))} className={`${pill(repeat === r.tabId)} text-left`}>
-                    <span className="text-xs text-muted">{new Date(r.at).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })} · {formatTL(r.total)}{repeat === r.tabId ? " · tekrarlanacak" : " · tekrarla"}</span>
+                    <span className="text-xs text-muted">{new Date(r.at).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })} · {TL(r.total)}{repeat === r.tabId ? " · tekrarlanacak" : " · tekrarla"}</span>
                     <span className="block truncate">{r.lines.map((l) => `${l.qtyMilli / 1000}× ${l.name}`).join(", ")}</span>
                   </button>
                 ))}
