@@ -26,14 +26,14 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 ### Canlı işletme kapısı — açılıştan önce zorunlu
 
 - [~] `AGENT_ALERT_WEBHOOK_URL` alarm hattı — ✅ mekanizma uçtan uca kanıtlandı: sessiz ajan kaydı → `GET /api/cron/agent-heartbeat` (yetkisiz 401 / yetkili `{alerted:1}`) → webhook'a `{service,event:agent.heartbeat.stale,detail}` düştü; `tests/alerts.test.ts` (no-op/iletim/hata yutma). ⏳ kalan (insan): production'a gerçek alarm kanalı URL'i (Slack/Discord/ops) tanımla
-- [~] Günlük backup scheduler — ✅ mekanizma kanıtlandı: owner yedeği + `openssl enc -aes-256-cbc -pbkdf2` şifrele/çöz → dump katalog doğrulaması OK; workflow PG18 client kurar (Neon PG18), artifact 30 gün. ⏳ kalan (insan): GitHub secret `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY` tanımla
+- [~] Günlük backup scheduler — ✅ mekanizma kanıtlandı: owner yedeği + `openssl enc -aes-256-cbc -pbkdf2` şifrele/çöz → dump katalog doğrulaması OK; workflow PG18 client kurar (Neon PG18), artifact 30 gün. ✅ `BACKUP_ENCRYPTION_KEY` repo secret'ı tanımlandı (2026-10-08). ⏳ kalan (insan): GitHub secret `BACKUP_DATABASE_URL` — Neon **owner** bağlantı dizesi (repoda/`.env.local`'de yok; local URL backup'ı yanlış hedefe alır, bu yüzden boş bırakıldı)
 - [x] İzole staging veritabanına gerçek restore yapıldı — ✅ owner yedeği (`pg_dump --no-owner --no-privileges`, PG18) → yeni Neon branch'e `pg_restore --no-acl --exit-on-error`; STAGE=PROD (58 tablo, 47 RLS, 22 işletme, 30 satış, `report_due_tenants`). `scripts/backup-db.mjs`/`rehearse-restore.mjs` taşınabilirlik için güncellendi.
 - [x] Growth recipient_ref/approval şeması production'a uygulandı — ✅ `db:growth:verify` **9/9 OK**; canlı akış: onaysız audience **403**, onaylı **200**; imzalı webhook **201** + replay **200 duplicate** (idempotent). Geçici anahtar/kampanya temizlendi.
 - [x] Growth scope'lu key ile `RUNTIME_GROWTH_KEY=... BASE=<production> npm run audit:runtime` authenticated contract — ✅ **geçti**: feature-pack + insights + campaign listesi 200; audit anahtarı üretilip iptal edildi (`integration_keys` revoked). Tam runtime audit 16+3 PASS.
 - [ ] `BILLING_PROVIDER=paytr` için canlı PayTR anahtarları ve bildirim URL'si doğrulandı
 - [ ] Gerçek e-Arşiv entegratörü seçildi; sandbox kesim, iptal ve e-posta testleri tamamlandı
 - [ ] Bilgi fişi ile mali belge ayrımı mali müşavir tarafından onaylandı (`docs/MALI-UYUM-GATE.md`)
-- [ ] ÖKC kullanım/entegrasyon sorumluluğu işletme bazında yazılı olarak netleştirildi
+- [~] ÖKC kullanım/entegrasyon sorumluluğu işletme bazında yazılı olarak netleştirildi — ✅ taslak şablon hazır: `docs/OKC-SORUMLULUK-YAZISI.md` (sorumluluk tablosu + beyan + imza alanları; MALI-UYUM-GATE kapı 1/3 ile hizalı). ⏳ kalan (insan): hukuk/mali müşavir onayı + ilk pilot işletmeyle doldurulup imzalanması
 - [ ] `cabukpos.com` DNS, SSL, e-posta ve yasal iletişim adresleri doğrulandı
 - [ ] KVKK, kullanım şartları, mesafeli satış ve iade metinleri onaylandı
 

@@ -32,7 +32,7 @@ Paraşüt, Uyumsoft, İzibiz, Nilvera, Foriba(vdf), Logo, Mikro — ve üretici 
 ## Kod tarafı — anahtar gelince yapılacaklar (tek oturum)
 
 1. `lib/fiscal/okc-<saglayici>.ts`: `OkcProvider` implementasyonu (kesim, iptal, Z raporu, durum) — `getOkc`'e ek
-2. `fiscalSettings.okcProvider` enum'una sağlayıcı ekle + env: `OKC_API_URL`, `OKC_API_KEY` (BYOK'ta kiracı bazlı şifreli saklama — `lib/billing/card-vault.ts` deseninde AES-GCM)
+2. ✅ tamam: `fiscalSettings` okcProvider enuma parasut/uyumsoft eklendi + `okc_api_key` (AES-256-GCM BYOK) + `okc_api_url` + Mali ayar formu alanları (2026-10-08)
 3. İade: `fiscal_refunds` ile iade fişi/iade e-Bileti eşlemesi; VKN'li alıcıda alıcının iade faturası akışı (iade tutanağı modülü hazır)
 4. Test planı (launch kapısındaki madde): sandbox kesim, iptal, e-posta, ETTN+QR (3 sn bütçe — gecikirse e-posta, M8 desen)
 5. Mali > Ayarlar'daki canlı ping gerçek uca bağlanır
@@ -45,7 +45,7 @@ Paraşüt, Uyumsoft, İzibiz, Nilvera, Foriba(vdf), Logo, Mikro — ve üretici 
 
 ## Sıra
 
-1. Yiğit: Paraşüt + Uyumsoft'a üstteki sorularla teklif/sandbox talebi (1-2 gün)
+1. Yiğit: Paraşüt + Uyumsoft'a üstteki sorularla teklif/sandbox talebi (1-2 gün) — gönderilmeye hazır metinler: `docs/OKC-TEKLIF-MAIL.md`; sorumluluk yazısı taslağı: `docs/OKC-SORUMLULUK-YAZISI.md`
 2. Mali müşavir onayları paralel
 3. Sandbox anahtarı gelince: sürücü + testler tek oturumda; canlıya launch kapısıyla
 4. Yol B (fiziksel SDK): yalnız müşteri talebi + üretici onayı gelirse — mimari değişmeden ajan sürücüsü

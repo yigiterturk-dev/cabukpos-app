@@ -71,7 +71,7 @@ Kural: kendi alanınla sınırlı çalış, her görevi bitirince commit + buray
 
 ## İnsan müdahalesi bekleyenler (kod değil)
 
-- GitHub secret'ları `BACKUP_DATABASE_URL` + `BACKUP_ENCRYPTION_KEY`, Vercel env `AGENT_ALERT_WEBHOOK_URL`
+- GitHub secret'ları `BACKUP_DATABASE_URL` (Neon owner bağlantısı; `BACKUP_ENCRYPTION_KEY` 2026-10-08 kuruldu) + Vercel env `AGENT_ALERT_WEBHOOK_URL`
 - PayTR canlı anahtarları, e-Arşiv entegratörü, hukuk/mali müşavir, DNS
 
 ## İş kuyruğu (loop) — 2026-10-02
