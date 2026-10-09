@@ -5,6 +5,8 @@ import { eq, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";import { okcFiscalNo, zNoOf, type OkcSaleData } from "@/lib/core/okc";
 import { audit } from "@/lib/audit";
 import { fakeProvidersBlocked } from "@/lib/fake-providers";
+import { decryptCardToken } from "@/lib/billing/card-vault";
+import { cloudOkc } from "./okc-cloud";
 
 export type OkcReceiptInput = {
   serial: string;
@@ -25,12 +27,23 @@ export interface OkcProvider {
   receipt(doc: OkcReceiptInput): Promise<OkcResult>;
   /** İade/iptal — gerçek cihazda mali fiş iptali; sandbox kayıt dışı bırakır. */
   cancel(no: string, issuedAt: Date): Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Z raporu (gün sonu mali rapor). Desteklemeyen sürücü tanımlamaz. */
+  zReport?(): Promise<{ ok: true; no: string; zNo: number } | { ok: false; error: string }>;
 }
 
-export function getOkc(name: string, opts: { fakeFail: boolean }): OkcProvider {
+/** Yol A: bulut çözücüler (parasut/uyumsoft) BYOK anahtar ister — yoksa Türkçe hata (satışı bloklamaz,
+ *  çağıran yakalar). fakeFail yalnız fake-okc'de anlamlı. */
+export function getOkc(
+  name: string,
+  opts: { fakeFail: boolean; apiKey?: string | null; apiUrl?: string | null },
+): OkcProvider {
   if (name === "fake-okc") {
     if (fakeProvidersBlocked()) throw new Error("Sahte ÖKC sağlayıcısı production'da kullanılamaz.");
     return fakeOkc(opts);
+  }
+  if (name === "parasut" || name === "uyumsoft") {
+    if (!opts.apiKey || !opts.apiUrl) throw new Error("Bulut ÖKC için API anahtarı ve API adresi gerekli (BYOK: Yönetim → Mali).");
+    return cloudOkc(name, { key: opts.apiKey, url: opts.apiUrl });
   }
   throw new Error(`Bilinmeyen ÖKC sağlayıcı: ${name}`);
 }
@@ -55,6 +68,7 @@ export async function okcReceiptFor(tenantId: string, saleId: string): Promise<O
   return withTenant(tenantId, async (tx) => {
     const [s] = await tx.select().from(schema.fiscalSettings);
     if (!s?.okcProvider || !s.okcSerial) return null;
+    const cloud = { apiKey: decryptCardToken(s.okcApiKey), apiUrl: s.okcApiUrl };
     const [sale] = await tx.select().from(schema.sales).where(eq(schema.sales.id, saleId));
     if (!sale || sale.status !== "kapandi") return null;
     if (sale.okc) return null;
@@ -63,7 +77,7 @@ export async function okcReceiptFor(tenantId: string, saleId: string): Promise<O
     const [cur] = await tx.insert(schema.fiscalSettings).values({ tenantId, okcCounter: 1 })
       .onConflictDoUpdate({ target: schema.fiscalSettings.tenantId, set: { okcCounter: sql`${schema.fiscalSettings.okcCounter} + 1` } }).returning();
     let r: OkcResult;
-    try { r = await getOkc(s.okcProvider, { fakeFail: s.okcFakeFail }).receipt({
+    try { r = await getOkc(s.okcProvider, { fakeFail: s.okcFakeFail, ...cloud }).receipt({
       serial: s.okcSerial, seq: cur.okcCounter, receiptNo: sale.receiptNo, total: sale.total, vat: sale.vat, payments, soldAt: sale.createdAt,
     }); } catch (e) { r = { ok: false, error: e instanceof Error ? e.message : "ÖKC hatası", retryable: true }; }
     if (!r.ok) {
@@ -77,12 +91,13 @@ export async function okcReceiptFor(tenantId: string, saleId: string): Promise<O
   });
 }
 
-/** Ayar sayfası: ÖKC bağlantısını canlı dener (sandbox). */
+/** Ayar sayfası: ÖKC bağlantısını canlı dener (sandbox/bulut). */
 export async function okcPing(tenantId: string): Promise<OkcResult> {
   return withTenant(tenantId, async (tx) => {
     const [s] = await tx.select().from(schema.fiscalSettings);
     if (!s?.okcProvider || !s.okcSerial) return { ok: false, error: "ÖKC kapalı", retryable: false };
-    return getOkc(s.okcProvider, { fakeFail: s.okcFakeFail }).receipt({
+    const cloud = { apiKey: decryptCardToken(s.okcApiKey), apiUrl: s.okcApiUrl };
+    return getOkc(s.okcProvider, { fakeFail: s.okcFakeFail, ...cloud }).receipt({
       serial: s.okcSerial, seq: 1, receiptNo: "PING", total: 1, vat: [], payments: [], soldAt: new Date(),
     }).then((r) => r.ok ? { ok: true as const, no: r.no, zNo: r.zNo } : r);
   });

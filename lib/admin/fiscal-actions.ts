@@ -8,6 +8,7 @@ import { audit } from "@/lib/audit";
 import { FISCAL_CHANNELS, validateTaxId, type ChannelModes } from "@/lib/core/fiscal";
 import { OKC_PROVIDERS } from "@/lib/core/okc";
 import { okcPing } from "@/lib/fiscal/okc";
+import { encryptCardToken } from "@/lib/billing/card-vault";
 import { issueOne, processEnvelopes, sendMail } from "@/lib/fiscal/issue";
 import { validateBuyerInvoice } from "@/lib/core/refundNote";
 import { fakeProvidersBlocked } from "@/lib/fake-providers";
@@ -38,12 +39,25 @@ export async function saveFiscalSettings(_: FiscalState, form: FormData): Promis
   const okcSerial = str(form, "okcSerial").toUpperCase();
   if (okcOn && !OKC_PROVIDERS.some((p) => p.value === okcProvider)) return { error: "ÖKC sağlayıcı seçin.", field: "okcProvider" };
   if (okcOn && !/^[A-Z0-9-]{3,20}$/.test(okcSerial)) return { error: "Cihaz seri no 3-20 karakter, harf/rakam/tire olmalı.", field: "okcSerial" };
+  // Yol A BYOK: bulut çözücü (parasut/uyumsoft) API adresi zorunlu; anahtar doluysa şifreli yazılır, boşsa korınır.
+  const okcCloud = OKC_PROVIDERS.find((p) => p.value === okcProvider)?.cloud ?? false;
+  const okcApiUrl = str(form, "okcApiUrl");
+  const okcApiKey = str(form, "okcApiKey");
+  if (okcOn && okcCloud && !okcApiUrl) return { error: "Bulut ÖKC için API adresi gerekli (ör. https://sandbox...).", field: "okcApiUrl" };
+  if (okcOn && okcCloud && okcApiKey && okcApiKey.length < 8) return { error: "API anahtarı çok kısa görünüyor.", field: "okcApiKey" };
+  const encKey = okcOn && okcCloud && okcApiKey ? encryptCardToken(okcApiKey) : undefined;
+  if (encKey === null) return { error: "Sunucu anahtarı (AUTH_SECRET) yapılandırılmamış; API anahtarı saklanamaz.", field: "okcApiKey" };
   const okc = okcOn ? { okcProvider, okcSerial, okcFakeFail: form.get("okcFakeFail") === "on" } : { okcProvider: null, okcSerial: null, okcFakeFail: false };
   await getDb().update(schema.tenants).set({ taxId: taxId || null, taxOffice: taxOffice || null, address: address || null }).where(eq(schema.tenants.id, a.tenantId));
   await withTenant(a.tenantId, async (tx) => {
-    const v = { series, channelModes: modes, fakeFail, ...okc, updatedAt: new Date() };
+    const v = {
+      series, channelModes: modes, fakeFail, ...okc, updatedAt: new Date(),
+      ...(okcOn && okcCloud ? { okcApiUrl } : {}),
+      ...(encKey ? { okcApiKey: encKey } : {}),
+      ...(!okcOn ? { okcApiKey: null, okcApiUrl: null } : {}),
+    };
     await tx.insert(schema.fiscalSettings).values({ tenantId: a.tenantId, ...v }).onConflictDoUpdate({ target: schema.fiscalSettings.tenantId, set: v });
-    await audit(tx, a.tenantId, `user:${a.id}`, "fiscal.settings", { taxId, series, modes, fakeFail, okc });
+    await audit(tx, a.tenantId, `user:${a.id}`, "fiscal.settings", { taxId, series, modes, fakeFail, okc, okcKeySet: Boolean(encKey) });
   });
   if (okcOn) await okcPing(a.tenantId).catch(() => {});
   revalidatePath("/yonetim/mali");

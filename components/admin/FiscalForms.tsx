@@ -12,13 +12,15 @@ const Err = ({ s, f }: { s: FiscalState; f: string }) => (s.field === f && s.err
 export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }: {
   initial: { taxId: string; taxOffice: string; address: string; series: string; modes: ChannelModes; fakeFail: boolean };
   channels: readonly Channel[]; fake: boolean; blockEarsiv: boolean;
-  okc?: { provider: string; serial: string } | null;
+  okc?: { provider: string; serial: string; hasKey?: boolean; apiUrl?: string | null } | null;
 }) {
   const { state, pending, onSubmit } = useFormAction(saveFiscalSettings, {} as FiscalState);
   const [modes, setModes] = useState<ChannelModes>(() => blockEarsiv
     ? Object.fromEntries(channels.map((c) => [c, "info"])) as ChannelModes
     : initial.modes);
   const [okcOn, setOkcOn] = useState(!!okc);
+  const [okcProvider, setOkcProvider] = useState(okc?.provider ?? OKC_PROVIDERS[0].value);
+  const okcCloud = OKC_PROVIDERS.find((p) => p.value === okcProvider)?.cloud ?? false;
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -59,7 +61,7 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <div>
               <Field label="Sağlayıcı">
-                <select name="okcProvider" defaultValue={okc?.provider ?? OKC_PROVIDERS[0].value} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm">
+                <select name="okcProvider" value={okcProvider} onChange={(e) => setOkcProvider(e.target.value)} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm">
                   {OKC_PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </Field>
@@ -71,6 +73,22 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
               </Field>
               <Err s={state} f="okcSerial" />
             </div>
+            {okcCloud && (
+              <>
+                <div className="sm:col-span-2">
+                  <Field label="Çözücü API adresi (BYOK)" hint="Kiracının kendi hesabı; sandbox ya da canlı kök adres">
+                    <Input name="okcApiUrl" defaultValue={okc?.apiUrl ?? ""} placeholder="https://..." inputMode="url" />
+                  </Field>
+                  <Err s={state} f="okcApiUrl" />
+                </div>
+                <div className="sm:col-span-2">
+                  <Field label="API anahtarı" hint={okc?.hasKey ? "Kayıtlı (şifreli); değiştirmek için yenisini yazın" : "Çözücü hesabının API anahtarı, şifreli saklanır"}>
+                    <Input name="okcApiKey" type="password" autoComplete="off" placeholder={okc?.hasKey ? "••••••••" : ""} />
+                  </Field>
+                  <Err s={state} f="okcApiKey" />
+                </div>
+              </>
+            )}
             <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" name="okcFakeFail" defaultChecked={false} className="size-4 accent-[var(--color-brand)]" />Hata simülasyonu (sandbox)</label>
           </div>
         )}

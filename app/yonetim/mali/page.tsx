@@ -89,7 +89,7 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
         <Card className="p-5">
           <FiscalSettingsForm fake={fake} blockEarsiv={blockEarsiv} channels={a.vertical === "market" ? ["kasa"] : FISCAL_CHANNELS}
             initial={{ taxId: t?.taxId ?? "", taxOffice: t?.taxOffice ?? "", address: t?.address ?? "", series: fs?.series ?? "CBP", modes: { ...DEFAULT_MODES, ...fs?.channelModes }, fakeFail: fs?.fakeFail ?? false }}
-            okc={fs?.okcProvider ? { provider: fs.okcProvider, serial: fs.okcSerial ?? "" } : null} />
+            okc={fs?.okcProvider ? { provider: fs.okcProvider, serial: fs.okcSerial ?? "", hasKey: Boolean(fs.okcApiKey), apiUrl: fs.okcApiUrl } : null} />
         </Card>
       ) : (
         <>

@@ -1,6 +1,9 @@
 // lib/core/okc.ts — ÖKC/ETMOS mali cihaz saf yardımcıları (#18). Fiş ancak ÖKC imzasıyla yasal belge olur.
+// Yol A (OKC-YOL-HARITASI.md): bulut e-ÖKC/VÖRC çözücü (parasut/uyumsoft) BYOK anahtarla; fake-okc sandbox.
 export const OKC_PROVIDERS = [
-  { value: "fake-okc", label: "Sanal ÖKC (sandbox)" },
+  { value: "fake-okc", label: "Sanal ÖKC (sandbox)", cloud: false },
+  { value: "parasut", label: "Paraşüt e-ÖKC (bulut)", cloud: true },
+  { value: "uyumsoft", label: "Uyumsoft e-ÖKC (bulut)", cloud: true },
 ] as const;
 export type OkcProviderName = (typeof OKC_PROVIDERS)[number]["value"];
 
