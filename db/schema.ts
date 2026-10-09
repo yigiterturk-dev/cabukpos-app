@@ -477,6 +477,7 @@ export const platformConnections = pgTable("platform_connections", {
   webhookSecret: text("webhook_secret").notNull(),
   webhookToken: text("webhook_token").notNull().default(sql`gen_random_uuid()::text`), // #30: URL'de taşınan tahmin edilemez jeton; imza anahtarıyla karışmaz
   autoAccept: boolean("auto_accept").notNull().default(false),
+  lastCatalogPushAt: ts("last_catalog_push_at"), // saatlik katalog/stok push cron'u; null = hiç gönderilmedi
   active: boolean("active").notNull().default(true),
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [uniqueIndex("platform_connections_uq").on(t.storeId, t.platform), uniqueIndex("platform_connections_token_uq").on(t.webhookToken)]);
@@ -541,6 +542,7 @@ export const purchaseLines = pgTable("purchase_lines", {
   qtyMilli: integer("qty_milli").notNull(),
   unitCost: integer("unit_cost").notNull(),
   total: integer("total").notNull(),
+  vatRate: integer("vat_rate"), // alım anında ürün oranından dondurulur; eski satırlarda null → yevmiyede 153'e toplam
 }, (t) => [index("purchase_lines_purchase_idx").on(t.purchaseId)]);
 
 export const supplierPayments = pgTable("supplier_payments", {
@@ -578,6 +580,8 @@ export const fiscalSettings = pgTable("fiscal_settings", {
   okcSerial: text("okc_serial"),
   okcCounter: integer("okc_counter").notNull().default(0),
   okcFakeFail: boolean("okc_fake_fail").notNull().default(false),
+  okcApiKey: text("okc_api_key"), // BYOK bulut sağlayıcı (parasut/uyumsoft): AES-256-GCM şifreli (card-vault deseni)
+  okcApiUrl: text("okc_api_url"), // kiracının sağlayıcı API kök adresi (sandbox/canlı)
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 
