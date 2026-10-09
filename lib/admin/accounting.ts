@@ -4,6 +4,7 @@ import type { Tx } from "@/db";
 import { schema } from "@/db";
 import { audit } from "@/lib/audit";
 import { buildMonthlyJournal, type MonthInput, type PosDay } from "@/lib/core/accounting";
+import { purchaseDocVat } from "@/lib/core/purchase";
 
 const IST = 3 * 3600_000;
 
@@ -26,12 +27,12 @@ const vatSum = (vat: { gross: number; net: number; vat: number }[]) => vat.reduc
 
 export async function monthlyAccountingJournal(tx: Tx, input: { tenantId: string; year: number; month: number; actor: string }) {
   const { start, end, startDay, endDay, dayLabel } = istMonthRange(input.year, input.month);
-  const S = schema.sales, D = schema.fiscalDocuments, RF = schema.fiscalRefunds, P = schema.purchases, SUP = schema.suppliers;
+  const S = schema.sales, D = schema.fiscalDocuments, RF = schema.fiscalRefunds, P = schema.purchases, SUP = schema.suppliers, PL = schema.purchaseLines;
   // Ham coalesce ifadesi tip belirsizdir; ISO metni timestamptz'e cast ederek bağlarız.
   const earsivAt = sql`coalesce(${D.issuedAt}, ${D.createdAt})`;
   const earsivBetween = and(sql`${earsivAt} >= ${start.toISOString()}::timestamptz`, sql`${earsivAt} < ${end.toISOString()}::timestamptz`);
 
-  const [sales, earsiv, refunds, purchases] = await Promise.all([
+  const [sales, earsiv, refunds, purchases, pLines] = await Promise.all([
     tx.select({ id: S.id, total: S.total, vat: S.vat, at: S.createdAt }).from(S)
       .where(and(eq(S.tenantId, input.tenantId), eq(S.status, "kapandi"), isNull(S.refundOf), gte(S.createdAt, start), lt(S.createdAt, end))),
     tx.select({ saleId: S.id, no: D.number, buyer: D.buyer, total: S.total, vat: S.vat, at: sql<Date>`${earsivAt}` }).from(D).innerJoin(S, eq(S.id, D.saleId))
@@ -39,8 +40,11 @@ export async function monthlyAccountingJournal(tx: Tx, input: { tenantId: string
     tx.select({ no: S.receiptNo, total: S.total, vat: S.vat, at: S.createdAt, kind: RF.kind, buyer: D.buyer }).from(S)
       .leftJoin(RF, eq(RF.refundSaleId, S.id)).leftJoin(D, eq(D.id, RF.fiscalDocId))
       .where(and(eq(S.tenantId, input.tenantId), eq(S.status, "iade"), isNotNull(S.refundOf), gte(S.createdAt, start), lt(S.createdAt, end))),
-    tx.select({ docNo: P.docNo, total: P.total, date: P.date, supplier: SUP.name }).from(P).leftJoin(SUP, eq(SUP.id, P.supplierId))
+    tx.select({ id: P.id, docNo: P.docNo, total: P.total, date: P.date, supplier: SUP.name }).from(P).leftJoin(SUP, eq(SUP.id, P.supplierId))
       .where(and(eq(P.tenantId, input.tenantId), eq(P.status, "kayitli"), gte(P.date, startDay), lt(P.date, endDay))).orderBy(P.date),
+    // Alım satırları: dondurulmuş KDV oranı → fişin indirilecek KDV'si (191)
+    tx.select({ purchaseId: PL.purchaseId, total: PL.total, vatRate: PL.vatRate }).from(PL).innerJoin(P, eq(P.id, PL.purchaseId))
+      .where(and(eq(PL.tenantId, input.tenantId), eq(P.status, "kayitli"), gte(P.date, startDay), lt(P.date, endDay))),
   ]);
 
   // e-Arşiv satışları gün sonu POS özetinden çıkar (çifte sayım olmasın); cari kaydı ayrı yazılır.
@@ -55,6 +59,12 @@ export async function monthlyAccountingJournal(tx: Tx, input: { tenantId: string
     posByDay.set(key, cur);
   }
 
+  const linesByPurchase = new Map<string, { total: number; vatRate: number | null }[]>();
+  for (const l of pLines) {
+    const arr = linesByPurchase.get(l.purchaseId);
+    if (arr) arr.push({ total: l.total, vatRate: l.vatRate });
+    else linesByPurchase.set(l.purchaseId, [{ total: l.total, vatRate: l.vatRate }]);
+  }
   const monthInput: MonthInput = {
     year: input.year, month: input.month,
     posDays: [...posByDay.values()].sort((a, b) => a.date.localeCompare(b.date)),
@@ -63,7 +73,7 @@ export async function monthlyAccountingJournal(tx: Tx, input: { tenantId: string
       const v = vatSum(r.vat ?? []);
       return { date: dayLabel(r.at), no: r.no, gross: r.total, net: v.net, vat: v.vat, earsiv: r.kind === "alici_faturasi", buyer: r.buyer?.name };
     }),
-    purchases: purchases.map((p) => ({ date: p.date, docNo: p.docNo ?? "-", supplier: p.supplier ?? "-", total: p.total })),
+    purchases: purchases.map((p) => ({ date: p.date, docNo: p.docNo ?? "-", supplier: p.supplier ?? "-", total: p.total, vat: purchaseDocVat(linesByPurchase.get(p.id) ?? []) })),
   };
   const entries = buildMonthlyJournal(monthInput);
   await audit(tx, input.tenantId, input.actor, "accounting.export", { year: input.year, month: input.month, entries: entries.length, posDays: monthInput.posDays.length, earsiv: monthInput.earsiv.length, refunds: monthInput.refunds.length, purchases: monthInput.purchases.length });

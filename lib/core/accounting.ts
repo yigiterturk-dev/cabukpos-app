@@ -23,7 +23,7 @@ const line = (h: { code: string; name: string }, amount: number, side: "borc" | 
 export type PosDay = { date: string; gross: number; net: number; vat: number };
 export type EarsivSale = { date: string; no: string; buyer: string; gross: number; net: number; vat: number };
 export type RefundDoc = { date: string; no: string; gross: number; net: number; vat: number; earsiv: boolean; buyer?: string };
-export type PurchaseDoc = { date: string; docNo: string; supplier: string; total: number };
+export type PurchaseDoc = { date: string; docNo: string; supplier: string; total: number; vat?: number | null }; // vat: indirilecek KDV (satır oranlarından); null → 153'e toplam
 
 export type MonthInput = { year: number; month: number; posDays: PosDay[]; earsiv: EarsivSale[]; refunds: RefundDoc[]; purchases: PurchaseDoc[] };
 
@@ -54,8 +54,12 @@ export function buildMonthlyJournal(input: MonthInput): JournalEntry[] {
     push(r.date, `İade ${r.no}${r.earsiv && r.buyer ? ` — ${r.buyer}` : ""}`, [flip(satis!), flip(kdv!), flip(cashLine!)]);
   }
   for (const p of input.purchases) {
-    // Alımlarda KDV ayrıştırması fiş kaynağında yok; genel toplam 153'e alınır, KDV bölümü muhasebecide.
-    push(p.date, `Alım ${p.docNo} — ${p.supplier}`, [line(HESAP.STOK, p.total, "borc", p.docNo), line(HESAP.TEDARIKCILER, p.total, "alacak", p.supplier)]);
+    // KDV ayrıştırması alım satırlarındaki dondurulmuş orandan (purchaseDocVat); eski/oransız fişte genel toplam 153'e alınır.
+    const vat = p.vat ?? null;
+    const lines: JournalLine[] = vat == null
+      ? [line(HESAP.STOK, p.total, "borc", p.docNo)]
+      : [line(HESAP.STOK, p.total - vat, "borc", p.docNo), ...(vat > 0 ? [line(HESAP.INDIRILECEK_KDV, vat, "borc", p.docNo)] : [])];
+    push(p.date, `Alım ${p.docNo} — ${p.supplier}`, [...lines, line(HESAP.TEDARIKCILER, p.total, "alacak", p.supplier)]);
   }
   return entries;
 }

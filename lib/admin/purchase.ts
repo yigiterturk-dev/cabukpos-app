@@ -3,6 +3,7 @@
 // İptal: ters alis hareketleri; maliyet geri alınmaz.
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { schema, type Tx } from "@/db";
+import { isVatRate } from "@/lib/core/money";
 import { purchaseLineTotal, purchaseTotal, shouldUpdateCost, supplierBalance } from "@/lib/core/purchase";
 
 export type PurchaseInput = { storeId: string; supplierId: string | null; docNo: string | null; date: string; note: string | null; lines: { productId: string; qtyMilli: number; unitCost: number }[] };
@@ -11,12 +12,13 @@ const P = schema.products, Pu = schema.purchases, PL = schema.purchaseLines;
 /** Kaydeder; kiracıda olmayan ürün/tedarikçi → hata metni. */
 export async function recordPurchase(tx: Tx, tenantId: string, userId: string | null, input: PurchaseInput): Promise<{ id: string } | { error: string }> {
   const ids = [...new Set(input.lines.map((l) => l.productId))];
-  const prods = await tx.select({ id: P.id, trackStock: P.trackStock, costAt: P.costAt }).from(P).where(inArray(P.id, ids));
+  const prods = await tx.select({ id: P.id, trackStock: P.trackStock, costAt: P.costAt, vatRate: P.vatRate }).from(P).where(inArray(P.id, ids));
   if (prods.length !== ids.length) return { error: "Ürün bulunamadı." };
   if (prods.some((p) => !p.trackStock)) return { error: "Alışta yalnız stok takipli ürün olur." };
   if (input.supplierId && !(await tx.select({ id: schema.suppliers.id }).from(schema.suppliers).where(eq(schema.suppliers.id, input.supplierId))).length) return { error: "Tedarikçi bulunamadı." };
+  const vat = new Map(prods.map((p) => [p.id, isVatRate(p.vatRate) ? p.vatRate : null])); // KDV muhasebesi için satırda dondurulur
   const [pu] = await tx.insert(Pu).values({ tenantId, storeId: input.storeId, supplierId: input.supplierId, docNo: input.docNo, date: input.date, total: purchaseTotal(input.lines), note: input.note, createdBy: userId }).returning({ id: Pu.id });
-  await tx.insert(PL).values(input.lines.map((l) => ({ tenantId, purchaseId: pu.id, ...l, total: purchaseLineTotal(l) })));
+  await tx.insert(PL).values(input.lines.map((l) => ({ tenantId, purchaseId: pu.id, ...l, vatRate: vat.get(l.productId) ?? null, total: purchaseLineTotal(l) })));
   const at = new Date(`${input.date}T12:00:00+03:00`); // fiş günü; saat bilinmez → öğlen (İstanbul)
   const now = new Date();
   await tx.insert(schema.stockMovements).values(input.lines.map((l) => ({ tenantId, storeId: input.storeId, productId: l.productId, kind: "alis" as const, qtyMilli: l.qtyMilli, at: at > now ? now : at, purchaseId: pu.id, actor: userId ? `user:${userId}` : "system" })));

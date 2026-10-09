@@ -24,6 +24,10 @@ await withTenant(t.id, async (tx) => {
   await tx.insert(schema.fiscalDocuments).values({ tenantId: t.id, saleId: es.id, buyer: { taxId: "1234567801", name: "Anadolu A.Ş." }, ettn: crypto.randomUUID(), number: "CBP2026-1", token: crypto.randomUUID(), status: "issued", issuedAt: inRange(2) });
   const [supplier] = await tx.insert(schema.suppliers).values({ tenantId: t.id, name: "Toptancı" }).returning();
   await tx.insert(schema.purchases).values({ tenantId: t.id, storeId: store.id, supplierId: supplier.id, docNo: "AL-9", date: new Date(inRange(4).getTime() + 3 * 3600_000).toISOString().slice(0, 10), total: 9900 });
+  // AL-10: satır KDV oranları dondurulmuş → yevmiyede 153 net + 191 KDV
+  const [prod] = await tx.insert(schema.products).values({ tenantId: t.id, name: "Un", price: 5000, vatRate: 10, trackStock: true }).returning();
+  const [pu10] = await tx.insert(schema.purchases).values({ tenantId: t.id, storeId: store.id, supplierId: supplier.id, docNo: "AL-10", date: new Date(inRange(5).getTime() + 3 * 3600_000).toISOString().slice(0, 10), total: 11000 }).returning();
+  await tx.insert(schema.purchaseLines).values({ tenantId: t.id, purchaseId: pu10.id, productId: prod.id, qtyMilli: 1000, unitCost: 11000, total: 11000, vatRate: 10 });
 });
 
 test("ay özeti: POS günü + e-Arşiv cari + iade + alım; e-Arşiv satışı POS'tan düşülür", async () => {
@@ -35,7 +39,11 @@ test("ay özeti: POS günü + e-Arşiv cari + iade + alım; e-Arşiv satışı P
   assert.ok(desc("CBP2026-1"));
   assert.equal(desc("CBP2026-1").lines.find((l) => l.code === "120")?.debit, 22000);
   assert.equal(desc("A-3").lines.find((l) => l.code === "102")?.credit, 5500);
-  assert.equal(desc("AL-9").lines.find((l) => l.code === "153")?.debit, 9900);
+  assert.equal(desc("AL-9").lines.find((l) => l.code === "153")?.debit, 9900); // satırsız/eski fiş → 153'e toplam
+  const al10 = desc("AL-10");
+  assert.equal(al10.lines.find((l) => l.code === "153")?.debit, 10000); // 11000 net KDV %10
+  assert.equal(al10.lines.find((l) => l.code === "191")?.debit, 1000);
+  assert.equal(al10.lines.find((l) => l.code === "320")?.credit, 11000);
   for (const e of entries) assert.equal(e.lines.reduce((t2, l) => t2 + l.debit - l.credit, 0), 0);
 });
 

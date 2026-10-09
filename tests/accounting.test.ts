@@ -2,6 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildMonthlyJournal, csvCell, toProviderCsv, type MonthInput } from "@/lib/core/accounting";
+import { purchaseDocVat } from "@/lib/core/purchase";
+import { splitVat } from "@/lib/core/money";
 
 const base: MonthInput = {
   year: 2026, month: 9,
@@ -41,6 +43,22 @@ test("alım: 153 borç, 320 alacak; sıra güne göre", () => {
   assert.deepEqual(p.lines.map((l) => [l.code, l.debit, l.credit]), [["153", 9900, 0], ["320", 0, 9900]]);
   const dates = entries.map((e) => e.date);
   assert.deepEqual(dates, [...dates].sort());
+});
+
+test("alım KDV: satır oranları varsa 153 net + 191 borç; oransız/eski fiş 153'e toplam", () => {
+  const entries = buildMonthlyJournal({ ...base, purchases: [{ date: "2026-09-06", docNo: "AL-10", supplier: "Toptancı", total: 11000, vat: 1000 }] });
+  const p = entries.find((x) => x.desc.includes("AL-10"))!;
+  assert.deepEqual(p.lines.map((l) => [l.code, l.debit, l.credit]), [["153", 10000, 0], ["191", 1000, 0], ["320", 0, 11000]]);
+  // KDV'siz (%0) alım: 191 sıfır satırı üretilmez, dengeli kalır
+  const zero = buildMonthlyJournal({ ...base, purchases: [{ date: "2026-09-06", docNo: "AL-11", supplier: "Toptancı", total: 5000, vat: 0 }] });
+  assert.deepEqual(zero.find((x) => x.desc.includes("AL-11"))!.lines.map((l) => [l.code, l.debit, l.credit]), [["153", 5000, 0], ["320", 0, 5000]]);
+});
+
+test("purchaseDocVat: satır oranlarından toplar; bir oransız satır null döner", () => {
+  assert.equal(purchaseDocVat([{ total: 11000, vatRate: 10 }, { total: 11800, vatRate: 20 }]), splitVat(11000, 10).vat + splitVat(11800, 20).vat);
+  assert.equal(purchaseDocVat([{ total: 11000, vatRate: 10 }, { total: 500, vatRate: null }]), null);
+  assert.equal(purchaseDocVat([]), 0);
+  assert.equal(purchaseDocVat([{ total: 1000, vatRate: 7 }]), null); // oran kataloğu dışı → güvenli tarafta
 });
 
 test("boş ay fiş üretmez", () => {
