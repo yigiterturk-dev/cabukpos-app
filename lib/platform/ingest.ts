@@ -4,13 +4,13 @@
 import { and, eq, sql } from "drizzle-orm";
 import { schema, withTenant, type Tx } from "@/db";
 import { isVatRate } from "@/lib/core/money";
-import { sendByStation, toTabEvents, type IncomingOrder, type MappedProduct } from "@/lib/core/platform";
+import { sendByStation, toTabEvents, AUTO_PREP_MIN, type IncomingOrder, type MappedProduct } from "@/lib/core/platform";
 import type { TabEv } from "@/lib/core/tab";
 import { upsertCustomer } from "@/lib/sync/apply";
 import { notifyPlatform } from "./notify";
 import type { Conn } from "./types";
 
-export const AUTO_PREP_MIN = 20;
+export { AUTO_PREP_MIN }; // geriye uyumlu: eski içe aktarmalar kırılmasın
 
 export type IngestResult = { created: number; duplicates: number; unmapped: number };
 

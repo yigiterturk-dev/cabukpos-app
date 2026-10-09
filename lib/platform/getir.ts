@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { IncomingOrder } from "@/lib/core/platform";
 import type { PayIntent } from "@/lib/core/tab";
 import { verifySignature } from "./mock";
-import type { Conn, OrderSource } from "./types";
+import type { Conn, OrderSource, PlatformOrderStatus } from "./types";
 
 const kurus = z.number().int().min(0).max(100_000_000);
 // Sandbox gövdesi: yalnız bilinen alanlar; başka biçim reddedilir.
@@ -47,7 +47,7 @@ export function createGetirSource(enabled: boolean, cfg?: { base: string; key: s
     id: "getir",
     parseWebhook(raw, headers, conn) {
       if (!enabled) return { error: "Getir bağlantısı kapalı.", status: 400 };
-      if (!verifySignature(conn.webhookSecret, raw, headers.get("x-getir-signature"))) return { error: "İmza geçersiz.", status: 401 };
+      if (!verifySignature(conn.webhookSecret, raw, headers.get("x-getir-signature"), headers.get("x-getir-signature-timestamp"))) return { error: "İmza geçersiz.", status: 401 };
       let json: unknown;
       try { json = JSON.parse(raw); } catch { return { error: "JSON değil.", status: 400 }; }
       try { return parseSandboxPayload(json); } catch (e) { return { error: e instanceof Error ? e.message : "Biçim hatalı.", status: 400 }; }
@@ -63,6 +63,13 @@ export function createGetirSource(enabled: boolean, cfg?: { base: string; key: s
       const { base, key } = requireConfig(cfg);
       const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/reject`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ reason }) });
       if (!res.ok) throw new Error(`Getir red hatası: HTTP ${res.status}`);
+    },
+    // Durum geri bildirimi (M6 kalanı): kurye aldı / teslim / iptal.
+    async pushStatus(conn: Conn, externalId: string, status: PlatformOrderStatus) {
+      if (!enabled) throw new Error("Getir bağlantısı kapalı.");
+      const { base, key } = requireConfig(cfg);
+      const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/status`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ status }) });
+      if (!res.ok) throw new Error(`Getir durum hatası: HTTP ${res.status}`);
     },
     // Menü/fiyat/stok geri push'u (#29): eşlenmiş ürünleri sandbox'a yazar; hedef biçim {ok, failed}.
     async pushCatalog(conn: Conn, items) {

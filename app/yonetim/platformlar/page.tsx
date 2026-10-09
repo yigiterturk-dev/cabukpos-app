@@ -3,7 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
-import { acceptPlatformOrder, deleteCode } from "@/lib/admin/delivery-actions";
+import { acceptPlatformOrder, deleteCode, rejectPlatformOrder } from "@/lib/admin/delivery-actions";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
 import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import QRCode from "qrcode";
@@ -75,9 +75,18 @@ function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
                     <td className="px-3 py-2 text-muted">{dk} dk</td>
                     <td className="px-3 py-2">
                       {!t.closed && !t.delivery.acceptedAt && !t.delivery.rejected && !t.delivery.cancelled ? (
-                        <form action={acceptPlatformOrder.bind(null, t.id)}>
-                          <button className="text-sm font-medium text-brand hover:underline">Onayla</button>
-                        </form>
+                        <div className="flex items-center gap-3">
+                          <form action={acceptPlatformOrder.bind(null, t.id)}>
+                            <button className="text-sm font-medium text-brand hover:underline">Onayla</button>
+                          </form>
+                          {/* Reddet: yanlış basmaya karşı iki adım (details açılır, onay butonu çıkar) */}
+                          <details className="relative">
+                            <summary className="cursor-pointer list-none text-sm text-bad hover:underline">Reddet</summary>
+                            <form action={rejectPlatformOrder.bind(null, t.id, "yönetim reddi")} className="mt-1">
+                              <button className="rounded border border-line px-2 py-1 text-xs text-bad hover:bg-surface-2">Reddi onayla</button>
+                            </form>
+                          </details>
+                        </div>
                       ) : null}
                     </td>
                   </tr>

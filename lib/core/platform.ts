@@ -17,6 +17,9 @@ export type MappedProduct = { id: string; name: string; vatRate: VatRate; statio
 
 export const PLATFORM_NAMES: Record<string, string> = { mock: "Deneme", yemeksepeti: "Yemeksepeti", trendyol: "Trendyol Go", getir: "Getir", migros: "Migros Yemek", kiosk: "Kiosk / QR" };
 
+/** Otomatik kabulün varsayılan hazırlık süresi (dk) — oto-kabul ve yönetim kabulü aynı süreyi kullanır. */
+export const AUTO_PREP_MIN = 20;
+
 export function toTabEvents(o: IncomingOrder, platform: string, codes: Map<string, MappedProduct>, newId: () => string): { events: TabEv[]; unmapped: number } {
   let unmapped = 0;
   const adds: TabEv[] = o.lines.map((l) => {

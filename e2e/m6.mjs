@@ -116,6 +116,8 @@ try {
   await mutfak.getByText("Bekleyen sipariş yok.").waitFor();
   await kurye.reload();
   await pin(kurye, "4613");
+  // Hidrasyon yarışı: tıklar hidrasyondan önceye düşerse hata metni çıkmaz → bir kez daha dene (2 hatalı deneme < kilit)
+  if (!(await kurye.getByText("PIN hatalı", { exact: false }).isVisible().catch(() => false))) await pin(kurye, "4613");
   await kurye.getByText("PIN hatalı", { exact: false }).waitFor();
   await pin(kurye, "6284");
   await kurye.getByText("Üzerinizde sipariş yok.").waitFor();
@@ -211,6 +213,31 @@ try {
   const got = sales.map((s) => `${s.channel}/${s.method}/${s.total}/${s.review ?? "-"}`).join(", ");
   if (got !== "paket/nakit/13500/-, platform/online/10500/-") throw new Error(`satışlar: ${got}`);
   step(`bulut satışları: ${got}`);
+
+  // — Otomatik kabul: toggle açıkken webhook → onay beklemeden Hazırlanıyor + mutfağa bilet + audit —
+  await admin.goto(`${BASE}/yonetim/platformlar`);
+  const togg = admin.getByRole("checkbox", { name: /Otomatik kabul/ });
+  await togg.check({ force: true }).catch(() => {}); // RSC yeniden çizimi tık sırasında elementi değiştirebilir
+  for (let i = 0; i < 25 && !(await togg.isChecked()); i++) await new Promise((r) => setTimeout(r, 200));
+  if (!(await togg.isChecked())) throw new Error("otomatik kabul togglesi açılmadı");
+  step("otomatik kabul togglesi açıldı");
+
+  const ext2 = `E2E-A-${stamp}`;
+  const body2 = JSON.stringify({ orders: [{ externalId: ext2, customer: { name: "Deniz Ak", phone: "05330001122" }, address: "İstiklal Cad. 9", payIntent: "online",
+    lines: [{ code: "LAH", name: "Lahmacun (oto)", unitPrice: 6000, qtyMilli: 2000, note: null }] }] });
+  const sig2 = createHmac("sha256", secret).update(body2).digest("hex");
+  const r2 = await fetch(hook, { method: "POST", headers: { "content-type": "application/json", "x-signature": sig2 }, body: body2 });
+  if (r2.status !== 200) throw new Error(`oto kabul webhook ${r2.status}`);
+  if (await kasa.getByTestId("waiting-count").count()) throw new Error("oto kabullü sipariş onay bekleyenlere düştü");
+  await kasa.getByRole("region", { name: "Hazırlanıyor" }).getByTestId("delivery-card").getByText("Deniz Ak").waitFor({ timeout: 15000 });
+  await mutfak.locator("[data-ticket]:not([data-status=hazir])", { hasText: "Lahmacun" }).waitFor({ timeout: 15000 }); // eşlenen satır bilette ürün adıyla görünür
+  let audit2 = 0;
+  for (let i = 0; i < 50 && !audit2; i++) {
+    [{ n: audit2 }] = await sql`select count(*)::int n from audit_log where action = 'platform.accept' and detail->>'externalId' = ${ext2}`;
+    if (!audit2) await new Promise((r) => setTimeout(r, 200));
+  }
+  if (audit2 !== 1) throw new Error(`oto kabul audit: ${audit2}`);
+  step("otomatik kabul: webhook → doğrudan Hazırlanıyor, mutfağa bilet, audit platform.accept");
 } finally {
   await browser.close();
   await sql.end();

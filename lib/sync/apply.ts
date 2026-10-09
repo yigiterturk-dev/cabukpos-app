@@ -15,7 +15,7 @@ import { refundable, type RefLine } from "@/lib/core/refund";
 import { consumption, lineCost, type RecipeItem, type Recipes } from "@/lib/core/recipe";
 import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
 import { normalizePhone } from "@/lib/core/delivery";
-import { notifyPlatform } from "@/lib/platform/notify";
+import { notifyPlatform, notifyPlatformStatus } from "@/lib/platform/notify";
 import { onRefund, openFiscalDoc } from "@/lib/fiscal/issue";
 import { formatReceipt, syncDoc, type DocResult, type RefundDoc, type SaleDoc, type SyncDoc, type TabDoc } from "./docs";
 
@@ -32,8 +32,16 @@ export async function applyDoc(ctx: DeviceCtx, raw: unknown): Promise<DocResult>
     const error = await apply(tx, ctx, doc);
     return error ? { id: doc.id, ok: false, error } : { id: doc.id, ok: true };
   });
-  // M6: platform siparişi kabul/red → platforma bildir (işlem sonrası; hata olayı geri almaz, review işaretler)
-  if (res.ok && doc.kind === "tab" && (doc.ev.type === "accept" || doc.ev.type === "reject")) await notifyPlatform(ctx.tenantId, doc.id, doc.tabId, doc.ev);
+  // M6: platform siparişi kabul/red → platforma bildir; kalanı: kurye aldı (out/handover), teslim, iptal → durum bildirimi.
+  // İşlem sonrası; hata olayı geri almaz, review işaretler.
+  if (res.ok && doc.kind === "tab") {
+    const ev = doc.ev;
+    if (ev.type === "accept" || ev.type === "reject") await notifyPlatform(ctx.tenantId, doc.id, doc.tabId, ev);
+    else {
+      const status = ev.type === "out" || ev.type === "handover" ? "picked" : ev.type === "delivered" ? "delivered" : ev.type === "cancel" ? "cancelled" : null;
+      if (status) await notifyPlatformStatus(ctx.tenantId, doc.id, doc.tabId, status);
+    }
+  }
   return res;
 }
 

@@ -2,12 +2,14 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { getirSource } from "./getir";
+import { migrosSource } from "./migros";
 import { mockSource } from "./mock";
+import { trendyolSource } from "./trendyol";
 import { yemeksepetiSource } from "./yemeksepeti";
 import type { Conn, OrderSource } from "./types";
 
-// mock varsayılan kalır; getir/yemeksepeti sandbox sürücüleri varsayılan kapalı (env ile açılır).
-const SOURCES: Record<string, OrderSource> = { mock: mockSource, getir: getirSource, yemeksepeti: yemeksepetiSource };
+// mock varsayılan kalır; getir/yemeksepeti/trendyol/migros sandbox sürücüleri varsayılan kapalı (env ile açılır).
+const SOURCES: Record<string, OrderSource> = { mock: mockSource, getir: getirSource, yemeksepeti: yemeksepetiSource, trendyol: trendyolSource, migros: migrosSource };
 export const sourceFor = (platform: string): OrderSource | null => SOURCES[platform] ?? null;
 export const SUPPORTED_PLATFORMS = Object.keys(SOURCES);
 /** Bağlanabilir kaynaklar: adaptörlüler + kiosko (webhook'suz; sipariş /api/kiosk'tan gelir, menü QR'ıyla açılır). */

@@ -149,3 +149,37 @@ test("elle kabul: kasa accept olayı → platforma bir kez bildirilir; hata → 
   try { await applyDoc(kasa, rej); } finally { delete process.env.MOCK_PLATFORM_FAIL; }
   assert.match(String(await reviewOf(rej.id)), /platform bildirimi başarısız/);
 });
+
+test("durum bildirimi: out→picked, delivered→delivered; idempotent; hata→review", async () => {
+  const mk = (id: string) => JSON.stringify({ orders: [{ externalId: id, customer: { name: "Zeynep", phone: "05551112255" }, address: "Y", lines: [{ code: "LAH", name: "Lahmacun", unitPrice: 6500, qtyMilli: 1000 }] }] });
+  const statuses = async (ext: string) =>
+    (await withTenant(t.id, (tx) => tx.select().from(schema.auditLog).where(eq(schema.auditLog.action, "platform.status")))).filter((a) => (a.detail as { externalId?: string }).externalId === ext);
+  const tabOf = async (ext: string) =>
+    (await withTenant(t.id, (tx) => tx.select().from(schema.tabEvents).where(eq(schema.tabEvents.type, "order")))).find((r) => (r.payload as { source?: { externalId?: string } }).source?.externalId === ext)!.tabId;
+
+  await ingestOrders(connObj, mockSource.parseWebhook(mk("M-3001"), new Headers({ "x-signature": sign("gizli", mk("M-3001")) }), connObj) as never);
+  const t3 = await tabOf("M-3001");
+  const out = doc(t3, { type: "out" });
+  await applyDoc(kasa, out);
+  assert.equal(await reviewOf(out.id), null);
+  let rows = await statuses("M-3001");
+  assert.equal(rows.length, 1);
+  assert.equal((rows[0].detail as { status?: string }).status, "picked");
+  // Aynı durumun ikinci olayı (ikinci out) → bildirim tekrar yazılmaz
+  const out2 = doc(t3, { type: "out" });
+  await applyDoc(kasa, out2);
+  assert.equal((await statuses("M-3001")).length, 1);
+  // Teslim → ikinci durum
+  await applyDoc(kasa, doc(t3, { type: "delivered", method: "online" }));
+  rows = await statuses("M-3001");
+  assert.equal(rows.length, 2);
+  assert.ok(rows.some((a) => (a.detail as { status?: string }).status === "delivered"));
+
+  // Sahte platform hatası → olaya review + audit'e platform.error (bildirim geri almaz)
+  await ingestOrders(connObj, mockSource.parseWebhook(mk("M-3002"), new Headers({ "x-signature": sign("gizli", mk("M-3002")) }), connObj) as never);
+  const t4 = await tabOf("M-3002");
+  const out4 = doc(t4, { type: "out" });
+  process.env.MOCK_PLATFORM_FAIL = "1";
+  try { await applyDoc(kasa, out4); } finally { delete process.env.MOCK_PLATFORM_FAIL; }
+  assert.match(String(await reviewOf(out4.id)), /platform durum bildirimi başarısız/);
+});

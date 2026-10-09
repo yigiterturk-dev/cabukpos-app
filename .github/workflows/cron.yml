@@ -6,6 +6,7 @@ on:
   schedule:
     - cron: "*/5 * * * *"
     - cron: "*/10 * * * *"
+    - cron: "10 * * * *"
     - cron: "0 */6 * * *"
     - cron: "0 6 * * *"
     - cron: "30 7 * * *"
@@ -18,6 +19,7 @@ on:
         options:
           - agent-heartbeat
           - uptime
+          - platform
           - fiscal
           - billing
           - report
@@ -47,6 +49,7 @@ jobs:
           case "$SCHEDULE" in
             "*/5 * * * *"|"agent-heartbeat") PATHNAME="/api/cron/agent-heartbeat" ;;
             "*/10 * * * *"|"uptime") PATHNAME="/api/cron/uptime" ;;
+            "10 * * * *"|"platform") PATHNAME="/api/cron/platform" ;;
             "0 */6 * * *"|"fiscal") PATHNAME="/api/cron/fiscal" ;;
             "0 6 * * *"|"billing") PATHNAME="/api/cron/billing" ;;
             "30 7 * * *"|"report") PATHNAME="/api/cron/report" ;;

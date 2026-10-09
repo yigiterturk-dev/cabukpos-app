@@ -1,18 +1,19 @@
 "use server";
 // M6 paket servis yönetimi: teslimat bölgeleri, müşteri defteri, platform bağlantıları + ürün kodu eşleme.
 // platform_connections RLS dışı kimlik tablosu → her sorguda tenantId koşulu.
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { newDeviceToken } from "@/lib/auth/tokens";
 import { parseTL } from "@/lib/core/money";
-import type { IncomingOrder } from "@/lib/core/platform";
+import { AUTO_PREP_MIN, type IncomingOrder } from "@/lib/core/platform";
 import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import { ingestOrders } from "@/lib/platform/ingest";
 import { pushStoreCatalog } from "@/lib/platform/outbound";
-import { applyDoc } from "@/lib/sync/apply";
+import { applyDoc, tabEventsOf } from "@/lib/sync/apply";
+import { foldTabs } from "@/lib/core/tab";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 
 export type DeliveryState = { error?: string; field?: string; savedAt?: number; info?: string };
@@ -210,17 +211,36 @@ export async function pushCatalog(connectionId: string): Promise<DeliveryState> 
   return { savedAt: Date.now(), info: `${r.ok}/${r.total} ürün gönderildi${r.failed ? `, ${r.failed} başarısız` : ""}.` };
 }
 
-/** Yönetimden tek tıkla platform/paket siparişi onaylama: kasada accept olayıyla aynı akış (15 dk hazırlık). */export async function acceptPlatformOrder(tabId: string): Promise<void> {
+/** Yönetimden tek tıkla platform/paket siparişi onaylama: kasada accept olayıyla aynı akış (oto-kabulle aynı hazırlık süresi). */
+export async function acceptPlatformOrder(tabId: string): Promise<void> {
   const a = await requireWriter();
   if (!UUID.test(tabId)) return;
   const storeId = await firstStore(a.tenantId);
   const [device] = await getDb().select({ id: schema.devices.id, receiptPrefix: schema.devices.receiptPrefix }).from(schema.devices)
     .where(and(eq(schema.devices.tenantId, a.tenantId), eq(schema.devices.storeId, storeId), eq(schema.devices.role, "kasa"))).limit(1);
-  const [staff] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.active, true)).limit(1));
+  const [staff] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.active, true)).orderBy(sql`case when ${schema.staff.role} = 'mudur' then 0 else 1 end`).limit(1)); // audit temiz olsun: önce müdür
   if (!device || !staff) return;
   const r = await applyDoc({ tenantId: a.tenantId, storeId, deviceId: device.id, receiptPrefix: device.receiptPrefix },
-    { kind: "tab", id: crypto.randomUUID(), tabId, tableId: null, at: new Date().toISOString(), staffId: staff.id, approvedBy: null, ev: { type: "accept", prepMin: 15 } });
+    { kind: "tab", id: crypto.randomUUID(), tabId, tableId: null, at: new Date().toISOString(), staffId: staff.id, approvedBy: null, ev: { type: "accept", prepMin: AUTO_PREP_MIN } });
   if (!r.ok) return;
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.accept", { tabId }));
+  revalidatePath("/yonetim/platformlar");
+}
+
+/** Yönetimden reddetme: yalnız onay bekleyen platform siparişi; kasadaki red akışıyla aynı (platforma bildirilir). */
+export async function rejectPlatformOrder(tabId: string, reason: string): Promise<void> {
+  const a = await requireWriter();
+  if (!UUID.test(tabId)) return;
+  const storeId = await firstStore(a.tenantId);
+  const state = foldTabs(await withTenant(a.tenantId, (tx) => tabEventsOf(tx, tabId))).get(tabId);
+  if (!state || state.closed || state.delivery.acceptedAt || state.delivery.rejected) return; // yalnız onay bekliyorken
+  const [device] = await getDb().select({ id: schema.devices.id, receiptPrefix: schema.devices.receiptPrefix }).from(schema.devices)
+    .where(and(eq(schema.devices.tenantId, a.tenantId), eq(schema.devices.storeId, storeId), eq(schema.devices.role, "kasa"))).limit(1);
+  const [staff] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.active, true)).orderBy(sql`case when ${schema.staff.role} = 'mudur' then 0 else 1 end`).limit(1)); // audit temiz olsun: önce müdür
+  if (!device || !staff) return;
+  const r = await applyDoc({ tenantId: a.tenantId, storeId, deviceId: device.id, receiptPrefix: device.receiptPrefix },
+    { kind: "tab", id: crypto.randomUUID(), tabId, tableId: null, at: new Date().toISOString(), staffId: staff.id, approvedBy: null, ev: { type: "reject", reason: reason.slice(0, 200) || "yönetim reddi" } });
+  if (!r.ok) return;
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.admin.reject", { tabId }));
   revalidatePath("/yonetim/platformlar");
 }
