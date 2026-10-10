@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
+import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
 const groups: { title: string; items: Item[] }[] = [
@@ -35,6 +35,7 @@ const groups: { title: string; items: Item[] }[] = [
     { href: "/yonetim/musteriler", label: "Müşteriler", icon: Contact, only: "restoran" },
     { href: "/yonetim/buyume", label: "Büyüme Merkezi", icon: TrendingUp, only: "restoran" },
     { href: "/yonetim/platformlar", label: "Platformlar", icon: Globe, only: "restoran" },
+    { href: "/yonetim/markalar", label: "Markalar", icon: Store, only: "restoran" },
   ] },
   { title: "Sadakat", items: [
     { href: "/yonetim/sadakat", label: "Puan programı", icon: Star },
@@ -43,6 +44,7 @@ const groups: { title: string; items: Item[] }[] = [
   ] },
   { title: "İşletme", items: [
     { href: "/yonetim/subeler", label: "Şubeler", icon: Building2 },
+    { href: "/yonetim/hq", label: "Zincir merkezi", icon: ChartColumn },
     { href: "/yonetim/personel", label: "Personel", icon: UserCog },
     { href: "/yonetim/cihazlar", label: "Cihazlar", icon: MonitorSmartphone },
     { href: "/yonetim/donanim", label: "Donanım", icon: Printer },

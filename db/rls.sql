@@ -66,7 +66,10 @@ language sql stable security definer set search_path = public as $f$
     'categories', coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name) order by c.sort, c.name) from categories c where c.tenant_id = st.tenant_id), '[]'::jsonb),
     'products', coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'price', p.price, 'categoryId', p.category_id, 'kind', p.kind) order by coalesce(c.sort, 9999), p.sort, p.name)
       from products p left join categories c on c.id = p.category_id
-      where p.tenant_id = st.tenant_id and p.active and p.sellable and p.price > 0), '[]'::jsonb)
+      where p.tenant_id = st.tenant_id and p.active and p.sellable and p.price > 0), '[]'::jsonb),
+    'tables', coalesce((select jsonb_agg(jsonb_build_object('id', tb.id, 'name', a.name || ' · ' || tb.name) order by a.sort, tb.sort, tb.name)
+      from tables tb join areas a on a.id = tb.area_id
+      where tb.tenant_id = st.tenant_id and a.store_id = st.id and tb.active), '[]'::jsonb)
   )
   from stores st join tenants t on t.id = st.tenant_id
   where st.id = p_store
@@ -134,6 +137,51 @@ alter table fiscal_envelopes enable row level security;
 alter table fiscal_envelopes force row level security;
 drop policy if exists tenant_isolation on fiscal_envelopes;
 create policy tenant_isolation on fiscal_envelopes using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+
+-- Garson çağrısı
+alter table table_calls enable row level security;
+alter table table_calls force row level security;
+drop policy if exists tenant_isolation on table_calls;
+create policy tenant_isolation on table_calls using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+
+-- Bulut mutfak: markalar + marka menü seçkisi
+alter table brands enable row level security;
+alter table brands force row level security;
+drop policy if exists tenant_isolation on brands;
+create policy tenant_isolation on brands using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid) with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+alter table brand_products enable row level security;
+alter table brand_products force row level security;
+drop policy if exists tenant_isolation on brand_products;
+create policy tenant_isolation on brand_products using (
+  brand_id in (select b.id from brands b where b.tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+) with check (
+  brand_id in (select b.id from brands b where b.tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+);
+
+-- Bulut mutfak: marka menüsü (slug'la; seçki boşsa tüm aktif ürünler döner — marka henüz ayarlanmamışsa vitrin boş kalmasın).
+create or replace function public_menu_by_brand(p_store uuid, p_slug text) returns jsonb
+language sql stable security definer set search_path = public as $f$
+  select jsonb_build_object(
+    'tenant', t.name, 'vertical', t.vertical, 'store', st.name, 'brand', b.name,
+    'categories', coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name) order by c.sort, c.name)
+      from categories c
+      where c.tenant_id = st.tenant_id and (b.id is null or not exists (select 1 from brand_products bp where bp.brand_id = b.id)
+        or c.id in (select p.category_id from brand_products bp join products p on p.id = bp.product_id where bp.brand_id = b.id))), '[]'::jsonb),
+    'products', coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'price', p.price, 'categoryId', p.category_id, 'kind', p.kind) order by coalesce(c.sort, 9999), p.sort, p.name)
+      from products p left join categories c on c.id = p.category_id
+      where p.tenant_id = st.tenant_id and p.active and p.sellable and p.price > 0
+        and (b.id is null or not exists (select 1 from brand_products bp where bp.brand_id = b.id)
+          or p.id in (select bp.product_id from brand_products bp where bp.brand_id = b.id))), '[]'::jsonb),
+    'tables', coalesce((select jsonb_agg(jsonb_build_object('id', tb.id, 'name', a.name || ' · ' || tb.name) order by a.sort, tb.sort, tb.name)
+      from tables tb join areas a on a.id = tb.area_id
+      where tb.tenant_id = st.tenant_id and a.store_id = st.id and tb.active), '[]'::jsonb)
+  )
+  from stores st join tenants t on t.id = st.tenant_id
+  left join brands b on b.store_id = st.id and b.slug = p_slug and b.active
+  where st.id = p_store
+$f$;
+revoke all on function public_menu_by_brand(uuid, text) from public;
+grant execute on function public_menu_by_brand(uuid, text) to cabukpos_app;
 
 -- Cron kuyruğu: zarfı bekleyen/gönderilmiş zarfı sorgulanacak kiracılar da.
 create or replace function fiscal_pending_tenants() returns setof uuid

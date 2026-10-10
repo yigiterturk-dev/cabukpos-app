@@ -8,13 +8,13 @@ Kaynak: suitablepos.com kamuya açık sayfa (3.150+ işletme, "80+ özellik, öm
 |---|---|---|---|
 | Masa/adisyon yönetimi | Var | M5: değişmez olay kaydı, hesap bölme, ikram, istasyonlar | ✅ Bizde daha derin |
 | Garson + mutfak ekranı | Var | M5 istasyon/mutfak (PIN'siz mutfak) | ✅ |
-| QR menü + kiosko | Var (masadan sipariş) | #37: QR menü, sır doğrulamalı kiosko, müşteri durum ekranı | ✅ (garson çağırma düğmesi onlarda) |
+| QR menü + kiosko | Var (masadan sipariş) | #37: QR menü, sır doğrulamalı kiosko, müşteri durum ekranı + **garson çağırma düğmesi (masa seçmeli, kasa panosunda canlı şerit)** | ✅ Tamamlandı |
 | Stok + yarı mamul + reçete | Var | M7: hammadde, alış fişi, tedarikçi bakiyesi, kritik stok, **kârlılık (sale_lines.cost)** | ✅ Daha derin |
 | Raporlama | Var ("onlarca rapor" + BOSS AI) | M9a + müşteri/RFM + konsolide + Büyüme Merkezi insights | ✅ PWA, native app onlarda |
 | Çevrimdışı | "İnternet kesilse de çalışır" | M2 + SW outbox + panel offline + **LAN merkezi (internetsiz salon, ajan)** | ✅ En güçlü farkımız |
 | Çoklu şube | Var (SuitableRMS: zincir HQ, reçete maliyeti, tedarik tek akış) | #44 şube UI + kapsam, #43 konsolide rapor | ⚠️ Temel var; RMS düzeyi HQ konsolu yok |
-| Bulut mutfak (çok marka tek mekân) | Var | Yok | ❌ |
-| Platform entegrasyonu | YS, Trendyol, Migros, GetirYemek, TıklaGelsin **canlı** | Getir sandbox + YS adaptör hazır, **canlı anahtar bekliyor** | ⚠️ İnsan işi |
+| Bulut mutfak (çok marka tek mekân) | Var | **Var (2026-10-10):** marka + menü seçkisi + marka QR adresi; tek mutfak/istasyon/stok | ✅ |
+| Platform entegrasyonu | YS, Trendyol, Migros, GetirYemek, TıklaGelsin **canlı** | Getir/YS/TGO/Migros/**Tıkla Gelsin** sandbox adaptörü hazır, **canlı anahtar bekliyor** | ⚠️ İnsan işi |
 | ÖKC entegrasyonu | Ingenico/Hugin/Pavo/Inpos/Beko/Ödeal, VUK 507 **canlı** | Sürücü katmanı + fake-okc sandbox hazır, **gerçek cihaz/entegratör yok** | ❌ En kritik boşluk (insan işi) |
 | Caller ID telefon siparişi | Var (kendi %1 komisyon modelinin parçası) | Müşteri defteri + teslimat bölgeleri (caller ID bilerek yok) | ❌ Bilinçli |
 | Kurye: 3. parti (Fiyuu, Vigo, 18 firma) + haritalı takip | Var | Kendi kurye PWA (konum bilerek yok) | ❌ Bilinçli |
@@ -28,10 +28,10 @@ Suitable POS'u **ömür boyu ücretsiz** veriyor; geliri SuitableYEMEK komisyonu
 
 ## Somut yapılacaklar (bu karşılaştırmadan çıkan)
 
-1. **Gerçek ÖKC/e-Arşiv** — launch kapısındaki en büyük boşluk; Suitable'nin "mali onaylı" iddiasına karşı bizde mutlaka canlı olmalı (insan: entegratör + mali müşavir).
+1. **Gerçek ÖKC/e-Arşiv** — launch kapısındaki en büyük boşluk; Suitable'nin "mali onaylı" iddiasına karşı bizde mutlaka canlı olmalı (insan: entegratör + mali müşavir). Z raporu akışı kod tarafı tamam (2026-10-10).
 2. **Platform canlı anahtarları** (YS/TGO/Getir/Migros) — sandbox hazır, insan işi.
-3. Garson çağırma düğmesi (QR menüde) — küçük, eklenebilir (kapsam kararı Yiğit).
-4. Bulut mutfak / çok marka — bekletilen işler listesine.
+3. ~~Garson çağırma düğmesi (QR menüde)~~ — ✅ tamamlandı (2026-10-10): masa seçmeli çağrı + salon panosunda canlı şerit.
+4. ~~Bulut mutfak / çok marka~~ — ✅ tamamlandı (2026-10-10): markalar + menü seçkisi + marka QR menüsü; zincir görünümü için `/yonetim/hq`.
 5. Native mobil (BOSS benzeri) — PWA ile örtülüyor, ayrı iş değil.
 
 Not: onların fiyatı "0 TL" — bizim tanıtım sayfası fiyatı env'e bağlı; açılış mesajı buna göre yazılmalı.

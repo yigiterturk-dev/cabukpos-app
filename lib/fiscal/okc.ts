@@ -58,6 +58,11 @@ function fakeOkc({ fakeFail }: { fakeFail: boolean }): OkcProvider {
     async cancel() {
       return fakeFail ? { ok: false, error: "sandbox: iptal reddedildi" } : { ok: true };
     },
+    async zReport() {
+      if (fakeFail) return { ok: false, error: "sandbox: Z raporu hatası" };
+      const zNo = zNoOf(new Date());
+      return { ok: true, no: `Z${zNo}`, zNo };
+    },
   };
 }
 
@@ -100,5 +105,16 @@ export async function okcPing(tenantId: string): Promise<OkcResult> {
     return getOkc(s.okcProvider, { fakeFail: s.okcFakeFail, ...cloud }).receipt({
       serial: s.okcSerial, seq: 1, receiptNo: "PING", total: 1, vat: [], payments: [], soldAt: new Date(),
     }).then((r) => r.ok ? { ok: true as const, no: r.no, zNo: r.zNo } : r);
+  });
+}
+
+/** Gün sonu Z raporu (bulut çözücüde mali gün kapanışı). */
+export async function okcZReport(tenantId: string): Promise<{ ok: true; no: string; zNo: number } | { ok: false; error: string }> {
+  return withTenant(tenantId, async (tx) => {
+    const [s] = await tx.select().from(schema.fiscalSettings);
+    if (!s?.okcProvider || !s.okcSerial) return { ok: false, error: "ÖKC kapalı" };
+    const p = getOkc(s.okcProvider, { fakeFail: s.okcFakeFail, apiKey: decryptCardToken(s.okcApiKey), apiUrl: s.okcApiUrl });
+    if (!p.zReport) return { ok: false, error: "Sağlayıcı Z raporu desteklemiyor." };
+    return p.zReport();
   });
 }

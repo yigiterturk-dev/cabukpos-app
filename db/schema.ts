@@ -4,7 +4,7 @@ import type { Buyer, ChannelModes } from "../lib/core/fiscal";
 import { DEFAULT_MODES } from "../lib/core/fiscal";
 import type { RemovedLine } from "../lib/core/cart";
 import type { OkcSaleData } from "../lib/core/okc";
-import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index, bigserial, check, date } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, uniqueIndex, index, bigserial, check, date, primaryKey } from "drizzle-orm/pg-core";
 
 export const vertical = pgEnum("vertical", ["restoran", "market"]);
 export const userRole = pgEnum("user_role", ["sahip", "mudur"]);
@@ -279,6 +279,37 @@ export const tables = pgTable("tables", {
   sort: integer("sort").notNull().default(0),
   active: boolean("active").notNull().default(true),
 }, (t) => [index("tables_area_idx").on(t.areaId)]);
+
+// Garson çağrısı: QR menüden gelir, kasada/salonda görünür. Çözülmemiş çağrı masa başına tektir.
+export const tableCalls = pgTable("table_calls", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  tableId: uuid("table_id").notNull().references(() => tables.id, { onDelete: "cascade" }),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolvedBy: text("resolved_by"),
+}, (t) => [
+  index("table_calls_open_idx").on(t.tenantId, t.storeId, t.resolvedAt),
+  uniqueIndex("table_calls_open_uq").on(t.storeId, t.tableId).where(sql`${t.resolvedAt} is null`),
+]);
+
+// Bulut mutfak: marka = tek mutfağın vitrini. Menü, markanın ürün seçkisidir; mutfak/istasyon/stock fiziksel şubede kalır.
+export const brands = pgTable("brands", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(), // QR adresi: /menu/[store]?marka=slug
+  active: boolean("active").notNull().default(true),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("brands_slug_uq").on(t.tenantId, t.slug)]);
+
+export const brandProducts = pgTable("brand_products", {
+  brandId: uuid("brand_id").notNull().references(() => brands.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+}, (t) => [primaryKey({ columns: [t.brandId, t.productId] })]);
 
 export const optionGroups = pgTable("option_groups", {
   id: uuid("id").primaryKey().defaultRandom(),

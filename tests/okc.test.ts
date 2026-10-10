@@ -42,3 +42,11 @@ test("sahte ÖKC production'da fail-closed olur", () => {
   assert.throws(() => getOkc("fake-okc", { fakeFail: false }), /production'da kullanılamaz/);
   if (old === undefined) delete env.NODE_ENV; else env.NODE_ENV = old;
 });
+
+test("sahte ÖKC zReport: başarı ve hata simülasyonu", async () => {
+  const z = await getOkc("fake-okc", { fakeFail: false }).zReport!();
+  assert.equal(z.ok, true);
+  if (z.ok) assert.equal(z.zNo, zNoOf(new Date()));
+  const zb = await getOkc("fake-okc", { fakeFail: true }).zReport!();
+  assert.deepEqual(zb, { ok: false, error: "sandbox: Z raporu hatası" });
+});

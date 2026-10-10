@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 process.env.DATABASE_URL = "postgres://cabukpos_app:dev-app-pass@localhost:5432/cabukpos_test";
 const { getDb, withTenant, closeDb, schema } = await import("@/db");
 const { eq } = await import("drizzle-orm");
-const { okcReceiptFor, getOkc } = await import("@/lib/fiscal/okc");
+const { okcReceiptFor, okcZReport, getOkc } = await import("@/lib/fiscal/okc");
 const { randomUUID } = await import("node:crypto");
 
 const made: string[] = [];
@@ -81,4 +81,13 @@ test("ÖKC: iade satışı künyelenmez; fake cancel davranışı", async () => 
   const bad = getOkc("fake-okc", { fakeFail: true });
   const c = await bad.receipt({ serial: "TRA123456", seq: 1, receiptNo: "x", total: 1, vat: [], payments: [], soldAt: new Date() });
   assert.equal(c.ok, false);
+});
+
+test("Z raporu: kapalıyken reddedilir, açıkken alınır", async () => {
+  const f = await fixture("OKC-D");
+  assert.deepEqual(await okcZReport(f.t.id), { ok: false, error: "ÖKC kapalı" });
+  await enable(f.t.id);
+  const r = await okcZReport(f.t.id);
+  assert.equal(r.ok, true);
+  if (r.ok) assert.match(r.no, /^Z\d+$/);
 });

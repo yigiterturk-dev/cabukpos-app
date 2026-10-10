@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { resendFiscalMail, retryFiscal, saveFiscalSettings, type FiscalState } from "@/lib/admin/fiscal-actions";
+import { resendFiscalMail, retryFiscal, saveFiscalSettings, takeZReport, type FiscalState } from "@/lib/admin/fiscal-actions";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 import type { Channel, ChannelModes, DocMode } from "@/lib/core/fiscal";
@@ -113,5 +113,22 @@ export function FiscalRowActions({ id, status, canMail, url }: { id: string; sta
       <a href={url} target="_blank" rel="noreferrer" className="underline">Sayfayı aç</a>
       {msg && <span role="status" className={msg.error ? "text-bad" : "text-ok"}>{msg.error ?? msg.info}</span>}
     </div>
+  );
+}
+
+export function OkcZReportForm() {
+  const { state, pending, onSubmit } = useFormAction(takeZReport, {} as FiscalState);
+  return (
+    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-3">
+      <div>
+        <h3 className="text-sm font-semibold">Gün sonu Z raporu</h3>
+        <p className="mt-1 text-sm text-muted">Çözücüde mali günü kapatır; günün fiş toplamı Z no ile mühürlenir.</p>
+      </div>
+      <div className="ml-auto">
+        <Button type="submit" disabled={pending}>{pending ? "Alınıyor…" : "Z raporu al"}</Button>
+      </div>
+      {state.error && <p className="w-full text-sm text-bad" role="alert">{state.error}</p>}
+      {state.info && <p className="w-full text-sm text-ok" role="status">{state.info}</p>}
+    </form>
   );
 }

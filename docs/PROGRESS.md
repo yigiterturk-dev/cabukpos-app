@@ -1,5 +1,10 @@
 # İlerleme — ÇabukPOS
 
+## ÖKC Z raporu + QR menü garson çağrısı (2026-10-10)
+- **Z raporu akışı**: `okcZReport()` (lib/fiscal/okc.ts) + fake-okc `zReport` sandbox sürücüsü + `takeZReport` action (audit `fiscal.okc.z`) + Mali → Ayarlar'da "Z raporu al" kartı. Yol haritasının kod tarafındaki son madde; gerçek uç doğrulaması entegratör anahtarıyla (insan).
+- **Garson çağrısı** (Suitable karşılaştırması madde 3): `table_calls` tablosu (masa başına tek açık çağrı, kısmi unique index) + RLS + `public_menu_by_store`'a masalar (bölge · masa) + `POST /api/menu/call` (k sırrı, rate limit) + menüde masa seçmeli "Çağır" + kasa salon panosunda çağrı şeridi (8 sn poll, yeni çağrıda ötme, "Geldim"). veri-export'a dahil.
+- Kapılar: 364/364 test, rls-coverage yeşil, `qa:static` temiz. `db:push` + `db:rls` prodde koşulmalı.
+
 ## Ajan 0.6.0 — prova komutları (2026-10-06)
 - `test-scale` (teraziden kararlı okuma, kg + kararlılık) ve `test-drawer` (ESC p 0 çekmece sinyali, yazıcı RJ11) eklendi — mağaza pilot kapısındaki "barkod/çekmece/terazi" provası artık terminalden tek komut.
 - Kurulum betiği, Donanım sayfası talimatı ve `docs/AGENT.md` güncellendi; canlı `public/indir/cabukpos-agent.cjs` 0.6.0 servis ediyor (CI run 37495857492 success, main 0e64611). Gerçek donanımda koşusu hâlâ pilot provada (insan).
@@ -379,3 +384,9 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - Not: prod Vercel env'leri sensitive işaretli → CLI `env pull` değerleri indirmiyor (güvenlik duruşu doğru); DB erişimi neonctl OAuth üzerinden. Oturum sırasında `node_modules` dışarıdan silinmişti — `npm ci` ile kuruldu.
 - Launch kapısı kalan insan işleri: PayTR canlı anahtar, e-Arşiv/ÖKC entegratör teklifleri (mail metinleri hazır), mali müşavir/hukuk onayları, AGENT_ALERT_WEBHOOK_URL, DNS, donanım provası.
 - Alarm hattı e-posta yedeği: `dispatchAlert` webhook yok/başarısızsa `ALERT_EMAIL`+`RESEND_API_KEY`+`MAIL_FROM` ile Resend'e düşer (5/5 test). Prod env envanteri: yalnız 4 değişken (APP_URL/CRON_SECRET/AUTH_SECRET/DATABASE_URL) — RESEND/MAIL_FROM/BILLING_PROVIDER/paytr anahtarları yok (beklenen insan işleri). DNS teşhisi: cabukpos.com A→Vercel ama NS park servisinde (dns-parking), MX yok → domain DNS'i + e-posta kurulumu Yiğit'te.
+
+## Suitable'ı yakalama turu — Tıkla Gelsin + bulut mutfak + zincir merkezi (2026-10-10)
+- **Tıkla Gelsin adaptörü (5. platform):** `lib/platform/tiklagelsin.ts` — aile sözleşmesi (imzalı webhook `x-tiklagelsin-signature` ±timestamp, kabul/red/durum/katalog), `TIKLAGELSIN_ENABLED=1` + `TIKLAGELSIN_API_BASE/KEY` env kapısı; kapalıyken ağa çıkmaz. Panel "Bağla" listesine otomatik düştü (CONNECTABLE_PLATFORMS). Suitable'daki 5 platformun tamamı artık bizde de adaptörlü (canlı anahtarlar insan işi). Test: platform-adapters (kayıt/kapalı/gövde/parse).
+- **Bulut mutfak / çok marka (Suitable'da var, bizde yoktu):** `brands` (slug kiracıya özgü unique) + `brand_products` seçki tablosu + RLS; `public_menu_by_brand(store, slug)` — seçki boşsa tüm aktif ürünler (ayarlanmamış vitrin boş kalmasın), pasif/bilinmeyen slug 404. QR menü `/menu/[store]?marka=slug` marka adıyla açılır; kiosko siparişi aynı hat. Yönetim > Markalar: CRUD + menü seçkisi (kategorili checkbox) + QR adresi. Mutfak/istasyon/stok fiziksel şubede kalır — tek mutfak çok marka. Test: tests/brand.test.ts (slugify TR sadeleşmesi + filtre + 404 yolu).
+- **Zincir merkezi (HQ):** `/yonetim/hq` — şube başına bugün + son 7 gün (ciro, pay, adet, ortalama, kâr, iade) + konsolide satır; `lib/admin/hq.ts` iki sorgu (satış düzeyi + satır düzeyi; satırla join'lerken ciro satır sayısıyla çarpılır — testle sabitlendi). Kâr = ciro − donmuş satır maliyeti; iade maliyeti kârdan düşmez; maliyetsiz satırlar "(n?)" ile işaretli. SuitableRMS karşısı v1.
+- Doğrulama: **367/367** test; lint + tsc + Webpack build temiz (`/yonetim/markalar`, `/yonetim/hq` build'de). Prod notu: şema adımı (`prod-push.sh 1`: brands + brand_products + RLS + menü fonksiyonu), env: TIKLAGELSIN_* (isteğe bağlı).

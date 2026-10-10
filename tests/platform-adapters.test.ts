@@ -6,6 +6,7 @@ import { createGetirSource, parseSandboxPayload as parseGetir } from "@/lib/plat
 import { createYemeksepetiSource, parseSandboxPayload as parseYemeksepeti } from "@/lib/platform/yemeksepeti";
 import { createTrendyolSource, parseSandboxPayload as parseTrendyol } from "@/lib/platform/trendyol";
 import { createMigrosSource, parseSandboxPayload as parseMigros } from "@/lib/platform/migros";
+import { createTiklaGelsinSource, parseSandboxPayload as parseTiklaGelsin } from "@/lib/platform/tiklagelsin";
 import { sign, signAt, verifySignature } from "@/lib/platform/mock";
 import type { Conn } from "@/lib/platform/types";
 
@@ -25,8 +26,8 @@ test("webhook imzası: timestamp'li biçim replay'a kapanık; header yoksa eski 
   assert.equal(verifySignature("sifre", raw, sign("sifre", raw), String(ts), now), false);
 });
 
-test("kayıt: dört platform + mock kayıtlı", () => {
-  for (const p of ["mock", "getir", "yemeksepeti", "trendyol", "migros"]) assert.equal(sourceFor(p)?.id, p, p);
+test("kayıt: beş platform + mock kayıtlı", () => {
+  for (const p of ["mock", "getir", "yemeksepeti", "trendyol", "migros", "tiklagelsin"]) assert.equal(sourceFor(p)?.id, p, p);
   assert.ok(SUPPORTED_PLATFORMS.includes("mock"));
 });
 
@@ -35,7 +36,7 @@ test("kapalı sürücü ağa çıkmaz", async () => {
   let calls = 0;
   globalThis.fetch = (() => { calls++; throw new Error("ağ çağrısı olmamalıydı"); }) as typeof fetch;
   try {
-    const g = createGetirSource(false), ys = createYemeksepetiSource(false), tr = createTrendyolSource(false), mg = createMigrosSource(false);
+    const g = createGetirSource(false), ys = createYemeksepetiSource(false), tr = createTrendyolSource(false), mg = createMigrosSource(false), tg = createTiklaGelsinSource(false);
     await assert.rejects(g.accept(conn, "o1", 5), /kapalı/);
     await assert.rejects(g.reject(conn, "o1", "neden"), /kapalı/);
     await assert.rejects(ys.accept(conn, "o1", 5), /kapalı/);
@@ -43,12 +44,15 @@ test("kapalı sürücü ağa çıkmaz", async () => {
     await assert.rejects(tr.pushStatus!(conn, "o1", "picked"), /kapalı/);
     await assert.rejects(mg.accept(conn, "o1", 5), /kapalı/);
     await assert.rejects(mg.pushStatus!(conn, "o1", "delivered"), /kapalı/);
+    await assert.rejects(tg.accept(conn, "o1", 5), /kapalı/);
+    await assert.rejects(tg.pushStatus!(conn, "o1", "cancelled"), /kapalı/);
     assert.equal(calls, 0);
     const h = new Headers();
     assert.deepEqual(g.parseWebhook("{}", h, conn), { error: "Getir bağlantısı kapalı.", status: 400 });
     assert.deepEqual(ys.parseWebhook("{}", h, conn), { error: "Yemeksepeti bağlantısı kapalı.", status: 400 });
     assert.deepEqual(tr.parseWebhook("{}", h, conn), { error: "Trendyol bağlantısı kapalı.", status: 400 });
     assert.deepEqual(mg.parseWebhook("{}", h, conn), { error: "Migros bağlantısı kapalı.", status: 400 });
+    assert.deepEqual(tg.parseWebhook("{}", h, conn), { error: "Tıkla Gelsin bağlantısı kapalı.", status: 400 });
   } finally {
     globalThis.fetch = original;
   }
@@ -60,6 +64,7 @@ test("hatalı sandbox gövdesi zod ile Türkçe hatayla reddedilir", () => {
   assert.throws(() => parseYemeksepeti({ orders: [{ order_id: "o1", items: "yok" }] }), /Yemeksepeti sandbox gövdesi tanınmadı/);
   assert.throws(() => parseTrendyol({ orders: [{ id: "o1" }] }), /Trendyol sandbox gövdesi tanınmadı/);
   assert.throws(() => parseMigros({ orders: [{ orderRef: "o1" }] }), /Migros sandbox gövdesi tanınmadı/);
+  assert.throws(() => parseTiklaGelsin({ orders: [{ id: "o1" }] }), /Tıkla Gelsin sandbox gövdesi tanınmadı/);
 });
 
 test("geçerli gövde IncomingOrder'a çevrilir", () => {
@@ -77,4 +82,9 @@ test("geçerli gövde IncomingOrder'a çevrilir", () => {
   const mg = parseMigros({ orders: [{ orderRef: "M1", client: { title: "Ali Veli", gsm: "05559998877" }, addressLine: "Yol 4", payment: "yemek_karti", remark: "kapı zili", items: [{ sku: "S1", title: "Su", unitPrice: 1000, qtyMilli: 6000, note: null }] }] });
   assert.equal(mg[0].payIntent, "yemek_karti");
   assert.deepEqual(mg[0].lines[0], { code: "S1", name: "Su", unitPrice: 1000, qtyMilli: 6000, note: null });
+  const tg = parseTiklaGelsin({ orders: [{ id: "TG1", customer: { name: "Elif Demir", phone: "05550001122" }, address: "Cad. 5", paymentMethod: "meals_card", note: "zile basmayın", basket: [{ productCode: "L1", productName: "Lahmacun", price: 9000, quantity: 3, note: null }] }] });
+  assert.equal(tg[0].externalId, "TG1");
+  assert.equal(tg[0].payIntent, "yemek_karti");
+  assert.equal(tg[0].note, "zile basmayın");
+  assert.deepEqual(tg[0].lines[0], { code: "L1", name: "Lahmacun", unitPrice: 9000, qtyMilli: 3000, note: null });
 });

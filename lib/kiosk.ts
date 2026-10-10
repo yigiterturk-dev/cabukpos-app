@@ -9,7 +9,7 @@ import type { PayIntent, TabEv } from "@/lib/core/tab";
 import { upsertCustomer } from "@/lib/sync/apply";
 
 export type MenuItem = { id: string; name: string; price: Kurus; categoryId: string | null; kind: "adet" | "tartili" };
-export type MenuData = { tenant: string; vertical: "restoran" | "market"; store: string; categories: { id: string; name: string }[]; products: MenuItem[] };
+export type MenuData = { tenant: string; vertical: "restoran" | "market"; store: string; categories: { id: string; name: string }[]; products: MenuItem[]; tables: { id: string; name: string }[] };
 
 export async function menuByStore(storeId: string): Promise<MenuData | null> {
   if (!/^[0-9a-f-]{36}$/i.test(storeId)) return null;

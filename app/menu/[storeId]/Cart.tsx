@@ -93,3 +93,43 @@ export function Cart({ storeId, secret, vertical }: { storeId: string; secret: s
 export function Add({ id, name, price }: CartItem) {
   return <button aria-label={`${name} sepete ekle`} className="size-8 shrink-0 rounded-lg bg-brand text-lg font-bold leading-none text-white" onClick={() => emit({ id, name, price })}>+</button>;
 }
+
+/** Garson çağır: masa seç, çağır. Açık çağrı varken düğme "Çağrın masada" durumuna düşer. */
+export function WaiterCall({ storeId, secret, tables }: { storeId: string; secret: string; tables: { id: string; name: string }[] }) {
+  const [tableId, setTableId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function call() {
+    if (!tableId || busy) return;
+    setBusy(true);
+    setError(null);
+    const res = await fetch("/api/menu/call", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ storeId, secret, tableId, note: null }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (res.ok) setSent(true);
+    else setError(j.error ?? "Çağrı gönderilemedi.");
+  }
+
+  if (sent) return <p className="mt-4 rounded-lg border border-line bg-surface-2 p-3 text-center text-sm text-ok" role="status">Garsona haber verdik, masana geliyor.</p>;
+  return (
+    <section aria-label="Garson çağır" className="mt-6 rounded-xl border border-line p-4">
+      <h2 className="text-sm font-semibold text-ink">Garson çağır</h2>
+      <div className="mt-2 flex gap-2">
+        <select value={tableId} onChange={(e) => { setTableId(e.target.value); setSent(false); }} aria-label="Masa" className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 text-sm">
+          <option value="">Masanı seç</option>
+          {tables.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        <button disabled={!tableId || busy} onClick={call} className="press min-h-11 rounded-lg bg-brand px-4 text-sm font-semibold text-white disabled:opacity-50">
+          {busy ? "Çağırılıyor…" : "Çağır"}
+        </button>
+      </div>
+      {error && <p className="mt-1 text-sm text-bad" role="alert">{error}</p>}
+    </section>
+  );
+}

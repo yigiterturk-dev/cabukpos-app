@@ -1,25 +1,29 @@
 // QR menü + self-order kiosko (herkese açık). k sırrı URL'de yoksa yalnız menü görünür.
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { kioskConn, menuByStore } from "@/lib/kiosk";
+import { kioskConn, menuByStore, type MenuData } from "@/lib/kiosk";
+import { menuByBrand } from "@/lib/brands";
 import { clientIp, hit } from "@/lib/ratelimit";
 import { formatTL } from "@/lib/core/money";
-import { Cart, Add } from "./Cart";
+import { Cart, Add, WaiterCall } from "./Cart";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: Promise<{ storeId: string }> }): Promise<Metadata> {
-  const m = await menuByStore((await params).storeId);
-  return { title: m ? `${m.store} · Menü` : "Menü", robots: { index: false, follow: false } };
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ storeId: string }>; searchParams: Promise<{ marka?: string }> }): Promise<Metadata> {
+  const { storeId } = await params;
+  const { marka } = await searchParams;
+  const m: (MenuData & { brand?: string }) | null = marka ? await menuByBrand(storeId, marka) : await menuByStore(storeId);
+  const title = m ? `${m.brand ? m.brand + " · " : ""}${m.store} · Menü` : "Menü";
+  return { title, robots: { index: false, follow: false } };
 }
 
-export default async function Menu({ params, searchParams }: { params: Promise<{ storeId: string }>; searchParams: Promise<{ k?: string }> }) {
+export default async function Menu({ params, searchParams }: { params: Promise<{ storeId: string }>; searchParams: Promise<{ k?: string; marka?: string }> }) {
   const { storeId } = await params;
-  const { k } = await searchParams;
+  const { k, marka } = await searchParams;
   if ((await hit(`menu:${await clientIp()}`, 1)) > 60) {
     return <main className="grid min-h-dvh place-items-center p-8 text-center text-sm text-ink-2">Çok fazla istek. Bir dakika sonra tekrar deneyin.</main>;
   }
-  const menu = await menuByStore(storeId);
+  const menu: (MenuData & { brand?: string }) | null = marka ? await menuByBrand(storeId, marka) : await menuByStore(storeId);
   if (!menu) notFound();
   const conn = k ? Boolean(await kioskConn(storeId, k)) : false;
   const cats = menu.categories.filter((c) => menu.products.some((p) => p.categoryId === c.id));
@@ -29,7 +33,7 @@ export default async function Menu({ params, searchParams }: { params: Promise<{
     <main className="mx-auto w-full max-w-xl px-4 pb-24 pt-8">
       <header className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand">{menu.tenant}</p>
-        <h1 className="font-display text-2xl font-bold text-ink">{menu.store}</h1>
+        <h1 className="font-display text-2xl font-bold text-ink">{menu.brand ? `${menu.brand} · ${menu.store}` : menu.store}</h1>
         <p className="mt-1 text-sm text-muted">{conn ? "Seç, sepeti onayla — siparişin mutfağa düşsün." : "Menü. Sipariş için kasa ya da garson yardımcı olur."}</p>
       </header>
       {groups.map((g) => (
@@ -48,6 +52,7 @@ export default async function Menu({ params, searchParams }: { params: Promise<{
       ))}
       {menu.products.length === 0 && <p className="text-sm text-muted">Menü henüz boş.</p>}
       {conn && <Cart storeId={storeId} secret={k!} vertical={menu.vertical} />}
+      {conn && menu.vertical === "restoran" && menu.tables.length > 0 && <WaiterCall storeId={storeId} secret={k!} tables={menu.tables} />}
       {!conn && <p className="mt-10 text-center text-xs text-muted">ÇabukPOS ile hazırlanmıştır.</p>}
     </main>
   );

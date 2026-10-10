@@ -7,7 +7,7 @@ import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { FISCAL_CHANNELS, validateTaxId, type ChannelModes } from "@/lib/core/fiscal";
 import { OKC_PROVIDERS } from "@/lib/core/okc";
-import { okcPing } from "@/lib/fiscal/okc";
+import { okcPing, okcZReport } from "@/lib/fiscal/okc";
 import { encryptCardToken } from "@/lib/billing/card-vault";
 import { issueOne, processEnvelopes, sendMail } from "@/lib/fiscal/issue";
 import { validateBuyerInvoice } from "@/lib/core/refundNote";
@@ -120,4 +120,13 @@ export async function queryEnvelopes(): Promise<void> {
   await processEnvelopes(a.tenantId, 20);
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "fiscal.envelope.query", {}));
   revalidatePath("/yonetim/mali");
+}
+
+/** #18: gün sonu Z raporu — çözücüde mali gün kapanışı; sonuç audit'e yazılır. */
+export async function takeZReport(): Promise<FiscalState> {
+  const a = await requireWriter();
+  const r = await okcZReport(a.tenantId).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : "ÖKC hatası" }));
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "fiscal.okc.z", r.ok ? { no: r.no, zNo: r.zNo } : { error: r.error }));
+  revalidatePath("/yonetim/mali");
+  return r.ok ? { info: `Z raporu alındı: Z No ${r.zNo} (${r.no})` } : { error: r.error };
 }
