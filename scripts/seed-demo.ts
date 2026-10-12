@@ -7,7 +7,7 @@ import { applyDoc } from "@/lib/sync/apply";
 import type { SaleDoc, TabDoc } from "@/lib/sync/docs";
 
 const EMAIL = process.argv[2] ?? "m9a-1790938395311@ornek.com";
-const DAYS = 30;
+const DAYS = Number(process.env.DAYS ?? 30);
 const uuid = () => crypto.randomUUID();
 const rnd = (n: number) => Math.floor(Math.random() * n);
 const iso = (d: Date) => d.toISOString();
@@ -77,7 +77,7 @@ const yontem = (): "nakit" | "kart" | "yemek_karti" => { const r = Math.random()
 
 let iade = 0;
 
-for (let d = DAYS; d >= 1; d--) {
+for (let d = DAYS; d >= 0; d--) {
   const gun = new Date();
   gun.setHours(0, 0, 0, 0);
   gun.setDate(gun.getDate() - d);
@@ -140,7 +140,7 @@ for (let d = DAYS; d >= 1; d--) {
     iade++;
   }
 
-  if (d > 1) {
+  if (d > 0) {
     const r5 = await applyDoc(ctx, { kind: "shift_close", id: shiftId, staffId: kasiyer.id, at: iso(saat(23, rnd(50))), countedCash: nakit } as never);
     if (!r5.ok) throw new Error(`shift_close: ${r5.error}`);
   }

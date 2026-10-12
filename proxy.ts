@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ADMIN_COOKIE, ADMIN_SESSION_MAX_AGE, shouldRenewSession } from "@/lib/auth/session-cookie";
+import { ADMIN_COOKIE, ADMIN_SESSION_MAX_AGE, secureByProto, shouldRenewSession } from "@/lib/auth/session-cookie";
 import { signJwt, verifyJwt } from "@/lib/auth/jwt";
 
 // Yönetim yalnız imzalı yönetici çereziyle (ayrıntılı kontrol sayfada, DB'den). Kasa kendi cihaz/kasiyer kontrolünü yapar.
@@ -18,7 +18,7 @@ export async function proxy(req: NextRequest) {
     const res = NextResponse.next();
     res.cookies.set(ADMIN_COOKIE, fresh, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: secureByProto(req.headers.get("x-forwarded-proto") ?? (req.nextUrl.protocol === "https:" ? "https" : "http")),
       sameSite: "lax",
       path: "/",
       maxAge: ADMIN_SESSION_MAX_AGE,

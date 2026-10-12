@@ -36,7 +36,7 @@ export function KitchenScreen({ meta, tabs, now, add }: { meta: Meta; tabs: Map<
       <button key={t.id} type="button" disabled={busy === t.id || t.status === "hazir"} onClick={() => void next(tab, t)} data-ticket={t.id} data-status={t.status}
         className={`press flex flex-col overflow-hidden rounded-2xl border-2 bg-surface text-left shadow-card ${t.status === "hazir" ? "border-ok" : t.status === "hazirlaniyor" ? "border-warn" : mins >= 15 ? "border-bad" : "border-line"}`}>
         <span className={`flex items-baseline gap-2 px-3.5 py-2.5 ${t.status === "hazir" ? "bg-ok-soft" : t.status === "hazirlaniyor" ? "bg-warn-soft" : mins >= 15 ? "bg-bad-soft" : "bg-surface-2"}`}>
-          <span className="text-2xl font-bold tracking-tight">{tabLabel(tab, tables, PLATFORM_NAMES)}</span>
+          <span className="font-display text-2xl font-extrabold tracking-tight">{tabLabel(tab, tables, PLATFORM_NAMES)}</span>
           <span className="text-sm text-muted">{stations.find((s) => s.id === t.stationId)?.name ?? ""}</span>
           <span className={`tabular ml-auto text-sm ${mins >= 15 && t.status !== "hazir" ? "font-bold text-bad" : "text-muted"}`}>{mins} dk</span>
         </span>

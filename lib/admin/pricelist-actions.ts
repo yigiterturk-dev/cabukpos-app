@@ -33,14 +33,20 @@ export async function savePriceList(id: string | null, _: PriceListState, form: 
   if (endMin === null) return { error: "Bitiş saati geçersiz.", field: "end" };
   if (startMin === endMin) return { error: "Başlangıç ve bitiş aynı olamaz.", field: "end" };
   if (id && !UUID.test(id)) return { error: "Liste bulunamadı." };
+  const kind = str(form, "kind") === "yuzde" ? "yuzde" : "fiyat";
+  const percentRaw = str(form, "percent");
+  const percent = percentRaw ? Math.trunc(Number(percentRaw)) : null;
+  if (kind === "yuzde" && (percent === null || !Number.isFinite(percent) || percent < 1 || percent > 100)) return { error: "İndirim yüzdesi 1-100 arası olmalı.", field: "percent" };
+  const categoryIds = form.getAll("cat").map((v) => String(v)).filter((v) => UUID.test(v));
   const days = formDays(form);
   const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
   if (!storeId) return { error: "Şube yok." };
+  const vals = { name, days, startMin, endMin, kind, percent: kind === "yuzde" ? percent : null, categoryIds: kind === "yuzde" && categoryIds.length ? categoryIds : null };
   await withTenant(a.tenantId, async (tx) => {
     const L = schema.priceLists;
-    if (id) await tx.update(L).set({ name, days, startMin, endMin }).where(eq(L.id, id));
-    else await tx.insert(L).values({ tenantId: a.tenantId, name, days, startMin, endMin, sort: ((await tx.select({ n: sql<number>`count(*)` }).from(L))[0]?.n ?? 0) + 1 });
-    await audit(tx, a.tenantId, `user:${a.id}`, id ? "pricelist.update" : "pricelist.create", { id, name, days, startMin, endMin });
+    if (id) await tx.update(L).set(vals).where(eq(L.id, id));
+    else await tx.insert(L).values({ tenantId: a.tenantId, ...vals, sort: ((await tx.select({ n: sql<number>`count(*)` }).from(L))[0]?.n ?? 0) + 1 });
+    await audit(tx, a.tenantId, `user:${a.id}`, id ? "pricelist.update" : "pricelist.create", { id, name, kind, percent: vals.percent, categoryIds: vals.categoryIds, days, startMin, endMin });
   });
   revalidatePath("/yonetim/fiyatlistesi");
   return { savedAt: Date.now() };

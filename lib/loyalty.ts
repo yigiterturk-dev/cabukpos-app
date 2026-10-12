@@ -31,6 +31,19 @@ export function couponCheck(c: CouponLike, subtotal: Kurus, now = new Date(), cu
   return { ok: true, discount: Math.min(c.value, subtotal) };
 }
 
+/** Kasadan satışa eklenen sadakat verileri (yerel kayıt + eşitleme belgesi ortak). */
+export type SaleExtrasInput = {
+  customerId?: string | null;
+  coupon?: { code: string; discount: number };
+  loyalty?: { customerId: string; points: number; discount: number };
+  giftCard?: { code: string; amount: number };
+};
+
+/** Satış düzeyi toplam indirim: parçalar (kupon + puan) ara toplamı aşamaz, negatif parça 0 sayılır. */
+export function capDiscount(subtotal: Kurus, parts: Kurus[]): Kurus {
+  return Math.min(Math.max(0, subtotal), parts.reduce((a, p) => a + Math.max(0, p), 0));
+}
+
 /** Harcamadan kazanılan puan (kurusPerPoint ≤ 0 → kapalı say, 0 puan). */
 export const pointsEarned = (total: Kurus, kurusPerPoint: number) =>
   kurusPerPoint > 0 ? Math.floor(total / kurusPerPoint) : 0;

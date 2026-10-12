@@ -23,7 +23,7 @@ function Stat({ label, value, now, before, testId }: { label: string; value: str
   const Trend = p === null ? Minus : p < 0 ? ArrowDownRight : p > 0 ? ArrowUpRight : Minus;
   return (
     <Card className="relative overflow-hidden p-5">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#ee6318] to-[#f6a45c]" />
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand to-brand-hover" />
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{label}</div>
         <span className="rounded-full bg-surface-3 px-2 py-1 text-[11px] font-medium text-muted">Bugün</span>
@@ -202,7 +202,7 @@ export default async function Bugun() {
         </Card>
 
         <div className="space-y-6">
-          <Card className={critical.length ? "border-red-200" : ""}>
+          <Card className={critical.length ? "border-bad/25" : ""}>
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <h2 className="flex items-center gap-2 font-semibold">{critical.length > 0 && <TriangleAlert aria-hidden className="size-4 text-bad" />}Kritik stok</h2>
               <Link href="/yonetim/stok?kritik=1" className="text-sm text-brand hover:underline">Stok</Link>

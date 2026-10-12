@@ -7,7 +7,7 @@ import { formatReceipt, parseTL, type Currency } from "@/lib/core/money";
 import { kasaFmt } from "./kasa-format";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { countCash, summarizeShift, BANKNOTES, COINS, type CashBreakdown } from "@/lib/core/shift";
-import { clearResetNotice, closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, safeDropLocal, setSaleFiscal, shiftSales, waitPushed } from "@/lib/offline/db";
+import { clearResetNotice, closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, safeDropLocal, setSaleFiscal, shiftSales, waitPushed, type SaleExtrasInput } from "@/lib/offline/db";
 import { pauseSync } from "@/lib/offline/sync";
 import type { Buyer } from "@/lib/core/fiscal";
 import { agentStatus, openDrawer, printDeliverySlip, printKitchen, printSale, printShift, readScale, retryPrint, withTestFlag, type AgentStatus, type PrintResult } from "@/lib/offline/agent";
@@ -21,7 +21,7 @@ import { PLATFORM_NAMES } from "@/lib/core/platform";
 import type { Payment } from "@/lib/core/payment";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
 import type { LocalSale, Meta } from "@/lib/offline/state";
-import { ArrowLeft, ClipboardCheck, Inbox, Landmark, LayoutGrid, LogOut, Printer, Bike, Undo2, Zap } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Inbox, Landmark, LayoutDashboard, LayoutGrid, LogOut, Printer, Bike, Undo2, Zap } from "lucide-react";
 import { Button, Card, Field, Input, LogoMark, Segmented } from "@/components/ui";
 import { InstallButton } from "@/components/InstallButton";
 import { ShiftReport, type ShiftReportData } from "@/components/ShiftReport";
@@ -37,20 +37,22 @@ import { useNow, useTabs } from "./useTabs";
 import { DeliveryBoard } from "./DeliveryBoard";
 import { NewDelivery } from "./NewDelivery";
 import { CourierScreen } from "./CourierScreen";
+import { BugunScreen } from "./BugunScreen";
 import { beep } from "./beep";
 
-type View = { name: "home" } | { name: "sale" } | { name: "tab"; tableId: string } | { name: "bill"; tabId: string } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" } | { name: "safe-drop" }
+type View = { name: "home" } | { name: "sale" } | { name: "bugun" } | { name: "tab"; tableId: string } | { name: "bill"; tabId: string } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" } | { name: "safe-drop" }
   | { name: "paket" } | { name: "yeni-paket" } | { name: "ptab"; tabId: string } | { name: "kurye-kapat" } | { name: "kurye-gun-sonu"; by: string }; // M6
 type PrintState = PrintView & { jobId?: string | null };
 
 function Center({ title, sub, logo, card, children }: { title: string; sub?: string; logo?: boolean; card?: boolean; children?: React.ReactNode }) {
   return (
-    <main className="grid flex-1 place-items-center px-4 py-8">
-      <div className="w-full max-w-sm">
-        {logo && <LogoMark size="lg" className="mx-auto mb-5" />}
-        <h1 className="text-center text-2xl font-semibold tracking-tight">{title}</h1>
+    <main className="relative grid flex-1 place-items-center overflow-hidden px-4 py-8">
+      <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 h-72 w-[42rem] -translate-x-1/2 bg-[radial-gradient(50%_60%_at_50%_0%,rgb(224_90_16/0.14),transparent)]" />
+      <div className="relative w-full max-w-sm">
+        {logo && <LogoMark size="lg" className="mx-auto mb-6" />}
+        <h1 className="text-center font-display text-[28px] font-bold tracking-tight">{title}</h1>
         {sub && <p className="mt-1.5 text-center text-sm text-muted">{sub}</p>}
-        {children && (card ? <Card className="mt-6 p-6">{children}</Card> : <div className="mt-8">{children}</div>)}
+        {children && (card ? <Card className="mt-6 p-6 shadow-raised">{children}</Card> : <div className="mt-8">{children}</div>)}
       </div>
     </main>
   );
@@ -59,14 +61,15 @@ function Center({ title, sub, logo, card, children }: { title: string; sub?: str
 /** Kasa üst şeridi: marka + işletme/cihaz, bölüm segmenti, sağda durum ve eylemler. */
 function Bar({ tenant, device, nav, children }: { tenant: string; device: string; nav?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/10 bg-espresso px-3 py-2 text-cream print:hidden">
+    <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-black/40 bg-gradient-to-b from-espresso-2 to-espresso px-3 py-2 text-cream shadow-[inset_0_1px_0_rgb(255_255_255/0.07)] ring-1 ring-inset ring-white/5 print:hidden">
       <div className="flex min-w-0 items-center gap-2.5">
         <LogoMark />
         <div className="min-w-0 leading-tight">
-          <div className="truncate text-sm font-semibold">{tenant}</div>
+          <div className="truncate font-display text-sm font-bold tracking-tight">{tenant}</div>
           <div className="truncate text-xs text-cream-muted">{device}</div>
         </div>
       </div>
+      {nav && <span aria-hidden className="hidden h-7 w-px bg-white/10 sm:block" />}
       {nav}
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{children}</div>
     </header>
@@ -76,7 +79,7 @@ function Bar({ tenant, device, nav, children }: { tenant: string; device: string
 const LinkNote = ({ link }: { link: string }) => (
   <>
     {link === "yok" && <span className="text-xs font-medium text-warn">Canlı bağlantı yok</span>}
-    {link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-300">Yerel ağ (internet yok)</span>}
+    {link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-info">Yerel ağ (internet yok)</span>}
   </>
 );
 
@@ -483,14 +486,14 @@ export function KasaApp() {
     return { ok: true as const, saleId: sale.id, receiptNo: sale.receiptNo, change: sale.change };
   }, [trackPrint]);
 
-  const onSale: OnSale = useCallback(async (saleId, payments, cart, buyer, tip) => {
-    const r = await recordSaleLocal(cashier!, cart, payments, saleId, undefined, buyer, tip);
+  const onSale: OnSale = useCallback(async (saleId, payments, cart, buyer, tip, extras) => {
+    const r = await recordSaleLocal(cashier!, cart, payments, saleId, undefined, buyer, tip, extras);
     return r.ok ? afterSale(r.sale) : r;
   }, [cashier, afterSale]);
 
-  const onTabPay = useCallback(async (tab: TabState, part: PayLine[], saleId: string, payments: Payment[], buyer: Buyer | null, tip: number) => {
+  const onTabPay = useCallback(async (tab: TabState, part: PayLine[], saleId: string, payments: Payment[], buyer: Buyer | null, tip: number, extras?: SaleExtrasInput) => {
     const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
-    const r = await recordSaleLocal(cashier!, part, payments, saleId, { tabId: tab.id, tableId: tab.tableId, tableName, paidLines: paidLinesOf(part), kind: tab.kind }, buyer, tip);
+    const r = await recordSaleLocal(cashier!, part, payments, saleId, { tabId: tab.id, tableId: tab.tableId, tableName, paidLines: paidLinesOf(part), kind: tab.kind }, buyer, tip, extras);
     if (!r.ok) return r;
     await tabsApi.reload();
     return afterSale(r.sale);
@@ -590,14 +593,14 @@ export function KasaApp() {
           data-testid="reset-notice"
           title={`${status.reset.reason} — "Anladım" ile kapatın.`}
           onClick={() => { void clearResetNotice(); setStatus({ ...status, reset: null }); }}
-          className="text-xs font-medium text-red-300 underline decoration-dotted"
+          className="text-xs font-medium text-bad underline decoration-dotted"
         >
           {status.reset.pending} bekleyen belge reddedildi listesine taşındı
         </button>
       )}
       <AgentBadge s={agentCfg ? agent : null} />
-      {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-sky-300">Yerel ağ (internet yok)</span>}
-      {status.rejected > 0 && <span className="text-xs font-medium text-red-300">{status.rejected} belge reddedildi</span>}
+      {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-info">Yerel ağ (internet yok)</span>}
+      {status.rejected > 0 && <span className="text-xs font-medium text-bad">{status.rejected} belge reddedildi</span>}
       {cashier && meta.agent?.drawer && atHome && (
         <Button variant="secondary" title="Çekmece" onClick={() => {
           if (meta.catalog.staff.find((x) => x.id === cashier.id)?.role === "mudur") void drawerBy(null);
@@ -697,7 +700,7 @@ export function KasaApp() {
     if (view.name === "bill") {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
-      return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} currency={d.currency} onPay={(part, id, p, b, tip) => onTabPay(tab, part, id, p, b, tip)}
+      return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} currency={d.currency} onPay={(part, id, p, b, tip, ex) => onTabPay(tab, part, id, p, b, tip, ex)}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed || !tab.tableId ? { name: "home" } : { name: "tab", tableId: tab.tableId })} />;
     }
     return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} currency={d.currency} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
@@ -707,14 +710,15 @@ export function KasaApp() {
   const hasPaket = restoran && role === "kasa";
   const billTab = view.name === "bill" ? tabsApi.tabs.get(view.tabId) : undefined;
   const inPaket = view.name === "paket" || view.name === "yeni-paket" || view.name === "ptab" || Boolean(billTab && billTab.kind !== "masa");
-  const section = inPaket ? "paket" : view.name === "sale" || !hasSalon ? "sale" : "salon";
+  const section = view.name === "bugun" ? "bugun" : inPaket ? "paket" : view.name === "sale" || !hasSalon ? "sale" : "salon";
   const icon = "size-4";
-  const salonTabs = (hasSalon || hasPaket) && role === "kasa" && (
+  const kasaTabs = role === "kasa" && (
     <nav aria-label="Kasa bölümü">
       <Segmented size="lg" items={[
         ...(hasSalon ? [{ key: "salon", label: <><LayoutGrid aria-hidden className={icon} />Salon</>, pressed: section === "salon", onClick: () => setView({ name: "home" }) }] : []),
         ...(hasPaket ? [{ key: "paket", label: <><Bike aria-hidden className={icon} />Paket</>, pressed: section === "paket", onClick: () => setView({ name: "paket" }) }] : []),
         { key: "sale", label: <><Zap aria-hidden className={icon} />Hızlı satış</>, pressed: section === "sale", onClick: () => setView({ name: "sale" }) },
+        { key: "bugun", label: <><LayoutDashboard aria-hidden className={icon} />Bugün</>, pressed: section === "bugun", onClick: () => setView({ name: "bugun" }) },
       ]} />
     </nav>
   );
@@ -729,7 +733,7 @@ export function KasaApp() {
     if (view.name === "bill") {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
-      return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} currency={d.currency} onPay={(part, id, p, b, tip) => onTabPay(tab, part, id, p, b, tip)}
+      return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} currency={d.currency} onPay={(part, id, p, b, tip, ex) => onTabPay(tab, part, id, p, b, tip, ex)}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed ? { name: "paket" } : { name: "ptab", tabId: tab.id })} />;
     }
     return null;
@@ -767,19 +771,28 @@ export function KasaApp() {
       </>
     );
   }
+  if (view.name === "bugun") {
+    return (
+      <>
+        {bar(kasaTabs)}
+        <BugunScreen meta={meta} tabs={tabsApi.tabs} hasSalon={hasSalon} hasPaket={hasPaket}
+          onGoSale={() => setView({ name: "sale" })} onGoSalon={() => setView({ name: "home" })} onGoPaket={() => setView({ name: "paket" })} />
+      </>
+    );
+  }
   if (inPaket) {
     return (
       <>
-        {bar(salonTabs)}
+        {bar(kasaTabs)}
         {paketView() ?? <DeliveryBoard meta={meta} onMeta={setMeta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} waiter={waiter}
           onNew={() => setView({ name: "yeni-paket" })} onOpen={(tabId) => setView({ name: "ptab", tabId })} onBill={(tabId) => setView({ name: "bill", tabId })} onHandover={onHandover} />}
       </>
     );
   }
-  if (hasSalon && view.name !== "sale") return <>{bar(salonTabs)}{salonView()}</>;
+  if (hasSalon && view.name !== "sale") return <>{bar(kasaTabs)}{salonView()}</>;
   return (
     <>
-      {bar(salonTabs)}
+      {bar(kasaTabs)}
       <SaleScreen
         categories={meta.catalog.categories}
         products={meta.catalog.products}

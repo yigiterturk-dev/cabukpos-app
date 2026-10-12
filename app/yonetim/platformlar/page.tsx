@@ -11,7 +11,7 @@ import { foldTabs, type TabState } from "@/lib/core/tab";
 import { initialEvents } from "@/lib/tabs/stream";
 import { formatTL } from "@/lib/core/money";
 import { CodeForm, ConnectionForm, ConnectionToggles, PushCatalogButton, TestOrderButton } from "@/components/admin/DeliveryForms";
-import { Card, Empty, PageHeader } from "@/components/ui";
+import { Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +26,9 @@ const gecikti = (t: TabState) => Boolean(t.delivery.acceptedAt && t.delivery.pre
 const DURUM = (t: TabState): { label: string; cls: string } =>
   t.closed || t.delivery.deliveredAt ? { label: "Teslim", cls: "bg-ok text-white" }
   : t.delivery.outAt ? { label: "Kuryede", cls: "bg-brand text-white" }
-  : gecikti(t) ? { label: `Gecikti · hedef ${t.delivery.prepMin} dk`, cls: "bg-amber-500 text-white" }
+  : gecikti(t) ? { label: `Gecikti · hedef ${t.delivery.prepMin} dk`, cls: "bg-warn text-white" }
   : t.delivery.acceptedAt ? { label: `Hazırlanıyor${t.delivery.prepMin ? ` · ${t.delivery.prepMin} dk` : ""}`, cls: "bg-ink text-white" }
-  : { label: "Onay bekliyor", cls: "bg-amber-500 text-white" };
+  : { label: "Onay bekliyor", cls: "bg-warn text-white" };
 const cizelge = (t: TabState) =>
   [t.delivery.acceptedAt ? `kabul ${saat(t.delivery.acceptedAt)}` : "", t.delivery.outAt ? `yolda ${saat(t.delivery.outAt)}` : "", t.delivery.deliveredAt ? `teslim ${saat(t.delivery.deliveredAt)}` : ""].filter(Boolean).join(" · ");
 
@@ -57,23 +57,25 @@ function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
       {acik.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-line">
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-line bg-surface-3 text-left text-muted">
-              <th className="px-3 py-2 font-medium">Platform</th><th className="px-3 py-2 font-medium">Müşteri</th>
-              <th className="px-3 py-2 font-medium">Sipariş</th><th className="px-3 py-2 font-medium">Tutar</th>
-              <th className="px-3 py-2 font-medium">Durum</th><th className="px-3 py-2 font-medium">Süre</th><th className="px-3 py-2 font-medium">İşlem</th>
-            </tr></thead>
+            <thead className={TABLE_HEAD}>
+              <tr>
+                <th className="px-4 py-2.5 font-medium">Platform</th><th className="px-4 py-2.5 font-medium">Müşteri</th>
+                <th className="px-4 py-2.5 font-medium">Sipariş</th><th className="px-4 py-2.5 font-medium">Tutar</th>
+                <th className="px-4 py-2.5 font-medium">Durum</th><th className="px-4 py-2.5 font-medium">Süre</th><th className="px-4 py-2.5 font-medium">İşlem</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-line">
               {acik.map((t) => {
                 const dk = dkOnce(t.openedAt);
                 return (
-                  <tr key={t.id}>
-                    <td className="px-3 py-2 font-medium">{platformEtiket(t)}{t.order?.source?.externalId ? <span className="text-muted"> #{t.order.source.externalId.slice(-4)}</span> : null}</td>
-                    <td className="px-3 py-2">{t.order?.name ?? "—"}<span className="block text-xs text-muted">{t.order?.phone ?? ""}</span></td>
-                    <td className="px-3 py-2 text-muted">{t.lines.filter((l) => !l.voided).length} ürün</td>
-                    <td className="px-3 py-2 tabular font-semibold">{formatTL(t.total)}</td>
-                    <td className="px-3 py-2"><span className={`rounded px-1.5 py-0.5 text-xs font-medium ${DURUM(t).cls}`}>{DURUM(t).label}</span><span className="block text-[11px] text-muted">{cizelge(t)}</span></td>
-                    <td className="px-3 py-2 text-muted">{dk} dk</td>
-                    <td className="px-3 py-2">
+                  <tr key={t.id} className="transition-colors hover:bg-surface-2">
+                    <td className="px-4 py-2.5 font-medium">{platformEtiket(t)}{t.order?.source?.externalId ? <span className="text-muted"> #{t.order.source.externalId.slice(-4)}</span> : null}</td>
+                    <td className="px-4 py-2.5">{t.order?.name ?? "—"}<span className="block text-xs text-muted">{t.order?.phone ?? ""}</span></td>
+                    <td className="px-4 py-2.5 text-muted">{t.lines.filter((l) => !l.voided).length} ürün</td>
+                    <td className="px-4 py-2.5 tabular font-semibold">{formatTL(t.total)}</td>
+                    <td className="px-4 py-2.5"><span className={`rounded px-1.5 py-0.5 text-xs font-medium ${DURUM(t).cls}`}>{DURUM(t).label}</span><span className="block text-[11px] text-muted">{cizelge(t)}</span></td>
+                    <td className="px-4 py-2.5 text-muted">{dk} dk</td>
+                    <td className="px-4 py-2.5">
                       {!t.closed && !t.delivery.acceptedAt && !t.delivery.rejected && !t.delivery.cancelled ? (
                         <div className="flex items-center gap-3">
                           <form action={acceptPlatformOrder.bind(null, t.id)}>

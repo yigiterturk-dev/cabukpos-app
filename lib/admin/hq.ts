@@ -16,8 +16,8 @@ export async function hqData(tx: Tx, r: Range): Promise<HqData> {
   // Satış düzeyi: ciro/iade/adet (satırlarla join'lersek satır sayısıyla çarpılır)
   const saleRows = await tx.select({
     storeId: S.storeId,
-    total: sql<number>`sum(case when ${S.status} = 'iade' then 0 else ${S.total} end)::int`,
-    refund: sql<number>`sum(case when ${S.status} = 'iade' then ${S.total} else 0 end)::int`,
+    total: sql<number>`sum(case when ${S.status} = 'iade' then 0 else ${S.total} - ${S.discount} end)::int`,
+    refund: sql<number>`sum(case when ${S.status} = 'iade' then ${S.total} - ${S.discount} else 0 end)::int`,
     count: sql<number>`sum(case when ${S.status} = 'iade' then 0 else 1 end)::int`,
   }).from(S).where(where).groupBy(S.storeId);
   // Satır düzeyi: donmuş maliyet + maliyetsiz satır sayısı

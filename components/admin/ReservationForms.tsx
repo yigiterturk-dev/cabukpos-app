@@ -1,6 +1,7 @@
 "use client";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input, Textarea } from "@/components/ui";
+import { Select } from "@/components/Select";
 import { createReservation, setReservationStatus, type ResState } from "@/lib/admin/reservation-actions";
 import { RES_LABEL, type ResStatus } from "@/lib/core/reservation";
 
@@ -17,10 +18,7 @@ export function ReservationForm({ stores, day, tables }: { stores: { id: string;
       <Field label="Saat"><Input name="time" type="time" required defaultValue="19:00" className="!w-32" /></Field>
       {tables.length > 0 && (
         <Field label="Masa (opsiyonel)">
-          <select name="tableId" defaultValue="" className="rounded-lg border border-line bg-surface px-3 py-2 text-sm">
-            <option value="">—</option>
-            {tables.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
+          <Select name="tableId" defaultValue="" options={[{ value: "", label: "—" }, ...tables.map((t) => ({ value: t.id, label: t.name }))]} />
         </Field>
       )}
       <div className="sm:col-span-2"><Field label="Not"><Textarea name="note" rows={2} maxLength={300} placeholder="ör. bebek sandalyesi" /></Field></div>

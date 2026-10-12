@@ -15,9 +15,10 @@ const inRange = (col: PgColumn, r: Range) => { const { from, to } = rangeBounds(
 const closedOrRefund = inArray(S.status, ["kapandi", "iade"]);
 
 async function salesIn(tx: Tx, r: Range): Promise<SaleRow[]> {
-  const rows = await tx.select({ id: S.id, status: S.status, channel: S.channel, total: S.total, change: S.change, vat: S.vat, at: S.createdAt, staffId: S.staffId })
+  const rows = await tx.select({ id: S.id, status: S.status, channel: S.channel, total: S.total, discount: S.discount, change: S.change, vat: S.vat, at: S.createdAt, staffId: S.staffId })
     .from(S).where(and(closedOrRefund, inRange(S.createdAt, r)));
-  return rows.map((x) => ({ id: x.id, status: x.status as SaleRow["status"], channel: x.channel, total: x.total, change: x.change, net: (x.vat as { net: number }[]).reduce((t, v) => t + v.net, 0), at: x.at, staffId: x.staffId }));
+  // #33: ciro ve KDV matrahı satış düzeyi indirim düşülmüş (net) gösterilir.
+  return rows.map((x) => ({ id: x.id, status: x.status as SaleRow["status"], channel: x.channel, total: x.total - x.discount, change: x.change, net: (x.vat as { net: number }[]).reduce((t, v) => t + v.net, 0) - x.discount, at: x.at, staffId: x.staffId }));
 }
 
 async function paymentsIn(tx: Tx, r: Range): Promise<PayRow[]> {
@@ -53,7 +54,7 @@ export async function productData(tx: Tx, r: Range, sort: "adet" | "ciro") {
 async function eventsIn(tx: Tx, r: Range, staffId?: string, limit?: number): Promise<StaffEvent[]> {
   const T = schema.tabEvents, A = alias(schema.tabEvents, "a"), R = schema.registerEvents;
   const who = (c: PgColumn) => (staffId ? eq(c, staffId) : undefined);
-  const refunds = await tx.select({ at: S.createdAt, staffId: S.staffId, approvedBy: S.approvedBy, receiptNo: S.receiptNo, total: S.total }).from(S)
+  const refunds = await tx.select({ at: S.createdAt, staffId: S.staffId, approvedBy: S.approvedBy, receiptNo: S.receiptNo, total: S.total, discount: S.discount }).from(S)
     .where(and(eq(S.status, "iade"), inRange(S.createdAt, r), who(S.staffId))).orderBy(desc(S.createdAt)).limit(limit ?? 100_000);
   const tabs = await tx.select({ at: T.at, staffId: T.staffId, approvedBy: T.approvedBy, type: T.type, payload: T.payload, line: A.payload }).from(T)
     .leftJoin(A, and(eq(A.tabId, T.tabId), eq(A.type, "add"), sql`${A.payload}->>'lineId' = ${T.payload}->>'lineId'`))
@@ -61,7 +62,7 @@ async function eventsIn(tx: Tx, r: Range, staffId?: string, limit?: number): Pro
   const regs = await tx.select({ at: R.at, staffId: R.staffId, type: R.type, lines: R.lines, total: R.total }).from(R)
     .where(and(inRange(R.at, r), who(R.staffId))).orderBy(desc(R.at)).limit(limit ?? 100_000);
   const all: StaffEvent[] = [
-    ...refunds.map((x) => ({ at: x.at, staffId: x.staffId, kind: "iade" as const, text: `İade ${x.receiptNo}`, amount: x.total, approvedBy: x.approvedBy, reason: null })),
+    ...refunds.map((x) => ({ at: x.at, staffId: x.staffId, kind: "iade" as const, text: `İade ${x.receiptNo}`, amount: x.total - x.discount, approvedBy: x.approvedBy, reason: null })),
     ...tabs.map(tabEventRow),
     ...regs.map(registerEventRow),
   ].sort((a, b) => b.at.getTime() - a.at.getTime());
@@ -121,7 +122,7 @@ export async function reportCsv(tx: Tx, tenantId: string, sekme: string, r: Rang
 /** M9c ajans API'si: iadenin kanalı asıl satışınkidir (iade satırı kendisi 'kasa' yazılır). */
 export async function dailyStatsData(tx: Tx, r: Range): Promise<DailyStat[]> {
   const O = alias(S, "o");
-  const rows = await tx.select({ status: S.status, channel: sql<SaleRow["channel"]>`coalesce(${O.channel}, ${S.channel})`, total: S.total, tabId: S.tabId, at: S.createdAt })
+  const rows = await tx.select({ status: S.status, channel: sql<SaleRow["channel"]>`coalesce(${O.channel}, ${S.channel})`, total: S.total, discount: S.discount, tabId: S.tabId, at: S.createdAt })
     .from(S).leftJoin(O, eq(O.id, S.refundOf)).where(and(closedOrRefund, inRange(S.createdAt, r)));
-  return dailyStats(rows.map((x) => ({ ...x, status: x.status as "kapandi" | "iade" })));
+  return dailyStats(rows.map((x) => ({ ...x, total: x.total - x.discount, status: x.status as "kapandi" | "iade" })));
 }

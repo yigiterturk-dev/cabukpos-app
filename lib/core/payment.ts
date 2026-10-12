@@ -5,6 +5,7 @@ export const PAY_METHODS = [
   { value: "nakit", label: "Nakit" },
   { value: "kart", label: "Kart" },
   { value: "yemek_karti", label: "Yemek kartı", rare: true },
+  { value: "hediye_karti", label: "Hediye kartı", rare: true },
   // M6: platformda/online ödenmiş paket; kasada seçilemez, raporda yalnız varsa görünür
   { value: "online", label: "Online", rare: true, internal: true },
 ] as const;

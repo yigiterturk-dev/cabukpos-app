@@ -18,7 +18,7 @@ export type Table = { id: string; areaId: string; name: string };
 export type Station = { id: string; name: string; printer: string | null };
 export type DeliveryZone = { id: string; name: string; fee: number; minOrder: number; perKm: number | null; startMin: number | null; endMin: number | null };
 // #50: fiyat listesi / happy hour (market + restoran; kasa satır eklerken uygular)
-export type KasaPriceList = { id: string; name: string; days: number[]; startMin: number; endMin: number; storeId: string | null; items: { productId: string; price: number }[] };
+export type KasaPriceList = { id: string; name: string; kind?: "fiyat" | "yuzde"; percent?: number | null; categoryIds?: string[] | null; days: number[]; startMin: number; endMin: number; storeId: string | null; items: { productId: string; price: number }[] };
 // M5: restoran salonu (market kataloğunda yok)
 export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; priceLists?: KasaPriceList[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null } };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
@@ -49,6 +49,7 @@ export type LocalSale = {
   lines: { productId: string | null; name: string; unitPrice: number; vatRate: VatRate; qtyMilli: number; options?: LineOption[]; note?: string | null; discount?: number }[];
   payments: Payment[]; total: number; change: number; vat: VatLine[];
   tip?: number; // #49: bahşiş — toplamın içinde
+  discount?: number; customerId?: string | null; // #33: kupon + puan indirimi / sadakat müşterisi
   tabId?: string; tableName?: string; // M5: masadan parça ödeme (M6: paket/platform başlığı)
   refund?: boolean; refundOf?: string; refundOfNo?: string; approvedBy?: string; // iade fişi
   fiscal?: { token: string; buyer: Buyer | null; number: string | null; ettn: string | null }; // M8 e-Arşiv

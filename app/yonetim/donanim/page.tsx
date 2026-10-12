@@ -6,7 +6,7 @@ import { RevokeForm } from "@/components/admin/RevokeForms";
 import { agentConfig, emptyAgentConfig } from "@/lib/agent/config";
 import { agentHost } from "@/lib/agent/dns";
 import { AgentConfigForm, AgentCreateForm, AgentPairButton } from "@/components/admin/AgentForms";
-import { Badge, Card, Empty, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Card, Empty, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
@@ -26,7 +26,7 @@ export default async function Donanim() {
         <div className="mt-4 rounded-lg border border-line bg-surface-2 px-3 py-3 text-sm">
           <p className="font-medium">Windows’ta hızlı kurulum</p>
           <p className="mt-1 text-ink-2">Node.js LTS kuruluysa betiği indirip çalıştırın; eşleme kodunu soracak, ajanı indirip bilgisayar açılışına ekleyecek.</p>
-          <a href="/indir/cabukpos-agent-install.ps1" download className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-brand px-3 py-2 font-medium text-white hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/50">Windows kurulum betiğini indir</a>
+          <a href="/indir/cabukpos-agent-install.ps1" download className={`${buttonClass("primary")} mt-2`}>Windows kurulum betiğini indir</a>
         </div>
         <details className="mt-4 text-sm text-ink-2">
           <summary className="cursor-pointer font-medium">Kurulum adımları</summary>

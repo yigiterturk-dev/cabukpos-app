@@ -68,9 +68,9 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   return (
     <div className="flex-1 p-4">
       <div className="mb-4 flex items-center gap-3">
-        <h2 className="text-xl font-semibold tracking-tight">Paket siparişleri</h2>
+        <h2 className="font-display text-xl font-bold tracking-tight">Paket siparişleri</h2>
         {waiting > 0 && <span className="animate-pulse rounded-full bg-bad px-2.5 py-0.5 text-xs font-medium text-white" data-testid="waiting-count">{waiting} onay bekliyor</span>}
-        <button type="button" onClick={onNew} className="press ml-auto inline-flex min-h-11 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-card hover:bg-brand-hover">+ Yeni paket</button>
+        <button type="button" onClick={onNew} className="press ml-auto inline-flex min-h-11 items-center rounded-xl bg-gradient-to-b from-brand to-brand-hover px-4 text-sm font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 hover:shadow-glow">+ Yeni paket</button>
       </div>
       <div className="grid gap-3 lg:grid-cols-5 md:grid-cols-3">
         {COLUMNS.map((c) => {
@@ -97,7 +97,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                         {o && <div className="truncate text-ink-2">{t.kind === "platform" ? o.name : formatPhone(o.phone)}</div>}
                         {o && <div className="truncate text-xs text-muted">{[zone?.name, o.address].filter(Boolean).join(" · ")}</div>}
                         <div className="mt-1 flex items-center gap-2">
-                          <span className="tabular font-semibold">{TL(t.total)}</span>
+                          <span className="tabular font-display text-base font-bold">{TL(t.total)}</span>
                           {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
                         </div>
                         {courier && <div className="mt-1 text-xs">Kurye: <span className="font-medium">{courier}</span></div>}

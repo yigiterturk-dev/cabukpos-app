@@ -78,7 +78,7 @@ function priceListCatalog(device: { tenantId: string; storeId: string }) {
   const L = schema.priceLists, I = schema.priceListItems;
   return withTenant(device.tenantId, async (tx) => {
     const [lists, items] = await Promise.all([
-      tx.select({ id: L.id, name: L.name, days: L.days, startMin: L.startMin, endMin: L.endMin, storeId: L.storeId })
+      tx.select({ id: L.id, name: L.name, kind: L.kind, percent: L.percent, categoryIds: L.categoryIds, days: L.days, startMin: L.startMin, endMin: L.endMin, storeId: L.storeId })
         .from(L).where(and(eq(L.active, true), or(isNull(L.storeId), eq(L.storeId, device.storeId)))).orderBy(asc(L.sort), asc(L.name)),
       tx.select({ listId: I.listId, productId: I.productId, price: I.price }).from(I),
     ]);

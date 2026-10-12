@@ -13,32 +13,40 @@ const hm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${
 
 export default async function FiyatListesi() {
   const a = await requireAdmin();
-  const L = schema.priceLists, I = schema.priceListItems, P = schema.products;
-  const [lists, items, prods] = await withTenant(a.tenantId, (tx) =>
+  const L = schema.priceLists, I = schema.priceListItems, P = schema.products, C = schema.categories;
+  const [lists, items, prods, cats] = await withTenant(a.tenantId, (tx) =>
     Promise.all([
       tx.select().from(L).orderBy(desc(L.active), asc(L.sort), asc(L.name)),
       tx.select({ id: I.id, listId: I.listId, productId: I.productId, price: I.price, name: P.name, base: P.price }).from(I).innerJoin(P, eq(P.id, I.productId)),
       tx.select({ id: P.id, name: P.name }).from(P).where(eq(P.active, true)).orderBy(asc(P.name)),
+      tx.select({ id: C.id, name: C.name }).from(C).orderBy(asc(C.sort), asc(C.name)),
     ]),
   );
   const products: Option[] = prods.map((p) => ({ value: p.id, label: p.name }));
+  const categories: Option[] = cats.map((c) => ({ value: c.id, label: c.name }));
+  const catName = new Map(cats.map((c) => [c.id, c.name]));
   return (
     <>
-      <PageHeader title="Fiyat listeleri" desc="Belirli gün + saat aralığında seçili ürünlerin fiyatını ezer: happy hour, öğle menüsü fiyatı, akşam indirimi. Kasa, satır eklenirken geçerli fiyatı kullanır; saat dışı satış taban fiyatla akar." />
-      <div className="mb-6"><Panel title="Liste ekle"><ListForm /></Panel></div>
-      {lists.length === 0 ? <Empty>Henüz fiyat listesi yok. Örneğin &quot;Happy Hour&quot; listesi ekleyip içine ürün fiyatı girin.</Empty> : (
+      <PageHeader title="Fiyat listeleri ve indirimler" desc="Belirli gün + saat aralığında geçerli liste. İki tür: ürün başı sabit fiyat (happy hour, öğle menüsü) ya da kapsama göre yüzde indirim (tüm ürünler veya seçili kategoriler). Kasa, satır eklenirken geçerli fiyatı kullanır; saat dışı taban fiyatla akar." />
+      <div className="mb-6"><Panel title="Liste / indirim ekle"><ListForm categories={categories} /></Panel></div>
+      {lists.length === 0 ? <Empty>Henüz liste yok. Örneğin &quot;Happy Hour %20 (tüm ürünler)&quot; ya da kategorili bir indirim ekleyin.</Empty> : (
         <div className="space-y-4">
           {lists.map((l) => {
             const mine = items.filter((i) => i.listId === l.id);
+            const yuzde = l.kind === "yuzde";
+            const scope = yuzde ? (l.categoryIds && l.categoryIds.length ? l.categoryIds.map((id) => catName.get(id)).filter(Boolean).join(" · ") : "Tüm ürünler") : null;
             return (
               <Card key={l.id} className="p-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className={`font-semibold ${l.active ? "" : "opacity-60"}`}>{l.name}</span>
+                  {yuzde ? <Badge tone="brand">Yüzde %{l.percent}</Badge> : <Badge>Ürün başı fiyat</Badge>}
                   <Badge>{l.days.length === 0 ? "Her gün" : l.days.map((d) => GUNLER[d]).join(" · ")}</Badge>
                   <span className="text-sm tabular text-muted">{hm(l.startMin)} – {hm(l.endMin)}{l.endMin <= l.startMin ? " (ertesi gün)" : ""}</span>
                   <ListToggles id={l.id} active={l.active} />
                 </div>
-                {l.active && (
+                {yuzde ? (
+                  <p className="mt-3 text-sm text-muted">Kapsam: <b className="text-ink-2">{scope}</b>. Aktif olduğu saatlerde kapsamdaki ürünlerin fiyatı %{l.percent} indirilir; kasa satır eklenirken donar.</p>
+                ) : l.active && (
                   <div className="mt-4 space-y-3 border-t border-line pt-4">
                     <ItemForm listId={l.id} products={products} />
                     {mine.length === 0 ? <p className="text-sm text-muted">Ürün fiyatı yok: listeye ürün ekleyin.</p> : (

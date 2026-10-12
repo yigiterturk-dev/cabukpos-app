@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { cookies } from "next/headers";
 import { createStore, switchStore, updateStore } from "@/lib/admin/store-actions";
 import { STORE_COOKIE } from "@/lib/admin/store-scope";
-import { Badge, Card, Field, Input, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Card, Field, Input, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +53,7 @@ export default async function Subeler({ searchParams }: { searchParams: Promise<
                   <input type="hidden" name="storeId" value={s.id} />
                   <Field label="Ad"><Input name="name" defaultValue={s.name} className="w-56" required /></Field>
                   <Field label="Adres"><Input name="address" defaultValue={s.address ?? ""} className="w-72" /></Field>
-                  <button className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white">Kaydet</button>
+                  <button className={buttonClass("primary")}>Kaydet</button>
                 </form>
               )}
             </div>
@@ -65,7 +65,7 @@ export default async function Subeler({ searchParams }: { searchParams: Promise<
           <form action={createStore} className="flex flex-wrap items-end gap-3">
             <Field label="Şube adı"><Input name="name" className="w-56" required /></Field>
             <Field label="Adres"><Input name="address" className="w-72" /></Field>
-            <button className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white">Şube oluştur</button>
+            <button className={buttonClass("primary")}>Şube oluştur</button>
           </form>
         </Card>
       </section>

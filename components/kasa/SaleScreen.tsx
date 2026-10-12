@@ -11,13 +11,16 @@ import type { Buyer } from "@/lib/core/fiscal";
 import { InvoiceForm } from "./InvoiceForm";
 import { SmsReceiptForm } from "./SmsReceiptForm";
 import { ArrowRight, Banknote, CheckCircle2, CreditCard, FileText, Plus, Printer, Scale, ScanBarcode, ShoppingBasket, Trash2, Utensils, X } from "lucide-react";
-import { Button, Dialog, IconButton } from "@/components/ui";
+import { Badge, Button, Dialog, IconButton, Kbd } from "@/components/ui";
+import { capDiscount, pointsValue, type SaleExtrasInput } from "@/lib/loyalty";
 import { categoryTone } from "@/lib/ui/categoryTone";
 import { quickCash } from "@/lib/ui/quickCash";
 
 export type PayResult = { ok: true; saleId: string; receiptNo: string; change: number } | { ok: false; error: string };
-export type OnPay = (saleId: string, payments: Payment[], buyer: Buyer | null, tip: number) => Promise<PayResult>;
-export type OnSale = (saleId: string, payments: Payment[], cart: CartLine[], buyer: Buyer | null, tip: number) => Promise<PayResult>;
+export type OnPay = (saleId: string, payments: Payment[], buyer: Buyer | null, tip: number, extras?: SaleExtrasInput) => Promise<PayResult>;
+export type OnSale = (saleId: string, payments: Payment[], cart: CartLine[], buyer: Buyer | null, tip: number, extras?: SaleExtrasInput) => Promise<PayResult>;
+
+type CustLoyalty = { customerId: string; name: string; points: number; enabled: boolean; kurusPerPoint: number; kurusPerRedeem: number; minRedeemPoints: number };
 export type PrintView = { state: "printing" | "ok" | "fail"; error?: string | null };
 export type ReadScale = () => Promise<{ grams: number; stable: boolean }>;
 
@@ -33,29 +36,91 @@ export function PayDialog({ total, onPay, onClose, onDone, currency }: { total: 
   const [invoicing, setInvoicing] = useState(false);
   const [tip, setTip] = useState<string>(""); // #49: bahşiş — toplama eklenir
 
+  // #33: kupon / puan / hediye kartı
+  const [phone, setPhone] = useState("");
+  const [cust, setCust] = useState<CustLoyalty | null>(null);
+  const [loyaltyBusy, setLoyaltyBusy] = useState(false);
+  const [loyaltyMsg, setLoyaltyMsg] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [redeem, setRedeem] = useState("");
+  const [giftCode, setGiftCode] = useState("");
+  const [gift, setGift] = useState<{ code: string; balance: number } | null>(null);
+
   const tipK = tip ? parse(tip) ?? 0 : 0;
-  const grand = total + tipK;
+  const redeemPts = redeem ? Math.max(0, Math.trunc(Number(redeem) || 0)) : 0;
+  const redeemDiscount = cust?.enabled && redeemPts >= cust.minRedeemPoints && redeemPts <= cust.points ? pointsValue(redeemPts, cust.kurusPerRedeem) : 0;
+  const discount = capDiscount(total, [coupon?.discount ?? 0, redeemDiscount]);
+  const grand = total - discount + tipK;
+  const giftApplied = gift ? Math.min(gift.balance, grand) : 0;
+  const payBase = Math.max(0, grand - giftApplied); // nakit/kart/yemek kartına kalan
   const payments: Payment[] = [];
   const add = (method: Payment["method"], v: string | null) => { const k = v === null ? null : parse(v); if (k) payments.push({ method, amount: k }); };
   add("nakit", cash); add("kart", card); add("yemek_karti", meal);
+  if (giftApplied > 0) payments.push({ method: "hediye_karti", amount: giftApplied });
   const s = settle(grand, payments);
   const paid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const remaining = Math.max(0, grand - paid);
-  const all = (m: "nakit" | "kart" | "yemek_karti") => { const v = bare(grand); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
+  const all = (m: "nakit" | "kart" | "yemek_karti") => { const v = bare(payBase); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
   const other = (card === null ? 0 : parse(card) ?? 0) + (meal === null ? 0 : parse(meal) ?? 0);
-  const due = Math.max(0, grand - other); // nakitle kapanacak kalan
+  const due = Math.max(0, payBase - other); // nakitle kapanacak kalan
   const setCashK = (k: number) => setCash(bare(k));
-  const full = bare(grand);
+  const full = bare(payBase);
   const mode = cash === full && card === null && meal === null ? "nakit" : !cash && card === full && meal === null ? "kart" : !cash && card === null && meal === full ? "yemek_karti" : null;
   const submit = () => start(async () => {
     setError(null);
+    const extras: SaleExtrasInput | undefined = cust || coupon || redeemDiscount > 0 || gift
+      ? {
+          customerId: cust?.customerId ?? null,
+          ...(coupon ? { coupon } : {}),
+          ...(redeemDiscount > 0 && cust ? { loyalty: { customerId: cust.customerId, points: redeemPts, discount: redeemDiscount } } : {}),
+          ...(gift && giftApplied > 0 ? { giftCard: { code: gift.code, amount: giftApplied } } : {}),
+        }
+      : undefined;
     try {
-      const r = await onPay(saleId, payments, buyer, tipK);
+      const r = await onPay(saleId, payments, buyer, tipK, extras);
       if (r.ok) onDone(r); else setError(r.error);
     } catch {
       setError("Satış kaydedilemedi. Tekrar deneyin; satış iki kez kaydedilmez.");
     }
   });
+
+  const lookupCustomer = async () => {
+    setLoyaltyBusy(true); setLoyaltyMsg(null);
+    try {
+      const res = await fetch(`/api/kasa/loyalty?phone=${encodeURIComponent(phone.trim())}`, { cache: "no-store" });
+      const data = (await res.json()) as { customer: CustLoyalty | null };
+      setCust(data.customer);
+      setLoyaltyMsg(data.customer ? (data.customer.enabled ? null : "Sadakat programı kapalı.") : "Kayıtlı müşteri bulunamadı.");
+    } catch { setLoyaltyMsg("Çevrimiçi değil; sadakat kullanılamıyor."); }
+    setLoyaltyBusy(false);
+  };
+  const applyCoupon = async () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) return;
+    setLoyaltyBusy(true); setLoyaltyMsg(null);
+    try {
+      const q = new URLSearchParams({ coupon: code, subtotal: String(total) });
+      if (cust?.customerId) q.set("customer", cust.customerId);
+      const res = await fetch(`/api/kasa/loyalty?${q}`, { cache: "no-store" });
+      const data = (await res.json()) as { ok?: boolean; discount?: number; reason?: string };
+      if (data.ok && typeof data.discount === "number") setCoupon({ code, discount: data.discount });
+      else { setCoupon(null); setLoyaltyMsg(data.reason ?? "Kupon uygulanamadı."); }
+    } catch { setLoyaltyMsg("Çevrimiçi değil."); }
+    setLoyaltyBusy(false);
+  };
+  const applyGift = async () => {
+    const code = giftCode.trim().toUpperCase();
+    if (!code) return;
+    setLoyaltyBusy(true); setLoyaltyMsg(null);
+    try {
+      const res = await fetch(`/api/kasa/loyalty?gift=${encodeURIComponent(code)}`, { cache: "no-store" });
+      const data = (await res.json()) as { ok?: boolean; balance?: number; reason?: string };
+      if (data.ok && typeof data.balance === "number") setGift({ code, balance: data.balance });
+      else { setGift(null); setLoyaltyMsg(data.reason ?? "Hediye kartı bulunamadı."); }
+    } catch { setLoyaltyMsg("Çevrimiçi değil."); }
+    setLoyaltyBusy(false);
+  };
 
   const METHODS = [
     { m: "nakit" as const, label: "Tamamı nakit", Icon: Banknote },
@@ -64,44 +129,78 @@ export function PayDialog({ total, onPay, onClose, onDone, currency }: { total: 
   ];
   const amount = "tabular h-14 flex-1 rounded-xl border border-line bg-surface px-4 text-right text-2xl font-semibold outline-none transition-[border-color,box-shadow] hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
   return (
-    <Dialog label="Ödeme" title="Ödeme" aside={<span className="tabular text-3xl font-bold tracking-tight">{TL(grand)}</span>} onClose={onClose}
+    <Dialog label="Ödeme" title="Ödeme" size="lg" aside={<span className="tabular font-display text-3xl font-extrabold tracking-tight">{TL(grand)}</span>} onClose={onClose}
       footer={<>
         <Button variant="secondary" size="lg" onClick={onClose} className="flex-1">Vazgeç</Button>
         <Button size="lg" disabled={!s.ok || pending || invoicing} onClick={submit} className="flex-[2]">{pending ? "Kaydediliyor…" : "Satışı tamamla"}</Button>
       </>}>
-      <div className="grid grid-cols-3 gap-2">
-        {METHODS.map(({ m, label, Icon }) => (
-          <button key={m} type="button" onClick={() => all(m)} aria-pressed={mode === m}
-            className={`press flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${mode === m ? "border-brand bg-brand-soft text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"}`}>
-            <Icon aria-hidden className="size-6" />{label}
-          </button>
-        ))}
-      </div>
-      <div className="mt-5 space-y-3">
-        <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Alınan nakit</span><input name="amount-nakit" inputMode="decimal" value={cash} onChange={(e) => setCash(e.target.value)} placeholder="0,00" className={amount} /></label>
-        <div className="flex items-center gap-3">
-          <span className="w-28 text-sm font-medium text-ink-2">Bahşiş</span>
-          <input name="amount-bahsis" inputMode="decimal" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="0,00" aria-label="Bahşiş tutarı" className={amount} />
-          <div className="flex gap-1">
-            {[10, 15].map((p) => (
-              <Button key={p} variant="secondary" size="sm" type="button" onClick={() => setTip(bare(Math.round((total * p) / 100)))}>{`%${p}`}</Button>
+      <div className="grid gap-5 lg:grid-cols-[1.05fr_1fr]">
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2">
+            {METHODS.map(({ m, label, Icon }) => (
+              <button key={m} type="button" onClick={() => all(m)} aria-pressed={mode === m}
+                className={`press flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-medium outline-none transition-[background-color,border-color,box-shadow] duration-[var(--dur-base)] focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${mode === m ? "border-brand bg-brand-soft text-brand ring-2 ring-brand-ring" : "border-line bg-surface shadow-rest hover:border-line-strong hover:bg-surface-2"}`}>
+                <Icon aria-hidden className="size-6" />{label}
+              </button>
             ))}
-            {tip && <IconButton label="Bahşişi kaldır" onClick={() => setTip("")}><X aria-hidden className="size-5" /></IconButton>}
+          </div>
+          <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Alınan nakit</span><input name="amount-nakit" inputMode="decimal" value={cash} onChange={(e) => setCash(e.target.value)} placeholder="0,00" className={amount} /></label>
+          <div className="flex items-center gap-3">
+            <span className="w-28 text-sm font-medium text-ink-2">Bahşiş</span>
+            <input name="amount-bahsis" inputMode="decimal" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="0,00" aria-label="Bahşiş tutarı" className={amount} />
+            <div className="flex gap-1">
+              {[10, 15].map((p) => (
+                <Button key={p} variant="secondary" size="sm" type="button" onClick={() => setTip(bare(Math.round((total * p) / 100)))}>{`%${p}`}</Button>
+              ))}
+              {tip && <IconButton label="Bahşişi kaldır" onClick={() => setTip("")}><X aria-hidden className="size-5" /></IconButton>}
+            </div>
+          </div>
+          {due > 0 && (
+            <div className="flex flex-wrap gap-2 pl-[7.75rem]">
+              <Button variant="secondary" size="sm" onClick={() => setCashK(due)}>Tam tutar</Button>
+              {quickCash(due).map((k) => <Button key={k} variant="secondary" size="sm" className="tabular" onClick={() => setCashK(k)}>{bare(k).replace(",00", "")}</Button>)}
+            </div>
+          )}
+          {card !== null && <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Kart</span><input name="amount-kart" inputMode="decimal" value={card} onChange={(e) => setCard(e.target.value)} className={amount} /><IconButton label="Kartı kaldır" onClick={() => setCard(null)}><X aria-hidden className="size-5" /></IconButton></label>}
+          {meal !== null && <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Yemek kartı</span><input name="amount-yemek_karti" inputMode="decimal" value={meal} onChange={(e) => setMeal(e.target.value)} className={amount} /><IconButton label="Yemek kartını kaldır" onClick={() => setMeal(null)}><X aria-hidden className="size-5" /></IconButton></label>}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {card === null && <Button variant="ghost" size="sm" onClick={() => setCard("")}><Plus aria-hidden className="size-4" />Kart ekle</Button>}
+            {meal === null && <Button variant="ghost" size="sm" onClick={() => setMeal("")}><Plus aria-hidden className="size-4" />Yemek kartı ekle</Button>}
+            {!invoicing && <Button variant="ghost" size="sm" onClick={() => setInvoicing(true)}><FileText aria-hidden className="size-4" />Fatura</Button>}
+            {buyer && !invoicing && <span className="inline-flex items-center rounded-full bg-brand-soft px-2.5 text-sm text-brand" data-testid="buyer-badge">{buyer.name}</span>}
           </div>
         </div>
-        {due > 0 && (
-          <div className="flex flex-wrap gap-2 pl-[7.75rem]">
-            <Button variant="secondary" size="sm" onClick={() => setCashK(due)}>Tam tutar</Button>
-            {quickCash(due).map((k) => <Button key={k} variant="secondary" size="sm" className="tabular" onClick={() => setCashK(k)}>{bare(k).replace(",00", "")}</Button>)}
+        <div className="rounded-xl border border-line bg-surface-2/60 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Müşteri telefonu" aria-label="Müşteri telefonu" className="h-9 min-w-40 flex-1 rounded-lg border border-line bg-surface px-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand-ring/50" />
+            <Button variant="secondary" size="sm" type="button" disabled={loyaltyBusy || !phone.trim()} onClick={() => void lookupCustomer()}>Müşteri bul</Button>
           </div>
-        )}
-        {card !== null && <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Kart</span><input name="amount-kart" inputMode="decimal" value={card} onChange={(e) => setCard(e.target.value)} className={amount} /><IconButton label="Kartı kaldır" onClick={() => setCard(null)}><X aria-hidden className="size-5" /></IconButton></label>}
-        {meal !== null && <label className="flex items-center gap-3"><span className="w-28 text-sm font-medium text-ink-2">Yemek kartı</span><input name="amount-yemek_karti" inputMode="decimal" value={meal} onChange={(e) => setMeal(e.target.value)} className={amount} /><IconButton label="Yemek kartını kaldır" onClick={() => setMeal(null)}><X aria-hidden className="size-5" /></IconButton></label>}
-        <div className="flex flex-wrap gap-2 pt-1">
-          {card === null && <Button variant="ghost" size="sm" onClick={() => setCard("")}><Plus aria-hidden className="size-4" />Kart ekle</Button>}
-          {meal === null && <Button variant="ghost" size="sm" onClick={() => setMeal("")}><Plus aria-hidden className="size-4" />Yemek kartı ekle</Button>}
-          {!invoicing && <Button variant="ghost" size="sm" onClick={() => setInvoicing(true)}><FileText aria-hidden className="size-4" />Fatura</Button>}
-          {buyer && !invoicing && <span className="inline-flex items-center rounded-full bg-brand-soft px-2.5 text-sm text-brand" data-testid="buyer-badge">{buyer.name}</span>}
+          {cust && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-medium">{cust.name}</span>
+              <Badge tone="brand">{cust.points} puan</Badge>
+              {cust.enabled && cust.points >= cust.minRedeemPoints && (
+                <label className="flex items-center gap-1.5 text-ink-2">
+                  Kullan
+                  <input value={redeem} onChange={(e) => setRedeem(e.target.value)} inputMode="numeric" placeholder="0" aria-label="Harcanacak puan" className="tabular h-8 w-16 rounded-lg border border-line bg-surface px-2 text-right text-sm outline-none focus:border-brand" />
+                  puan
+                </label>
+              )}
+            </div>
+          )}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Kupon kodu" aria-label="Kupon kodu" className="h-9 min-w-32 flex-1 rounded-lg border border-line bg-surface px-2.5 text-sm uppercase outline-none focus:border-brand focus:ring-2 focus:ring-brand-ring/50" />
+            <Button variant="secondary" size="sm" type="button" disabled={loyaltyBusy || !couponCode.trim()} onClick={() => void applyCoupon()}>Kupon</Button>
+            <input value={giftCode} onChange={(e) => setGiftCode(e.target.value)} placeholder="Hediye kartı kodu" aria-label="Hediye kartı kodu" className="h-9 min-w-32 flex-1 rounded-lg border border-line bg-surface px-2.5 text-sm uppercase outline-none focus:border-brand focus:ring-2 focus:ring-brand-ring/50" />
+            <Button variant="secondary" size="sm" type="button" disabled={loyaltyBusy || !giftCode.trim()} onClick={() => void applyGift()}>Kart</Button>
+          </div>
+          {(discount > 0 || giftApplied > 0) && (
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ok">
+              {discount > 0 && <span>İndirim: −{TL(discount)}</span>}
+              {giftApplied > 0 && <span>Hediye kartı: −{TL(giftApplied)}</span>}
+            </div>
+          )}
+          {loyaltyMsg && <p className="mt-2 text-xs text-warn" role="status">{loyaltyMsg}</p>}
         </div>
       </div>
       {invoicing && <InvoiceForm initial={buyer} onSave={(b) => { setBuyer(b); setInvoicing(false); }} onCancel={() => { setBuyer(null); setInvoicing(false); }} />}
@@ -198,7 +297,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
     return base.filter((p) => (cat ? p.categoryId === cat : true)).slice(0, MAX_SHOWN);
   }, [products, cat, q, market]);
   // #50: fiyat satır eklenirken donar — happy hour bitse de sepetteki satır değişmez.
-  const add = (p: KasaProduct, qtyMilli = 1000) => { setCart((c) => addProduct(c, { ...p, price: effectivePrice(p.id, p.price, priceLists, new Date()) }, qtyMilli)); setLast(null); setScanError(null); };
+  const add = (p: KasaProduct, qtyMilli = 1000) => { setCart((c) => addProduct(c, { ...p, price: effectivePrice(p.id, p.price, priceLists, new Date(), undefined, p.categoryId) }, qtyMilli)); setLast(null); setScanError(null); };
   const pick = (p: KasaProduct) => (p.kind === "tartili" ? setWeigh(p) : add(p));
   const refocus = () => requestAnimationFrame(() => search.current?.focus());
   const onScan = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -237,10 +336,10 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
       <section className="flex min-h-0 flex-col">
         <div className="mb-3 flex items-end justify-between gap-3 px-1">
           <div>
-            <p className="text-lg font-semibold tracking-tight">Yeni satış</p>
+            <h1 className="font-display text-xl font-bold tracking-tight">Yeni satış</h1>
             <p className="text-xs text-muted">Ürünü seçin veya barkodu okutun.</p>
           </div>
-          <span className="hidden rounded-md bg-surface-3 px-2 py-1 text-xs text-muted sm:inline-flex">F2 ara · Enter ekle</span>
+          <span className="hidden items-center gap-1.5 text-xs text-muted sm:inline-flex"><Kbd>F2</Kbd> ara · <Kbd>Enter</Kbd> ekle</span>
         </div>
         <div className="relative">
           <ScanBarcode aria-hidden className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted" />
@@ -260,15 +359,20 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
             const n = inCart.get(p.id);
             return (
               <button key={p.id} type="button" onClick={() => { pick(p); refocus(); }}
-                className={`press relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-surface p-3.5 pt-4 text-left shadow-card outline-none hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${n ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
+                className={`press group relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-surface p-3.5 pt-4 text-left shadow-rest outline-none transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${n ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
                 <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
-                <span className="line-clamp-2 pr-7 text-[15px] font-semibold leading-snug">{p.name}</span>
-                <span className="tabular text-[15px] font-medium text-ink-2">{TL(p.price)}{p.kind === "tartili" && <span className="text-muted">/kg</span>}</span>
-                {n !== undefined && <span aria-hidden className="tabular absolute right-2.5 top-3 grid min-w-7 place-items-center rounded-full bg-brand px-1.5 py-0.5 text-xs font-bold text-white">{p.kind === "tartili" ? <Scale className="size-3.5" /> : n / 1000}</span>}
+                <span className="line-clamp-2 pr-7 font-display text-[15px] font-semibold leading-snug">{p.name}</span>
+                <span className="tabular mt-auto flex items-baseline gap-1 pt-2 text-[15px] font-semibold text-ink-2">{TL(p.price)}{p.kind === "tartili" && <span className="text-xs font-medium text-muted">/kg</span>}</span>
+                {n !== undefined && <span aria-hidden className="tabular absolute right-2.5 top-3 grid min-w-7 place-items-center rounded-full bg-brand px-1.5 py-0.5 text-xs font-bold text-white shadow-rest">{p.kind === "tartili" ? <Scale className="size-3.5" /> : n / 1000}</span>}
               </button>
             );
           })}
-          {shown.length === 0 && <p className="col-span-full py-12 text-center text-sm text-muted">{market && !q ? "Hızlı tuş yok. Barkod okutun ya da arayın." : "Ürün yok."}</p>}
+          {shown.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center gap-2 py-14 text-center">
+              <span className="grid size-12 place-items-center rounded-2xl bg-surface-3 text-line-strong"><ShoppingBasket aria-hidden className="size-6" /></span>
+              <p className="text-sm text-muted">{market && !q ? "Hızlı tuş yok. Barkod okutun ya da arayın." : "Ürün bulunamadı."}</p>
+            </div>
+          )}
         </div>
       </section>
       <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
@@ -278,8 +382,12 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
         </div>
         <div className="flex-1 divide-y divide-line overflow-y-auto">
           {cart.length === 0 && (
-            <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted">
-              <ShoppingBasket aria-hidden className="size-10 text-line-strong" />Sepet boş
+            <div className="flex h-full min-h-48 flex-col items-center justify-center gap-3 p-6 text-center">
+              <span className="grid size-14 place-items-center rounded-2xl bg-surface-3 text-line-strong"><ShoppingBasket aria-hidden className="size-7" /></span>
+              <div>
+                <p className="font-medium text-ink-2">Sepet boş</p>
+                <p className="mt-0.5 text-xs text-muted">Ürün seçin ya da barkod okutun.</p>
+              </div>
             </div>
           )}
           {cart.map((l) => {
@@ -304,7 +412,10 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
         </div>
         <div className="border-t border-line bg-surface-2 p-4">
           {t.vat.map((v) => <div key={v.rate} className="tabular flex justify-between text-xs text-muted"><span>KDV %{v.rate}</span><span>{TL(v.vat)}</span></div>)}
-          <div data-testid="cart-total" className="tabular mt-1 flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">TOPLAM</span><span className="text-4xl font-bold tracking-tight">{TL(t.total)}</span></div>
+          <div data-testid="cart-total" className="tabular mt-1.5 flex items-baseline justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Toplam</span>
+            <span className="font-display text-4xl font-extrabold tracking-tight">{TL(t.total)}</span>
+          </div>
           {last && (
             <div className="mt-3 rounded-xl border border-ok/30 bg-ok-soft p-3 text-sm text-ok">
               <div className="flex items-center gap-2">
@@ -329,7 +440,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
           )}
           <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
             <Button variant="secondary" size="xl" onClick={clear} disabled={!cart.length} className="!text-base !font-medium"><Trash2 aria-hidden className="size-5" />Temizle</Button>
-            <Button size="xl" onClick={() => setPaying(true)} disabled={!cart.length} className="text-xl">Öde<ArrowRight aria-hidden className="size-6" /></Button>
+            <Button size="xl" onClick={() => setPaying(true)} disabled={!cart.length} className="text-xl">Öde{cart.length > 0 && <span aria-hidden className="tabular ml-1 font-bold opacity-90">· {TL(t.total)}</span>}<ArrowRight aria-hidden className="size-6" /></Button>
           </div>
         </div>
       </aside>

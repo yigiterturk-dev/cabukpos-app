@@ -8,7 +8,8 @@ import { formatTL } from "@/lib/core/money";
 import { FiscalRowActions, FiscalSettingsForm, OkcZReportForm } from "@/components/admin/FiscalForms";
 import { queryEnvelopes } from "@/lib/admin/fiscal-actions";
 import { currentIstMonth } from "@/lib/admin/accounting";
-import { Badge, Card, Empty, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
+import { Select } from "@/components/Select";
 import { fakeProvidersBlocked } from "@/lib/fake-providers";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ const GIB: Record<string, { label: string; tone: "neutral" | "ok" | "warn" | "ba
   kabul: { label: "Kabul edildi", tone: "ok" }, red: { label: "Reddedildi", tone: "bad" },
 };
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
-const seg = (on: boolean) => `rounded-lg border px-3 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`;
+const seg = (on: boolean) => `shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line text-ink-2 hover:bg-surface-2"}`;
 
 export default async function Mali({ searchParams }: { searchParams: Promise<{ sekme?: string; durum?: string }> }) {
   const a = await requireAdmin();
@@ -59,7 +60,7 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
   return (
     <>
       <PageHeader title="Mali belge" desc="Bilgi fişi ya da e-Arşiv fatura. Kesilemeyen belgeler otomatik yeniden denenir; tam iade edilen faturalar iptal edilir, kısmi iadede iade tutanağı düzenlenir." />
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      <div className="-mx-1 mb-5 flex flex-wrap items-center gap-2 px-1">
         <Link href="/yonetim/mali" className={seg(tab === "ayarlar")}>Ayarlar</Link>
         <Link href="/yonetim/mali?sekme=belgeler" className={seg(tab === "belgeler")}>Belgeler</Link>
         <Link href="/yonetim/mali?sekme=muhasebe" className={seg(tab === "muhasebe")}>Muhasebe</Link>
@@ -72,17 +73,17 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
           <p className="mt-1 text-sm text-muted">Ayın yevmiye fişleri: gün sonu POS satışları, e-Arşiv cari satışları, iadeler ve alımlar. Alım satırlarında KDV ayrıştırması fişte bulunmadığından genel toplam 153’e yazılır; mizanı muhasebeciniz eşler. e-Defter çıktısı entegratör ön verisidir, GİB imzası kapsamaz.</p>
           <form method="get" action="/api/yonetim/muhasebe" className="mt-4 flex flex-wrap items-end gap-3">
             <label className="text-sm"><span className="block text-xs text-muted">Ay</span>
-              <input type="month" name="aylik" required defaultValue={`${year}-${String(month).padStart(2, "0")}`} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm" />
+              <input type="month" name="aylik" required defaultValue={`${year}-${String(month).padStart(2, "0")}`} className="min-h-11 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
             </label>
             <label className="text-sm"><span className="block text-xs text-muted">Format</span>
-              <select name="format" className="rounded-lg border border-line bg-surface px-3 py-2 text-sm">
-                <option value="parasut">Paraşüt</option>
-                <option value="logo">Logo</option>
-                <option value="mikro">Mikro</option>
-                <option value="edefter">e-Defter yevmiye (ön veri)</option>
-              </select>
+              <Select name="format" defaultValue="parasut" options={[
+                { value: "parasut", label: "Paraşüt" },
+                { value: "logo", label: "Logo" },
+                { value: "mikro", label: "Mikro" },
+                { value: "edefter", label: "e-Defter yevmiye (ön veri)" },
+              ]} />
             </label>
-            <button className="press inline-flex min-h-11 items-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">İndir</button>
+            <button className={buttonClass("primary")}>İndir</button>
           </form>
         </Card>
       ) : tab === "ayarlar" ? (
@@ -127,15 +128,15 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
           {docs.length === 0 ? <Empty>Belge yok.</Empty> : (
             <Card className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-left text-xs text-muted"><tr><th className="p-3 font-medium">Tarih</th><th className="font-medium">Fiş no</th><th className="font-medium">Alıcı</th><th className="text-right font-medium">Tutar</th><th className="pl-3 font-medium">Durum</th><th className="font-medium">Numara</th><th className="p-3 font-medium">E-posta</th></tr></thead>
-                <tbody>
+                <thead className={TABLE_HEAD}><tr><th className="px-4 py-2.5 font-medium">Tarih</th><th className="px-4 py-2.5 font-medium">Fiş no</th><th className="px-4 py-2.5 font-medium">Alıcı</th><th className="px-4 py-2.5 text-right font-medium">Tutar</th><th className="px-4 py-2.5 font-medium">Durum</th><th className="px-4 py-2.5 font-medium">Numara</th><th className="px-4 py-2.5 font-medium">E-posta</th></tr></thead>
+                <tbody className="divide-y divide-line">
                   {docs.map((d) => (
-                    <tr key={d.id} className="border-t border-line align-top" data-testid="fiscal-row">
-                      <td className="whitespace-nowrap p-3">{dt(d.createdAt)}</td>
-                      <td className="whitespace-nowrap py-3 font-mono">{d.receiptNo}</td>
-                      <td className="py-3">{d.buyer.name}<div className="text-xs text-muted">{d.buyer.taxId}</div></td>
-                      <td className="whitespace-nowrap py-3 text-right tabular-nums">{formatTL(d.total)}</td>
-                      <td className="py-3 pl-3"><Badge tone={STATUS[d.status].tone}>{STATUS[d.status].label}</Badge>
+                    <tr key={d.id} className="align-top transition-colors hover:bg-surface-2" data-testid="fiscal-row">
+                      <td className="whitespace-nowrap px-4 py-3">{dt(d.createdAt)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-mono">{d.receiptNo}</td>
+                      <td className="px-4 py-3">{d.buyer.name}<div className="text-xs text-muted">{d.buyer.taxId}</div></td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{formatTL(d.total)}</td>
+                      <td className="px-4 py-3"><Badge tone={STATUS[d.status].tone}>{STATUS[d.status].label}</Badge>
                         {d.kind === "efatura" && d.gibStatus && <div className="mt-1"><Badge tone={GIB[d.gibStatus]?.tone ?? "neutral"}>{GIB[d.gibStatus]?.label ?? d.gibStatus}</Badge></div>}
                         {d.lastError && <div className="mt-1 max-w-56 text-xs text-muted">{d.lastError}{d.status === "error" ? ` (${d.attempts}. deneme)` : ""}</div>}
                         {refunds.filter((r) => r.docId === d.id).map((r) => (
@@ -143,9 +144,9 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
                             {r.kind === "tutanak" ? "İade tutanağı" : r.resolvedAt ? `Alıcı iade faturası ${r.no}` : "Alıcı iade faturası bekleniyor"}
                           </Link>
                         ))}</td>
-                      <td className="py-3 font-mono text-xs">{d.number ?? "—"}
+                      <td className="px-4 py-3 font-mono text-xs">{d.number ?? "—"}
                         <div className="mt-2"><FiscalRowActions id={d.id} status={d.status} canMail={!!d.buyer.email} url={`${origin}/f/${d.token}`} /></div></td>
-                      <td className="p-3 text-xs">{!d.buyer.email ? "—" : d.emailSentAt ? "Gönderildi" : "Gönderilmedi"}</td>
+                      <td className="px-4 py-3 text-xs">{!d.buyer.email ? "—" : d.emailSentAt ? "Gönderildi" : "Gönderilmedi"}</td>
                     </tr>
                   ))}
                 </tbody>

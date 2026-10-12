@@ -9,11 +9,11 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "success";
 type Size = "sm" | "md" | "lg" | "xl";
 
 const VARIANT: Record<Variant, string> = {
-  primary: "bg-gradient-to-b from-[#ee6318] to-[#d64f08] text-white shadow-card hover:from-[#e05a10] hover:to-[#bf4408] hover:shadow-glow",
-  secondary: "border border-line bg-surface text-ink shadow-card hover:border-line-strong hover:bg-surface-2 hover:shadow-pop",
+  primary: "bg-gradient-to-b from-brand to-brand-hover text-white shadow-rest ring-1 ring-inset ring-white/15 hover:shadow-glow hover:brightness-105",
+  secondary: "border border-line bg-surface text-ink shadow-rest hover:border-line-strong hover:bg-surface-2 hover:shadow-raised",
   ghost: "text-ink-2 hover:bg-surface-3 hover:text-ink",
-  danger: "border border-bad/25 bg-surface text-bad shadow-card hover:bg-bad-soft hover:shadow-pop",
-  success: "bg-gradient-to-b from-[#1d8a5a] to-[#14663f] text-white shadow-card hover:from-[#177245] hover:to-[#0f5634] hover:shadow-glow",
+  danger: "border border-bad/25 bg-surface text-bad shadow-rest hover:bg-bad-soft hover:shadow-raised",
+  success: "bg-gradient-to-b from-ok to-ok/90 text-white shadow-rest hover:shadow-raised hover:brightness-105",
 };
 const SIZE: Record<Size, string> = {
   sm: "h-8 rounded-lg px-2.5 text-[13px]",
@@ -55,8 +55,13 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   );
 }
 
-export function Card({ className = "", ...p }: ComponentProps<"div">) {
-  return <div {...p} className={`rounded-2xl border border-line bg-surface shadow-card transition-shadow duration-150 ${className}`} />;
+export function Card({ className = "", interactive = false, ...p }: ComponentProps<"div"> & { interactive?: boolean }) {
+  const base = "rounded-2xl border border-line bg-surface";
+  const rest = "shadow-rest";
+  const lift = interactive
+    ? "transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised"
+    : "transition-shadow duration-[var(--dur-base)]";
+  return <div {...p} className={`${base} ${rest} ${lift} ${className}`} />;
 }
 
 export function PageHeader({ title, desc, actions }: { title: string; desc?: string; actions?: ReactNode }) {
@@ -95,7 +100,7 @@ export function Empty({ icon, children }: { icon?: ReactNode; children: ReactNod
 export function LogoMark({ size = "md", className = "" }: { size?: "sm" | "md" | "lg"; className?: string }) {
   const s = { sm: "size-7 rounded-lg text-sm", md: "size-9 rounded-[10px] text-base", lg: "size-14 rounded-2xl text-2xl" }[size];
   return (
-    <span aria-hidden className={`grid shrink-0 place-items-center bg-gradient-to-b from-[#ee6318] to-[#c2410c] font-display font-extrabold text-white shadow-glow ring-1 ring-inset ring-white/25 ${s} ${className}`}>Ç</span>
+    <span aria-hidden className={`grid shrink-0 place-items-center bg-gradient-to-b from-brand to-brand-hover font-display font-extrabold text-white shadow-glow ring-1 ring-inset ring-white/25 ${s} ${className}`}>Ç</span>
   );
 }
 
@@ -126,4 +131,52 @@ export function Panel({ title, desc, action, tone, children }: { title: string; 
       <div className="p-5">{children}</div>
     </Card>
   );
+}
+
+export type Tone = "neutral" | "brand" | "ok" | "warn" | "bad" | "info";
+
+const TONE_CHIP: Record<Tone, string> = {
+  neutral: "bg-surface-3 text-ink-2",
+  brand: "bg-brand-soft text-brand",
+  ok: "bg-ok-soft text-ok",
+  warn: "bg-warn-soft text-warn",
+  bad: "bg-bad-soft text-bad",
+  info: "bg-info-soft text-info",
+};
+
+/** Özet/istatistik karosu: etiket üstte, tabular display rakam altta. Ciro, fiş sayısı vb. */
+export function StatCard({ label, value, hint, icon, tone = "neutral", className = "" }: {
+  label: string; value: ReactNode; hint?: ReactNode; icon?: ReactNode; tone?: Tone; className?: string;
+}) {
+  return (
+    <div className={`flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-rest ${className}`}>
+      {icon && <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl [&>svg]:size-5 ${TONE_CHIP[tone]}`}>{icon}</span>}
+      <div className="min-w-0">
+        <p className="truncate text-xs font-medium text-muted">{label}</p>
+        <p className="tabular truncate font-display text-2xl font-bold leading-tight tracking-tight">{value}</p>
+        {hint && <p className="truncate text-xs text-muted">{hint}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** Ana hub aksiyon karosu: büyük ikon çipi, başlık ve açıklama. Tümüyle dokunulur. */
+export function ActionTile({ icon, title, desc, onClick, tone = "neutral", disabled = false, badge, className = "" }: {
+  icon: ReactNode; title: string; desc?: string; onClick?: () => void; tone?: Tone; disabled?: boolean; badge?: ReactNode; className?: string;
+}) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} data-tone={tone}
+      className={`press group flex flex-col items-start gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-rest outline-none transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40 ${className}`}>
+      <span aria-hidden className={`grid size-11 place-items-center rounded-xl [&>svg]:size-6 ${TONE_CHIP[tone]}`}>{icon}</span>
+      <span className="min-w-0">
+        <span className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">{title}{badge}</span>
+        {desc && <span className="mt-0.5 block text-sm text-muted">{desc}</span>}
+      </span>
+    </button>
+  );
+}
+
+/** Klavye kısayolu rozeti (ör. F2, Enter). */
+export function Kbd({ children }: { children: ReactNode }) {
+  return <kbd className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-[11px] font-medium text-muted">{children}</kbd>;
 }

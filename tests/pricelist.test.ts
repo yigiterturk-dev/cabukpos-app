@@ -60,3 +60,28 @@ test("tartılı kg fiyatı da ezilir (aynı yol)", () => {
   const l = [list({ items: [{ productId: "kilo", price: 12000 }] })];
   assert.equal(effectivePrice("kilo", 18000, l, at(1, 18)), 12000);
 });
+
+test("yüzde: kategori seçilmemişse tüm ürünlere indirim", () => {
+  const l = [list({ kind: "yuzde", percent: 20 })];
+  assert.equal(effectivePrice("p1", 9000, l, at(1, 18)), 7200);
+  assert.equal(effectivePrice("baska", 5000, l, at(1, 18)), 4000); // ürün listesi gerekmez
+  assert.equal(effectivePrice("p1", 9000, l, at(1, 16, 59)), 9000); // pencere dışı
+});
+
+test("yüzde: kategori kapsamı yalnız seçili kategoriyi indirir", () => {
+  const l = [list({ kind: "yuzde", percent: 50, categoryIds: ["k1"] })];
+  assert.equal(effectivePrice("p1", 9000, l, at(1, 18), undefined, "k1"), 4500);
+  assert.equal(effectivePrice("p1", 9000, l, at(1, 18), undefined, "k2"), 9000); // kapsam dışı
+  assert.equal(effectivePrice("p1", 9000, l, at(1, 18), undefined, null), 9000); // kategorisiz ürün kapsanmaz
+});
+
+test("yüzde indirim aşağı yuvarlar", () => {
+  const l = [list({ kind: "yuzde", percent: 15 })];
+  assert.equal(effectivePrice("p1", 9999, l, at(1, 18)), 8499); // 9999 * 0.85 = 8499.15
+});
+
+test("karışık: kategoriye uymayan yüzde listesi atlanır, sonraki fiyat listesi kazanır", () => {
+  const l = [list({ id: "yuzde-k1", kind: "yuzde", percent: 50, categoryIds: ["k1"] }), list({ id: "fiyat", items: [{ productId: "p1", price: 4000 }] })];
+  assert.equal(effectivePrice("p1", 9000, l, at(1, 18), undefined, "k2"), 4000); // yüzde kapsamaz → fiyat listesi
+  assert.equal(effectivePrice("p1", 9000, l, at(1, 18), undefined, "k1"), 4500); // yüzde kapsar → kazanır
+});

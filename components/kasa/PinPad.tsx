@@ -5,7 +5,7 @@ import { verifyPin } from "@/lib/auth/pin";
 import { kasaDb, loadMeta } from "@/lib/offline/db";
 import { PIN_LOCK_MS, PIN_MAX_FAILS, type KasaStaff, type Meta } from "@/lib/offline/state";
 
-const KEY = "press h-20 rounded-2xl border border-line bg-surface text-3xl font-medium shadow-card hover:border-line-strong active:bg-surface-3";
+const KEY = "press h-20 rounded-2xl border border-line bg-surface text-3xl font-semibold shadow-rest transition-[box-shadow,border-color,background-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-line-strong hover:shadow-raised active:bg-surface-3";
 
 export type Cashier = { id: string; name: string };
 
@@ -55,7 +55,7 @@ export function PinPad({ meta, onOk, onMeta, only }: { meta: Meta; onOk: (c: Cas
         ))}
         <button type="button" aria-label="Sil" onClick={() => setPin((p) => p.slice(0, -1))} className="press grid h-20 place-items-center rounded-2xl text-muted hover:bg-surface-3 hover:text-ink"><Delete aria-hidden className="size-7" /></button>
         <button type="button" onClick={() => key("0")} className={KEY}>0</button>
-        <button type="submit" disabled={busy || locked || pin.length < 4} className="press h-20 rounded-2xl bg-brand text-xl font-semibold text-white shadow-card hover:bg-brand-hover disabled:opacity-40">Gir</button>
+        <button type="submit" disabled={busy || locked || pin.length < 4} className="press h-20 rounded-2xl bg-gradient-to-b from-brand to-brand-hover text-xl font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 hover:shadow-glow disabled:opacity-40">Gir</button>
       </div>
       {locked && <p className="mt-4 text-center text-sm text-bad">Çok fazla yanlış deneme. {Math.ceil((meta.pinLockUntil - now) / 1000)} sn sonra tekrar deneyin.</p>}
       {error && !locked && <p className="mt-4 text-center text-sm text-bad">{error}</p>}

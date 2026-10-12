@@ -26,7 +26,7 @@ export function Modal({ label, children, onClose }: { label: string; children: R
 const btn = "press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40";
 const strong = "press inline-flex min-h-11 items-center justify-center rounded-[10px] bg-ink px-3 text-sm font-medium text-white shadow-card hover:bg-ink-2";
 const chip = (on: boolean) => `press inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-surface text-ink-2 hover:border-line-strong"}`;
-const primary = "press inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 font-semibold text-white shadow-card hover:bg-brand-hover disabled:opacity-40";
+const primary = "press inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-brand to-brand-hover px-4 py-3 font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 hover:shadow-glow disabled:opacity-40";
 
 function OptionsDialog({ product, groups, onAdd, onClose, currency }: { product: KasaProduct; groups: OptionGroup[]; onAdd: (unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number) => void; onClose: () => void; currency?: Currency }) {
   const { TL } = kasaFmt({ device: { currency } });
@@ -176,7 +176,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
           {products.map((p) => (
             <button key={p.id} type="button" disabled={busy} onClick={() => tapProduct(p)} className="press relative flex min-h-24 flex-col overflow-hidden rounded-2xl border border-line bg-surface p-3.5 pt-4 text-left shadow-card hover:border-line-strong">
               <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
-              <span className="line-clamp-2 font-semibold leading-snug">{p.name}</span>
+              <span className="line-clamp-2 font-display font-semibold leading-snug">{p.name}</span>
               <span className="tabular mt-auto pt-2 text-sm font-medium text-ink-2">{TL(p.price)}{p.optionGroupIds?.length ? " ⋯" : ""}</span>
             </button>
           ))}
@@ -186,7 +186,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
       <aside className="flex flex-col border-l border-line bg-surface">
         <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
           <button type="button" onClick={onBack} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 -ml-2">← {table ? "Salon" : "Paket"}</button>
-          <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+          <h2 className="font-display text-xl font-bold tracking-tight">{title}</h2>
           {tab && <span className="text-sm text-muted">{minutesSince(tab.openedAt, now)} dk</span>}
           {tabs.length > 1 && (
             <div className="ml-auto flex gap-1">
@@ -217,7 +217,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
                     <span className="mt-0.5 flex gap-1 text-[11px]">
                       {!l.sent && !l.voided && l.productId !== null && <span className="rounded bg-warn-soft px-1.5 text-warn">gönderilmedi</span>}
                       {k && <span className={`rounded px-1.5 ${k.status === "hazir" ? "bg-ok text-white" : "bg-surface-3"}`}>{{ yeni: "mutfakta", hazirlaniyor: "hazırlanıyor", hazir: "hazır", teslim: "teslim" }[k.status]}</span>}
-                      {l.comped && <span className="rounded bg-sky-100 px-1.5 text-sky-800">ikram</span>}
+                      {l.comped && <span className="rounded bg-brand-soft px-1.5 text-brand">ikram</span>}
                       {l.paidMilli > 0 && <span className="rounded bg-surface-3 px-1.5">ödendi {qtyText(l.paidMilli)}</span>}
                     </span>
                   </span>
@@ -231,7 +231,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
           <div className="space-y-2 border-t border-line bg-surface-2 p-3">
             {tab.discountAmount > 0 && <div className="flex justify-between text-sm"><span>İndirim</span><span className="tabular">−{TL(tab.discountAmount)}</span></div>}
             {tab.paid > 0 && <div className="flex justify-between text-sm"><span>Ödenen</span><span className="tabular">−{TL(tab.paid)}</span></div>}
-            <div className="flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">Kalan</span><span className="tabular text-3xl font-bold tracking-tight" data-testid="tab-remaining">{TL(tab.remaining)}</span></div>
+            <div className="flex items-baseline justify-between"><span className="text-sm font-medium text-ink-2">Kalan</span><span className="tabular font-display text-3xl font-extrabold tracking-tight" data-testid="tab-remaining">{TL(tab.remaining)}</span></div>
             {tab.remaining === 0 && live.length > 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli) && (
               <button type="button" onClick={() => void run([ev({ type: "close", reason: "ödenecek tutar yok" })]).then(onBack)} className={`w-full ${strong}`}>Masayı kapat</button>
             )}

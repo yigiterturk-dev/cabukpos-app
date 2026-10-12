@@ -3,7 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { createGiftCard, giftCardCancel, giftCardLoad } from "@/lib/admin/loyalty-actions";
-import { Badge, Card, Field, Input, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Card, Field, Input, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export default async function HediyeKarti({ searchParams }: { searchParams: Prom
             <Field label="Kod" hint="Boş bırakılırsa HK-XXXXXX üretilir"><Input name="code" className="uppercase" /></Field>
             <Field label="Son kullanma" hint="Boş = süresiz"><Input name="expiresAt" type="date" /></Field>
             <Field label="Not"><Input name="note" /></Field>
-            <button className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white">Kart oluştur</button>
+            <button className={buttonClass("primary")}>Kart oluştur</button>
           </form>
         </Card>
       </section>
@@ -58,7 +58,7 @@ export default async function HediyeKarti({ searchParams }: { searchParams: Prom
                   <form action={giftCardLoad} className="mb-4 flex flex-wrap items-end gap-3">
                     <input type="hidden" name="cardId" value={g.id} />
                     <Field label="Bakiye yükle (₺)"><Input name="amount" inputMode="decimal" className="w-32" required /></Field>
-                    <button className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white">Yükle</button>
+                    <button className={buttonClass("primary")}>Yükle</button>
                   </form>
                   <form action={giftCardCancel}>
                     <input type="hidden" name="cardId" value={g.id} />

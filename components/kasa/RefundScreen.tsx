@@ -57,7 +57,10 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
   };
 
   const picked: RefLine[] = sale ? sale.lines.map((l) => ({ ...l, qtyMilli: qty[l.productId] ?? 0 })).filter((l) => l.qtyMilli > 0) : [];
-  const total = totals(picked).total;
+  const goods = totals(picked).total;
+  // #33: satış düzeyi indirim iadeye oransal yansır — müşteri ödediği net tutardan fazlasını geri almaz.
+  const refundDiscount = sale && sale.goodsTotal > 0 ? Math.floor((goods * sale.discount) / sale.goodsTotal) : 0;
+  const total = goods - refundDiscount;
   const role = meta.catalog.staff.find((s) => s.id === cashier.id)?.role;
 
   const record = async (approvedBy: string) => {
@@ -65,7 +68,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
     setBusy(true);
     // Asıl satış e-Arşiv'liyse iade fişine tutanak / alıcı faturası notu (bulut aynı kuralla kaydını açar).
     const rf = sale.fiscal ? (({ refundedBefore, ...f }) => ({ ...f, partial: isPartialRefund(sale.lines, picked, refundedBefore), sellerTaxId: meta.catalog.fiscal?.sellerTaxId ?? null }))(sale.fiscal) : undefined;
-    const r = await recordRefundLocal(cashier, approvedBy, sale, picked, method, refundId, rf);
+    const r = await recordRefundLocal(cashier, approvedBy, sale, picked, method, refundId, rf, refundDiscount);
     setBusy(false);
     if (r.ok) onDone(r.sale);
     else { setApproving(false); setError(r.error); }
@@ -74,7 +77,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
   if (approving) {
     return (
       <main className="mx-auto w-full max-w-sm px-4 py-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Müdür onayı</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight">Müdür onayı</h1>
         <p className="mb-6 text-sm text-muted">{TL(total)} iade · müdür PIN&apos;i girsin</p>
         <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => void record(m.id)} />
         <button type="button" onClick={() => setApproving(false)} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 mt-6 w-full">Vazgeç</button>
@@ -85,9 +88,9 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-6">
       <button type="button" onClick={onBack} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 -ml-3 mb-4">← Kasa</button>
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">İade</h1>
+      <h1 className="mb-4 font-display text-2xl font-bold tracking-tight">İade</h1>
       <form onSubmit={(e) => { e.preventDefault(); void find(); }} className="flex gap-2">
-        <input value={no} onChange={(e) => setNo(e.target.value)} autoFocus placeholder="Fiş no (ör. K1-000042)" aria-label="İade fiş no" className="flex-1 rounded-xl border border-line px-4 py-3 uppercase" />
+        <input value={no} onChange={(e) => setNo(e.target.value)} autoFocus placeholder="Fiş no (ör. K1-000042)" aria-label="İade fiş no" className="flex-1 rounded-xl border border-line bg-surface px-4 py-3 uppercase outline-none transition-[border-color,box-shadow] focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
         <Button type="submit" disabled={busy || !no.trim()}>Fişi bul</Button>
       </form>
       {error && <p className="mt-3 text-sm text-bad" role="alert">{error}</p>}
@@ -123,8 +126,9 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack }: 
               <button key={m.value} type="button" aria-pressed={method === m.value} onClick={() => setMethod(m.value)} className={`press min-h-11 rounded-[10px] border px-3 text-sm ${method === m.value ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>{m.label}</button>
             ))}
           </div>
+          {refundDiscount > 0 && <p className="mt-2 text-right text-sm text-muted">İndirim payı −{TL(refundDiscount)} · Brüt {TL(goods)}</p>}
           <div className="mt-5 flex items-center justify-between">
-            <span data-testid="refund-total" className="tabular text-2xl font-bold">{TL(total)}</span>
+            <span data-testid="refund-total" className="tabular font-display text-3xl font-extrabold tracking-tight">{TL(total)}</span>
             <Button disabled={!picked.length || busy} onClick={() => (role === "mudur" ? void record(cashier.id) : setApproving(true))}>İadeyi onayla</Button>
           </div>
         </section>

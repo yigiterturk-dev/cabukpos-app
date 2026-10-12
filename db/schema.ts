@@ -10,7 +10,7 @@ export const vertical = pgEnum("vertical", ["restoran", "market"]);
 export const userRole = pgEnum("user_role", ["sahip", "mudur"]);
 export const staffRole = pgEnum("staff_role", ["kasiyer", "mudur", "garson", "kurye"]);
 export const deviceRole = pgEnum("device_role", ["kasa", "garson", "mutfak", "kurye"]);
-export const payMethod = pgEnum("pay_method", ["nakit", "kart", "yemek_karti", "online"]);
+export const payMethod = pgEnum("pay_method", ["nakit", "kart", "yemek_karti", "online", "hediye_karti"]);
 export const saleChannel = pgEnum("sale_channel", ["kasa", "masa", "paket", "platform"]);
 export const saleStatus = pgEnum("sale_status", ["kapandi", "iptal", "iade"]);
 export const productKind = pgEnum("product_kind", ["adet", "tartili"]);
@@ -200,6 +200,7 @@ export const sales = pgTable("sales", {
   channel: saleChannel("channel").notNull().default("kasa"),
   status: saleStatus("status").notNull().default("kapandi"),
   total: integer("total").notNull(),
+  discount: integer("discount").notNull().default(0), // #33: satış düzeyi indirim (kupon + puan harcama); toplamdan düşülmüş
   tip: integer("tip").notNull().default(0), // #49: bahşiş — toplamın içinde müşteri öder, personele kalır
   change: integer("change").notNull().default(0),
   vat: jsonb("vat").notNull().$type<{ rate: number; gross: number; net: number; vat: number }[]>(),
@@ -207,6 +208,7 @@ export const sales = pgTable("sales", {
   approvedBy: uuid("approved_by").references(() => staff.id), // iadeyi onaylayan müdür
   tabId: uuid("tab_id"), // M5: masa adisyonundan ödenen parça
   tableId: uuid("table_id"),
+  customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }), // #33: sadakat/kupon müşterisi
   review: text("review"), // eşitlemede kabul edildi ama incelenmeli (fiyat farkı, silinmiş ürün, fiş no çakışması…)
   okc: jsonb("okc").$type<OkcSaleData>(), // #18: mali fiş künyesi — ÖKC kapalıysa/kesilemediyse null
   createdAt: ts("created_at").notNull().defaultNow(), // satış anı (cihaz saati)
@@ -388,6 +390,9 @@ export const priceLists = pgTable("price_lists", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: tenantRef(),
   name: text("name").notNull(),
+  kind: text("kind").notNull().default("fiyat"), // fiyat (ürün başı fiyat) | yuzde (kapsama yüzde indirim)
+  percent: integer("percent"), // yuzde: 1-100
+  categoryIds: jsonb("category_ids").$type<string[]>(), // yuzde kapsamı; null/boş = tüm ürünler
   days: integer("days").array().notNull().default([]), // JS getDay: 0 pazar … 6 cumartesi
   startMin: integer("start_min").notNull(), // gece yarısından dakika
   endMin: integer("end_min").notNull(),

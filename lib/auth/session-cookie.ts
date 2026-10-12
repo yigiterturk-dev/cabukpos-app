@@ -9,3 +9,8 @@ export const ADMIN_SESSION_RENEW_AFTER = 60 * 60 * 24;
 export function shouldRenewSession(iat: unknown, now: number): boolean {
   return typeof iat !== "number" || now - iat > ADMIN_SESSION_RENEW_AFTER;
 }
+
+/** Secure çerezi yalnız https'te: Safari http://localhost'ta Secure çerezi reddeder — yerel prod önizlemede oturum düşer. */
+export function secureByProto(proto: string | null | undefined): boolean {
+  return proto === "https";
+}

@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   if ((await hit(`receipt-sms:${device.id}`, 15)) > 10) return Response.json({ error: "Çok fazla istek; biraz bekleyin." }, { status: 429, headers: noStore });
 
   const row = await withTenant(device.tenantId, async (tx) => {
-    const [s] = await tx.select({ receiptNo: schema.sales.receiptNo, at: schema.sales.createdAt, total: schema.sales.total, storeId: schema.sales.storeId, channel: schema.sales.channel })
+    const [s] = await tx.select({ receiptNo: schema.sales.receiptNo, at: schema.sales.createdAt, total: schema.sales.total, discount: schema.sales.discount, storeId: schema.sales.storeId, channel: schema.sales.channel })
       .from(schema.sales).where(and(eq(schema.sales.id, saleId), eq(schema.sales.status, "kapandi")));
     if (!s || s.channel !== "kasa") return null;
     const lines = await tx.select({ name: schema.saleLines.name, qtyMilli: schema.saleLines.qtyMilli }).from(schema.saleLines).where(eq(schema.saleLines.saleId, saleId));
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   let result: { error?: string } | undefined;
   try {
     [result] = await provider.send({
-      body: receiptSmsText({ storeName: row.storeName, receiptNo: row.receiptNo, at: row.at.toISOString(), total: row.total, lines: row.lines, currency: row.currency }),
+      body: receiptSmsText({ storeName: row.storeName, receiptNo: row.receiptNo, at: row.at.toISOString(), total: row.total - row.discount, lines: row.lines, currency: row.currency }),
       targets: [{ recipientRef: `receipt:${saleId}`, phone }],
     });
   } catch (e) {

@@ -43,7 +43,7 @@ export function PanelOffline() {
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
   if (online) return null;
   return (
-    <div role="status" className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-md rounded-[14px] border border-amber-200 bg-warn-soft p-3 text-center text-sm text-warn shadow-lg md:right-6 md:left-auto md:mx-0 print:hidden">
+    <div role="status" className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-md rounded-[14px] border border-warn/30 bg-warn-soft p-3 text-center text-sm text-warn shadow-lg md:right-6 md:left-auto md:mx-0 print:hidden">
       Çevrimdışısınız — son yüklenen sayfa gösteriliyor. İşlemler ağ geri gelene kadar askıda kalır.
     </div>
   );

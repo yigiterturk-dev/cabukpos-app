@@ -33,11 +33,11 @@ export async function monthlyAccountingJournal(tx: Tx, input: { tenantId: string
   const earsivBetween = and(sql`${earsivAt} >= ${start.toISOString()}::timestamptz`, sql`${earsivAt} < ${end.toISOString()}::timestamptz`);
 
   const [sales, earsiv, refunds, purchases, pLines] = await Promise.all([
-    tx.select({ id: S.id, total: S.total, vat: S.vat, at: S.createdAt }).from(S)
+    tx.select({ id: S.id, total: S.total, discount: S.discount, vat: S.vat, at: S.createdAt }).from(S)
       .where(and(eq(S.tenantId, input.tenantId), eq(S.status, "kapandi"), isNull(S.refundOf), gte(S.createdAt, start), lt(S.createdAt, end))),
-    tx.select({ saleId: S.id, no: D.number, buyer: D.buyer, total: S.total, vat: S.vat, at: sql<Date>`${earsivAt}` }).from(D).innerJoin(S, eq(S.id, D.saleId))
+    tx.select({ saleId: S.id, no: D.number, buyer: D.buyer, total: S.total, discount: S.discount, vat: S.vat, at: sql<Date>`${earsivAt}` }).from(D).innerJoin(S, eq(S.id, D.saleId))
       .where(and(eq(D.tenantId, input.tenantId), eq(D.status, "issued"), earsivBetween)),
-    tx.select({ no: S.receiptNo, total: S.total, vat: S.vat, at: S.createdAt, kind: RF.kind, buyer: D.buyer }).from(S)
+    tx.select({ no: S.receiptNo, total: S.total, discount: S.discount, vat: S.vat, at: S.createdAt, kind: RF.kind, buyer: D.buyer }).from(S)
       .leftJoin(RF, eq(RF.refundSaleId, S.id)).leftJoin(D, eq(D.id, RF.fiscalDocId))
       .where(and(eq(S.tenantId, input.tenantId), eq(S.status, "iade"), isNotNull(S.refundOf), gte(S.createdAt, start), lt(S.createdAt, end))),
     tx.select({ id: P.id, docNo: P.docNo, total: P.total, date: P.date, supplier: SUP.name }).from(P).leftJoin(SUP, eq(SUP.id, P.supplierId))
@@ -55,7 +55,7 @@ export async function monthlyAccountingJournal(tx: Tx, input: { tenantId: string
     const v = vatSum(s.vat ?? []);
     const key = dayLabel(s.at);
     const cur = posByDay.get(key) ?? { date: key, gross: 0, net: 0, vat: 0 };
-    cur.gross += s.total; cur.net += v.net; cur.vat += v.vat;
+    cur.gross += s.total - s.discount; cur.net += v.net - s.discount; cur.vat += v.vat; // #33: indirim düşülmüş net
     posByDay.set(key, cur);
   }
 
@@ -68,10 +68,10 @@ export async function monthlyAccountingJournal(tx: Tx, input: { tenantId: string
   const monthInput: MonthInput = {
     year: input.year, month: input.month,
     posDays: [...posByDay.values()].sort((a, b) => a.date.localeCompare(b.date)),
-    earsiv: earsiv.filter((e) => e.no).map((e) => ({ date: dayLabel(e.at), no: e.no!, buyer: e.buyer.name, ...vatSum(e.vat ?? []), gross: e.total })),
+    earsiv: earsiv.filter((e) => e.no).map((e) => ({ date: dayLabel(e.at), no: e.no!, buyer: e.buyer.name, ...vatSum(e.vat ?? []), gross: e.total - e.discount })),
     refunds: refunds.map((r) => {
       const v = vatSum(r.vat ?? []);
-      return { date: dayLabel(r.at), no: r.no, gross: r.total, net: v.net, vat: v.vat, earsiv: r.kind === "alici_faturasi", buyer: r.buyer?.name };
+      return { date: dayLabel(r.at), no: r.no, gross: r.total - r.discount, net: v.net - r.discount, vat: v.vat, earsiv: r.kind === "alici_faturasi", buyer: r.buyer?.name };
     }),
     purchases: purchases.map((p) => ({ date: p.date, docNo: p.docNo ?? "-", supplier: p.supplier ?? "-", total: p.total, vat: purchaseDocVat(linesByPurchase.get(p.id) ?? []) })),
   };

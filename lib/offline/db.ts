@@ -6,6 +6,7 @@ import { settle, type Payment } from "@/lib/core/payment";
 import { refundable, type RefLine } from "@/lib/core/refund";
 import { summarizeShift } from "@/lib/core/shift";
 import { formatReceipt, type SyncDoc } from "@/lib/sync/docs";
+import { capDiscount, type SaleExtrasInput } from "@/lib/loyalty";
 import type { PaidLine, TabEvent } from "@/lib/core/tab";
 import type { LineOption } from "@/lib/core/options";
 import { docModeFor, newFiscalToken, type Buyer, type Channel } from "@/lib/core/fiscal";
@@ -75,8 +76,9 @@ export async function openShiftLocal(staffId: string, openingCash: number): Prom
 export type SaleCartLine = AnyLine & { options?: LineOption[]; note?: string | null };
 /** Masadan parça ödeme: satış belgesi tab alanı taşır, yerelde "paid" olayı aynı işlemde yazılır. */
 export type SaleTab = { tabId: string; tableId: string | null; tableName: string; paidLines: PaidLine[]; kind?: Channel };
+export type { SaleExtrasInput };
 
-export async function recordSaleLocal(staff: { id: string; name: string }, cart: SaleCartLine[], payments: Payment[], saleId: string, tab?: SaleTab, buyer: Buyer | null = null, tip = 0): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
+export async function recordSaleLocal(staff: { id: string; name: string }, cart: SaleCartLine[], payments: Payment[], saleId: string, tab?: SaleTab, buyer: Buyer | null = null, tip = 0, extras?: SaleExtrasInput): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
   const d = kasaDb();
   return d.transaction("rw", [d.meta, d.sales, d.outbox, d.tabEvents], async () => {
     const done = await d.sales.get(saleId);
@@ -85,7 +87,8 @@ export async function recordSaleLocal(staff: { id: string; name: string }, cart:
     if (!m.device || !m.shift) return { ok: false as const, error: "Açık vardiya yok." };
     if (!cart.length) return { ok: false as const, error: "Sepet boş." };
     const t = totals(cart);
-    const s = settle(t.total + tip, payments);
+    const discount = extras ? capDiscount(t.total, [extras.coupon?.discount ?? 0, extras.loyalty?.discount ?? 0]) : 0;
+    const s = settle(t.total - discount + tip, payments);
     if (!s.ok) return s;
     const seq = m.nextSeq;
     const at = new Date().toISOString();
@@ -96,10 +99,10 @@ export async function recordSaleLocal(staff: { id: string; name: string }, cart:
     // M8: kanal e-Arşiv ya da "Fatura" istendiyse token şimdi üretilir → çevrimdışı fişe de bağlantı basılır.
     const earsiv = docModeFor(tab ? (tab.kind ?? "masa") : "kasa", m.catalog.fiscal?.modes, !!buyer) === "earsiv";
     const fiscal = earsiv ? { token: newFiscalToken(), buyer } : null;
-    const sale: LocalSale = { id: saleId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines, payments: s.payments, total: t.total + tip, ...(tip ? { tip } : {}), change: s.change, vat: t.vat, ...(tab ? { tabId: tab.tabId, tableName: tab.tableName } : {}), ...(fiscal ? { fiscal: { ...fiscal, number: null, ettn: null } } : {}) };
+    const sale: LocalSale = { id: saleId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines, payments: s.payments, total: t.total + tip, ...(tip ? { tip } : {}), change: s.change, vat: t.vat, ...(discount ? { discount } : {}), ...(extras?.customerId ? { customerId: extras.customerId } : {}), ...(tab ? { tabId: tab.tabId, tableName: tab.tableName } : {}), ...(fiscal ? { fiscal: { ...fiscal, number: null, ettn: null } } : {}) };
     await d.sales.add(sale);
     const tabField = tab ? { tab: { tabId: tab.tabId, tableId: tab.tableId, paidLines: tab.paidLines } } : {};
-    await enqueue({ kind: "sale", id: saleId, shiftId: m.shift.id, staffId: staff.id, receiptSeq: seq, at, lines, payments: s.payments, ...(tip ? { tip } : {}), ...tabField, ...(fiscal ? { fiscal } : {}) });
+    await enqueue({ kind: "sale", id: saleId, shiftId: m.shift.id, staffId: staff.id, receiptSeq: seq, at, lines, payments: s.payments, ...(tip ? { tip } : {}), ...tabField, ...(fiscal ? { fiscal } : {}), ...(extras?.customerId ? { customerId: extras.customerId } : {}), ...(extras?.coupon ? { coupon: extras.coupon } : {}), ...(extras?.loyalty ? { loyalty: extras.loyalty } : {}), ...(extras?.giftCard ? { giftCard: extras.giftCard } : {}) });
     if (tab) await d.tabEvents.put({ id: saleId, tabId: tab.tabId, tableId: tab.tableId, at, staffId: staff.id, approvedBy: null, seq: null, ev: { type: "paid", saleId, lines: tab.paidLines, amount: t.total } });
     await d.meta.put({ ...m, nextSeq: seq + 1 });
     return { ok: true as const, sale };
@@ -114,11 +117,11 @@ export async function findLocalSale(receiptNo: string): Promise<LookedUpSale | n
   const refunds = await d.sales.where("refundOf").equals(sale.id).toArray();
   const f = sale.fiscal?.number && sale.fiscal.ettn ? { number: sale.fiscal.number, ettn: sale.fiscal.ettn, invoiceAt: sale.at, buyerKind: buyerKindOf(sale.fiscal.buyer?.taxId), refundedBefore: refunds.length > 0 } : null;
   // e-Arşiv istendi ama kasa numarayı almadı (sonradan kesildi) → iade ekranı buluttan sorar.
-  return { id: sale.id, receiptNo: sale.receiptNo, at: sale.at, fiscal: f, fiscalPending: !!sale.fiscal && !f, lines: refundable(sale.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])), refunds.flatMap((r) => r.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])))) };
+  return { id: sale.id, receiptNo: sale.receiptNo, at: sale.at, fiscal: f, fiscalPending: !!sale.fiscal && !f, discount: sale.discount ?? 0, goodsTotal: sale.total - (sale.tip ?? 0), lines: refundable(sale.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])), refunds.flatMap((r) => r.lines.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId }] : [])))) };
 }
 
 /** İade: yerel kayıt + giden kutusu, aynı fiş sayacı. Geri ödeme tek yöntemle, tutar = iade toplamı. */
-export async function recordRefundLocal(staff: { id: string; name: string }, approvedBy: string, of: { id: string; receiptNo: string }, lines: RefLine[], method: Payment["method"], refundId: string, refundFiscal?: RefundFiscal): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
+export async function recordRefundLocal(staff: { id: string; name: string }, approvedBy: string, of: { id: string; receiptNo: string }, lines: RefLine[], method: Payment["method"], refundId: string, refundFiscal?: RefundFiscal, refundDiscount = 0): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
   const d = kasaDb();
   return d.transaction("rw", [d.meta, d.sales, d.outbox], async () => {
     const done = await d.sales.get(refundId);
@@ -128,10 +131,11 @@ export async function recordRefundLocal(staff: { id: string; name: string }, app
     const picked = lines.filter((l) => l.qtyMilli > 0);
     if (!picked.length) return { ok: false as const, error: "İade edilecek ürün seçin." };
     const t = totals(picked);
-    const payments = [{ method, amount: t.total }];
+    const net = Math.max(0, t.total - refundDiscount); // #33: indirim payı düşülür
+    const payments = [{ method, amount: net }];
     const seq = m.nextSeq;
     const at = new Date().toISOString();
-    const sale: LocalSale = { id: refundId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines: picked, payments, total: t.total, change: 0, vat: t.vat, refund: true, refundOf: of.id, refundOfNo: of.receiptNo, approvedBy, ...(refundFiscal ? { refundFiscal } : {}) };
+    const sale: LocalSale = { id: refundId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines: picked, payments, total: t.total, ...(refundDiscount ? { discount: refundDiscount } : {}), change: 0, vat: t.vat, refund: true, refundOf: of.id, refundOfNo: of.receiptNo, approvedBy, ...(refundFiscal ? { refundFiscal } : {}) };
     await d.sales.add(sale);
     await enqueue({ kind: "refund", id: refundId, shiftId: m.shift.id, staffId: staff.id, approvedBy, refundOf: of.id, receiptSeq: seq, at, lines: picked, payments });
     await d.meta.put({ ...m, nextSeq: seq + 1 });

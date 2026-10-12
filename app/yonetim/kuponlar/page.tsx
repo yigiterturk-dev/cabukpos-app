@@ -2,7 +2,8 @@ import { desc } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { createCoupon, setCouponStatus } from "@/lib/admin/loyalty-actions";
-import { Badge, Card, Field, Input, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Card, Field, Input, PageHeader } from "@/components/ui";
+import { Select } from "@/components/Select";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,11 @@ export default async function Kuponlar({ searchParams }: { searchParams: Promise
               <Input name="code" placeholder="YAZ20" required className="uppercase" />
             </Field>
             <Field label="Tür">
-              <select name="kind" className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm">
-                <option value="yuzde">Yüzde indirim</option>
-                <option value="tutar">Sabit tutar</option>
-                <option value="teslimat">Teslimat bedava</option>
-              </select>
+              <Select name="kind" defaultValue="yuzde" options={[
+                { value: "yuzde", label: "Yüzde indirim" },
+                { value: "tutar", label: "Sabit tutar" },
+                { value: "teslimat", label: "Teslimat bedava" },
+              ]} />
             </Field>
             <Field label="Değer" hint="Yüzde: 1-100 · Tutar: ₺">
               <Input name="value" inputMode="numeric" required />
@@ -50,7 +51,7 @@ export default async function Kuponlar({ searchParams }: { searchParams: Promise
               <Input name="perCustomerLimit" inputMode="numeric" defaultValue="1" />
             </Field>
             <Field label="Not"><Input name="note" className="sm:col-span-2" /></Field>
-            <button className="h-10 self-end rounded-lg bg-brand px-4 text-sm font-semibold text-white">Kupon oluştur</button>
+            <button className={`${buttonClass("primary")} self-end`}>Kupon oluştur</button>
           </form>
         </Card>
       </section>

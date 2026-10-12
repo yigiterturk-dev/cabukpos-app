@@ -11,9 +11,10 @@ import type { TabState } from "@/lib/core/tab";
 import { PayDialog, type PayResult } from "./SaleScreen";
 import type { Buyer } from "@/lib/core/fiscal";
 import type { Payment } from "@/lib/core/payment";
+import type { SaleExtrasInput } from "@/lib/loyalty";
 
 type Mode = "tumu" | "esit" | "sec";
-export type OnTabPay = (part: PayLine[], saleId: string, payments: Payment[], buyer: Buyer | null, tip: number) => Promise<PayResult>;
+export type OnTabPay = (part: PayLine[], saleId: string, payments: Payment[], buyer: Buyer | null, tip: number, extras?: SaleExtrasInput) => Promise<PayResult>;
 
 export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency }: { tab: TabState; tableName: string; onPay: OnTabPay; onReceipt: (saleId: string) => void; onBack: () => void; currency?: Currency }) {
   const { TL } = kasaFmt({ device: { currency } });
@@ -79,7 +80,7 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
       <button type="button" disabled={t.total <= 0} onClick={() => setPaying(true)} className="press h-16 w-full rounded-2xl bg-brand text-xl font-semibold text-white shadow-card hover:bg-brand-hover disabled:opacity-40">Öde {TL(t.total)}</button>
       {paid.length > 0 && <p className="mt-3 text-center text-sm text-muted">Ödenen: {paid.map((p) => p.receiptNo).join(", ")}</p>}
       {paying && (
-        <PayDialog total={t.total} currency={currency} onPay={(id, p, b, tip) => onPay(part, id, p, b, tip)} onClose={() => setPaying(false)}
+        <PayDialog total={t.total} currency={currency} onPay={(id, p, b, tip, ex) => onPay(part, id, p, b, tip, ex)} onClose={() => setPaying(false)}
           onDone={(r) => { setPaying(false); setPaid((x) => [...x, r]); setPicks({}); if (mode === "esit") setDone((n) => n + 1); }} />
       )}
     </div>

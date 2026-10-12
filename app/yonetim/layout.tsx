@@ -42,10 +42,11 @@ export default async function YonetimLayout({ children }: { children: React.Reac
   return (
     <div className="min-h-dvh bg-canvas md:grid md:grid-cols-[232px_1fr] print:block print:bg-white">
       <PanelOffline />
-      <aside className="hidden bg-espresso print:hidden md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:gap-6 md:p-4 md:shadow-[inset_-1px_0_0_rgb(255_255_255/0.06)]">
-        {brand(true)}
-        <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1"><Nav vertical={a.vertical} /></div>
-        {footer}
+      <aside className="relative hidden overflow-hidden bg-espresso print:hidden md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:p-4 md:shadow-[inset_-1px_0_0_rgb(255_255_255/0.06)]">
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-48 bg-[radial-gradient(60%_100%_at_50%_0%,rgb(224_90_16/0.16),transparent)]" />
+        <div className="relative mb-4 border-b border-white/10 pb-4">{brand(true)}</div>
+        <div className="relative min-h-0 flex-1 overflow-y-auto"><Nav vertical={a.vertical} /></div>
+        <div className="relative pt-4">{footer}</div>
       </aside>
       <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-line bg-surface px-3 py-2 print:hidden md:hidden">
         <MobileNav>
@@ -62,14 +63,14 @@ export default async function YonetimLayout({ children }: { children: React.Reac
           </Link>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">
+      <main className="page-enter mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">
         {a.billing.warn && (
-          <div data-testid="billing-banner" className={`mb-6 rounded-[14px] border p-3 text-sm print:hidden ${a.billing.locked ? "border-red-200 bg-bad-soft text-bad" : "border-amber-200 bg-warn-soft text-warn"}`}>
+          <div data-testid="billing-banner" className={`mb-6 rounded-[14px] border p-3 text-sm print:hidden ${a.billing.locked ? "border-bad/25 bg-bad-soft text-bad" : "border-warn/30 bg-warn-soft text-warn"}`}>
             {bannerText(a.billing)} <Link href="/yonetim/abonelik" className="font-medium underline">Abonelik</Link>
           </div>
         )}
         {!a.emailVerified && (
-          <div data-testid="verify-banner" className="mb-6 rounded-[14px] border border-amber-200 bg-warn-soft p-3 text-sm text-warn print:hidden">
+          <div data-testid="verify-banner" className="mb-6 rounded-[14px] border border-warn/30 bg-warn-soft p-3 text-sm text-warn print:hidden">
             E-postanız doğrulanmadı. <Link href="/yonetim/guvenlik" className="font-medium underline">Doğrulayın</Link> — hesap kurtarmayı kolaylaştırır.
           </div>
         )}

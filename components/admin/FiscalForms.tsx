@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import { resendFiscalMail, retryFiscal, saveFiscalSettings, takeZReport, type FiscalState } from "@/lib/admin/fiscal-actions";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input, Textarea } from "@/components/ui";
+import { Select } from "@/components/Select";
 import type { Channel, ChannelModes, DocMode } from "@/lib/core/fiscal";
 import { OKC_PROVIDERS } from "@/lib/core/okc";
 
@@ -47,23 +48,21 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
         </div>
       </div>
       {fake && (
-        <div className="rounded-lg border border-amber-300 bg-warn-soft p-3 text-sm">
+        <div className="rounded-lg border border-warn/40 bg-warn-soft p-3 text-sm">
           <p className="font-medium">TEST sağlayıcısı: kesilen belgelerin mali değeri yoktur.</p>
           <p className="mt-1 text-muted">Gerçek entegratör (Paraşüt/Uyumsoft/İzibiz) bağlanmadan e-Arşiv kullanılamaz; bilgi fişi satışa devam eder.</p>
-          <label className="mt-2 flex items-center gap-2"><input type="checkbox" name="fakeFail" defaultChecked={initial.fakeFail} className="size-4 accent-[var(--color-brand)]" />Hata simülasyonu (her kesim hata verir)</label>
+          <label className="mt-2 flex items-center gap-2"><input type="checkbox" name="fakeFail" defaultChecked={initial.fakeFail} className="size-4 accent-brand" />Hata simülasyonu (her kesim hata verir)</label>
         </div>
       )}
       <div className="rounded-lg border border-line p-4">
         <h3 className="text-sm font-semibold">ÖKC / mali cihaz</h3>
         <p className="mt-1 text-sm text-muted">Kasa fişi ancak ÖKC imzasıyla yasal mali belge olur. Açıkken eşitlenen her satış mali fiş no ile künyelenir.</p>
-        <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" name="okcOn" checked={okcOn} onChange={(e) => setOkcOn(e.target.checked)} className="size-4 accent-[var(--color-brand)]" />ÖKC bağlantısı açık</label>
+        <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" name="okcOn" checked={okcOn} onChange={(e) => setOkcOn(e.target.checked)} className="size-4 accent-brand" />ÖKC bağlantısı açık</label>
         {okcOn && (
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <div>
               <Field label="Sağlayıcı">
-                <select name="okcProvider" value={okcProvider} onChange={(e) => setOkcProvider(e.target.value)} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm">
-                  {OKC_PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
+                <Select name="okcProvider" defaultValue={okcProvider} onChange={setOkcProvider} options={OKC_PROVIDERS.map((p) => ({ value: p.value, label: p.label }))} />
               </Field>
               <Err s={state} f="okcProvider" />
             </div>
@@ -89,7 +88,7 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
                 </div>
               </>
             )}
-            <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" name="okcFakeFail" defaultChecked={false} className="size-4 accent-[var(--color-brand)]" />Hata simülasyonu (sandbox)</label>
+            <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" name="okcFakeFail" defaultChecked={false} className="size-4 accent-brand" />Hata simülasyonu (sandbox)</label>
           </div>
         )}
       </div>

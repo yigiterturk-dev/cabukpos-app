@@ -61,7 +61,7 @@ export const tabEv = z.discriminatedUnion("type", [
 ]);
 const paidLine = z.object({ lineId: uuid, qtyMilli: z.number().int().min(1).max(1_000_000), discount: kurus });
 
-const payMethod = z.enum(PAY_METHODS.map((m) => m.value) as ["nakit", "kart", "yemek_karti", "online"]);
+const payMethod = z.enum(PAY_METHODS.map((m) => m.value) as ["nakit", "kart", "yemek_karti", "online", "hediye_karti"]);
 
 export const syncDoc = z.discriminatedUnion("kind", [
   z.object({
@@ -78,6 +78,11 @@ export const syncDoc = z.discriminatedUnion("kind", [
     tab: z.object({ tabId: uuid, tableId: uuid.nullable(), paidLines: z.array(paidLine).min(1).max(500) }).optional(),
     // M8: e-Arşiv — token satış anında istemcide üretilir (çevrimdışı fişe de basılır); buyer = kasada "Fatura" isteği
     fiscal: z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{24}$/), buyer: buyerSchema.nullable() }).optional(),
+    // #33: sadakat müşterisi (puan kazanımı için); kupon kodu; puan harcaması. Sunucu yeniden doğrular, uyuşmazlık review'a yazılır.
+    customerId: uuid.nullable().optional(),
+    coupon: z.object({ code: z.string().min(3).max(24), discount: kurus }).optional(),
+    loyalty: z.object({ customerId: uuid, points: z.number().int().min(1).max(1_000_000), discount: kurus }).optional(),
+    giftCard: z.object({ code: z.string().min(3).max(24), amount: kurus.min(1) }).optional(),
   }),
   // İade: fiş no ile, müdür onaylı, tek yöntemle geri ödeme. Aynı fiş sayacından numara alır.
   z.object({

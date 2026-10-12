@@ -40,12 +40,12 @@ export default async function CampaignDetail({ params, searchParams }: { params:
     <>
       <PageHeader title={campaign.name} desc={`Segment: ${campaign.segment} · Hedef: ${campaign.audienceCount} kişi`} actions={<Link href="/yonetim/buyume" className={buttonClass("secondary")}>← Büyüme Merkezi</Link>} />
       {one("gonderildi") !== undefined && (
-        <div data-testid="send-ok" className="mb-6 rounded-[14px] border border-emerald-200 bg-ok-soft p-3 text-sm text-ok print:hidden">
+        <div data-testid="send-ok" className="mb-6 rounded-[14px] border border-ok/25 bg-ok-soft p-3 text-sm text-ok print:hidden">
           {one("gonderildi")} mesaj gönderildi{one("basarisiz") ? `, ${one("basarisiz")} başarısız` : ""}{Number(one("kalan")) > 0 ? ` · ${one("kalan")} kişi kaldı — tekrar Gönder ile sürdürün` : " · hedef liste tamamlandı"}.
         </div>
       )}
       {one("hata") && (
-        <div data-testid="send-error" className="mb-6 rounded-[14px] border border-red-200 bg-bad-soft p-3 text-sm text-bad print:hidden">
+        <div data-testid="send-error" className="mb-6 rounded-[14px] border border-bad/25 bg-bad-soft p-3 text-sm text-bad print:hidden">
           {HATA[one("hata") ?? ""] ?? "Gönderim tamamlanamadı."}
         </div>
       )}

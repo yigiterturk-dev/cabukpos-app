@@ -65,13 +65,13 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
     <>
       <PageHeader title="Raporlar" desc={DESC[tab.key]} />
       {critical.length > 0 && (
-        <Card className="mb-6 border-red-200 bg-bad-soft p-4" data-testid="critical-card">
+        <Card className="mb-6 border-bad/25 bg-bad-soft p-4" data-testid="critical-card">
           <div className="mb-2 flex items-baseline justify-between"><h2 className="font-semibold text-bad">Kritik stok ({critical.length})</h2><Link href="/yonetim/stok?kritik=1" className="text-sm text-bad hover:underline">Stok</Link></div>
           <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm">{critical.map((c) => <li key={c.id}><b>{c.name}</b> <span className="tabular">{formatQty(c.level, c.unit)}</span> <span className="text-muted">(sınır {formatQty(c.minStock!, c.unit)})</span></li>)}</ul>
         </Card>
       )}
-      <div className="mb-4 flex flex-wrap gap-1" role="tablist" aria-label="Rapor">
-        {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} role="tab" aria-selected={t.key === tab.key} className={`rounded-lg border px-3 py-1.5 text-sm ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{t.label}</Link>)}
+      <div className="-mx-1 mb-4 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Rapor">
+        {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} role="tab" aria-selected={t.key === tab.key} className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line text-ink-2 hover:bg-surface-2"}`}>{t.label}</Link>)}
       </div>
       {tab.key === "musteriler" ? (
         <div className="mb-4"><Link className="inline-block rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface-2" href="/yonetim/raporlar/csv?sekme=musteriler" download>CSV indir</Link></div>

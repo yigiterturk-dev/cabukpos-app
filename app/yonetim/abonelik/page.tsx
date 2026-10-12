@@ -10,7 +10,8 @@ import { getBillingProvider } from "@/lib/billing/provider";
 import { paymentsOf, salesSincePayment, tenantUnits } from "@/lib/billing/service";
 import { removeStoredCard } from "@/lib/billing/renewal";
 import { approveRefundAction, requestRefundAction, startCheckout, withdrawRefundAction } from "@/lib/billing/actions";
-import { Badge, Card, Field, Input, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Card, Field, Input, PageHeader } from "@/components/ui";
+import { Select } from "@/components/Select";
 
 export const dynamic = "force-dynamic";
 const day = (d: Date) => d.toLocaleDateString("tr-TR", { dateStyle: "long", timeZone: "Europe/Istanbul" });
@@ -38,15 +39,15 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
           </div>
         </Card>
       )}
-      {sp.kilit && b.locked && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Abonelik sona erdiği için değişiklik yapılamıyor. Ödeme yapınca yönetim hemen açılır.</Card>}
-      {sp.sonuc === "ok" && <Card className="mb-4 border-emerald-200 bg-ok-soft p-4 text-sm text-ok" role="status">Ödeme alındı, teşekkürler.</Card>}
-      {sp.sonuc === "isleniyor" && <Card className="mb-4 border-amber-200 bg-warn-soft p-4 text-sm text-warn" role="status">Ödeme işleniyor; banka onayı gelince abonelik birkaç saniye içinde uzar. Sayfayı yenileyebilirsin.</Card>}
-      {sp.sonuc === "telefon" && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Kartla ödeme için geçerli bir cep telefonu gir.</Card>}
-      {sp.sonuc === "hata" && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">Ödeme tamamlanamadı. Tekrar deneyebilirsin.</Card>}
-      {sp.iade === "talep" && <Card className="mb-4 border-emerald-200 bg-ok-soft p-4 text-sm text-ok" role="status">İade talebin kaydedildi. Onaylanınca ödeme yapılan karta, ödeme kuruluşu aracılığıyla döner (2–10 iş günü).</Card>}
+      {sp.kilit && b.locked && <Card className="mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad" role="alert">Abonelik sona erdiği için değişiklik yapılamıyor. Ödeme yapınca yönetim hemen açılır.</Card>}
+      {sp.sonuc === "ok" && <Card className="mb-4 border-ok/25 bg-ok-soft p-4 text-sm text-ok" role="status">Ödeme alındı, teşekkürler.</Card>}
+      {sp.sonuc === "isleniyor" && <Card className="mb-4 border-warn/30 bg-warn-soft p-4 text-sm text-warn" role="status">Ödeme işleniyor; banka onayı gelince abonelik birkaç saniye içinde uzar. Sayfayı yenileyebilirsin.</Card>}
+      {sp.sonuc === "telefon" && <Card className="mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad" role="alert">Kartla ödeme için geçerli bir cep telefonu gir.</Card>}
+      {sp.sonuc === "hata" && <Card className="mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad" role="alert">Ödeme tamamlanamadı. Tekrar deneyebilirsin.</Card>}
+      {sp.iade === "talep" && <Card className="mb-4 border-ok/25 bg-ok-soft p-4 text-sm text-ok" role="status">İade talebin kaydedildi. Onaylanınca ödeme yapılan karta, ödeme kuruluşu aracılığıyla döner (2–10 iş günü).</Card>}
       {sp.iade === "ceklildi" && <Card className="mb-4 p-4 text-sm text-muted" role="status">İade talebi çekildi.</Card>}
-      {sp.iade === "onaylandi" && <Card className="mb-4 border-emerald-200 bg-ok-soft p-4 text-sm text-ok" role="status">İade işlendi olarak işaretlendi.</Card>}
-      {sp.iade === "hata" && <Card className="mb-4 border-red-200 bg-bad-soft p-4 text-sm text-bad" role="alert">İade işlemi tamamlanamadı.</Card>}
+      {sp.iade === "onaylandi" && <Card className="mb-4 border-ok/25 bg-ok-soft p-4 text-sm text-ok" role="status">İade işlendi olarak işaretlendi.</Card>}
+      {sp.iade === "hata" && <Card className="mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad" role="alert">İade işlemi tamamlanamadı.</Card>}
       <Card className="mb-6 flex flex-wrap items-center gap-3 p-4">
         <Badge tone={b.locked ? "bad" : b.warn ? "warn" : "ok"}><span data-testid="billing-state">{STATE_LABEL[b.state]}</span></Badge>
         <span className="text-sm" data-testid="billing-ends">
@@ -114,14 +115,14 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
                     <form action={requestRefundAction} className="flex flex-wrap items-end gap-3">
                       <input type="hidden" name="id" value={p.id} />
                       <Field label="Neden">
-                        <select name="reason" className="h-11 rounded-lg border border-line bg-surface px-3 text-sm">
-                          <option value="satissiz">7 gün içinde satışsız dönem</option>
-                          <option value="hatali">Hatalı / mükerrer çekim</option>
-                          <option value="diger">Diğer</option>
-                        </select>
+                        <Select name="reason" defaultValue="satissiz" options={[
+                          { value: "satissiz", label: "7 gün içinde satışsız dönem" },
+                          { value: "hatali", label: "Hatalı / mükerrer çekim" },
+                          { value: "diger", label: "Diğer" },
+                        ]} />
                       </Field>
                       <Field label="Not"><Input name="note" className="w-64" /></Field>
-                      <button className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white">Talebi gönder</button>
+                      <button className={buttonClass("primary")}>Talebi gönder</button>
                       <span className="text-xs text-muted">
                         {hint === true ? "Koşula uygun görünüyor: ödeme 7 gün içinde ve dönemde satış yok → tam iade istenebilir." : hint === false ? "Yayınlanan koşula göre başlamış dönemin bedeli iade edilmez; yalnız hatalı/mükerrer çekimde tam iade istenebilir." : ""}
                       </span>

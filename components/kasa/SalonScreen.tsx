@@ -88,12 +88,12 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen, currency }: { ar
           const since = open.length ? minutesSince(open.reduce((a, x) => (x.openedAt < a ? x.openedAt : a), open[0].openedAt), now) : 0;
           return (
             <button key={t.id} type="button" onClick={() => onOpen(t.id)} aria-label={`${t.name}, ${LABEL[st]}`} data-status={st}
-              className={`press relative flex min-h-32 flex-col overflow-hidden rounded-2xl border-2 p-3.5 pt-4 text-left shadow-card hover:shadow-pop ${TONE[st]}`}>
+              className={`press relative flex min-h-32 flex-col overflow-hidden rounded-2xl border-2 p-3.5 pt-4 text-left shadow-rest transition-[transform,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:shadow-raised ${TONE[st]}`}>
               <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${BAR[st]}`} />
               <MasaGlyph className={`absolute right-3 top-3.5 ${GLYPH[st]}`} size={30} />
-              <span className="text-xl font-semibold tracking-tight">{t.name}</span>
+              <span className="font-display text-xl font-bold tracking-tight">{t.name}</span>
               {open.length === 0 && <span className="mt-auto text-xs font-medium text-muted">Boş</span>}
-              {open.length > 0 && <span className="tabular mt-auto text-lg font-bold">{TL(total)}</span>}
+              {open.length > 0 && <span className="tabular mt-auto font-display text-xl font-extrabold tracking-tight">{TL(total)}</span>}
               {open.length > 0 && <span className="text-xs text-muted">{since} dk{open.length > 1 ? ` · ${open.length} adisyon` : ""}</span>}
               <span className="mt-1 flex flex-wrap gap-1 text-[11px] font-medium">
                 {st === "hazir" && <span className="rounded bg-ok px-1.5 py-0.5 text-white">Hazır</span>}

@@ -63,7 +63,7 @@ export function Select({
         aria-controls={id}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onKey}
-        className="flex w-full items-center justify-between rounded-lg border border-line bg-surface px-3 py-2 text-left text-sm outline-none focus:border-brand focus:ring-2 focus:ring-orange-100"
+        className="flex w-full items-center justify-between rounded-lg border border-line bg-surface px-3 py-2 text-left text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand-ring"
       >
         <span className={selected ? "" : "text-muted"}>{selected?.label ?? placeholder}</span>
         <span aria-hidden className="text-muted">▾</span>

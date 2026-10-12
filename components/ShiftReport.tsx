@@ -41,7 +41,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
         {shift.closedAt && <> · Kapatan {data.closedByName}, {dt(shift.closedAt)}</>}
       </div>
       <section>
-        <h2 className="mb-1 font-semibold">Satışlar</h2>
+        <h2 className="mb-1 font-display text-base font-bold tracking-tight">Satışlar</h2>
         <div className="divide-y divide-line border-y border-line">
           <Row label="Satış sayısı" value={`${s.saleCount} satış`} />
           {data.fiscalErrors ? <Row label="Kesilemeyen e-Arşiv" value={`${data.fiscalErrors} belge`} tone="bad" /> : null}
@@ -54,7 +54,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
       </section>
       {s.vat.length > 0 && (
         <section>
-          <h2 className="mb-1 font-semibold">KDV</h2>
+          <h2 className="mb-1 font-display text-base font-bold tracking-tight">KDV</h2>
           <table className="w-full border-y border-line">
             <thead className="text-left text-xs text-muted"><tr><th className="py-1.5 font-medium">Oran</th><th className="text-right font-medium">Matrah</th><th className="text-right font-medium">KDV</th><th className="text-right font-medium">Toplam</th></tr></thead>
             <tbody className="tabular-nums">
@@ -64,7 +64,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
         </section>
       )}
       <section>
-        <h2 className="mb-1 font-semibold">Kasa</h2>
+        <h2 className="mb-1 font-display text-base font-bold tracking-tight">Kasa</h2>
         <div className="divide-y divide-line border-y border-line">
           <Row label="Açılış nakdi" value={TL(shift.openingCash)} />
           {s.dropped > 0 && <Row label="Seifeye alınan" value={`-${TL(s.dropped)}`} />}
@@ -75,7 +75,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
       </section>
       {showSales && data.sales.length > 0 && (
         <section>
-          <h2 className="mb-1 font-semibold">Fişler</h2>
+          <h2 className="mb-1 font-display text-base font-bold tracking-tight">Fişler</h2>
           <div className="divide-y divide-line border-y border-line">
             {data.sales.map((x) => <Row key={x.id} label={`${x.receiptNo} · ${tm(x.createdAt)}`} value={TL(x.total)} />)}
           </div>

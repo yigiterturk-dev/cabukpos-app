@@ -1,5 +1,52 @@
 # İlerleme — ÇabukPOS
 
+## Happy hour yüzde indirim + kategori kapsamı (2026-10-10, commit bekliyor)
+- Rakip incelemesi (Adisyo, Menulux): ikisinde de kampanya/indirim modülü standart. ÇabukPOS'ta fiyat listesi ürün bazlıydı; eksik olan **kapsama göre yüzde indirim** eklendi.
+- **Şema:** `price_lists.kind` ("fiyat" | "yuzde") + `percent` (1-100) + `category_ids` (jsonb; null/boş = tüm ürünler).
+- **Çekirdek** (`lib/core/pricelist.ts`): `discountedPrice`, `percentCovers`; `effectivePrice` artık kategori bilgisiyle yüzde listesini uygular; kapsam dışı yüzde listesi atlanır. İlk uyan (sort) kazanır.
+- **Katalog:** `priceListCatalog` + `KasaPriceList` tipi kind/percent/categoryIds taşır; kasa satır eklenirken (`SaleScreen`) ürün `categoryId`'siyle efektif fiyatı don.
+- **Panel** (`/yonetim/fiyatlistesi`): tür seçici; yüzde için % alanı + kategori kapsamı (boş = tümü); listede "Yüzde %N" rozeti + kapsam özeti. Native select'ler yerine `Select`; ödeme formları için gizli giriş ucu `/api/kasa/loyalty` yanında ek iş yok.
+- **Demo:** "Happy Hour %20 (tüm ürünler)" + "İçecek İndirimi %30" (İçecekler) listeleri eklendi.
+- Test: `tests/pricelist.test.ts` +4 yüzde/kategori senaryosu → **380/380**, lint + tsc + Webpack build temiz. Şema test + dev DB'ye uygulandı.
+
+## Yönetim sidebar'ı yenilendi (kademeli arayüz turu 2) (2026-10-10, commit bekliyor)
+- `app/yonetim/Nav.tsx` baştan yazıldı: 40+ bağlantı için **menüde arama** (TR-lokal filtre, eşleşme yoksa "Sonuç yok", temizle düğmesi), rafine grup etiketleri, daha temiz aktif durum (marka gradyanı + sağda nokta göstergesi), tutarlı hover (beyaz/6). Aynı navigasyon mobil çekmecede de kullanılıyor.
+- `app/yonetim/layout.tsx` kenar çubuğu kabuğu hizalandı: marka üstünde ince ayraç, üstte hafif marka parıltısı, düzenli boşluklar.
+- **Kasa mikro cila:** sepet boş ve "ürün bulunamadı" durumları illüstrasyonlu hâle getirildi, ürün kartlarına hover'da yüksek gölge. Kasa üst şeridine ince derinlik (espresso gradyanı + üst hairline) ve marka/segment arasına dikey ayraç.
+- **Auth düzeni:** espresso panelinde kalan token kaçağı (`text-[#f6a45c]`) `text-brand`'a, düşük kontrastlı `text-muted` metinler `text-cream-muted`'a çekildi.
+- **Paylaşılan primitifler:** `Segmented`'e klavye odak halkası (erişilebilirlik) + ray iç gölgesi; global ince/temalı kaydırma çubuğu; yönetim sayfalarına `page-enter` hafif giriş animasyonu (`prefers-reduced-motion` sıfırlar).
+- **Raporlar:** sekme satırı mobile kaydırılır, odak halkalı, tutarlı aktif stil. İnceleme: yönetim tabloları zaten `TABLE_HEAD` ile aynı stil (kopya); ek tutarlılık gerekmedi.
+- **Mali:** Belgeler tablosu standart `TABLE_HEAD` ritmine çekildi (thead zemini, `divide-y` satırlar, tutarlı hücre dolgusu, hover); sekmeler odak halkalı + mobil kaydırılır; muhasebe formu input odak stilleri + marka butonu. Testid/structure korundu.
+- **Sadakat/kupon/hediye kartı:** ham `bg-brand` submit butonları paylaşılan `buttonClass("primary")`'ye (gradyan + press + odak halkası); native `<select>`'ler (kupon türü, muhasebe formatı) tasarım kuralı gereği erişilebilir `Select`'e çevrildi.
+- **Platformlar/Salon:** canlı paket hattı tablosu standart `TABLE_HEAD` ritmine çekildi (thead zemini, `px-4 py-2.5`, hover).
+- **Kalan ham butonlar + select'ler:** `subeler`/`abonelik`/`donanim`/`veriler`'deki `bg-brand`/`bg-brand-strong` butonlar `buttonClass`'a; `abonelik`/`FiscalForms`(ÖKC sağlayıcı)/`ReservationForms`(masa) native select'leri `Select`'e. Yönetimde native `<select>` kalmadı (müşteri QR menüsündeki native select'ler kasten korundu — mobilde OS seçici daha iyi). `accent-[var(--color-brand)]` → `accent-brand`.
+- Kapı: 376/376 test, lint + tsc + Webpack build temiz.
+
+## Yerel dev: kasa + yönetim girişi (2026-10-10, yerel DB — commit dışı)
+- Yerelde kasa eşlemesi/kapalı kalmayı çözmek için "Yiğit Deneme" kiracısına geçici **eşleme kodu** (`KASA2345`, 1 gün) + kasiyer **PIN** (`7391`, personel "Tasarım 8596") ve `yigit@cabukpos.local` yönetici hesabına **şifre** (`CabukPos2026`, e-posta doğrulanmış) kuruldu. Yalnız yerel `cabukpos` DB'sini etkiler; kodda değişiklik yok.
+- **Sunum demo verisi:** "Yiğit Deneme" kiracısı zenginleştirildi — cihaz "Kasa 1" (K1, eşleme kodu `SUNUM234`), "Müdür" personeli (PIN `4821`); `seed-demo.ts` (artık `DAYS` env'i ile, `d≥0` bugün dahil) ile **31 gün ≈376 satış** (bugün 15, 8 iade); 4 müşteri + sadakat puanları, 3 kupon, 2 hediye kartı. Seed saat artefaktı "cihaz saati ileri" incelemeleri temizlendi. Dev DB (`cabukpos`) şeması da `db:push` ile güncellendi (yeni kolonlar: sales.discount/customer_id + hediye_karti enum).
+
+## Tanıtım sayfası yenilendi (kademeli arayüz turu 1) (2026-10-10, commit bekliyor)
+- `app/page.tsx` görsel olarak baştan tasarlandı (içerik/mesaj ve `data-cta` analitiği korundu): radyal marka parıltısı, `rise`/`float` giriş ve süzülme animasyonları (globals.css, `prefers-reduced-motion` sıfırlar), gerçekçi cihaz çerçevesi + yüzen durum çipleri, istatistik şeridi, daha iyi bento (hover kaldırma), numaralı adım zaman çizelgesi, "En çok tercih edilen" şeritli fiyat kartları, okunur SSS akordeonu, marka CTA paneli.
+- Kapı: 376/376 test, lint + tsc + Webpack build temiz. e2e seçicisi/metni değişmedi.
+
+## Arayüz cilası: erişilebilirlik + tasarım token'ı disiplini (2026-10-10, commit bekliyor)
+- **Dialog erişilebilirlik:** `components/ui/Dialog.tsx` artık açılışta odağı panele alıyor (React `autoFocus`'a dokunmaz), Tab/Shift+Tab diyaloğa kilitli (focus trap), kapanışta odak tetikleyici öğeye döner. Örtüye dokunma kararı (kaza koruması) korundu.
+- **Token disiplini:** tasarım sistemini delen tüm Tailwind palet sınıfları (`sky/stone/orange/amber/red/emerald/neutral`, `ring-orange-100` vb.) anlamsal token'lara çekildi (bad/warn/ok/muted/surface). Durum bilgisi için sıcak palete karşıt `--color-info`/`--color-info-soft` token'ı eklendi (kurye "yolda", yerel ağ). Markanın gradyan rampasındaki tekrarlı hex'ler (`#ee6318` vb. 5 dosyada) tek yerde toplandı: `from-brand to-brand-hover`. Palet sınıfı sızması: **0**.
+- Kapı: 376/376 test, lint + tsc + Webpack build temiz.
+
+## Sadakat/kupon/hediye kartı satış anı — kasa akışı (2026-10-10, commit bekliyor)
+- **Boşluk:** #33 motoru (şema + panel) hazırdı ama satış anında kullanılmıyordu. Tamamlandı.
+- **Şema:** `sales.discount` + `sales.customerId`, `pay_method.hediye_karti` (db:push).
+- **Çekirdek:** `lib/loyalty.ts` `capDiscount` (kupon+puan toplamı ara toplamı aşamaz). `lib/core/payment.ts` hediye kartı tender'ı.
+- **Eşitleme:** `lib/sync/docs.ts` satış belgesi `coupon`/`loyalty`/`giftCard`/`customerId` alanları; `lib/sync/apply.ts` `resolveSaleExtras` — kupon (`couponCheck`) ve puan (`pointsValue`) sunucuda yeniden doğrulanır, uyuşmazlık satışı engellemez review'a yazılır (fiyat farkı deseniyle aynı); hediye kartı bakiyesi düşer (+`gift_card_events`, biter), `coupon_uses` + `usedCount`, puan `harcanma`/`kazanc` hareketleri. `persistSaleExtras` tek işlemde.
+- **Kasa:** `/api/kasa/loyalty` (cihaz çerezli, hız sınırlı: müşteri/puan, kupon, hediye kartı); `PayDialog` "Müşteri bul / Kupon / Kart + puan kullan" bölümü; `recordSaleLocal` `SaleExtrasInput` taşır; fiş/SMS indirim satırı (`lib/core/receipt.ts`).
+- **İade tersine çevirme (2026-10-10):** `reverseSaleExtras` — hediye kartı bakiyesi kümülatif oranla geri döner (biter→aktif, iptal karta iade yok), puan kazancı geri alınır (`iade:kazanc`), harcanan puan geri verilir (`iade:harcanma`), satış tümüyle iade edilince kupon kullanımı geri alınır (`usedCount` düşer). Çift iade korumalı (önceki iade hareketleri düşülür).
+- **İade netlemesi:** asıl satış indirimliyse iade tutarına oransal indirim yansır (`refundDiscount`) — müşteri ödediği net tutardan fazlasını geri almaz; iade fişi/SMS indirim satırını gösterir.
+- **Rapor netliği:** ciro/KDV matrahı artık indirim düşülmüş net (Raporlar, HQ, muhasebe yevmiyesi, RFM, gün sonu/gün dilimi).
+- **Kapı:** 376/376 test (yeni `tests/loyalty-sale-db.test.ts` 9 senaryo: kupon/limit/puan+kazanç/hediye kartı/idempotentlik/uyuşmazlık/iade-kart-puan/iade-kupon/net-iade/kiracı izolasyonu), lint + tsc + Webpack build temiz. Prod notu: `db:push` + `db:rls`.
+- **Kalan (ayrı iş):** e-Arşiv faturasında satış düzeyi indirimin KDV matrahına yansıması (şu an matrah brüt gösteriliyor).
+
 ## ÖKC Z raporu + QR menü garson çağrısı (2026-10-10)
 - **Z raporu akışı**: `okcZReport()` (lib/fiscal/okc.ts) + fake-okc `zReport` sandbox sürücüsü + `takeZReport` action (audit `fiscal.okc.z`) + Mali → Ayarlar'da "Z raporu al" kartı. Yol haritasının kod tarafındaki son madde; gerçek uç doğrulaması entegratör anahtarıyla (insan).
 - **Garson çağrısı** (Suitable karşılaştırması madde 3): `table_calls` tablosu (masa başına tek açık çağrı, kısmi unique index) + RLS + `public_menu_by_store`'a masalar (bölge · masa) + `POST /api/menu/call` (k sırrı, rate limit) + menüde masa seçmeli "Çağır" + kasa salon panosunda çağrı şeridi (8 sn poll, yeni çağrıda ötme, "Geldim"). veri-export'a dahil.

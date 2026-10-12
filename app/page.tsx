@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Box, ChartColumn, Check, Printer, Receipt, Router, TabletSmartphone, Users, WifiOff, type LucideIcon } from "lucide-react";
+import { ArrowRight, Bot, Box, ChartColumn, Check, Printer, Receipt, Router, Sparkles, TabletSmartphone, Users, Utensils, WifiOff, type LucideIcon } from "lucide-react";
 import { LegalFooter } from "@/components/Legal";
 import { LogoMark, buttonClass } from "@/components/ui";
 import { planPrice, salesContact } from "@/lib/billing/plans";
@@ -76,6 +76,7 @@ export default function Home() {
             <a href="#ozellikler" className="hover:text-ink">Özellikler</a>
             <a href="#fiyat" className="hover:text-ink">Fiyat</a>
             <a href="#sss" className="hover:text-ink">Sorular</a>
+            <Link href="/demo" className="hover:text-ink">Canlı demo</Link>
             <Link href="/yardim" className="hover:text-ink">Yardım</Link>
           </nav>
           <div className="ml-auto flex items-center gap-2 text-sm">
@@ -122,6 +123,29 @@ export default function Home() {
                 </ul>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section id="ai" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand"><Sparkles aria-hidden className="size-3.5" />Yapay zekâ</p>
+              <h2 className="max-w-2xl text-3xl font-semibold tracking-tight">Rakiplerin yapamadığı iki şey — burada canlı deneyin.</h2>
+              <p className="mt-2 max-w-xl text-ink-2">Telefon/WhatsApp siparişini yapay zekâ alır, mutfağa düşürür; işletmeni panelde aramadan, konuşarak yönetirsin.</p>
+            </div>
+            <Link href="/demo" className={buttonClass("primary", "lg")}>Canlı deneyin<ArrowRight aria-hidden className="size-4" /></Link>
+          </div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <Link href="/demo/ai-siparis" className="group rounded-2xl border border-line bg-surface p-6 shadow-rest transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised">
+              <span aria-hidden className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand"><Utensils className="size-6" /></span>
+              <h3 className="mt-4 text-lg font-semibold">AI sipariş (telefon / WhatsApp)</h3>
+              <p className="mt-1 text-ink-2">Müşteri doğal dille söyler; sistem ürünlere çevirir, kasaya ve mutfağa düşürür.</p>
+            </Link>
+            <Link href="/demo/konusarak-yonet" className="group rounded-2xl border border-line bg-surface p-6 shadow-rest transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised">
+              <span aria-hidden className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand"><Bot className="size-6" /></span>
+              <h3 className="mt-4 text-lg font-semibold">Konuşarak yönet</h3>
+              <p className="mt-1 text-ink-2">“Dün en çok ne sattım, kritik stok var mı?” — sor, cevabı getirsin.</p>
+            </Link>
           </div>
         </section>
 

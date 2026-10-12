@@ -10,14 +10,15 @@ import { soldLines } from "./apply";
 
 /** fiscal: asıl satışın kesilmiş e-Arşiv faturası (iade tutanağı için); yoksa null. */
 export type SaleFiscalRef = { number: string; ettn: string; invoiceAt: string; buyerKind: FiscalBuyerKind; refundedBefore: boolean };
-export type LookedUpSale = { id: string; receiptNo: string; at: string; lines: RefLine[]; fiscal: SaleFiscalRef | null; fiscalPending?: boolean };
+/** #33: discount/goodsTotal — iade tutarının indirim payı oransal düşülsün (müşteri ödediğinden fazlasını almasın). */
+export type LookedUpSale = { id: string; receiptNo: string; at: string; lines: RefLine[]; fiscal: SaleFiscalRef | null; fiscalPending?: boolean; discount: number; goodsTotal: number };
 
 export async function lookupSale(tenantId: string, receiptNo: string): Promise<LookedUpSale | null> {
   return withTenant(tenantId, async (tx) => {
     const core = /^(.*-\d{6})/.exec(receiptNo)?.[1] ?? receiptNo;
     const rowFor = async (no: string, prefix: boolean) => {
       const [s] = await tx
-        .select({ id: schema.sales.id, receiptNo: schema.sales.receiptNo, at: schema.sales.createdAt })
+        .select({ id: schema.sales.id, receiptNo: schema.sales.receiptNo, at: schema.sales.createdAt, total: schema.sales.total, tip: schema.sales.tip, discount: schema.sales.discount })
         .from(schema.sales)
         .where(and(prefix ? like(schema.sales.receiptNo, no) : eq(schema.sales.receiptNo, no), eq(schema.sales.status, "kapandi")))
         .orderBy(asc(schema.sales.createdAt))
@@ -31,6 +32,6 @@ export async function lookupSale(tenantId: string, receiptNo: string): Promise<L
     const D = schema.fiscalDocuments;
     const [doc] = await tx.select({ number: D.number, ettn: D.ettn, issuedAt: D.issuedAt, buyer: D.buyer }).from(D).where(and(eq(D.saleId, s.id), eq(D.status, "issued")));
     const fiscal = doc?.number && doc.ettn && doc.issuedAt ? { number: doc.number, ettn: doc.ettn, invoiceAt: doc.issuedAt.toISOString(), buyerKind: buyerKindOf(doc.buyer?.taxId), refundedBefore: sold.refunded.length > 0 } : null;
-    return { id: s.id, receiptNo: s.receiptNo, at: s.at.toISOString(), lines: refundable(sold.lines, sold.refunded), fiscal };
+    return { id: s.id, receiptNo: s.receiptNo, at: s.at.toISOString(), lines: refundable(sold.lines, sold.refunded), fiscal, discount: s.discount, goodsTotal: s.total - s.tip };
   });
 }

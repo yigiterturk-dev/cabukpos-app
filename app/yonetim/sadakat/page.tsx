@@ -4,7 +4,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { adjustPoints, saveLoyaltySettings } from "@/lib/admin/loyalty-actions";
 import { formatTL } from "@/lib/core/money";
-import { Card, Empty, Field, Input, PageHeader } from "@/components/ui";
+import { buttonClass, Card, Empty, Field, Input, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,7 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
         <Card className="p-5">
           <form action={saveLoyaltySettings} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
             <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2 lg:col-span-4">
-              <input type="checkbox" name="enabled" defaultChecked={settings?.enabled ?? false} className="size-4 accent-[#ee6318]" />
+              <input type="checkbox" name="enabled" defaultChecked={settings?.enabled ?? false} className="size-4 accent-brand" />
               Puan programı açık
             </label>
             <Field label="1 puan için gereken harcama (₺)" hint="Her bu kadar harcamaya 1 puan">
@@ -51,7 +51,7 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
             <Field label="En az harcanabilir puan" hint="Bu puanın altında indirim yapılmaz">
               <Input name="minRedeemPoints" inputMode="numeric" defaultValue={settings?.minRedeemPoints ?? 10} required />
             </Field>
-            <button className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white">Ayarları kaydet</button>
+            <button className={buttonClass("primary")}>Ayarları kaydet</button>
           </form>
         </Card>
       </section>
@@ -73,7 +73,7 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
                     <input type="hidden" name="customerId" value={r.customerId} />
                     <Field label="Puan ekle / düş (− ile)"><Input name="points" inputMode="numeric" className="w-32" required /></Field>
                     <Field label="Not"><Input name="note" className="w-64" /></Field>
-                    <button className="h-10 rounded-lg bg-brand px-4 text-sm font-semibold text-white">Uygula</button>
+                    <button className={buttonClass("primary")}>Uygula</button>
                   </form>
                   {events.length > 0 && (
                     <ul className="space-y-1 text-sm text-ink-2">

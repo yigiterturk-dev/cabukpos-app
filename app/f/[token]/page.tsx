@@ -27,8 +27,8 @@ export default async function Fatura({ params }: { params: Promise<{ token: stri
   return (
     <main className="mx-auto w-full max-w-3xl bg-white px-4 py-8 text-sm text-ink print:max-w-none print:py-0">
       <style>{`@media print { @page { size: A4; margin: 14mm } body { background: #fff } }`}</style>
-      {test && <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-center font-semibold text-amber-900" data-testid="test-band">TEST — mali değeri yoktur</div>}
-      {cancelled && <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-center text-lg font-bold tracking-wide text-red-800">İPTAL EDİLDİ</div>}
+      {test && <div className="mb-4 rounded-lg border border-warn/40 bg-warn-soft p-3 text-center font-semibold text-warn" data-testid="test-band">TEST — mali değeri yoktur</div>}
+      {cancelled && <div className="mb-4 rounded-lg border border-bad/40 bg-bad-soft p-3 text-center text-lg font-bold tracking-wide text-bad">İPTAL EDİLDİ</div>}
       {!ready ? (
         <section className="rounded-xl border border-line p-8 text-center">
           <h1 className="text-lg font-semibold">Faturanız hazırlanıyor</h1>

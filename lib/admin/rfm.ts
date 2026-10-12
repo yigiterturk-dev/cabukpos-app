@@ -1,5 +1,5 @@
 // lib/admin/rfm.ts — #40: müşteri RFM + kohort verisi. Yalnız tamamlanmış, iadesiz satışlar; paket sipariş telefonundan müşteri bağlantısı.
-import { and, eq, gte, isNull } from "drizzle-orm";
+import { and, eq, gte, isNull, sql } from "drizzle-orm";
 import { schema, type Tx } from "@/db";
 import { normalizePhone } from "@/lib/core/delivery";
 import { cohortGrid, rfmMonths, rfmScore, RFM_SEGMENT, rfmSegment, type CohortRow } from "@/lib/core/rfm";
@@ -39,7 +39,7 @@ export async function rfmData(tx: Tx, tenantId: string, nowMs = Date.now()): Pro
     if (c) tabCustomer.set(e.tabId, c.id);
   }
 
-  const saleRows = (await tx.select({ tabId: S.tabId, total: S.total, at: S.createdAt })
+  const saleRows = (await tx.select({ tabId: S.tabId, total: sql<number>`(${S.total} - ${S.discount})::int`, at: S.createdAt })
     .from(S)
     .where(and(eq(S.tenantId, tenantId), eq(S.status, "kapandi"), isNull(S.refundOf), gte(S.createdAt, since)))) as { tabId: string | null; total: number; at: Date }[];
 

@@ -81,7 +81,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-6">
       <button type="button" onClick={onBack} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 -ml-3 mb-4">← Paket</button>
-      <h1 className="mb-5 text-2xl font-semibold tracking-tight">Yeni paket sipariş</h1>
+      <h1 className="mb-5 font-display text-2xl font-bold tracking-tight">Yeni paket sipariş</h1>
       <form onSubmit={lookup} className="flex items-end gap-2">
         <div className="flex-1"><Field label="Telefon"><Input name="phone" inputMode="tel" autoFocus value={phoneInput} onChange={(e) => { setPhoneInput(e.target.value); setFound(null); }} placeholder="0532 123 45 67" className="text-lg" /></Field></div>
         <Button type="submit" disabled={busy} variant={found ? "ghost" : "primary"}>Müşteriyi bul</Button>

@@ -17,7 +17,7 @@ export default async function TestOdeme({ params }: { params: Promise<{ id: stri
   if (!p || p.status !== "bekliyor") notFound();
   return (
     <Card className="mx-auto max-w-md p-6">
-      <div className="mb-4 rounded bg-amber-100 px-2 py-1 text-center text-xs font-semibold text-warn">TEST ÖDEME — gerçek para çekilmez</div>
+      <div className="mb-4 rounded bg-warn-soft px-2 py-1 text-center text-xs font-semibold text-warn">TEST ÖDEME — gerçek para çekilmez</div>
       <h1 className="text-lg font-semibold">ÇabukPOS {p.period === "yillik" ? "yıllık" : "aylık"} abonelik</h1>
       <div className="my-4 text-3xl font-semibold tabular-nums">{formatTL(p.amount)}</div>
       <form action={fakeResult} className="flex gap-2">

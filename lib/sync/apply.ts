@@ -17,6 +17,7 @@ import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
 import { normalizePhone } from "@/lib/core/delivery";
 import { notifyPlatform, notifyPlatformStatus } from "@/lib/platform/notify";
 import { onRefund, openFiscalDoc } from "@/lib/fiscal/issue";
+import { capDiscount, couponCheck, pointsEarned, pointsValue, type CouponLike } from "@/lib/loyalty";
 import { formatReceipt, syncDoc, type DocResult, type RefundDoc, type SaleDoc, type SyncDoc, type TabDoc } from "./docs";
 
 export type DeviceCtx = { tenantId: string; storeId: string; deviceId: string; receiptPrefix: string };
@@ -113,10 +114,10 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
 }
 
 async function expectedCashOf(tx: Tx, shiftId: string, openingCash: number) {
-  const sales = await tx.select({ id: schema.sales.id, total: schema.sales.total, change: schema.sales.change, vat: schema.sales.vat, status: schema.sales.status }).from(schema.sales).where(and(eq(schema.sales.shiftId, shiftId), inArray(schema.sales.status, ["kapandi", "iade"])));
+  const sales = await tx.select({ id: schema.sales.id, total: schema.sales.total, discount: schema.sales.discount, change: schema.sales.change, vat: schema.sales.vat, status: schema.sales.status }).from(schema.sales).where(and(eq(schema.sales.shiftId, shiftId), inArray(schema.sales.status, ["kapandi", "iade"])));
   const pays = sales.length ? await tx.select().from(schema.payments).where(inArray(schema.payments.saleId, sales.map((s) => s.id))) : [];
   const drops = await tx.select({ total: schema.registerEvents.total }).from(schema.registerEvents).where(and(eq(schema.registerEvents.shiftId, shiftId), eq(schema.registerEvents.type, "safe_drop")));
-  return summarizeShift(openingCash, sales.map((s) => ({ refund: s.status === "iade", total: s.total, change: s.change, vat: s.vat as VatLine[], payments: pays.filter((p) => p.saleId === s.id).map((p) => ({ method: p.method as PayMethod, amount: p.amount })) })), drops.map((d) => d.total)).expectedCash;
+  return summarizeShift(openingCash, sales.map((s) => ({ refund: s.status === "iade", total: s.total, discount: s.discount, change: s.change, vat: s.vat as VatLine[], payments: pays.filter((p) => p.saleId === s.id).map((p) => ({ method: p.method as PayMethod, amount: p.amount })) })), drops.map((d) => d.total)).expectedCash;
 }
 
 type Checked = { lines: (AnyLine & { known: boolean; trackStock: boolean; options?: { id: string; name: string; delta: number }[]; note?: string | null })[]; reasons: string[] };
@@ -179,7 +180,7 @@ async function recipeData(tx: Tx, lines: Checked["lines"]): Promise<{ byProduct:
   return { byProduct, byOption, costOf: (id) => costs.get(id) };
 }
 
-async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checked, payments: { method: PayMethod; amount: number }[], change: number, extra: { status: "kapandi" | "iade"; refundOf?: string; approvedBy?: string; tabId?: string; tableId?: string | null; channel?: "masa" | "paket" | "platform" }) {
+async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checked, payments: { method: PayMethod; amount: number }[], change: number, extra: { status: "kapandi" | "iade"; refundOf?: string; approvedBy?: string; tabId?: string; tableId?: string | null; channel?: "masa" | "paket" | "platform"; discount?: number; customerId?: string | null }) {
   const t = totals(c.lines);
   const receiptNo = await freeReceiptNo(tx, ctx, doc.receiptSeq, c.reasons);
   const at = clampAt(doc.at, c.reasons);
@@ -202,14 +203,126 @@ async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checke
   await tx.update(schema.devices).set({ nextReceiptNo: sql`greatest(${schema.devices.nextReceiptNo}, ${doc.receiptSeq + 1})` }).where(and(eq(schema.devices.id, ctx.deviceId), eq(schema.devices.tenantId, ctx.tenantId)));
 }
 
+type SaleExtras = {
+  discount: number;
+  customerId: string | null;
+  coupon: { id: string; discount: number } | null;
+  giftCard: { id: string; amount: number } | null;
+  loyaltyRedeem: { customerId: string; points: number } | null;
+  earn: { customerId: string; points: number } | null;
+};
+
+/** #33: satış ekleri — kupon + puan indirimi, hediye kartı, puan kazanımı. Sunucu yetkilidir;
+ *  istemci değeriyle uyuşmazlık satışı engellemez, review'a yazılır (fiyat farkı deseniyle aynı). */
+async function resolveSaleExtras(tx: Tx, doc: SaleDoc, subtotal: number, reasons: string[]): Promise<SaleExtras> {
+  const out: SaleExtras = { discount: 0, customerId: doc.customerId ?? null, coupon: null, giftCard: null, loyaltyRedeem: null, earn: null };
+  const parts: number[] = [];
+
+  let customerId = doc.loyalty?.customerId ?? out.customerId;
+  if (customerId) {
+    const [c] = await tx.select({ id: schema.customers.id }).from(schema.customers).where(eq(schema.customers.id, customerId)).limit(1);
+    if (!c) { reasons.push("müşteri bulunamadı"); customerId = null; }
+  }
+  out.customerId = customerId;
+
+  // Kupon: kod + durum + tarih/limit/alt sınır sunucuda yeniden doğrulanır.
+  let couponDiscount = 0;
+  if (doc.coupon) {
+    const [row] = await tx.select().from(schema.coupons).where(and(eq(schema.coupons.code, doc.coupon.code), eq(schema.coupons.status, "acik"))).limit(1);
+    if (!row) reasons.push("kupon: bulunamadı");
+    else {
+      const [used] = customerId
+        ? await tx.select({ n: sql<number>`count(*)::int` }).from(schema.couponUses).where(and(eq(schema.couponUses.couponId, row.id), eq(schema.couponUses.customerId, customerId)))
+        : [{ n: 0 }];
+      const like: CouponLike = { kind: row.kind, value: row.value, minSubtotal: row.minSubtotal, maxDiscount: row.maxDiscount, startsAt: row.startsAt, endsAt: row.endsAt, usageLimit: row.usageLimit, perCustomerLimit: row.perCustomerLimit, usedCount: row.usedCount };
+      const r = couponCheck(like, subtotal, new Date(), Number(used?.n ?? 0));
+      if (!r.ok) reasons.push(`kupon: ${r.reason}`);
+      else { couponDiscount = r.discount; out.coupon = { id: row.id, discount: r.discount }; }
+    }
+    if (couponDiscount !== doc.coupon.discount) reasons.push("kupon indirimi uyuşmadı");
+  }
+  parts.push(couponDiscount);
+
+  // Sadakat ayarları: harcama ya da kazanç varsa okunur (kiracı başına tek satır).
+  const [settings] = doc.loyalty || doc.customerId ? await tx.select().from(schema.loyaltySettings).limit(1) : [];
+
+  // Puan harcama: bakiye = hareketlerin işaretli toplamı; alt puan sınırı uygulanır.
+  let redeemDiscount = 0;
+  if (doc.loyalty) {
+    if (!settings?.enabled) reasons.push("sadakat: kapalı");
+    else {
+      const [bal] = await tx.select({ total: sql<number>`coalesce(sum(${schema.loyaltyEvents.points}), 0)::int` }).from(schema.loyaltyEvents).where(eq(schema.loyaltyEvents.customerId, doc.loyalty.customerId));
+      const balance = Number(bal?.total ?? 0);
+      if (doc.loyalty.points < settings.minRedeemPoints) reasons.push(`sadakat: en az ${settings.minRedeemPoints} puan gerekli`);
+      else if (doc.loyalty.points > balance) reasons.push("sadakat: puan bakiyesi yetersiz");
+      else { redeemDiscount = pointsValue(doc.loyalty.points, settings.kurusPerRedeem); out.loyaltyRedeem = { customerId: doc.loyalty.customerId, points: doc.loyalty.points }; }
+      if (redeemDiscount !== doc.loyalty.discount) reasons.push("sadakat indirimi uyuşmadı");
+    }
+  }
+  parts.push(redeemDiscount);
+  out.discount = capDiscount(subtotal, parts);
+
+  // Puan kazanç: indirimli ara toplam üzerinden; bahşiş puan kazandırmaz.
+  if (settings?.enabled && customerId) {
+    const pts = pointsEarned(subtotal - out.discount, settings.kurusPerPoint);
+    if (pts > 0) out.earn = { customerId, points: pts };
+  }
+
+  // Hediye kartı: bakiye ve kalan borçla sınırlanır; karta para üstü verilmez.
+  if (doc.giftCard) {
+    const [card] = await tx.select().from(schema.giftCards).where(and(eq(schema.giftCards.code, doc.giftCard.code), eq(schema.giftCards.status, "aktif"))).limit(1);
+    if (!card) reasons.push("hediye kartı: bulunamadı");
+    else if (card.expiresAt && card.expiresAt.getTime() < Date.now()) reasons.push("hediye kartı: süresi doldu");
+    else {
+      const due = subtotal - out.discount + (doc.tip ?? 0);
+      const nonGift = doc.payments.filter((p) => p.method !== "hediye_karti").reduce((a, p) => a + p.amount, 0);
+      const amount = Math.max(0, Math.min(card.balanceKurus, due - nonGift));
+      out.giftCard = { id: card.id, amount };
+      if (amount !== doc.giftCard.amount) reasons.push("hediye kartı tutarı uyuşmadı");
+    }
+  }
+
+  return out;
+}
+
+/** Eklerin kalıcılığı (tek işlem içinde): kupon kullanımı, hediye kartı düşümü, puan hareketleri. */
+async function persistSaleExtras(tx: Tx, ctx: DeviceCtx, doc: SaleDoc, x: SaleExtras) {
+  const actor = `staff:${doc.staffId}`;
+  if (x.coupon) {
+    await tx.insert(schema.couponUses).values({ tenantId: ctx.tenantId, couponId: x.coupon.id, customerId: x.customerId, saleId: doc.id, discountKurus: x.coupon.discount }).onConflictDoNothing();
+    await tx.update(schema.coupons).set({ usedCount: sql`${schema.coupons.usedCount} + 1` }).where(eq(schema.coupons.id, x.coupon.id));
+    await audit(tx, ctx.tenantId, actor, "coupon.redeemed", { saleId: doc.id, couponId: x.coupon.id, discount: x.coupon.discount });
+  }
+  if (x.giftCard && x.giftCard.amount > 0) {
+    const [upd] = await tx.update(schema.giftCards).set({ balanceKurus: sql`${schema.giftCards.balanceKurus} - ${x.giftCard.amount}` }).where(and(eq(schema.giftCards.id, x.giftCard.id), eq(schema.giftCards.status, "aktif"))).returning({ balance: schema.giftCards.balanceKurus });
+    if (upd) {
+      await tx.insert(schema.giftCardEvents).values({ tenantId: ctx.tenantId, cardId: x.giftCard.id, saleId: doc.id, kind: "harcama", amountKurus: -x.giftCard.amount, actor });
+      if (upd.balance <= 0) await tx.update(schema.giftCards).set({ status: "bitti" }).where(eq(schema.giftCards.id, x.giftCard.id));
+      await audit(tx, ctx.tenantId, actor, "giftcard.spent", { saleId: doc.id, cardId: x.giftCard.id, amount: x.giftCard.amount, balance: upd.balance });
+    }
+  }
+  if (x.loyaltyRedeem) {
+    await tx.insert(schema.loyaltyEvents).values({ tenantId: ctx.tenantId, customerId: x.loyaltyRedeem.customerId, saleId: doc.id, kind: "harcanma", points: -x.loyaltyRedeem.points, note: "kasada harcandı", actor });
+    await audit(tx, ctx.tenantId, actor, "loyalty.redeemed", { saleId: doc.id, customerId: x.loyaltyRedeem.customerId, points: x.loyaltyRedeem.points });
+  }
+  if (x.earn) {
+    await tx.insert(schema.loyaltyEvents).values({ tenantId: ctx.tenantId, customerId: x.earn.customerId, saleId: doc.id, kind: "kazanc", points: x.earn.points, actor });
+  }
+}
+
 async function applySale(tx: Tx, ctx: DeviceCtx, doc: SaleDoc): Promise<string | null> {
   const tab = doc.tab;
   const state = tab ? foldTabs(await tabEventsOf(tx, tab.tabId)).get(tab.tabId) : undefined;
   const c = await precheck(tx, ctx, doc, state?.kind ?? null);
   if (c === null || typeof c === "string") return c;
-  const total = totals(c.lines).total;
+  const subtotal = totals(c.lines).total;
   const tip = doc.tip ?? 0;
-  const s = settle(total + tip, doc.payments);
+  const extras = await resolveSaleExtras(tx, doc, subtotal, c.reasons);
+  // Hediye kartı sunucuda çözülür: istemcinin gönderdiği hediye kartı satırı atılır, yetkili tutarla yeniden kurulur.
+  let payments = doc.payments.filter((p) => p.method !== "hediye_karti");
+  if (extras.giftCard && extras.giftCard.amount > 0) payments = [...payments, { method: "hediye_karti", amount: extras.giftCard.amount }];
+  const due = subtotal - extras.discount + tip;
+  const s = settle(due, payments);
   if (!s.ok) c.reasons.push(`ödeme: ${s.error}`);
   if (tab) {
     // Masadan parça ödeme: adisyonda kalandan fazlası (çift ödeme, çevrimdışı çakışma) → yine yazılır, incelenir.
@@ -219,10 +332,11 @@ async function applySale(tx: Tx, ctx: DeviceCtx, doc: SaleDoc): Promise<string |
       if (!l || l.voided || l.paidMilli + p.qtyMilli > l.qtyMilli) { c.reasons.push("adisyonda ödenmiş/olmayan satır"); break; }
     }
   }
-  await write(tx, ctx, doc, c, s.ok ? s.payments : doc.payments, s.ok ? s.change : 0, { status: "kapandi", ...(tab ? { tabId: tab.tabId, tableId: tab.tableId, channel: state?.kind ?? ("masa" as const) } : {}) });
+  await write(tx, ctx, doc, c, s.ok ? s.payments : payments, s.ok ? s.change : 0, { status: "kapandi", discount: extras.discount, customerId: extras.customerId, ...(tab ? { tabId: tab.tabId, tableId: tab.tableId, channel: state?.kind ?? ("masa" as const) } : {}) });
+  await persistSaleExtras(tx, ctx, doc, extras);
   await openFiscalDoc(tx, ctx.tenantId, doc.id, tab ? (state?.kind ?? "masa") : "kasa", doc.fiscal);
   if (tab) {
-    const ev: TabEv = { type: "paid", saleId: doc.id, lines: tab.paidLines, amount: total };
+    const ev: TabEv = { type: "paid", saleId: doc.id, lines: tab.paidLines, amount: subtotal };
     await tx.insert(schema.tabEvents).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, tabId: tab.tabId, tableId: tab.tableId, deviceId: ctx.deviceId, staffId: doc.staffId, at: clampAt(doc.at), type: ev.type, payload: ev }).onConflictDoNothing();
   }
   return null;
@@ -300,6 +414,58 @@ async function applyTab(tx: Tx, ctx: DeviceCtx, doc: TabDoc): Promise<string | n
   return null;
 }
 
+/** #33: iade — indirimli/hediye kartlı satışın puan ve kart eklemelerini oransal geri alır.
+ *  İade tutarı asıl mal toplamına oranlanır; önceki iadeler (note etiketli iade hareketleri) düşülür → çift geri alma olmaz. */
+async function reverseSaleExtras(tx: Tx, ctx: DeviceCtx, doc: RefundDoc) {
+  const actor = `staff:${doc.staffId}`;
+  const L = schema.loyaltyEvents, G = schema.giftCardEvents;
+  const [orig] = await tx.select({ total: schema.sales.total, tip: schema.sales.tip }).from(schema.sales).where(eq(schema.sales.id, doc.refundOf));
+  if (!orig) return;
+  const origGoods = orig.total - orig.tip; // indirim öncesi mal toplamı
+  if (origGoods <= 0) return;
+  // Kümülatif oran: bu iade dahil asıl satışa yapılmış tüm iadelerin mal toplamı (write önce çalışır).
+  const [agg] = await tx.select({ sum: sql<number>`coalesce(sum(${schema.sales.total}), 0)::int` }).from(schema.sales).where(and(eq(schema.sales.refundOf, doc.refundOf), eq(schema.sales.status, "iade")));
+  const ratio = Math.min(1, Math.max(0, Number(agg?.sum ?? 0)) / origGoods);
+
+  // Puan: kazancı geri al (eksi), harcamayı geri ver (artı). Hepsi asıl satışa bağlı işaretli hareket.
+  const loy = await tx.select({ kind: L.kind, points: L.points, note: L.note, customerId: L.customerId }).from(L).where(eq(L.saleId, doc.refundOf));
+  const earned = loy.filter((e) => e.kind === "kazanc").reduce((a, e) => a + e.points, 0);
+  const redeemed = -loy.filter((e) => e.kind === "harcanma").reduce((a, e) => a + e.points, 0);
+  const earnedRev = -loy.filter((e) => e.note === "iade:kazanc").reduce((a, e) => a + e.points, 0);
+  const redeemedRev = loy.filter((e) => e.note === "iade:harcanma").reduce((a, e) => a + e.points, 0);
+  const customerId = loy.find((e) => e.kind === "kazanc" || e.kind === "harcanma")?.customerId ?? null;
+  const dEarn = Math.max(0, Math.min(earned - earnedRev, Math.floor(earned * ratio) - earnedRev));
+  const dRedeem = Math.max(0, Math.min(redeemed - redeemedRev, Math.floor(redeemed * ratio) - redeemedRev));
+  if (customerId && dEarn > 0) await tx.insert(L).values({ tenantId: ctx.tenantId, customerId, saleId: doc.refundOf, kind: "iade", points: -dEarn, note: "iade:kazanc", actor });
+  if (customerId && dRedeem > 0) await tx.insert(L).values({ tenantId: ctx.tenantId, customerId, saleId: doc.refundOf, kind: "iade", points: dRedeem, note: "iade:harcanma", actor });
+
+  // Hediye kartı: harcamanın iade payı bakiyeye döner (iptal edilmiş karta iade edilmez).
+  const ge = await tx.select({ cardId: G.cardId, kind: G.kind, amountKurus: G.amountKurus }).from(G).where(eq(G.saleId, doc.refundOf));
+  const giftPaid = -ge.filter((e) => e.kind === "harcama").reduce((a, e) => a + e.amountKurus, 0);
+  const giftRev = ge.filter((e) => e.kind === "iade").reduce((a, e) => a + e.amountKurus, 0);
+  const cardId = ge.find((e) => e.kind === "harcama")?.cardId ?? null;
+  const dGift = Math.max(0, Math.min(giftPaid - giftRev, Math.floor(giftPaid * ratio) - giftRev));
+  if (cardId && dGift > 0) {
+    const [card] = await tx.select({ status: schema.giftCards.status }).from(schema.giftCards).where(eq(schema.giftCards.id, cardId));
+    if (card && card.status !== "iptal") {
+      await tx.update(schema.giftCards).set({ balanceKurus: sql`${schema.giftCards.balanceKurus} + ${dGift}`, ...(card.status === "bitti" ? { status: "aktif" as const } : {}) }).where(eq(schema.giftCards.id, cardId));
+      await tx.insert(G).values({ tenantId: ctx.tenantId, cardId, saleId: doc.refundOf, kind: "iade", amountKurus: dGift, actor });
+      await audit(tx, ctx.tenantId, actor, "giftcard.refunded", { saleId: doc.refundOf, cardId, amount: dGift });
+    }
+  }
+  if (dEarn > 0 || dRedeem > 0) await audit(tx, ctx.tenantId, actor, "loyalty.refund", { saleId: doc.refundOf, earnBack: dEarn, redeemBack: dRedeem });
+
+  // Kupon: satış tümüyle iade edildiğinde kullanım geri alınır (kupon yeniden kullanılabilir).
+  if (ratio >= 1) {
+    const [cu] = await tx.select({ id: schema.couponUses.id, couponId: schema.couponUses.couponId }).from(schema.couponUses).where(eq(schema.couponUses.saleId, doc.refundOf)).limit(1);
+    if (cu) {
+      await tx.delete(schema.couponUses).where(eq(schema.couponUses.id, cu.id));
+      await tx.update(schema.coupons).set({ usedCount: sql`greatest(${schema.coupons.usedCount} - 1, 0)` }).where(eq(schema.coupons.id, cu.couponId));
+      await audit(tx, ctx.tenantId, actor, "coupon.reversed", { saleId: doc.refundOf, couponId: cu.couponId });
+    }
+  }
+}
+
 async function applyRefund(tx: Tx, ctx: DeviceCtx, doc: RefundDoc): Promise<string | null> {
   const c = await precheck(tx, ctx, doc);
   if (c === null || typeof c === "string") return c;
@@ -314,8 +480,14 @@ async function applyRefund(tx: Tx, ctx: DeviceCtx, doc: RefundDoc): Promise<stri
     for (const l of c.lines) if (l.productId) want.set(l.productId, (want.get(l.productId) ?? 0) + l.qtyMilli); // serbest satır: precheck review
     for (const [pid, q] of want) if (q > left.filter((l) => l.productId === pid).reduce((a, l) => a + l.qtyMilli, 0)) c.reasons.push(`satılandan fazla iade: ${c.lines.find((l) => l.productId === pid)!.name}`);
   }
-  if (doc.payments[0].amount !== totals(c.lines).total) c.reasons.push("iade ödemesi toplamla eşleşmiyor");
-  await write(tx, ctx, doc, c, doc.payments, 0, { status: "iade", refundOf: doc.refundOf, approvedBy: doc.approvedBy });
+  // #33: asıl satış indirimliyse iade tutarına da oransal indirim yansır — aksi hâlde müşteri fazla para alır.
+  const refundGoods = totals(c.lines).total;
+  const [origSale] = await tx.select({ total: schema.sales.total, tip: schema.sales.tip, discount: schema.sales.discount }).from(schema.sales).where(eq(schema.sales.id, doc.refundOf));
+  const origGoods = origSale ? origSale.total - origSale.tip : 0;
+  const refundDiscount = origSale && origGoods > 0 ? Math.floor((refundGoods * origSale.discount) / origGoods) : 0;
+  if (doc.payments[0].amount !== refundGoods - refundDiscount) c.reasons.push("iade ödemesi toplamla eşleşmiyor");
+  await write(tx, ctx, doc, c, doc.payments, 0, { status: "iade", refundOf: doc.refundOf, approvedBy: doc.approvedBy, discount: refundDiscount });
+  await reverseSaleExtras(tx, ctx, doc);
   await onRefund(tx, ctx.tenantId, doc.refundOf, doc.id);
   return null;
 }

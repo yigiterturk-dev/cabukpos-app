@@ -11,7 +11,7 @@ import { touchSessionByHash, type SessionRow } from "./sessions";
 import { billingInfo } from "@/lib/core/billing";
 
 export { ADMIN_COOKIE } from "./session-cookie";
-import { ADMIN_COOKIE, ADMIN_SESSION_MAX_AGE } from "./session-cookie";
+import { ADMIN_COOKIE, ADMIN_SESSION_MAX_AGE, secureByProto } from "./session-cookie";
 export { uaLabel, sonGorulme, listSessions } from "./sessions";
 import { listSessions, recordSession, revokeSessionByHash, revokeSessionsExcept, revokeAllSessions } from "./sessions";
 const MAX_AGE = ADMIN_SESSION_MAX_AGE;
@@ -26,10 +26,10 @@ const currentHash = async (): Promise<string> => {
 /** İzlenebilir oturum: JWT imzala + çereze yaz + hash'ini kaydet (ua/ip ile). */
 export async function setAdminSession(userId: string, tenantId: string, v: number) {
   const token = await signJwt("admin", { userId, tenantId, v }, MAX_AGE);
-  (await cookies()).set(ADMIN_COOKIE, token, {
-    httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: MAX_AGE,
-  });
   const h = await headers();
+  (await cookies()).set(ADMIN_COOKIE, token, {
+    httpOnly: true, secure: secureByProto(h.get("x-forwarded-proto")), sameSite: "lax", path: "/", maxAge: MAX_AGE,
+  });
   await recordSession(userId, tenantId, await tokenHashOf(token), (h.get("user-agent") ?? "").slice(0, 200), (h.get("x-forwarded-for") ?? "").split(",")[0].trim().slice(0, 45));
 }
 

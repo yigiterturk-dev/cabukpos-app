@@ -19,19 +19,19 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <LogoMark />ÇabukPOS
         </Link>
         <div className="relative max-w-md">
-          <p className="font-display text-4xl font-bold leading-[1.1] tracking-[-0.02em]">İnternet gitse de <span className="bg-gradient-to-r from-[#ff9d5c] to-[#ee6318] bg-clip-text text-transparent">kasa durmaz.</span></p>
+          <p className="font-display text-4xl font-bold leading-[1.1] tracking-[-0.02em]">İnternet gitse de <span className="bg-gradient-to-r from-brand to-brand-hover bg-clip-text text-transparent">kasa durmaz.</span></p>
           <ul className="mt-10 space-y-6">
             {POINTS.map(({ icon: I, title, text }) => (
               <li key={title} className="flex gap-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 text-[#f6a45c]"><I aria-hidden className="size-5" /></span>
-                <span><span className="block font-medium">{title}</span><span className="mt-0.5 block text-sm text-muted">{text}</span></span>
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 text-brand"><I aria-hidden className="size-5" /></span>
+                <span><span className="block font-medium">{title}</span><span className="mt-0.5 block text-sm text-cream-muted">{text}</span></span>
               </li>
             ))}
           </ul>
         </div>
-        <ul className="relative flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+        <ul className="relative flex flex-wrap gap-x-6 gap-y-2 text-sm text-cream-muted">
           {["Kart bilgisi istenmez", "Otomatik yenileme yok", "Veriler sizin"].map((t) => (
-            <li key={t} className="inline-flex items-center gap-1.5"><Check aria-hidden className="size-4 text-emerald-400" />{t}</li>
+            <li key={t} className="inline-flex items-center gap-1.5"><Check aria-hidden className="size-4 text-ok" />{t}</li>
           ))}
         </ul>
       </aside>
