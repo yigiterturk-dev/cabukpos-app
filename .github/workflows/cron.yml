@@ -1,15 +1,8 @@
 name: Zamanlanmış uygulama işleri
 
-# Vercel Hobby sık cron aralıklarını kabul etmediği için uygulama cron'ları
-# GitHub Actions'tan çağrılır. Gerekli repository secret'ları: APP_URL, CRON_SECRET.
+# Zamanlanmış çağrılar netcup'ta /opt/cron-tetik (GitHub Actions kotası doldu, 2026-10-14).
+# Bu workflow yalnız elle çalıştırma için. Gerekli repository secret'ları: APP_URL, CRON_SECRET.
 on:
-  schedule:
-    - cron: "*/5 * * * *"
-    - cron: "*/10 * * * *"
-    - cron: "10 * * * *"
-    - cron: "0 */6 * * *"
-    - cron: "0 6 * * *"
-    - cron: "30 7 * * *"
   workflow_dispatch:
     inputs:
       job:
