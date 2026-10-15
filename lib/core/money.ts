@@ -20,6 +20,8 @@ export function parseMoney(input: string): Kurus | null {
 
 const fmt = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const formatTL = (k: Kurus) => `${fmt.format(k / 100)} ₺`;
+/** Sembolsüz ikili biçim — form input defaultValue'ları için. */
+export const formatPlain = (k: Kurus) => fmt.format(k / 100);
 
 // — Çoklu para birimi altyapısı (#16) —
 // Kuruş tamsayısı para biriminden bağımsız kalır (kırk kuruş = 2 haneli; adım ileride

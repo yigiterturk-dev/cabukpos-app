@@ -1,6 +1,7 @@
 // tests/renewal-db.test.ts — #11: kart kasası + otomatik yenileme (fake sağlayıcı) + kart silme.
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
+import { createCipheriv, randomBytes, scryptSync } from "node:crypto";
 process.env.DATABASE_URL = "postgres://cabukpos_app:dev-app-pass@localhost:5432/cabukpos_test";
 process.env.BILLING_PROVIDER = "fake";
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || "test-secret-renewal";
@@ -29,10 +30,24 @@ async function tenantWith(name: string, paidUntilDays: number, card: string | nu
 
 test("card-vault: roundtrip + bozuk girdi null", () => {
   const enc = encryptCardToken("tok_abc123")!;
-  assert.ok(enc.startsWith("v1:"));
+  assert.ok(enc.startsWith("v2:"));
   assert.equal(decryptCardToken(enc), "tok_abc123");
   assert.equal(decryptCardToken("v1:kirpik:tag:ct"), null);
   assert.equal(decryptCardToken(null), null);
+});
+
+test("card-vault: v1 satırı yalnız AUTH_SECRET_PREVIOUS ile çözülür", () => {
+  const iv = randomBytes(12);
+  const c = createCipheriv("aes-256-gcm", scryptSync("eski-secret", "cabukpos-card-token", 32), iv);
+  const ct = Buffer.concat([c.update("tok_eski", "utf8"), c.final()]);
+  const v1 = `v1:${iv.toString("base64url")}:${c.getAuthTag().toString("base64url")}:${ct.toString("base64url")}`;
+  assert.equal(decryptCardToken(v1), null);
+  process.env.AUTH_SECRET_PREVIOUS = "eski-secret";
+  try {
+    assert.equal(decryptCardToken(v1), "tok_eski");
+  } finally {
+    delete process.env.AUTH_SECRET_PREVIOUS;
+  }
 });
 
 test("renewDue: vadesi yakın kiracının aboneliği uzar, ikinci koşu dokunmaz", async () => {

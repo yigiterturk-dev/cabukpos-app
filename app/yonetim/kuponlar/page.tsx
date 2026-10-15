@@ -5,6 +5,7 @@ import { createCoupon, setCouponStatus } from "@/lib/admin/loyalty-actions";
 import { Badge, buttonClass, Card, Field, Input, PageHeader } from "@/components/ui";
 import { Select } from "@/components/Select";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
+import { currencySymbol } from "@/lib/core/money";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function Kuponlar({ searchParams }: { searchParams: Promise
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
   const currency = await tenantCurrency(a.tenantId);
-  const unit = currency === "TRY" ? "₺" : currency;
+  const unit = currencySymbol(currency);
   const { ok, hata } = await searchParams;
   const rows = await withTenant(a.tenantId, (tx) => tx.select().from(schema.coupons).orderBy(desc(schema.coupons.createdAt)).limit(100));
   return (

@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { createGiftCard, giftCardCancel, giftCardLoad } from "@/lib/admin/loyalty-actions";
 import { Badge, buttonClass, Card, Field, Input, PageHeader } from "@/components/ui";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
+import { currencySymbol } from "@/lib/core/money";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export default async function HediyeKarti({ searchParams }: { searchParams: Prom
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
   const currency = await tenantCurrency(a.tenantId);
-  const unit = currency === "TRY" ? "₺" : currency;
+  const unit = currencySymbol(currency);
   const { ok, hata, id } = await searchParams;
   const G = schema.giftCards;
   const { rows, events } = await withTenant(a.tenantId, async (tx) => {
