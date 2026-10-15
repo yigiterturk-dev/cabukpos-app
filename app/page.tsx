@@ -60,7 +60,7 @@ function KasaMock() {
         <div className="font-semibold">Mutfak · Izgara</div>
         <div className="text-muted">2 × Adana Dürüm · 4 dk</div>
       </div>
-      <div className="absolute -right-2 -top-4 rounded-xl bg-ok px-3 py-2 text-xs font-medium text-white shadow-pop sm:-right-6">Fiş yazdırıldı</div>
+      <div className="absolute right-0 -top-4 rounded-xl bg-ok px-3 py-2 text-xs font-medium text-white shadow-pop lg:-right-6">Fiş yazdırıldı</div>
     </div>
   );
 }
@@ -90,7 +90,7 @@ export default function Home() {
       </header>
 
       <main>
-        <section className="mx-auto grid max-w-6xl items-center gap-14 px-4 pb-20 pt-14 md:grid-cols-[1.1fr_1fr] md:pt-20">
+        <section className="mx-auto grid max-w-6xl min-w-0 items-center gap-14 px-4 pb-20 pt-14 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:pt-20">
           <div>
             <p className="mb-4 inline-flex rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">Restoran ve market için bulut kasa</p>
             <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">İnternet gitse de <span className="text-brand">kasa durmaz.</span></h1>
@@ -156,7 +156,7 @@ export default function Home() {
               <div key={f.title} className={`rounded-2xl border border-line p-6 ${i === 0 ? "bg-brand text-white sm:col-span-2 lg:col-span-1 lg:row-span-2" : "bg-surface"}`}>
                 <div className={`mb-4 inline-flex rounded-xl p-2.5 ${i === 0 ? "bg-surface/15" : "bg-brand-soft text-brand"}`}><f.icon aria-hidden className="size-5" /></div>
                 <h3 className={`font-semibold ${i === 0 ? "text-2xl" : "text-lg"}`}>{f.title}</h3>
-                <p className={`mt-2 ${i === 0 ? "text-orange-50" : "text-ink-2"}`}>{f.text}</p>
+                <p className={`mt-2 ${i === 0 ? "text-white/90" : "text-ink-2"}`}>{f.text}</p>
               </div>
             ))}
           </div>
@@ -168,9 +168,9 @@ export default function Home() {
             <ol className="mt-10 grid gap-8 md:grid-cols-3">
               {STEPS.map((s) => (
                 <li key={s.n}>
-                  <div className="text-5xl font-semibold text-orange-400">{s.n}</div>
+                  <div className="text-5xl font-semibold text-brand">{s.n}</div>
                   <h3 className="mt-3 text-lg font-semibold">{s.title}</h3>
-                  <p className="mt-1 text-stone-300">{s.text}</p>
+                  <p className="mt-1 text-cream-muted">{s.text}</p>
                 </li>
               ))}
             </ol>

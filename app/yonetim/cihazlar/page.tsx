@@ -24,12 +24,12 @@ export default async function Cihazlar() {
       {rows.length === 0 ? <Empty>Henüz cihaz yok.</Empty> : (
         <Card className="divide-y divide-line">
           {rows.map((d) => (
-            <div key={d.id} className="flex flex-wrap items-center gap-3 p-4">
-              <div className="font-medium">{d.name}</div>
-              <span className="font-mono text-sm text-muted">{d.receiptPrefix}</span>
+            <div key={d.id} className="flex min-w-0 flex-wrap items-center gap-3 p-4">
+              <div className="min-w-0 break-words font-medium">{d.name}</div>
+              <span className="shrink-0 font-mono text-sm text-muted">{d.receiptPrefix}</span>
               {d.revokedAt ? <Badge tone="bad">İptal</Badge> : d.pairedAt ? <Badge tone="ok">Eşlendi {dt(d.pairedAt)}</Badge> : <Badge tone="warn">Eşlenmedi</Badge>}
-              {d.lastSeenAt && <span className="text-xs text-muted">Son görülme {dt(d.lastSeenAt)}</span>}
-              <div className="ml-auto flex flex-wrap items-start gap-4 text-sm">
+              {d.lastSeenAt && <span className="min-w-0 break-words text-xs text-muted">Son görülme {dt(d.lastSeenAt)}</span>}
+              <div className="ml-auto flex shrink-0 flex-wrap items-start gap-4 text-sm">
                 <NewPairingButton action={newPairing.bind(null, d.id)} />
                 {!d.revokedAt && <RevokeForm action={revokeDevice.bind(null, d.id)} />}
               </div>

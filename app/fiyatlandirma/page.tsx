@@ -41,7 +41,7 @@ export default function Fiyatlandirma() {
         <h1 className="text-4xl font-semibold tracking-tight">Fiyatlandırma</h1>
         <p className="mt-3 max-w-2xl text-lg text-ink-2">Taban paket 1 şube ve 1 kasa terminali kapsar; büyürken yalnız eklediğiniz birimler için ödersiniz. Fiyatlara KDV dahildir. Bilgi fişi hemen kullanılabilir; e-Arşiv için canlı entegratör bağlantısı ayrıca tanımlanır.</p>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_1.1fr]">
+        <div className="mt-10 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
           <div className="space-y-4">
             {([["Aylık", aylik, "her ay"], ["Yıllık", yillik, "yılda bir, peşin"]] as const).map(([label, p, per]) => (
               <div key={label} className={`rounded-2xl border p-7 shadow-card ${label === "Yıllık" ? "border-brand ring-4 ring-brand-ring/40" : "border-line"}`}>

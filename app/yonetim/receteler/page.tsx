@@ -33,15 +33,15 @@ export default async function Receteler({ searchParams }: { searchParams: Promis
   const initial = items.filter((i) => (sel ? i.productId === sel.id : opt ? i.optionId === opt.id : false)).map((i) => ({ ingredientId: i.ingredientId, qtyMilli: i.qtyMilli }));
 
   const link = (href: string, label: string, active: boolean, done: boolean) => (
-    <Link key={href} href={href} className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${active ? "bg-brand-soft font-medium text-brand" : "hover:bg-surface-2"}`}>
-      <span>{label}</span>{done && <span className="text-xs text-ok">reçeteli</span>}
+    <Link key={href} href={href} className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${active ? "bg-brand-soft font-medium text-brand" : "hover:bg-surface-2"}`}>
+      <span className="min-w-0 truncate" title={label}>{label}</span>{done && <span className="shrink-0 text-xs text-ok">reçeteli</span>}
     </Link>
   );
   return (
     <>
       <PageHeader title="Reçeteler" desc="Satışta hammaddeler reçeteye göre düşer; maliyet son alış fiyatından. Ara ürünü Üretim sayfasından üretin." />
-      <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
-        <Card className="space-y-4 p-3">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[16rem_minmax(0,1fr)]">
+        <Card className="min-w-0 space-y-4 p-3">
           <div><h2 className="mb-1 px-3 text-xs font-medium uppercase text-muted">Ürünler</h2>{sellable.map((p) => link(`/yonetim/receteler?urun=${p.id}`, p.name, p.id === urun, has.has(p.id)))}</div>
           <div><h2 className="mb-1 px-3 text-xs font-medium uppercase text-muted">Ara ürünler</h2>{intermediates.length ? intermediates.map((p) => link(`/yonetim/receteler?urun=${p.id}`, p.name, p.id === urun, has.has(p.id))) : <p className="px-3 text-sm text-muted">Ürünler’de “Kasada satılır: Hayır” + parti miktarı.</p>}</div>
           {groups.map((g) => (

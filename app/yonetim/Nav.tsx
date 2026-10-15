@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
@@ -59,27 +59,46 @@ const groups: { title: string; items: Item[] }[] = [
 function NavItem({ item, path }: { item: Item; path: string }) {
   const on = item.exact ? path === item.href : path.startsWith(item.href);
   const Icon = item.icon;
+  const ref = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (on) ref.current?.scrollIntoView({ block: "nearest" });
+  }, [on, path]);
   return (
     <Link
+      ref={ref}
       href={item.href}
       aria-current={on ? "page" : undefined}
-      className={`group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "bg-gradient-to-b from-brand to-brand-hover font-semibold text-white shadow-glow" : "font-medium text-cream-muted hover:bg-white/[0.06] hover:text-cream"}`}
+      data-testid={`nav-${item.href.replaceAll("/", "-").replace(/^-/, "root")}`}
+      className={`group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm outline-none transition-[background-color,color,box-shadow] focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "bg-white/[0.1] font-semibold text-cream shadow-rest ring-1 ring-inset ring-white/10" : "font-medium text-cream-muted hover:bg-white/[0.06] hover:text-cream"}`}
     >
-      <Icon aria-hidden className={`size-[18px] shrink-0 ${on ? "text-white" : "text-cream-muted/80 group-hover:text-cream"}`} />
+      <Icon aria-hidden className={`size-[18px] shrink-0 ${on ? "text-brand" : "text-cream-muted/80 group-hover:text-cream"}`} />
       <span className="truncate">{item.label}</span>
-      {on && <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-white/80" />}
+      {on && <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-brand" />}
     </Link>
   );
 }
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
-  return <div aria-hidden className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-muted/55">{children}</div>;
+  return <h2 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-muted/55">{children}</h2>;
 }
 
 /** Sidebar menüsü: arama ile filtrele + gruplu liste. Masaüstü ve mobil çekmecede aynı. */
 export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
   const path = usePathname();
+  const router = useRouter();
   const [q, setQ] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLocaleLowerCase() === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
   const visible = useMemo(
     () => groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.only || i.only === vertical) })).filter((g) => g.items.length),
     [vertical],
@@ -92,18 +111,29 @@ export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
       <div className="relative mb-3">
         <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-cream-muted/70" />
         <input
+          ref={searchRef}
           value={q}
           onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") { e.preventDefault(); setQ(""); e.currentTarget.blur(); }
+            else if (e.key === "Enter" && matches[0]) { e.preventDefault(); router.push(matches[0].href); setQ(""); e.currentTarget.blur(); }
+          }}
           placeholder="Menüde ara"
           aria-label="Menüde ara"
-          className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.06] pl-9 pr-8 text-sm text-cream placeholder:text-cream-muted/60 outline-none transition focus:border-brand-ring/60 focus:bg-white/[0.09] focus:ring-4 focus:ring-brand-ring/25"
+          aria-keyshortcuts="Control+K Meta+K"
+          className="min-h-11 w-full rounded-xl border border-white/10 bg-white/[0.06] pl-9 pr-8 text-sm text-cream placeholder:text-cream-muted/60 outline-none transition focus:border-brand-ring/60 focus:bg-white/[0.09] focus:ring-4 focus:ring-brand-ring/25"
         />
+        {!q && <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-medium text-cream-muted/65">⌘/Ctrl K</span>}
         {q && (
-          <button type="button" aria-label="Aramayı temizle" onClick={() => setQ("")} className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-cream-muted outline-none hover:bg-white/10 hover:text-cream focus-visible:ring-2 focus-visible:ring-brand-ring/60">
+          <button type="button" aria-label="Aramayı temizle" onClick={() => setQ("")} className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-lg text-cream-muted outline-none hover:bg-white/10 hover:text-cream focus-visible:ring-2 focus-visible:ring-brand-ring/60">
             <X aria-hidden className="size-4" />
           </button>
         )}
       </div>
+
+      <p className="sr-only" role="status" aria-live="polite">
+        {needle ? (matches.length === 0 ? "Menüde sonuç yok." : `${matches.length} menü sonucu bulundu.`) : ""}
+      </p>
 
       {needle ? (
         <ul className="space-y-0.5">
@@ -131,24 +161,47 @@ export function MobileNav({ children }: { children: React.ReactNode }) {
   // Açıldığı rotayı tutar: rota değişince kendiliğinden kapalı sayılır (efektte setState yok).
   const path = usePathname();
   const [openAt, setOpenAt] = useState<string | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
   const open = openAt === path;
   const setOpen = (v: boolean) => setOpenAt(v ? path : null);
   useEffect(() => {
+    if (open) {
+      closeRef.current?.focus();
+      const trigger = triggerRef.current;
+      return () => trigger?.focus();
+    }
+  }, [open]);
+  useEffect(() => {
     if (!open) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpenAt(null);
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); setOpenAt(null); return; }
+      if (e.key !== "Tab") return;
+      const drawer = drawerRef.current;
+      if (!drawer) return;
+      const items = [...drawer.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter((el) => el.offsetParent !== null);
+      if (!items.length) { e.preventDefault(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !drawer.contains(active))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (active === last || !drawer.contains(active))) { e.preventDefault(); first.focus(); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
   return (
     <>
-      <button type="button" aria-label="Menüyü aç" aria-expanded={open} onClick={() => setOpen(true)} className="press grid size-11 place-items-center rounded-[10px] text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 md:hidden">
+      <button ref={triggerRef} type="button" aria-label="Menüyü aç" aria-expanded={open} onClick={() => setOpen(true)} className="press grid size-11 place-items-center rounded-[10px] text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 md:hidden">
         <Menu aria-hidden className="size-5" />
       </button>
       {open && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menü">
           <div className="absolute inset-0 bg-espresso/50" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-espresso p-4 shadow-pop">
-            <button type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-11 place-items-center rounded-[10px] text-cream-muted outline-none hover:bg-surface/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+          <div ref={drawerRef} className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-espresso p-4 shadow-pop">
+            <button ref={closeRef} type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-11 place-items-center rounded-[10px] text-cream-muted outline-none hover:bg-surface/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
               <X aria-hidden className="size-5" />
             </button>
             {children}

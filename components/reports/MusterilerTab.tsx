@@ -1,5 +1,4 @@
 // components/reports/MusterilerTab.tsx — #40: RFM tablosu + kohort gridi.
-import { formatTL } from "@/lib/core/money";
 import { Card } from "@/components/ui";
 import type { RfmData } from "@/lib/admin/rfm";
 
@@ -13,7 +12,7 @@ const SEGMENT_TONE: Record<string, string> = {
   Kayıp: "bg-bad-soft text-bad",
 };
 
-export function MusterilerTab({ data }: { data: RfmData }) {
+export function MusterilerTab({ data, money }: { data: RfmData; money: (k: number) => string }) {
   const { summary, rows, cohorts } = data;
   return (
     <div className="space-y-6">
@@ -21,13 +20,13 @@ export function MusterilerTab({ data }: { data: RfmData }) {
         <Stat label="Kayıtlı müşteri" value={String(summary.total)} />
         <Stat label="Son 30 günde aktif" value={String(summary.active30)} />
         <Stat label="Son 30 günde yeni" value={String(summary.new30)} />
-        <Stat label="30 gün müşteri cirosu" value={formatTL(summary.spend30)} />
+        <Stat label="30 gün müşteri cirosu" value={money(summary.spend30)} />
       </div>
 
       <Card className="overflow-x-auto p-5">
         <h2 className="mb-3 font-semibold">Kohort: ilk sipariş ayına göre tekrar sipariş</h2>
         <p className="mb-3 text-xs text-muted">Hücre = o ayda sipariş veren müşteri oranı. İlk ay %100; sonraki aylar düşüş retention kaybıdır.</p>
-        <table className="w-full text-xs">
+        <table className="w-full min-w-[720px] text-xs">
           {cohorts.length > 0 && (
             <thead>
               <tr className="text-left text-muted">
@@ -59,16 +58,16 @@ export function MusterilerTab({ data }: { data: RfmData }) {
       </Card>
 
       <Card className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead><tr className="border-b border-line text-left text-muted"><th className="px-4 py-2.5 font-medium">Müşteri</th><th className="px-4 py-2.5 font-medium">Telefon</th><th className="px-4 py-2.5 text-right font-medium">Sipariş</th><th className="px-4 py-2.5 text-right font-medium">Harcama</th><th className="px-4 py-2.5 text-right font-medium">Son sipariş</th><th className="px-4 py-2.5 text-center font-medium">R-F-M</th><th className="px-4 py-2.5 font-medium">Segment</th></tr></thead>
           <tbody className="divide-y divide-line">
             {rows.map((r) => (
               <tr key={r.customerId} data-testid="rfm-row">
-                <td className="px-4 py-2 font-medium">{r.name}</td>
-                <td className="px-4 py-2 tabular text-muted">{r.phone}</td>
+                <td className="max-w-[14rem] px-4 py-2 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
+                <td className="max-w-[10rem] px-4 py-2 tabular text-muted"><span className="block truncate" title={r.phone}>{r.phone}</span></td>
                 <td className="px-4 py-2 text-right tabular">{r.orders}</td>
-                <td className="px-4 py-2 text-right tabular">{formatTL(r.spend)}</td>
-                <td className="px-4 py-2 text-right tabular text-muted">{r.lastOrderAt.slice(0, 10)} · {r.recencyDays} gün</td>
+                <td className="px-4 py-2 text-right tabular">{money(r.spend)}</td>
+                <td className="whitespace-nowrap px-4 py-2 text-right tabular text-muted">{r.lastOrderAt.slice(0, 10)} · {r.recencyDays} gün</td>
                 <td className="px-4 py-2 text-center tabular text-muted">{r.r}-{r.f}-{r.m}</td>
                 <td className="px-4 py-2"><span className={`rounded-full px-2.5 py-1 text-xs font-medium ${SEGMENT_TONE[r.segment] ?? "bg-surface-2"}`}>{r.segment}</span></td>
               </tr>

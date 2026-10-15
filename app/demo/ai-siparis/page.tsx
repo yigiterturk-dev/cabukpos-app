@@ -194,8 +194,8 @@ export default function AiSiparisPage() {
         <button type="button" onClick={voice} aria-label={listening ? "Dinlemeyi durdur" : "Sesle söyle"} className={`press grid size-12 shrink-0 place-items-center rounded-xl border ${listening ? "border-brand bg-brand-soft text-brand" : "border-line bg-surface text-ink-2 hover:border-line-strong"}`}>
           <Mic aria-hidden className="size-5" />
         </button>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="ör. 2 adana bir ayran, bi de künefe" aria-label="Sipariş" className="h-12 flex-1 rounded-xl border border-line bg-surface px-4 outline-none transition-[border-color,box-shadow] focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
-        <button type="submit" disabled={!input.trim()} className="press grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-brand to-brand-hover text-white shadow-rest ring-1 ring-inset ring-white/15 hover:shadow-glow disabled:opacity-40"><Send aria-hidden className="size-5" /></button>
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="ör. 2 adana bir ayran, bi de künefe" aria-label="Sipariş" className="h-12 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 outline-none transition-[border-color,box-shadow] focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
+        <button type="submit" aria-label="Gönder" title="Gönder" disabled={!input.trim()} className="press grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-brand to-brand-hover text-white shadow-rest ring-1 ring-inset ring-white/15 hover:shadow-glow disabled:opacity-40"><Send aria-hidden className="size-5" /></button>
       </form>
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-muted">
         <span>Bu bir demo · gerçek üründe telefon &amp; WhatsApp kanalı bu akışa bağlanır.</span>

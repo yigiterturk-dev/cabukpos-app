@@ -43,7 +43,7 @@ export default function Yardim() {
         </p>
         <nav aria-label="Başlıklar" className="mt-5 flex flex-wrap gap-2">
           {HELP_TOPICS.map((t) => (
-            <a key={t.id} href={`#${t.id}`} className="inline-flex min-h-9 items-center rounded-full border border-line bg-surface px-3 text-sm text-ink-2 outline-none hover:border-line-strong hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">{t.title}</a>
+                <a key={t.id} href={`#${t.id}`} className="inline-flex min-h-11 items-center rounded-full border border-line bg-surface px-3 text-sm text-ink-2 outline-none hover:border-line-strong hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">{t.title}</a>
           ))}
         </nav>
       </section>

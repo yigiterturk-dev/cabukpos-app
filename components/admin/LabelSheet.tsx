@@ -34,8 +34,8 @@ export function LabelSheet({ items }: { items: LabelItem[] }) {
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Button onClick={() => window.print()} disabled={!chosen.length}>Yazdır ({chosen.length})</Button>
           <Button variant="secondary" disabled={!chosen.length || pending} onClick={() => start(async () => { await markLabelsPrinted(chosen.map((c) => c.id)); setDone(true); })}>{pending ? "İşaretleniyor…" : "Basıldı olarak işaretle"}</Button>
-          <button type="button" onClick={() => setSel(new Set(items.map((i) => i.id)))} className="text-sm underline">Tümünü seç</button>
-          <button type="button" onClick={() => setSel(new Set())} className="text-sm underline">Hiçbiri</button>
+          <button type="button" onClick={() => setSel(new Set(items.map((i) => i.id)))} className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm underline outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Tümünü seç</button>
+          <button type="button" onClick={() => setSel(new Set())} className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm underline outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Hiçbiri</button>
           {done && <span className="text-sm text-ok" aria-live="polite">İşaretlendi.</span>}
         </div>
         <ul className="divide-y divide-line rounded-2xl border border-line bg-white">

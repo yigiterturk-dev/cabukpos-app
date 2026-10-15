@@ -4,6 +4,8 @@ import { formatReceipt, parseMoney, type Currency, type Kurus } from "@/lib/core
 
 type MetaLike = { device?: { currency?: Currency } | null } | null | undefined;
 
+export const currencyUnit = (currency?: Currency) => currency && currency !== "TRY" ? currency : "TL";
+
 const bare = (k: Kurus) => new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(k / 100);
 
 /** Ekran biçimlendirici (TL), biçimli girdiyi kuruşa çözen parse ve girdi alanları için sade ondalık. */

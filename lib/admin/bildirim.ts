@@ -25,12 +25,12 @@ export async function bildirimler(tenantId: string, storeId: string): Promise<Bi
     const s = await tx.select({ id: schema.sales.id, review: schema.sales.review, at: schema.sales.createdAt }).from(schema.sales)
       .where(and(eq(schema.sales.tenantId, tenantId), isNotNull(schema.sales.review), gte(schema.sales.createdAt, sql`now() - interval '7 days'`)))
       .orderBy(desc(schema.sales.createdAt)).limit(5);
-    for (const r of s) out.push({ id: `sat-${r.id}`, title: "İncelenmesi gereken satış", desc: r.review ?? "", href: "/yonetim/raporlar", tone: "info", at: r.at.toISOString() });
+    for (const r of s) out.push({ id: `sat-${r.id}`, title: "İncelenmesi gereken satış", desc: r.review ?? "", href: "/yonetim/raporlar?sekme=inceleme", tone: "info", at: r.at.toISOString() });
 
     const f = await tx.select({ id: schema.fiscalDocuments.id, status: schema.fiscalDocuments.status, at: schema.fiscalDocuments.createdAt }).from(schema.fiscalDocuments)
       .where(and(eq(schema.fiscalDocuments.tenantId, tenantId), sql`${schema.fiscalDocuments.status} in ('error', 'cancel_rejected')`))
       .orderBy(desc(schema.fiscalDocuments.createdAt)).limit(5);
-    for (const r of f) out.push({ id: `mal-${r.id}`, title: r.status === "error" ? "e-Arşiv belge hatası" : "İptali reddedilen belge", desc: "Mali → Belgeler'den inceleyin", href: "/yonetim/mali", tone: "bad", at: r.at.toISOString() });
+    for (const r of f) out.push({ id: `mal-${r.id}`, title: r.status === "error" ? "e-Arşiv belge hatası" : "İptali reddedilen belge", desc: "Mali → Belgeler'den inceleyin", href: `/yonetim/mali?sekme=belgeler&durum=${r.status}`, tone: "bad", at: r.at.toISOString() });
 
     const fr = await tx.select({ id: schema.fiscalRefunds.id, at: schema.fiscalRefunds.createdAt }).from(schema.fiscalRefunds)
       .where(and(eq(schema.fiscalRefunds.tenantId, tenantId), isNull(schema.fiscalRefunds.resolvedAt), eq(schema.fiscalRefunds.kind, "alici_faturasi")))

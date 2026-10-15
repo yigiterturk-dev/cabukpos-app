@@ -3,15 +3,16 @@ import { desc, eq, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { adjustPoints, saveLoyaltySettings } from "@/lib/admin/loyalty-actions";
-import { formatTL } from "@/lib/core/money";
+import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 import { buttonClass, Card, Empty, Field, Input, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
-const tl = (kurus: number) => (kurus / 100).toFixed(kurus % 100 === 0 ? 0 : 2);
-
 export default async function Sadakat({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; id?: string }> }) {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
+  const currency = await tenantCurrency(a.tenantId);
+  const unit = currency === "TRY" ? "₺" : currency;
   const { ok, hata, id } = await searchParams;
   const S = schema.loyaltySettings, E = schema.loyaltyEvents, C = schema.customers;
   const { settings, rows, events } = await withTenant(a.tenantId, async (tx) => {
@@ -42,11 +43,11 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
               <input type="checkbox" name="enabled" defaultChecked={settings?.enabled ?? false} className="size-4 accent-brand" />
               Puan programı açık
             </label>
-            <Field label="1 puan için gereken harcama (₺)" hint="Her bu kadar harcamaya 1 puan">
-              <Input name="kurusPerPoint" inputMode="decimal" defaultValue={tl(settings?.kurusPerPoint ?? 10000)} required />
+            <Field label={`1 puan için gereken harcama (${unit})`} hint="Her bu kadar harcamaya 1 puan">
+              <Input name="kurusPerPoint" inputMode="decimal" defaultValue={settings?.kurusPerPoint != null ? money(settings.kurusPerPoint).replace(/\s?(₺|USD|EUR|GBP)$/, "") : "100,00"} required />
             </Field>
-            <Field label="1 puanın indirimi (₺)" hint="Puan başına düşülecek tutar">
-              <Input name="kurusPerRedeem" inputMode="decimal" defaultValue={tl(settings?.kurusPerRedeem ?? 100)} required />
+            <Field label={`1 puanın indirimi (${unit})`} hint="Puan başına düşülecek tutar">
+              <Input name="kurusPerRedeem" inputMode="decimal" defaultValue={settings?.kurusPerRedeem != null ? money(settings.kurusPerRedeem).replace(/\s?(₺|USD|EUR|GBP)$/, "") : "1,00"} required />
             </Field>
             <Field label="En az harcanabilir puan" hint="Bu puanın altında indirim yapılmaz">
               <Input name="minRedeemPoints" inputMode="numeric" defaultValue={settings?.minRedeemPoints ?? 10} required />
@@ -61,11 +62,11 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
         <Card className="divide-y divide-line">
           {rows.map((r) => (
             <div key={r.customerId} className="p-4">
-              <div className="flex flex-wrap items-baseline gap-3">
-                <span className="font-medium">{r.name}</span>
-                <span className="tabular text-sm text-muted">{r.phone}</span>
-                <span className="tabular ml-auto font-semibold text-brand">{r.points} puan</span>
-                <Link href={id === r.customerId ? "/yonetim/sadakat" : `/yonetim/sadakat?id=${r.customerId}`} className="text-sm text-brand underline">{id === r.customerId ? "Kapat" : "Puan işlemi"}</Link>
+              <div className="flex min-w-0 flex-wrap items-baseline gap-3">
+                <span className="min-w-0 break-words font-medium">{r.name}</span>
+                <span className="shrink-0 tabular text-sm text-muted">{r.phone}</span>
+                <span className="ml-auto shrink-0 tabular font-semibold text-brand">{r.points} puan</span>
+                <Link href={id === r.customerId ? "/yonetim/sadakat" : `/yonetim/sadakat?id=${r.customerId}`} className="inline-flex min-h-10 shrink-0 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">{id === r.customerId ? "Kapat" : "Puan işlemi"}</Link>
               </div>
               {id === r.customerId && (
                 <div className="mt-3">
@@ -81,7 +82,7 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
                         <li key={i} className="flex flex-wrap gap-2">
                           <span className="tabular w-20 text-muted">{e.createdAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>
                           <span className={e.points >= 0 ? "text-ok" : "text-bad"}>{e.points >= 0 ? "+" : ""}{e.points}</span>
-                          <span>{e.kind}{e.note ? ` · ${e.note}` : ""}</span>
+                          <span className="min-w-0 break-words">{e.kind}{e.note ? ` · ${e.note}` : ""}</span>
                         </li>
                       ))}
                     </ul>
@@ -92,7 +93,7 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
           ))}
         </Card>
       )}
-      <p className="mt-4 text-xs text-muted">1 puan şu an {formatTL(settings?.kurusPerRedeem ?? 100)} indirim demek. Kasa güncellemesi gelene kadar puan yalnız buradan elle düzeltilebilir.</p>
+      <p className="mt-4 text-xs text-muted">1 puan şu an {money(settings?.kurusPerRedeem ?? 100)} indirim demek. Kasa güncellemesi gelene kadar puan yalnız buradan elle düzeltilebilir.</p>
     </>
   );
 }

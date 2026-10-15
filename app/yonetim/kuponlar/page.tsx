@@ -4,15 +4,19 @@ import { requireAdmin } from "@/lib/auth/session";
 import { createCoupon, setCouponStatus } from "@/lib/admin/loyalty-actions";
 import { Badge, buttonClass, Card, Field, Input, PageHeader } from "@/components/ui";
 import { Select } from "@/components/Select";
+import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 
 export const dynamic = "force-dynamic";
 
 const kindLabel = { yuzde: "Yüzde", tutar: "Tutar", teslimat: "Teslimat bedava" } as const;
-const valueLabel = (c: typeof schema.coupons.$inferSelect) =>
-  c.kind === "yuzde" ? `%${c.value}` : c.kind === "tutar" ? `${(c.value / 100).toLocaleString("tr-TR")} ₺` : "kargo";
+const valueLabel = (c: typeof schema.coupons.$inferSelect, money: (k: number) => string) =>
+  c.kind === "yuzde" ? `%${c.value}` : c.kind === "tutar" ? money(c.value) : "kargo";
 
 export default async function Kuponlar({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string }> }) {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
+  const currency = await tenantCurrency(a.tenantId);
+  const unit = currency === "TRY" ? "₺" : currency;
   const { ok, hata } = await searchParams;
   const rows = await withTenant(a.tenantId, (tx) => tx.select().from(schema.coupons).orderBy(desc(schema.coupons.createdAt)).limit(100));
   return (
@@ -33,13 +37,13 @@ export default async function Kuponlar({ searchParams }: { searchParams: Promise
                 { value: "teslimat", label: "Teslimat bedava" },
               ]} />
             </Field>
-            <Field label="Değer" hint="Yüzde: 1-100 · Tutar: ₺">
+            <Field label="Değer" hint={`Yüzde: 1-100 · Tutar: ${unit}`}>
               <Input name="value" inputMode="numeric" required />
             </Field>
-            <Field label="Alt sınır (₺)" hint="Sepet en az bu kadar olmalı">
+            <Field label={`Alt sınır (${unit})`} hint="Sepet en az bu kadar olmalı">
               <Input name="minSubtotal" inputMode="decimal" defaultValue="0" />
             </Field>
-            <Field label="Üst sınır (₺)" hint="Yalnız yüzde için; boş = sınırsız">
+            <Field label={`Üst sınır (${unit})`} hint="Yalnız yüzde için; boş = sınırsız">
               <Input name="maxDiscount" inputMode="decimal" />
             </Field>
             <Field label="Başlangıç"><Input name="startsAt" type="date" /></Field>
@@ -60,20 +64,20 @@ export default async function Kuponlar({ searchParams }: { searchParams: Promise
       ) : (
         <Card className="divide-y divide-line">
           {rows.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center gap-3 p-4">
-              <span className="font-mono font-semibold">{c.code}</span>
+            <div key={c.id} className="flex min-w-0 flex-wrap items-center gap-3 p-4">
+              <span className="shrink-0 font-mono font-semibold">{c.code}</span>
               <Badge tone={c.status === "acik" ? "ok" : "neutral"}>{c.status === "acik" ? "açık" : "kapalı"}</Badge>
-              <span className="text-sm">{kindLabel[c.kind]} · {valueLabel(c)}</span>
-              {c.minSubtotal > 0 && <span className="text-sm text-muted">min {(c.minSubtotal / 100).toLocaleString("tr-TR")} ₺</span>}
-              {c.maxDiscount !== null && <span className="text-sm text-muted">üst {(c.maxDiscount / 100).toLocaleString("tr-TR")} ₺</span>}
-              {c.endsAt && <span className="text-sm text-muted">bitiş {c.endsAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>}
-              <span className="tabular text-sm text-muted">
+              <span className="min-w-0 flex-1 break-words text-sm">{kindLabel[c.kind]} · {valueLabel(c, money)}</span>
+              {c.minSubtotal > 0 && <span className="shrink-0 text-sm text-muted">min {money(c.minSubtotal)}</span>}
+              {c.maxDiscount !== null && <span className="shrink-0 text-sm text-muted">üst {money(c.maxDiscount)}</span>}
+              {c.endsAt && <span className="shrink-0 text-sm text-muted">bitiş {c.endsAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>}
+              <span className="shrink-0 tabular text-sm text-muted">
                 {c.usedCount}{c.usageLimit !== null ? ` / ${c.usageLimit}` : ""} kullanım
               </span>
-              <form action={setCouponStatus} className="ml-auto">
+              <form action={setCouponStatus} className="ml-auto shrink-0">
                 <input type="hidden" name="couponId" value={c.id} />
                 <input type="hidden" name="status" value={c.status === "acik" ? "kapali" : "acik"} />
-                <button className="text-sm text-brand underline">{c.status === "acik" ? "Kapat" : "Aç"}</button>
+                <button className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{c.status === "acik" ? "Kapat" : "Aç"}</button>
               </form>
             </div>
           ))}

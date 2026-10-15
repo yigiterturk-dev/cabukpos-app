@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, LogOut, Monitor } from "lucide-react";
+import { ArrowRight, Bell, LogOut, Monitor, TriangleAlert } from "lucide-react";
 import { withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { bannerText } from "@/lib/core/billing";
@@ -16,11 +16,11 @@ export default async function YonetimLayout({ children }: { children: React.Reac
   const scoped = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
   const bildirim = scoped ? (await bildirimler(a.tenantId, scoped)).length : 0;
   const brand = (dark: boolean) => (
-    <Link href="/yonetim" className="flex items-center gap-2.5 px-1">
+    <Link href="/yonetim" className="flex min-w-0 flex-1 items-center gap-2.5 px-1">
       <LogoMark size="sm" />
       <span className="min-w-0">
         <span className={`block font-display text-sm font-bold leading-tight tracking-tight ${dark ? "text-cream" : "text-ink"}`}>ÇabukPOS</span>
-        <span className={`block truncate text-xs ${dark ? "text-cream-muted" : "text-muted"}`}>{a.tenantName} · {a.vertical === "restoran" ? "Restoran" : "Market"}</span>
+        <span className={`block truncate text-xs ${dark ? "text-cream-muted" : "text-muted"}`} title={`${a.tenantName} · ${a.vertical === "restoran" ? "Restoran" : "Market"}`}>{a.tenantName} · {a.vertical === "restoran" ? "Restoran" : "Market"}</span>
       </span>
     </Link>
   );
@@ -30,7 +30,7 @@ export default async function YonetimLayout({ children }: { children: React.Reac
         <Monitor aria-hidden className="size-4" />Kasa ekranı
       </Link>
       <div className="flex items-center gap-2 px-3 pt-1">
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-cream">{a.name}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-cream" title={a.name}>{a.name}</span>
         <form action={logout}>
           <button className="press inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-cream-muted outline-none transition hover:bg-surface/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
             <LogOut aria-hidden className="size-3.5" />Çıkış
@@ -48,7 +48,7 @@ export default async function YonetimLayout({ children }: { children: React.Reac
         <div className="relative min-h-0 flex-1 overflow-y-auto"><Nav vertical={a.vertical} /></div>
         <div className="relative pt-4">{footer}</div>
       </aside>
-      <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-line bg-surface px-3 py-2 print:hidden md:hidden">
+      <header className="sticky top-0 z-40 flex min-w-0 items-center gap-2 border-b border-line bg-surface px-3 py-2 print:hidden md:hidden">
         <MobileNav>
           <div className="mb-5">{brand(true)}</div>
           <div className="flex-1"><Nav vertical={a.vertical} /></div>
@@ -57,21 +57,25 @@ export default async function YonetimLayout({ children }: { children: React.Reac
         {brand(false)}
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/yonetim/bildirimler" className="relative inline-flex size-9 items-center justify-center rounded-lg border border-line text-muted hover:text-ink hover:border-line-strong" aria-label="Bildirimler">
+          <Link href="/yonetim/bildirimler" className="relative inline-flex size-11 items-center justify-center rounded-lg border border-line text-muted outline-none hover:text-ink hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60" aria-label="Bildirimler">
             <Bell aria-hidden className="size-4" />
             {bildirim > 0 && <span data-testid="bildirim-sayi" className="absolute -right-1 -top-1 rounded-full bg-bad px-1.5 text-[10px] font-semibold text-white">{bildirim}</span>}
           </Link>
         </div>
       </header>
-      <main className="page-enter mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">
+      <main className="page-enter mx-auto min-w-0 w-full max-w-7xl px-4 py-6 md:px-8 md:py-8 print:max-w-none print:p-0">
         {a.billing.warn && (
-          <div data-testid="billing-banner" className={`mb-6 rounded-[14px] border p-3 text-sm print:hidden ${a.billing.locked ? "border-bad/25 bg-bad-soft text-bad" : "border-warn/30 bg-warn-soft text-warn"}`}>
-            {bannerText(a.billing)} <Link href="/yonetim/abonelik" className="font-medium underline">Abonelik</Link>
+          <div data-testid="billing-banner" role={a.billing.locked ? "alert" : "status"} className={`mb-6 rounded-[14px] border p-3 text-sm print:hidden ${a.billing.locked ? "border-bad/25 bg-bad-soft text-bad" : "border-warn/30 bg-warn-soft text-warn"}`}>
+            <div className="flex flex-wrap items-start gap-3">
+              <TriangleAlert aria-hidden className="size-5 shrink-0" />
+              <p className="min-w-0 flex-1 break-words">{bannerText(a.billing)}</p>
+              <Link href="/yonetim/abonelik" className="ml-auto inline-flex shrink-0 items-center gap-1 rounded px-1 font-medium underline underline-offset-2 outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Abonelik <ArrowRight aria-hidden className="size-3.5" /></Link>
+            </div>
           </div>
         )}
         {!a.emailVerified && (
           <div data-testid="verify-banner" className="mb-6 rounded-[14px] border border-warn/30 bg-warn-soft p-3 text-sm text-warn print:hidden">
-            E-postanız doğrulanmadı. <Link href="/yonetim/guvenlik" className="font-medium underline">Doğrulayın</Link> — hesap kurtarmayı kolaylaştırır.
+            <span className="break-words">E-postanız doğrulanmadı. <Link href="/yonetim/guvenlik" className="rounded px-1 font-medium underline outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Doğrulayın</Link> — hesap kurtarmayı kolaylaştırır.</span>
           </div>
         )}
         {children}

@@ -38,18 +38,18 @@ export default async function Markalar() {
         <div className="space-y-4">
           {brands.map((b) => (
             <Card key={b.id} className="p-4">
-              <div className={`flex flex-wrap items-end gap-3 ${b.active ? "" : "opacity-60"}`}>
+              <div className={`flex min-w-0 flex-wrap items-end gap-3 ${b.active ? "" : "opacity-60"}`}>
                 <BrandForm initial={{ id: b.id, name: b.name, slug: b.slug }} />
-                <div className="ml-auto flex flex-wrap items-center gap-3">
-                  <code className="rounded bg-surface px-2 py-1 text-xs text-muted">/menu/{storeId.slice(0, 8)}…?marka={b.slug}</code>
+                <div className="ml-auto flex min-w-0 flex-wrap items-center gap-3">
+                  <code className="max-w-full break-all rounded bg-surface px-2 py-1 text-xs text-muted">/menu/{storeId.slice(0, 8)}…?marka={b.slug}</code>
                   {!b.active && <Badge>Pasif</Badge>}
-                  <form action={toggleBrand.bind(null, b.id, !b.active)}><button className="text-sm text-muted hover:text-ink hover:underline">{b.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
+                  <form action={toggleBrand.bind(null, b.id, !b.active)}><button className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">{b.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
                 </div>
               </div>
-              <p className="mt-2 text-sm text-muted">Menü adresi: <span className="text-ink">/menu/{storeId}?marka={b.slug}</span> · Seçki: {selByBrand.get(b.id)?.size ?? 0} ürün {selByBrand.get(b.id)?.size ? "" : "(tümü)"}</p>
+              <p className="mt-2 break-words text-sm text-muted">Menü adresi: <span className="break-all text-ink">/menu/{storeId}?marka={b.slug}</span> · Seçki: {selByBrand.get(b.id)?.size ?? 0} ürün {selByBrand.get(b.id)?.size ? "" : "(tümü)"}</p>
               {b.active && sellable.length > 0 && (
                 <details className="mt-1">
-                  <summary className="cursor-pointer text-sm text-brand hover:underline">Menü seçkisini düzenle</summary>
+                  <summary className="inline-flex min-h-10 cursor-pointer items-center rounded-lg px-2.5 text-sm text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Menü seçkisini düzenle</summary>
                   <ProductPicker brandId={b.id} products={sellable.map((p) => ({ id: p.id, name: p.name, category: p.category }))} selected={selByBrand.get(b.id) ?? new Set()} />
                 </details>
               )}

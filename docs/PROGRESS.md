@@ -1,5 +1,13 @@
 # İlerleme — ÇabukPOS
 
+## Arayüz cila turu + kiracı para birimi + canlı rapor hatası tespiti (2026-10-16, commit bekliyor)
+- **Kiracı bazlı para birimi panelde:** `moneyFormatter(tenantId)` (`lib/admin/currency`) — HQ ve Raporlar `formatTL` yerine kiracının para birimiyle basıyor; HQ tablosu ortak `TABLE_HEAD` stilini aldı, `min-w` ile yatay taşma düzeldi. Kiosko sepeti `formatReceipt` + `currency` prop'una geçti, sepet yüksekliği `--kiosk-cart-space` ile sayfa akışına bağlandı (ResizeObserver).
+- **Kimlik formları:** `PasswordInput` (göster/gizle, aria-pressed), ilk alana autoFocus, 2FA bölümü hata gelince kendi açılıp koda odaklanıyor, hata mesajları `role="alert" aria-live="assertive"` + break-words.
+- **Yükleme/hata iskeletleri:** kök + menü sayfalarına yeni `loading.tsx`; yönetim iskeleti sayfa düzenini taklit eden bloklara geçti (hepsi `motion-safe`), hata sayfalarına "Ana sayfaya dön" + odak halkaları.
+- **Nav:** aktif öğe görünürse `scrollIntoView`, `data-testid`'ler, grup etiketleri `h2` oldu; aktif durum gradyandan açık yüzey + iç halkaya çekildi (sayfa başlığıyla aynı dil).
+- **Canlı hata tespiti:** cabukpos-app.vercel.app'ta yeni kayıt açınca `/yonetim/raporlar` + `/yonetim/hq` minified React #441 atıyordu — deploy edilmiş build eski `formatTL` kodu; yerel prod build'de iki sayfa da temiz. Commit + prod deploy ile kapanacak.
+- Doğrulama: 395/395 test; lint + tsc + Webpack build temiz; kayıt→panel akışı yerel dev + yerel prod build'de playwright ile gezildi (urunler/musteriler/raporlar/markalar/hq/bildirimler TEMİZ).
+
 ## Happy hour yüzde indirim + kategori kapsamı (2026-10-10, commit bekliyor)
 - Rakip incelemesi (Adisyo, Menulux): ikisinde de kampanya/indirim modülü standart. ÇabukPOS'ta fiyat listesi ürün bazlıydı; eksik olan **kapsama göre yüzde indirim** eklendi.
 - **Şema:** `price_lists.kind` ("fiyat" | "yuzde") + `percent` (1-100) + `category_ids` (jsonb; null/boş = tüm ürünler).

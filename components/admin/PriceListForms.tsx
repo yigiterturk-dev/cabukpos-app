@@ -6,8 +6,8 @@ import { useFormAction } from "@/components/useFormAction";
 import { Select, type Option } from "@/components/Select";
 import { Button, Field, Input } from "@/components/ui";
 
-const Err = ({ s, f }: { s: PriceListState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
-const Saved = ({ s }: { s: PriceListState }) => (s.savedAt ? <span className="text-sm text-ok">Kaydedildi.</span> : null);
+const Err = ({ s, f }: { s: PriceListState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
+const Saved = ({ s }: { s: PriceListState }) => (s.savedAt ? <span className="text-sm text-ok" role="status">Kaydedildi.</span> : null);
 const GUNLER = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
 
 export function ListForm({ categories }: { categories: Option[] }) {
@@ -19,7 +19,7 @@ export function ListForm({ categories }: { categories: Option[] }) {
         <div><Field label="Liste adı"><Input name="name" placeholder="Happy Hour" className="w-44" required /></Field><Err s={state} f="name" /></div>
         <div className="w-48">
           <div className="mb-1.5 text-sm font-medium">Tür</div>
-          <Select name="kind" defaultValue="fiyat" onChange={(v) => setKind(v as "fiyat" | "yuzde")} options={[
+          <Select ariaLabel="İndirim türü" name="kind" defaultValue="fiyat" onChange={(v) => setKind(v as "fiyat" | "yuzde")} options={[
             { value: "fiyat", label: "Ürün başı fiyat" },
             { value: "yuzde", label: "Yüzde indirim" },
           ]} />
@@ -53,7 +53,7 @@ export function ListForm({ categories }: { categories: Option[] }) {
           )}
         </div>
       )}
-      <div className="flex items-center gap-3"><Button type="submit" disabled={pending}>Liste ekle</Button><Saved s={state} /></div>
+      <div className="flex items-center gap-3"><Button type="submit" disabled={pending}>{pending ? "Ekleniyor…" : "Liste ekle"}</Button><Saved s={state} /></div>
       <Err s={state} />
     </form>
   );
@@ -64,10 +64,10 @@ export function ItemForm({ listId, products }: { listId: string; products: Optio
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
       <div key={state.savedAt ?? 0} className="flex flex-wrap items-end gap-3">
-        <div className="w-64"><div className="mb-1.5 text-sm font-medium">Ürün</div><Select name="productId" options={products} placeholder="Ürün seçin" /><Err s={state} f="productId" /></div>
+        <div className="w-64"><div className="mb-1.5 text-sm font-medium">Ürün</div><Select ariaLabel="Ürün" name="productId" options={products} placeholder="Ürün seçin" /><Err s={state} f="productId" /></div>
         <div><Field label="Liste fiyatı (TL)"><Input name="price" inputMode="decimal" placeholder="0" className="w-28 text-right" required /></Field><Err s={state} f="price" /></div>
       </div>
-      <Button type="submit" variant="secondary" disabled={pending}>Fiyat ekle</Button>
+      <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Ekleniyor…" : "Fiyat ekle"}</Button>
       <Saved s={state} /><Err s={state} />
     </form>
   );
@@ -75,10 +75,10 @@ export function ItemForm({ listId, products }: { listId: string; products: Optio
 
 export function ListToggles({ id, active }: { id: string; active: boolean }) {
   return (
-    <div className="ml-auto flex items-center gap-3">
+    <div className="ml-auto flex shrink-0 items-center gap-3">
       {!active && <span className="text-sm text-muted">Pasif</span>}
-      <form action={togglePriceList.bind(null, id, !active)}><button className="text-sm text-muted hover:text-ink hover:underline">{active ? "Pasifleştir" : "Aktifleştir"}</button></form>
-      <form action={deletePriceList.bind(null, id)}><button className="text-sm text-bad hover:underline">Sil</button></form>
+      <form action={togglePriceList.bind(null, id, !active)}><button className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{active ? "Pasifleştir" : "Aktifleştir"}</button></form>
+      <form action={deletePriceList.bind(null, id)}><button className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-bad outline-none hover:bg-bad-soft hover:underline focus-visible:ring-4 focus-visible:ring-bad/20">Sil</button></form>
     </div>
   );
 }
@@ -86,7 +86,7 @@ export function ListToggles({ id, active }: { id: string; active: boolean }) {
 export function ItemDelete({ listId, id }: { listId: string; id: string }) {
   return (
     <form action={deletePriceItem.bind(null, listId, id)}>
-      <button className="text-sm text-bad hover:underline">Kaldır</button>
+      <button className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-bad outline-none hover:bg-bad-soft hover:underline focus-visible:ring-4 focus-visible:ring-bad/20">Kaldır</button>
     </form>
   );
 }

@@ -33,7 +33,7 @@ export function useSesKapali(): [boolean, (v: boolean) => void] {
   return [kapali, (v) => { try { localStorage.setItem(SES_KEY, v ? "kapali" : "acik"); } catch { /* yok say */ } emit(); }];
 }
 
-const temaBtn = (on: boolean) => `min-h-11 rounded-lg border px-4 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`;
+const temaBtn = (on: boolean) => `min-h-11 rounded-lg border px-4 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`;
 
 /** Yönetim başlığındaki küçük döngü: açık → koyu → sistem. */
 export function ThemeToggle() {
@@ -42,7 +42,7 @@ export function ThemeToggle() {
   const Icon = tema === "koyu" ? Moon : tema === "acik" ? Sun : Monitor;
   return (
     <button type="button" onClick={() => setTemaState(next)} title={`Tema: ${TEMA_LABEL[tema]}`} aria-label={`Tema: ${TEMA_LABEL[tema]}`}
-      className="press inline-flex size-9 items-center justify-center rounded-lg border border-line text-muted hover:text-ink hover:border-line-strong">
+      className="press inline-flex size-11 items-center justify-center rounded-lg border border-line text-muted outline-none hover:text-ink hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60">
       <Icon aria-hidden className="size-4" />
     </button>
   );
@@ -51,7 +51,7 @@ export function ThemeToggle() {
 export function SesToggle() {
   const [kapali, setKapaliState] = useSesKapali();
   return (
-    <Button type="button" variant={kapali ? "secondary" : "primary"} onClick={() => setKapaliState(!kapali)}>
+    <Button type="button" aria-pressed={kapali} variant={kapali ? "secondary" : "primary"} onClick={() => setKapaliState(!kapali)}>
       {kapali ? <VolumeX aria-hidden className="size-4" /> : <Volume2 aria-hidden className="size-4" />}{kapali ? "Uyarı sesi kapalı" : "Uyarı sesi açık"}
     </Button>
   );

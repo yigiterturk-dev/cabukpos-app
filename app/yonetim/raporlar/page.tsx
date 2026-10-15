@@ -19,6 +19,7 @@ import { ReviewTab } from "@/components/reports/ReviewTab";
 import { MusterilerTab } from "@/components/reports/MusterilerTab";
 import { rfmData } from "@/lib/admin/rfm";
 import { prevMonth } from "@/lib/admin/report-mail";
+import { moneyFormatter } from "@/lib/admin/currency";
 
 export const dynamic = "force-dynamic";
 const DESC: Record<ReportTab, string> = {
@@ -36,6 +37,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function Raporlar({ searchParams }: { searchParams: Promise<{ sekme?: string; bas?: string; bit?: string; sirala?: string; kisi?: string }> }) {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
   const sp = await searchParams;
   const tab = REPORT_TABS.find((t) => t.key === sp.sekme) ?? REPORT_TABS[0];
   const range = parseRange(sp.bas, sp.bit);
@@ -50,15 +52,15 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
     : null;
 
   let body: React.ReactNode;
-  if (tab.key === "ozet") body = <SummaryTab d={await withTenant(a.tenantId, (tx) => summaryData(tx, range))} />;
-  else if (tab.key === "yogunluk") body = <HeatTab h={await withTenant(a.tenantId, (tx) => heatData(tx, range))} />;
-  else if (tab.key === "urunler") body = <ProductsTab d={await withTenant(a.tenantId, (tx) => productData(tx, range, sort))} range={range} sort={sort} />;
+  if (tab.key === "ozet") body = <SummaryTab d={await withTenant(a.tenantId, (tx) => summaryData(tx, range))} money={money} />;
+  else if (tab.key === "yogunluk") body = <HeatTab h={await withTenant(a.tenantId, (tx) => heatData(tx, range))} money={money} />;
+  else if (tab.key === "urunler") body = <ProductsTab d={await withTenant(a.tenantId, (tx) => productData(tx, range, sort))} range={range} sort={sort} money={money} />;
   else if (tab.key === "personel") {
     const [rows, events] = await withTenant(a.tenantId, async (tx) => [await staffData(tx, range), kisi ? await staffEvents(tx, range, kisi) : null] as const);
-    body = <StaffTab rows={rows} range={range} kisi={kisi} events={events} />;
+    body = <StaffTab rows={rows} range={range} kisi={kisi} events={events} money={money} />;
   }   else if (tab.key === "karlilik") body = <ProfitTab tenantId={a.tenantId} range={range} />;
   else if (tab.key === "inceleme") body = <ReviewTab tenantId={a.tenantId} range={range} />;
-  else if (tab.key === "musteriler") body = <MusterilerTab data={await withTenant(a.tenantId, (tx) => rfmData(tx, a.tenantId))} />;
+  else if (tab.key === "musteriler") body = <MusterilerTab data={await withTenant(a.tenantId, (tx) => rfmData(tx, a.tenantId))} money={money} />;
   else body = <ShiftsTab tenantId={a.tenantId} />;
 
   return (
@@ -66,18 +68,18 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
       <PageHeader title="Raporlar" desc={DESC[tab.key]} />
       {critical.length > 0 && (
         <Card className="mb-6 border-bad/25 bg-bad-soft p-4" data-testid="critical-card">
-          <div className="mb-2 flex items-baseline justify-between"><h2 className="font-semibold text-bad">Kritik stok ({critical.length})</h2><Link href="/yonetim/stok?kritik=1" className="text-sm text-bad hover:underline">Stok</Link></div>
-          <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm">{critical.map((c) => <li key={c.id}><b>{c.name}</b> <span className="tabular">{formatQty(c.level, c.unit)}</span> <span className="text-muted">(sınır {formatQty(c.minStock!, c.unit)})</span></li>)}</ul>
+          <div className="mb-2 flex items-baseline justify-between"><h2 className="font-semibold text-bad">Kritik stok ({critical.length})</h2><Link href="/yonetim/stok?kritik=1" className="rounded px-1 text-sm text-bad outline-none hover:underline focus-visible:ring-4 focus-visible:ring-bad/20">Stok</Link></div>
+          <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">{critical.map((c) => <li key={c.id} title={c.name} className="min-w-0 truncate rounded-lg border border-bad/20 bg-canvas/40 px-3 py-2"><b>{c.name}</b> <span className="tabular">{formatQty(c.level, c.unit)}</span> <span className="text-muted">(sınır {formatQty(c.minStock!, c.unit)})</span></li>)}</ul>
         </Card>
       )}
-      <div className="-mx-1 mb-4 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Rapor">
-        {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} role="tab" aria-selected={t.key === tab.key} className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line text-ink-2 hover:bg-surface-2"}`}>{t.label}</Link>)}
+      <div className="-mx-1 mb-4 flex gap-1 overflow-x-auto px-1 pb-1 lg:sticky lg:top-2 lg:z-30 lg:bg-canvas/95 lg:py-1 lg:backdrop-blur" role="tablist" aria-label="Rapor">
+        {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} role="tab" aria-selected={t.key === tab.key} className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line text-ink-2 hover:bg-surface-2"}`}>{t.label}</Link>)}
       </div>
       {tab.key === "musteriler" ? (
-        <div className="mb-4"><Link className="inline-block rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface-2" href="/yonetim/raporlar/csv?sekme=musteriler" download>CSV indir</Link></div>
+        <div className="mb-4"><Link className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 py-2 text-sm outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60" href="/yonetim/raporlar/csv?sekme=musteriler" download>CSV indir</Link></div>
       ) : tab.range ? <RangeBar sekme={tab.key} range={range} csv={tab.csv ? tab.key : null} print extra={tab.key === "urunler" ? { sirala: sp.sirala } : tab.key === "personel" ? { kisi: kisi ?? undefined } : {}} /> : null}
       {mailSettings && <ReportMailCard initial={{ daily: mailSettings.daily, weekly: mailSettings.weekly, monthly: mailSettings.monthly }} />}
-      {tab.key === "ozet" && <Card className="mb-6 p-4 text-sm"><a className="font-medium text-brand hover:underline" href={`/yonetim/raporlar/konsolide?ay=${prevMonth()}`}>Aylık konsolide raporu aç ({prevMonth()})</a><span className="ml-2 text-muted">— yazdır/PDF; e-posta ayarı yukarıda.</span></Card>}
+      {tab.key === "ozet" && <Card className="mb-6 p-4 text-sm"><a className="rounded px-1 font-medium text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" href={`/yonetim/raporlar/konsolide?ay=${prevMonth()}`}>Aylık konsolide raporu aç ({prevMonth()})</a><span className="ml-2 text-muted">— yazdır/PDF; e-posta ayarı yukarıda.</span></Card>}
       {body}
     </>
   );

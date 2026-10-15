@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { deleteAddress } from "@/lib/admin/delivery-actions";
 import { formatPhone, normalizePhone } from "@/lib/core/delivery";
 import { CustomerForm } from "@/components/admin/DeliveryForms";
-import { Card, Empty, Input, PageHeader } from "@/components/ui";
+import { buttonClass, Card, Empty, Input, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -50,23 +50,23 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
         ))}
       </section>
       {growth.dormant > 0 && <div className="mb-6 rounded-[14px] border border-brand/20 bg-brand-soft px-4 py-3 text-sm text-ink-2"><b>Bugünün satış fırsatı:</b> {growth.dormant} müşteriyi geri kazanma listesine al. İletişim izni bulunan hedef sayısı şu an <b>{growth.reachableDormant}</b>; kampanya gönderimi açıldığında yalnızca bu grup kullanılacak.</div>}
-      <form className="mb-6 flex gap-2"><Input name="q" defaultValue={q} placeholder="Ad ya da telefon" aria-label="Müşteri ara" className="w-72" /><button className="rounded-lg border border-line px-4 text-sm">Ara</button></form>
+      <form className="mb-6 flex flex-wrap gap-2"><Input name="q" defaultValue={q} placeholder="Ad ya da telefon" aria-label="Müşteri ara" className="min-w-48 flex-1 sm:max-w-sm" /><button className={buttonClass("secondary")}>Ara</button></form>
       {rows.length === 0 ? <Empty>{q ? "Eşleşen müşteri yok." : "Henüz müşteri yok. İlk paket siparişiyle oluşur."}</Empty> : (
         <Card className="divide-y divide-line">
           {rows.map((c) => (
             <div key={c.id} className="p-4">
-              <div className="flex flex-wrap items-baseline gap-3">
-                <span className="font-medium">{c.name}</span>
-                <span className="tabular text-sm text-muted">{formatPhone(c.phone)}</span>
+              <div className="flex min-w-0 flex-wrap items-baseline gap-3">
+                <span className="min-w-0 max-w-[18rem] truncate font-medium" title={c.name}>{c.name}</span>
+                <span className="shrink-0 tabular text-sm text-muted">{formatPhone(c.phone)}</span>
                 {c.marketingConsent && <span className="rounded-md bg-ok-soft px-2 py-0.5 text-xs text-ok">iletişim izni</span>}
-                {c.lastOrderAt && <span className="text-xs text-muted">son sipariş {c.lastOrderAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>}
-                <Link href={id === c.id ? `/yonetim/musteriler?q=${encodeURIComponent(q)}` : `/yonetim/musteriler?q=${encodeURIComponent(q)}&id=${c.id}`} className="ml-auto text-sm text-brand underline">{id === c.id ? "Kapat" : "Düzenle"}</Link>
+                {c.lastOrderAt && <span className="shrink-0 text-xs text-muted">son sipariş {c.lastOrderAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>}
+                <Link href={id === c.id ? `/yonetim/musteriler?q=${encodeURIComponent(q)}` : `/yonetim/musteriler?q=${encodeURIComponent(q)}&id=${c.id}`} className="ml-auto inline-flex min-h-11 shrink-0 items-center rounded-lg px-2 text-sm font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{id === c.id ? "Kapat" : "Düzenle"}</Link>
               </div>
               <ul className="mt-1 space-y-0.5 text-sm text-ink-2">
-                {addrs.filter((x) => x.customerId === c.id).map((x) => (
-                  <li key={x.id} className="flex items-center gap-2">
-                    <span>{x.address}{x.directions ? ` · ${x.directions}` : ""}{x.zoneId ? ` · ${zones.find((z) => z.id === x.zoneId)?.name ?? ""}` : ""}</span>
-                    {id === c.id && <form action={deleteAddress.bind(null, x.id)}><button className="text-xs text-bad underline">Sil</button></form>}
+                    {addrs.filter((x) => x.customerId === c.id).map((x) => (
+                  <li key={x.id} className="flex min-w-0 items-center gap-2">
+                    <span className="min-w-0 flex-1 break-words">{x.address}{x.directions ? ` · ${x.directions}` : ""}{x.zoneId ? ` · ${zones.find((z) => z.id === x.zoneId)?.name ?? ""}` : ""}</span>
+                    {id === c.id && <form action={deleteAddress.bind(null, x.id)} className="shrink-0"><button className={buttonClass("danger", "sm")}>Sil</button></form>}
                   </li>
                 ))}
               </ul>

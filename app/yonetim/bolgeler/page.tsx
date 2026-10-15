@@ -20,9 +20,9 @@ export default async function Bolgeler() {
           {zones.map((z) => (
             <div key={z.id} className={`flex flex-wrap items-end gap-3 p-4 ${z.active ? "" : "opacity-60"}`}>
               <ZoneForm initial={z} />
-              <div className="ml-auto flex items-center gap-3">
+              <div className="ml-auto flex shrink-0 flex-wrap items-center gap-3">
                 {!z.active && <Badge>Pasif</Badge>}
-                <form action={toggleZone.bind(null, z.id, !z.active)}><button className="text-sm text-muted hover:text-ink hover:underline">{z.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
+                <form action={toggleZone.bind(null, z.id, !z.active)}><button className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">{z.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
               </div>
             </div>
           ))}

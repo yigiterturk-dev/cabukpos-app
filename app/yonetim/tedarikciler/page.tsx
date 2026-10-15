@@ -2,17 +2,17 @@ import Link from "next/link";
 import { withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { supplierStatement, suppliersWithBalance } from "@/lib/admin/purchase";
-import { formatTL } from "@/lib/core/money";
+import { moneyFormatter } from "@/lib/admin/currency";
 import { PaymentForm, SupplierForm } from "@/components/admin/PurchaseForms";
 import { Card, Empty, PageHeader, Panel, SplitView } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 const today = () => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
 const day = (d: string) => d.split("-").reverse().join(".");
-const bal = (k: number) => (k > 0 ? `${formatTL(k)} borç` : k < 0 ? `${formatTL(-k)} alacak` : "—");
-
 export default async function Tedarikciler({ searchParams }: { searchParams: Promise<{ id?: string; duzenle?: string }> }) {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
+  const bal = (k: number) => (k > 0 ? `${money(k)} borç` : k < 0 ? `${money(-k)} alacak` : "—");
   const { id, duzenle } = await searchParams;
   const { sups, st } = await withTenant(a.tenantId, async (tx) => {
     const sups = await suppliersWithBalance(tx);
@@ -29,21 +29,23 @@ export default async function Tedarikciler({ searchParams }: { searchParams: Pro
         <Card className="p-5">
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">{sel.name}{sel.phone && <span className="ml-2 text-sm font-normal text-muted">{sel.phone}</span>}</h2>
-            <div className="text-sm">Bakiye <b className="tabular" data-testid="supplier-balance">{bal(st.balance)}</b> · <Link href={`/yonetim/tedarikciler?duzenle=${sel.id}`} className="underline">düzenle</Link> · <Link href="/yonetim/tedarikciler" className="underline">kapat</Link></div>
+            <div className="flex flex-wrap items-center gap-1 text-sm">Bakiye <b className={`tabular ${st.balance > 0 ? "text-warn" : st.balance < 0 ? "text-ok" : ""}`} data-testid="supplier-balance">{bal(st.balance)}</b><span aria-hidden>·</span><Link href={`/yonetim/tedarikciler?duzenle=${sel.id}`} className="inline-flex min-h-10 items-center rounded-lg px-2.5 underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">düzenle</Link><span aria-hidden>·</span><Link href="/yonetim/tedarikciler" className="inline-flex min-h-10 items-center rounded-lg px-2.5 underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">kapat</Link></div>
           </div>
           <PaymentForm supplierId={sel.id} today={today()} />
           {st.rows.length === 0 ? <p className="mt-4 text-sm text-muted">Hareket yok.</p> : (
-            <table className="mt-4 w-full text-sm">
+            <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[28rem] text-sm">
               <tbody className="divide-y divide-line">
                 {st.rows.map((r) => (
                   <tr key={r.id} className={r.cancelled ? "opacity-60 line-through" : ""}>
                     <td className="tabular p-2 text-muted">{day(r.date)}</td>
                     <td className="p-2">{r.text}{r.cancelled && " (iptal)"}</td>
-                    <td className={`tabular p-2 text-right ${r.amount < 0 ? "text-ok" : ""}`}>{r.amount < 0 ? "−" : "+"}{formatTL(Math.abs(r.amount))}</td>
+                    <td className={`tabular p-2 text-right ${r.amount < 0 ? "text-ok" : ""}`}>{r.amount < 0 ? "−" : "+"}{money(Math.abs(r.amount))}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Card>
       ) : (
@@ -54,15 +56,15 @@ export default async function Tedarikciler({ searchParams }: { searchParams: Pro
         list={<>
       {sups.length === 0 ? <Empty>Henüz tedarikçi yok.</Empty> : (
         <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr><th className="px-4 py-2.5 font-medium">Tedarikçi</th><th className="px-4 py-2.5 font-medium">Telefon</th><th className="px-4 py-2.5 text-right font-medium">Bakiye</th><th className="px-4 py-2.5" /></tr></thead>
+          <table className="w-full min-w-[600px] text-sm">
+            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr><th className="px-4 py-2.5 font-medium">Tedarikçi</th><th className="px-4 py-2.5 font-medium">Telefon</th><th className="px-4 py-2.5 text-right font-medium">Bakiye</th><th className="sticky right-0 z-20 bg-surface-2 px-4 py-2.5 text-right font-medium shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.45)]">Aksiyonlar</th></tr></thead>
             <tbody className="divide-y divide-line">
               {sups.map((s) => (
-                <tr key={s.id} data-testid={`supplier-${s.name}`}>
-                  <td className="px-4 py-2.5 font-medium">{s.name}</td>
+                <tr key={s.id} data-testid={`supplier-${s.name}`} className={`${s.id === id ? "bg-brand-soft/45" : "hover:bg-surface-2"}`}>
+                  <td className="max-w-[16rem] px-4 py-2.5 font-medium"><span className="block truncate" title={s.name}>{s.name}</span></td>
                   <td className="px-4 py-2.5 text-muted">{s.phone ?? ""}</td>
-                  <td className={`tabular px-4 py-2.5 text-right ${s.balance > 0 ? "font-medium" : "text-muted"}`}>{bal(s.balance)}</td>
-                  <td className="px-4 py-2.5 text-right"><Link href={`/yonetim/tedarikciler?id=${s.id}`} className="font-medium text-brand hover:underline">Döküm</Link></td>
+                  <td className={`tabular px-4 py-2.5 text-right ${s.balance > 0 ? "font-medium text-warn" : s.balance < 0 ? "font-medium text-ok" : "text-muted"}`}>{bal(s.balance)}</td>
+                  <td className={`sticky right-0 px-4 py-2.5 text-right shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.35)] ${s.id === id ? "bg-brand-soft/90" : "bg-surface"}`}><Link href={`/yonetim/tedarikciler?id=${s.id}`} className="inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Döküm</Link></td>
                 </tr>
               ))}
             </tbody>

@@ -3,7 +3,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { stockUnitOf, countVariance, wasteSummary, formatQty, type CountLineCore } from "@/lib/core/stock";
-import { formatTL } from "@/lib/core/money";
+import { moneyFormatter } from "@/lib/admin/currency";
 import { StartCountForm, CountLineForm, CloseCountForm, CancelCountForm } from "@/components/admin/CountForms";
 import { Badge, Card, Empty, PageHeader, Panel, TABLE_HEAD } from "@/components/ui";
 
@@ -12,6 +12,7 @@ const dt = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "sh
 
 export default async function Sayim() {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
   const C = schema.stockCounts, L = schema.stockCountLines, M = schema.stockMovements, P = schema.products;
   const data = await withTenant(a.tenantId, async (tx) => {
     const storeId = await scopedStoreId(tx, a.tenantId);
@@ -49,14 +50,14 @@ export default async function Sayim() {
             </div>
           </Card>
           <Card className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead><tr className={TABLE_HEAD}><th className="p-3 text-left">Ürün</th><th className="p-3 text-right">Beklenen</th><th className="p-3 text-right">Sapma</th><th className="p-3 text-left">Sayım</th></tr></thead>
+            <table className="w-full min-w-[680px] text-sm">
+              <thead className={TABLE_HEAD}><tr><th className="p-3 text-left">Ürün</th><th className="p-3 text-right">Beklenen</th><th className="p-3 text-right">Sapma</th><th className="p-3 text-left">Sayım</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {data.lines.map((r) => {
                   const v = countVariance(core(r));
                   return (
                     <tr key={r.id} className={v != null && v !== 0 ? "bg-brand-soft/40" : ""}>
-                      <td className="p-3 font-medium">{r.name}</td>
+                      <td className="max-w-[20rem] p-3 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
                       <td className="p-3 text-right tabular">{formatQty(r.expectedMilli, stockUnitOf(r))}</td>
                       <td className={`p-3 text-right tabular ${v == null ? "text-muted" : v === 0 ? "text-ok" : "text-bad"}`}>{v == null ? "—" : `${v > 0 ? "+" : ""}${formatQty(v, stockUnitOf(r))}`}</td>
                       <td className="p-3"><CountLineForm key={`${r.id}:${r.countedMilli ?? "x"}`} countId={data.open!.id} lineId={r.id} unit={stockUnitOf(r)} /></td>
@@ -93,11 +94,11 @@ export default async function Sayim() {
                   <div key={w.productId} className="flex flex-wrap items-center gap-3 py-2">
                     <span className="font-medium">{w.name}</span>
                     <span className="tabular text-bad">{formatQty(w.qtyMilli, w.unit)}</span>
-                    <span className="ml-auto tabular text-muted">{w.cost != null ? formatTL(w.cost) : "—"}</span>
+                    <span className="ml-auto tabular text-muted">{w.cost != null ? money(w.cost) : "—"}</span>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 border-t border-line pt-3 text-sm font-semibold">Toplam: <span className="tabular text-bad">{formatTL(wasteTotal)}</span></div>
+              <div className="mt-3 border-t border-line pt-3 text-sm font-semibold">Toplam: <span className="tabular text-bad">{money(wasteTotal)}</span></div>
             </>
           )}
         </Panel>

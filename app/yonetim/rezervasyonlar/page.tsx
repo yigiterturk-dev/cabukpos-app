@@ -4,7 +4,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { istToday } from "@/lib/core/report";
-import { Card, Empty, PageHeader } from "@/components/ui";
+import { Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
 import { ReservationForm, ResStatusButtons } from "@/components/admin/ReservationForms";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function Rezervasyonlar({ searchParams }: { searchParams: P
       <div className="mb-4 flex flex-wrap gap-1" aria-label="Gün">
         {[-1, 0, 1, 2].map((o) => {
           const d = istToday(undefined, o);
-          return <Link key={d} href={`/yonetim/rezervasyonlar?gun=${d}`} aria-current={d === gun ? "true" : undefined} className={`rounded-lg border px-3 py-1.5 text-sm ${d === gun ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{o === 0 ? "Bugün" : o === -1 ? "Dün" : o === 1 ? "Yarın" : d}</Link>;
+          return <Link key={d} href={`/yonetim/rezervasyonlar?gun=${d}`} aria-current={d === gun ? "true" : undefined} className={`inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${d === gun ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{o === 0 ? "Bugün" : o === -1 ? "Dün" : o === 1 ? "Yarın" : d}</Link>;
         })}
       </div>
       <Card className="mb-6 p-5">
@@ -45,16 +45,16 @@ export default async function Rezervasyonlar({ searchParams }: { searchParams: P
       </Card>
       {rows.list.length === 0 ? <Empty>Bu gün için rezervasyon yok.</Empty> : (
         <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-line text-left text-muted"><th className="py-2 pr-4 font-medium">Saat</th><th className="py-2 pr-4 font-medium">İsim</th><th className="py-2 pr-4 font-medium">Kişi</th><th className="py-2 pr-4 font-medium">Telefon</th><th className="py-2 pr-4 font-medium">Not</th><th className="py-2 font-medium">Durum</th></tr></thead>
+          <table className="w-full min-w-[720px] text-sm">
+            <thead className={TABLE_HEAD}><tr><th className="py-2 pr-4 font-medium">Saat</th><th className="py-2 pr-4 font-medium">İsim</th><th className="py-2 pr-4 font-medium">Kişi</th><th className="py-2 pr-4 font-medium">Telefon</th><th className="py-2 pr-4 font-medium">Not</th><th className="py-2 font-medium">Durum</th></tr></thead>
             <tbody className="divide-y divide-line">
               {rows.list.map((r) => (
                 <tr key={r.id} data-testid="res-row">
                   <td className="py-2 pr-4 tabular">{fmt(r.at)}</td>
-                  <td className="py-2 pr-4 font-medium">{r.name}</td>
+                  <td className="max-w-[14rem] py-2 pr-4 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
                   <td className="py-2 pr-4 tabular">{r.guests}</td>
                   <td className="py-2 pr-4 tabular">{r.phone}</td>
-                  <td className="py-2 pr-4 text-muted">{r.note ?? ""}</td>
+                  <td className="max-w-[20rem] py-2 pr-4 text-muted"><span className="block truncate" title={r.note ?? ""}>{r.note ?? ""}</span></td>
                   <td className="py-2"><ResStatusButtons id={r.id} status={r.status} /></td>
                 </tr>
               ))}

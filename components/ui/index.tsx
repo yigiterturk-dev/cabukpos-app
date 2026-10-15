@@ -9,14 +9,14 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "success";
 type Size = "sm" | "md" | "lg" | "xl";
 
 const VARIANT: Record<Variant, string> = {
-  primary: "bg-gradient-to-b from-brand to-brand-hover text-white shadow-rest ring-1 ring-inset ring-white/15 hover:shadow-glow hover:brightness-105",
+  primary: "bg-brand text-white shadow-rest ring-1 ring-inset ring-white/15 hover:bg-brand-hover hover:shadow-raised",
   secondary: "border border-line bg-surface text-ink shadow-rest hover:border-line-strong hover:bg-surface-2 hover:shadow-raised",
   ghost: "text-ink-2 hover:bg-surface-3 hover:text-ink",
   danger: "border border-bad/25 bg-surface text-bad shadow-rest hover:bg-bad-soft hover:shadow-raised",
-  success: "bg-gradient-to-b from-ok to-ok/90 text-white shadow-rest hover:shadow-raised hover:brightness-105",
+  success: "bg-ok text-white shadow-rest hover:bg-ok/90 hover:shadow-raised",
 };
 const SIZE: Record<Size, string> = {
-  sm: "h-8 rounded-lg px-2.5 text-[13px]",
+  sm: "min-h-10 rounded-lg px-2.5 text-[13px]",
   md: "h-10 rounded-[10px] px-3.5 text-sm",
   lg: "h-12 rounded-xl px-4 text-[15px]",
   xl: "h-16 rounded-2xl px-5 text-lg font-semibold",
@@ -31,7 +31,7 @@ export function Button({ variant = "primary", size = "md", className = "", ...p 
 }
 
 export function IconButton({ label, variant = "ghost", size = "md", className = "", ...p }: ComponentProps<"button"> & { label: string; variant?: Variant; size?: Size }) {
-  const sq = { sm: "w-8", md: "w-10", lg: "w-12", xl: "w-16" }[size];
+  const sq = { sm: "w-10", md: "w-10", lg: "w-12", xl: "w-16" }[size];
   return <button type="button" aria-label={label} title={label} {...p} className={`${buttonClass(variant, size)} ${sq} !px-0 ${className}`} />;
 }
 
@@ -56,7 +56,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 export function Card({ className = "", interactive = false, ...p }: ComponentProps<"div"> & { interactive?: boolean }) {
-  const base = "rounded-2xl border border-line bg-surface";
+  const base = "min-w-0 rounded-2xl border border-line bg-surface";
   const rest = "shadow-rest";
   const lift = interactive
     ? "transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised"
@@ -67,11 +67,11 @@ export function Card({ className = "", interactive = false, ...p }: ComponentPro
 export function PageHeader({ title, desc, actions }: { title: string; desc?: string; actions?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="font-display text-[26px] font-bold leading-tight tracking-[-0.02em] md:text-[30px]">{title}</h1>
-        {desc && <p className="mt-1 text-sm text-muted">{desc}</p>}
+      <div className="min-w-0 flex-1">
+        <h1 className="break-words font-display text-[26px] font-bold leading-tight tracking-[-0.02em] md:text-[30px]">{title}</h1>
+        {desc && <p className="mt-1 max-w-3xl break-words text-sm text-muted">{desc}</p>}
       </div>
-      {actions}
+      {actions && <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">{actions}</div>}
     </div>
   );
 }
@@ -87,11 +87,12 @@ export function Badge({ tone = "neutral", children }: { tone?: "neutral" | "ok" 
   return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${t}`}>{children}</span>;
 }
 
-export function Empty({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
+export function Empty({ icon, action, children }: { icon?: ReactNode; action?: ReactNode; children: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-surface-2/40 p-10 text-center text-sm text-muted">
       {icon && <span className="text-line-strong [&>svg]:size-8">{icon}</span>}
       {children}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }
@@ -100,19 +101,19 @@ export function Empty({ icon, children }: { icon?: ReactNode; children: ReactNod
 export function LogoMark({ size = "md", className = "" }: { size?: "sm" | "md" | "lg"; className?: string }) {
   const s = { sm: "size-7 rounded-lg text-sm", md: "size-9 rounded-[10px] text-base", lg: "size-14 rounded-2xl text-2xl" }[size];
   return (
-    <span aria-hidden className={`grid shrink-0 place-items-center bg-gradient-to-b from-brand to-brand-hover font-display font-extrabold text-white shadow-glow ring-1 ring-inset ring-white/25 ${s} ${className}`}>Ç</span>
+    <span aria-hidden className={`grid shrink-0 place-items-center bg-brand font-display font-extrabold text-white shadow-rest ring-1 ring-inset ring-white/25 ${s} ${className}`}>Ç</span>
   );
 }
 
 /** Yönetim tablosu başlık satırı (thead) sınıfı: tüm listelerde aynı. */
-export const TABLE_HEAD = "border-b border-line bg-surface-2 text-left text-xs text-muted";
+export const TABLE_HEAD = "sticky top-0 z-10 border-b border-line bg-surface-2 text-left text-xs text-muted shadow-[0_1px_0_var(--color-line)]";
 
 /** Liste-önce düzen: solda liste, geniş ekranda sağa yapışık form paneli; dar ekranda panel üstte. */
 export function SplitView({ list, panel, wide = false }: { list: ReactNode; panel: ReactNode; wide?: boolean }) {
   return (
-    <div className={`grid gap-6 lg:items-start ${wide ? "lg:grid-cols-[minmax(0,1fr)_440px]" : "lg:grid-cols-[minmax(0,1fr)_380px]"}`}>
-      <div className="order-2 min-w-0 lg:order-1">{list}</div>
-      <aside className="order-1 lg:sticky lg:top-8 lg:order-2 lg:max-h-[calc(100dvh-4rem)] lg:overflow-y-auto lg:rounded-[14px]">{panel}</aside>
+    <div className={`grid gap-6 xl:items-start ${wide ? "xl:grid-cols-[minmax(0,1fr)_440px]" : "xl:grid-cols-[minmax(0,1fr)_380px]"}`}>
+      <div className="order-2 min-w-0 xl:order-1">{list}</div>
+      <aside className="order-1 xl:sticky xl:top-8 xl:order-2 xl:max-h-[calc(100dvh-4rem)] xl:overflow-y-auto xl:rounded-[14px]">{panel}</aside>
     </div>
   );
 }
@@ -123,10 +124,10 @@ export function Panel({ title, desc, action, tone, children }: { title: string; 
     <Card className={tone === "edit" ? "border-brand-ring ring-4 ring-brand-ring/30" : ""}>
       <div className={`flex items-start justify-between gap-3 border-b border-line px-5 py-3.5 ${tone === "edit" ? "bg-brand-soft/50" : "bg-surface-2/60"}`}>
         <div className="min-w-0">
-          <h2 className="font-semibold">{title}</h2>
-          {desc && <p className="mt-0.5 text-xs text-muted">{desc}</p>}
+          <h2 className="break-words font-semibold">{title}</h2>
+          {desc && <p className="mt-0.5 break-words text-xs text-muted">{desc}</p>}
         </div>
-        {action}
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       <div className="p-5">{children}</div>
     </Card>
@@ -152,9 +153,9 @@ export function StatCard({ label, value, hint, icon, tone = "neutral", className
     <div className={`flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-rest ${className}`}>
       {icon && <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl [&>svg]:size-5 ${TONE_CHIP[tone]}`}>{icon}</span>}
       <div className="min-w-0">
-        <p className="truncate text-xs font-medium text-muted">{label}</p>
-        <p className="tabular truncate font-display text-2xl font-bold leading-tight tracking-tight">{value}</p>
-        {hint && <p className="truncate text-xs text-muted">{hint}</p>}
+        <p className="truncate text-xs font-medium text-muted" title={label}>{label}</p>
+        <p className="tabular truncate font-display text-2xl font-bold leading-tight tracking-tight" title={typeof value === "string" ? value : undefined}>{value}</p>
+        {hint && <p className="truncate text-xs text-muted" title={typeof hint === "string" ? hint : undefined}>{hint}</p>}
       </div>
     </div>
   );
@@ -168,9 +169,12 @@ export function ActionTile({ icon, title, desc, onClick, tone = "neutral", disab
     <button type="button" onClick={onClick} disabled={disabled} data-tone={tone}
       className={`press group flex flex-col items-start gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-rest outline-none transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40 ${className}`}>
       <span aria-hidden className={`grid size-11 place-items-center rounded-xl [&>svg]:size-6 ${TONE_CHIP[tone]}`}>{icon}</span>
-      <span className="min-w-0">
-        <span className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">{title}{badge}</span>
-        {desc && <span className="mt-0.5 block text-sm text-muted">{desc}</span>}
+      <span className="min-w-0 max-w-full">
+        <span className="flex min-w-0 flex-wrap items-center gap-2 font-display text-lg font-bold tracking-tight">
+          <span className="min-w-0 break-words">{title}</span>
+          {badge && <span className="shrink-0">{badge}</span>}
+        </span>
+        {desc && <span className="mt-0.5 block break-words text-sm text-muted">{desc}</span>}
       </span>
     </button>
   );

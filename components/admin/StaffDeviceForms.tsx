@@ -4,8 +4,9 @@ import { saveStaff, type StaffState } from "@/lib/admin/staff-actions";
 import { createDevice, type DeviceState } from "@/lib/admin/device-actions";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
-const Err = ({ s, f }: { s: { error?: string; field?: string }; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
+const Err = ({ s, f }: { s: { error?: string; field?: string }; f: string }) => (s.field === f && s.error ? <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
 
 export function StaffForm({ initial }: { initial?: { id: string; name: string; role: "kasiyer" | "mudur" | "garson" | "kurye" } }) {
   const { state, pending, onSubmit } = useFormAction(saveStaff.bind(null, initial?.id ?? null), {} as StaffState);
@@ -19,7 +20,7 @@ export function StaffForm({ initial }: { initial?: { id: string; name: string; r
           <input type="hidden" name="role" value={role} />
           <div className="flex flex-wrap gap-1" role="group" aria-label="Rol">
             {[["kasiyer", "Kasiyer"], ["garson", "Garson"], ["kurye", "Kurye"], ["mudur", "Müdür"]].map(([v, l]) => (
-              <button key={v} type="button" aria-pressed={role === v} onClick={() => setRole(v)} className={`rounded-lg border px-3 py-2 text-sm ${role === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:bg-surface-2"}`}>{l}</button>
+              <button key={v} type="button" aria-pressed={role === v} onClick={() => setRole(v)} className={`inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${role === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:bg-surface-2"}`}>{l}</button>
             ))}
           </div>
         </div>
@@ -27,20 +28,20 @@ export function StaffForm({ initial }: { initial?: { id: string; name: string; r
       </div>
       {initial && (
         <div className="max-w-xs">
-          <Field label="Hesap şifreniz" hint="Rol veya PIN değişiminde gerekli"><Input name="sifre" type="password" autoComplete="current-password" /></Field>
+          <Field label="Hesap şifreniz" hint="Rol veya PIN değişiminde gerekli"><PasswordInput name="sifre" autoComplete="current-password" /></Field>
           <Err s={state} f="sifre" />
         </div>
       )}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Personeli kaydet"}</Button>
-        {state.savedAt && <span className="text-sm text-ok">Kaydedildi.</span>}
+        {state.savedAt && <span className="text-sm text-ok" role="status">Kaydedildi.</span>}
       </div>
     </form>
   );
 }
 
 function CodeBox({ s }: { s: DeviceState }) {
-  if (!s.code) return s.error && !s.field ? <p className="mt-2 text-sm text-bad">{s.error}</p> : null;
+  if (!s.code) return s.error && !s.field ? <p className="mt-2 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null;
   return (
     <div className="mt-4 rounded-xl border border-brand bg-brand-soft p-4">
       <div className="text-sm">{s.deviceName} için eşleme kodu</div>
@@ -68,7 +69,7 @@ export function NewPairingButton({ action }: { action: () => Promise<DeviceState
   const [state, dispatch, pending] = useActionState(action, {} as DeviceState);
   return (
     <div>
-      <form action={dispatch}><button disabled={pending} className="font-medium text-brand hover:underline">Yeni eşleme kodu</button></form>
+      <form action={dispatch}><button disabled={pending} className="inline-flex min-h-10 items-center rounded-lg px-2.5 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yeni eşleme kodu</button></form>
       <CodeBox s={state} />
     </div>
   );

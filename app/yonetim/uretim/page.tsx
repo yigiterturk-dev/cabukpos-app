@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { recentProductions } from "@/lib/admin/recipe";
 import { formatQty } from "@/lib/core/stock";
 import { ProductionForm } from "@/components/admin/RecipeForms";
-import { Card, Empty, PageHeader } from "@/components/ui";
+import { Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 const dt = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
@@ -26,13 +26,13 @@ export default async function Uretim() {
       </Card>
       {recent.length > 0 && (
         <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr><th className="p-3 font-medium">Tarih</th><th className="p-3 font-medium">Ara ürün</th><th className="p-3 text-right font-medium">Parti</th><th className="p-3 text-right font-medium">Miktar</th><th className="p-3 font-medium">Not</th></tr></thead>
+          <table className="w-full min-w-[680px] text-sm">
+            <thead className={TABLE_HEAD}><tr><th className="p-3 font-medium">Tarih</th><th className="p-3 font-medium">Ara ürün</th><th className="p-3 text-right font-medium">Parti</th><th className="p-3 text-right font-medium">Miktar</th><th className="p-3 font-medium">Not</th></tr></thead>
             <tbody className="divide-y divide-line">
               {recent.map((r) => (
                 <tr key={r.id}>
                   <td className="p-3 text-muted">{dt.format(r.at)}</td>
-                  <td className="p-3 font-medium">{r.name}</td>
+                  <td className="max-w-[20rem] p-3 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
                   <td className="tabular p-3 text-right">{(r.batchesMilli / 1000).toLocaleString("tr-TR")}</td>
                   <td className="tabular p-3 text-right">{r.yieldMilli ? formatQty(Math.round((r.batchesMilli * r.yieldMilli) / 1000), r.unit) : "—"}</td>
                   <td className="p-3 text-muted">{r.note ?? ""}</td>

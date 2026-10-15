@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { deleteStation } from "@/lib/admin/salon-actions";
 import { agentConfig } from "@/lib/agent/config";
 import { CategoryStation, StationForm } from "@/components/admin/SalonForms";
-import { Card, Empty, PageHeader, Panel } from "@/components/ui";
+import { buttonClass, Card, Empty, PageHeader, Panel } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export default async function Istasyonlar() {
           {stations.map((s) => (
             <div key={s.id} className="flex flex-wrap items-end gap-3 p-4">
               <StationForm initial={s} printers={printers} />
-              <form action={deleteStation.bind(null, s.id)} className="ml-auto"><button className="text-sm text-bad hover:underline">Sil</button></form>
+              <form action={deleteStation.bind(null, s.id)} className="ml-auto shrink-0"><button className={buttonClass("danger", "sm")}>Sil</button></form>
             </div>
           ))}
         </Card>
@@ -46,7 +46,7 @@ export default async function Istasyonlar() {
           <div className="divide-y divide-line">
             {cats.map((c) => (
               <div key={c.id} className="flex items-center gap-3 py-2">
-                <span className="w-48 text-sm font-medium">{c.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium" title={c.name}>{c.name}</span>
                 <CategoryStation categoryId={c.id} value={c.stationId ?? ""} stations={stationOpts} />
               </div>
             ))}

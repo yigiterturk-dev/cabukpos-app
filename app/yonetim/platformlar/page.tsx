@@ -9,7 +9,7 @@ import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import QRCode from "qrcode";
 import { foldTabs, type TabState } from "@/lib/core/tab";
 import { initialEvents } from "@/lib/tabs/stream";
-import { formatTL } from "@/lib/core/money";
+import { moneyFormatter } from "@/lib/admin/currency";
 import { CodeForm, ConnectionForm, ConnectionToggles, PushCatalogButton, TestOrderButton } from "@/components/admin/DeliveryForms";
 import { Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
 
@@ -32,7 +32,7 @@ const DURUM = (t: TabState): { label: string; cls: string } =>
 const cizelge = (t: TabState) =>
   [t.delivery.acceptedAt ? `kabul ${saat(t.delivery.acceptedAt)}` : "", t.delivery.outAt ? `yolda ${saat(t.delivery.outAt)}` : "", t.delivery.deliveredAt ? `teslim ${saat(t.delivery.deliveredAt)}` : ""].filter(Boolean).join(" · ");
 
-function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
+function PaketHatti({ acik, teslim, money }: { acik: TabState[]; teslim: number; money: (k: number) => string }) {
   const gruplar = new Map<string, TabState[]>();
   for (const t of acik) {
     const p = platformEtiket(t);
@@ -43,7 +43,7 @@ function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h2 className="font-semibold">Canlı paket hattı</h2>
         {teslim > 0 && <span className="text-sm text-muted">bugün {teslim} teslim</span>}
-        <a href="/yonetim/platformlar" className="ml-auto text-sm text-brand hover:underline">Yenile</a>
+        <a href="/yonetim/platformlar" className="ml-auto inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yenile</a>
       </div>
       <div className="mb-4 flex flex-wrap gap-2">
         {gruplar.size === 0 && <span className="text-sm text-muted">Açık paket/platform siparişi yok.</span>}
@@ -55,8 +55,8 @@ function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
         ))}
       </div>
       {acik.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-line">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border border-line">
+          <table className="w-full min-w-[860px] text-sm">
             <thead className={TABLE_HEAD}>
               <tr>
                 <th className="px-4 py-2.5 font-medium">Platform</th><th className="px-4 py-2.5 font-medium">Müşteri</th>
@@ -70,22 +70,22 @@ function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
                 return (
                   <tr key={t.id} className="transition-colors hover:bg-surface-2">
                     <td className="px-4 py-2.5 font-medium">{platformEtiket(t)}{t.order?.source?.externalId ? <span className="text-muted"> #{t.order.source.externalId.slice(-4)}</span> : null}</td>
-                    <td className="px-4 py-2.5">{t.order?.name ?? "—"}<span className="block text-xs text-muted">{t.order?.phone ?? ""}</span></td>
+                    <td className="max-w-[14rem] px-4 py-2.5"><span className="block truncate" title={t.order?.name ?? "—"}>{t.order?.name ?? "—"}</span><span className="block text-xs text-muted">{t.order?.phone ?? ""}</span></td>
                     <td className="px-4 py-2.5 text-muted">{t.lines.filter((l) => !l.voided).length} ürün</td>
-                    <td className="px-4 py-2.5 tabular font-semibold">{formatTL(t.total)}</td>
+                    <td className="px-4 py-2.5 tabular font-semibold">{money(t.total)}</td>
                     <td className="px-4 py-2.5"><span className={`rounded px-1.5 py-0.5 text-xs font-medium ${DURUM(t).cls}`}>{DURUM(t).label}</span><span className="block text-[11px] text-muted">{cizelge(t)}</span></td>
                     <td className="px-4 py-2.5 text-muted">{dk} dk</td>
                     <td className="px-4 py-2.5">
                       {!t.closed && !t.delivery.acceptedAt && !t.delivery.rejected && !t.delivery.cancelled ? (
                         <div className="flex items-center gap-3">
                           <form action={acceptPlatformOrder.bind(null, t.id)}>
-                            <button className="text-sm font-medium text-brand hover:underline">Onayla</button>
+                            <button className="inline-flex min-h-11 items-center rounded-lg border border-brand/25 bg-brand-soft px-3 text-sm font-medium text-brand outline-none hover:bg-brand/10 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Onayla</button>
                           </form>
                           {/* Reddet: yanlış basmaya karşı iki adım (details açılır, onay butonu çıkar) */}
                           <details className="relative">
-                            <summary className="cursor-pointer list-none text-sm text-bad hover:underline">Reddet</summary>
+                            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-lg border border-bad/20 px-3 text-sm text-bad outline-none hover:bg-bad-soft focus-visible:ring-4 focus-visible:ring-bad/20">Reddet</summary>
                             <form action={rejectPlatformOrder.bind(null, t.id, "yönetim reddi")} className="mt-1">
-                              <button className="rounded border border-line px-2 py-1 text-xs text-bad hover:bg-surface-2">Reddi onayla</button>
+                              <button className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 text-xs font-medium text-bad outline-none hover:bg-bad-soft focus-visible:ring-4 focus-visible:ring-bad/20">Reddi onayla</button>
                             </form>
                           </details>
                         </div>
@@ -105,6 +105,7 @@ function PaketHatti({ acik, teslim }: { acik: TabState[]; teslim: number }) {
 
 export default async function Platformlar() {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
   const P = schema.platformConnections;
   const conns = await getDb().select().from(P).where(eq(P.tenantId, a.tenantId)).orderBy(asc(P.createdAt));
   const [codes, products] = await withTenant(a.tenantId, (tx) => Promise.all([
@@ -125,14 +126,14 @@ export default async function Platformlar() {
   return (
     <>
       <PageHeader title="Sipariş platformları" desc="Platform siparişleri kasada Paket sekmesine sesli uyarıyla düşer; kabul/red platforma bildirilir. Yemeksepeti ve Trendyol Go entegratör onayı gelince eklenecek." />
-      <PaketHatti acik={acik} teslim={teslim} />
+      <PaketHatti acik={acik} teslim={teslim} money={money} />
       {free.length > 0 && <Card className="mb-6 p-5"><ConnectionForm platforms={free} /></Card>}
       {conns.length === 0 ? <Empty>Henüz bağlı platform yok. Akışı denemek için Deneme platformunu bağlayın.</Empty> : await Promise.all(conns.map(async (c) => {
         const menuUrl = c.platform === "kiosk" ? `${origin}/menu/${c.storeId}?k=${c.webhookSecret}` : null;
         const qr = menuUrl ? await QRCode.toString(menuUrl, { type: "svg", margin: 1, width: 148 }) : null;
         return (
         <Card key={c.id} className="mb-6 space-y-4 p-5">
-          <div className="flex flex-wrap items-center gap-3"><h2 className="font-semibold">{PLATFORM_NAMES[c.platform] ?? c.platform}</h2><ConnectionToggles id={c.id} autoAccept={c.autoAccept} active={c.active} /></div>
+          <div className="flex flex-wrap items-center gap-3"><h2 className="min-w-0 break-words font-semibold">{PLATFORM_NAMES[c.platform] ?? c.platform}</h2><div className="min-w-0 flex-1"><ConnectionToggles id={c.id} autoAccept={c.autoAccept} active={c.active} /></div></div>
           {c.platform === "kiosk" ? (
             <div className="flex flex-wrap items-center gap-5">
               {qr && <div className="size-[148px] shrink-0 rounded-xl border border-line bg-surface p-1" data-testid="kiosk-qr" dangerouslySetInnerHTML={{ __html: qr }} />}
@@ -156,8 +157,8 @@ export default async function Platformlar() {
             <CodeForm connectionId={c.id} products={products} />
             <ul className="mt-3 divide-y divide-line text-sm">
               {codes.filter((k) => k.platform === c.platform && k.storeId === c.storeId).map((k) => (
-                <li key={k.id} className="flex items-center gap-3 py-1.5"><code className="w-40">{k.code}</code><span>{k.product}</span>
-                  <form action={deleteCode.bind(null, k.id)} className="ml-auto"><button className="text-xs text-bad underline">Sil</button></form></li>
+                <li key={k.id} className="flex min-w-0 items-center gap-3 py-1.5"><code className="w-40 shrink-0 truncate" title={k.code}>{k.code}</code><span className="min-w-0 flex-1 truncate" title={k.product}>{k.product}</span>
+                <form action={deleteCode.bind(null, k.id)} className="ml-auto shrink-0"><button className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-xs text-bad underline outline-none hover:bg-bad-soft focus-visible:ring-4 focus-visible:ring-bad/20">Sil</button></form></li>
               ))}
             </ul>
           </div>

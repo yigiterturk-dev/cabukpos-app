@@ -7,8 +7,8 @@ import { Select, type Option } from "@/components/Select";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 
-const Err = ({ s, f }: { s: SalonState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
-const Saved = ({ s }: { s: SalonState }) => (s.savedAt ? <span className="text-sm text-ok">Kaydedildi.</span> : null);
+const Err = ({ s, f }: { s: SalonState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
+const Saved = ({ s }: { s: SalonState }) => (s.savedAt ? <span className="text-sm text-ok" role="status">Kaydedildi.</span> : null);
 
 export function AreaForm() {
   const { state, pending, onSubmit } = useFormAction(saveArea, {} as SalonState);
@@ -39,14 +39,14 @@ export function SalonSetup() {
           <div className="flex-1"><Input name="zone" value={r.name} onChange={(e) => duzenle(i, { name: e.target.value })} placeholder="Bölge adı (Salon, Bahçe, Teras…)" aria-label={`${i + 1}. bölge adı`} maxLength={40} /></div>
           <div className="w-28"><Input name="count" value={r.count} onChange={(e) => duzenle(i, { count: e.target.value.replace(/\D/g, "") })} inputMode="numeric" placeholder="Masa" aria-label={`${i + 1}. bölge masa sayısı`} /></div>
           <button type="button" onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))} aria-label={`${r.name} bölümünü kaldır`}
-            className={`flex size-10 items-center justify-center rounded-lg border border-line text-muted hover:text-bad ${rows.length === 1 ? "invisible" : ""}`}>×</button>
+            className={`flex size-11 items-center justify-center rounded-lg border border-line text-muted outline-none hover:text-bad focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${rows.length === 1 ? "invisible" : ""}`}>×</button>
         </div>
       ))}
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-sm text-muted">Hızlı ekle:</span>
         {ONEMLI_BOLGELER.map((b) => (
           <button key={b} type="button" onClick={() => setRows((rs) => [...rs, { name: b, count: "4" }])}
-            className="rounded-full border border-line px-2.5 py-1 text-sm text-muted hover:bg-surface-3 hover:text-ink">+ {b}</button>
+            className="rounded-full border border-line px-2.5 py-1 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">+ {b}</button>
         ))}
       </div>
       <Err s={state} f="zone" /><Err s={state} f="count" /><Err s={state} />
@@ -72,7 +72,7 @@ export function StationForm({ initial, printers }: { initial?: { id: string; nam
       <div><Field label="İstasyon adı"><Input key={initial?.id ?? state.savedAt ?? 0} name="name" defaultValue={initial?.name} placeholder="Izgara" required /></Field><Err s={state} f="name" /></div>
       <div className="w-56">
         <div className="mb-1.5 text-sm font-medium">Mutfak yazıcısı</div>
-        <Select name="printer" options={[{ value: "", label: "Yazıcı yok (yalnız ekran)" }, ...printers]} defaultValue={initial?.printer ?? ""} placeholder="Yazıcı yok (yalnız ekran)" />
+        <Select ariaLabel="Mutfak yazıcısı" name="printer" options={[{ value: "", label: "Yazıcı yok (yalnız ekran)" }, ...printers]} defaultValue={initial?.printer ?? ""} placeholder="Yazıcı yok (yalnız ekran)" />
         <Err s={state} f="printer" />
       </div>
       <Button type="submit" disabled={pending}>{initial ? "Kaydet" : "İstasyon ekle"}</Button>
@@ -85,7 +85,7 @@ export function CategoryStation({ categoryId, value, stations }: { categoryId: s
   const [pending, start] = useTransition();
   return (
     <div className={`w-56 ${pending ? "opacity-60" : ""}`}>
-      <Select options={[{ value: "", label: "İstasyonsuz" }, ...stations]} defaultValue={value} placeholder="İstasyonsuz" onChange={(v) => start(() => setCategoryStation(categoryId, v))} />
+      <Select ariaLabel="İstasyon" options={[{ value: "", label: "İstasyonsuz" }, ...stations]} defaultValue={value} placeholder="İstasyonsuz" onChange={(v) => start(() => setCategoryStation(categoryId, v))} />
     </div>
   );
 }
@@ -97,7 +97,7 @@ export function OptionGroupForm({ initial }: { initial?: GroupInitial }) {
   const { state, pending, onSubmit } = useFormAction(saveOptionGroup.bind(null, initial?.id ?? null), {} as SalonState);
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <div key={initial?.id ?? state.savedAt ?? 0} className="grid gap-4 sm:grid-cols-[1fr_7rem_7rem] lg:grid-cols-2">
+      <div key={initial?.id ?? state.savedAt ?? 0} className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] lg:grid-cols-2">
         <div className="lg:col-span-2"><Field label="Grup adı"><Input name="name" defaultValue={initial?.name} placeholder="Pişirme" required /></Field><Err s={state} f="name" /></div>
         <Field label="En az" hint="0 = isteğe bağlı"><Input name="min" inputMode="numeric" defaultValue={initial?.min ?? 0} /></Field>
         <div><Field label="En çok"><Input name="max" inputMode="numeric" defaultValue={initial?.max ?? 1} /></Field><Err s={state} f="max" /></div>
@@ -124,7 +124,7 @@ export function DeviceRoleForm({ deviceId, role: initialRole, stations: initialS
       <input type="hidden" name="role" value={role} />
       <div className="flex gap-1" role="group" aria-label="Cihaz rolü">
         {ROLES.map(([v, l]) => (
-          <button key={v} type="button" aria-pressed={role === v} onClick={() => setRole(v)} className={`rounded-lg border px-2.5 py-1.5 ${role === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{l}</button>
+          <button key={v} type="button" aria-pressed={role === v} onClick={() => setRole(v)} className={`inline-flex min-h-11 items-center rounded-lg border px-2.5 py-2 outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${role === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{l}</button>
         ))}
       </div>
       {role === "mutfak" && stationOptions.map((s) => (

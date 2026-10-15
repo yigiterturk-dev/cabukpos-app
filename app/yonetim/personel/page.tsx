@@ -25,17 +25,17 @@ export default async function Personel({ searchParams }: { searchParams: Promise
         list={<>
       {rows.length === 0 ? <Empty>Henüz personel yok.</Empty> : (
         <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className={TABLE_HEAD}><tr><th className="px-4 py-2.5 font-medium">Ad</th><th className="px-4 py-2.5 font-medium">Rol</th><th className="px-4 py-2.5 font-medium">Durum</th><th className="px-4 py-2.5" /></tr></thead>
+          <table className="w-full min-w-[620px] text-sm">
+            <thead className={TABLE_HEAD}><tr><th className="px-4 py-2.5 font-medium">Ad</th><th className="px-4 py-2.5 font-medium">Rol</th><th className="px-4 py-2.5 font-medium">Durum</th><th className="sticky right-0 z-20 bg-surface-2 px-4 py-2.5 text-right font-medium shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.45)]">Aksiyonlar</th></tr></thead>
             <tbody className="divide-y divide-line">
               {rows.map((r) => (
-                <tr key={r.id} className={r.active ? "" : "opacity-60"}>
-                  <td className="px-4 py-2.5 font-medium">{r.name}</td>
+                <tr key={r.id} className={`${r.id === duzenle ? "bg-brand-soft/45" : "hover:bg-surface-2"} ${r.active ? "" : "opacity-60"}`}>
+                  <td className="max-w-[18rem] px-4 py-2.5 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
                   <td className="px-4 py-2.5">{r.role === "mudur" ? "Müdür" : r.role === "garson" ? "Garson" : r.role === "kurye" ? "Kurye" : "Kasiyer"}</td>
                   <td className="px-4 py-2.5">{r.active ? <Badge tone="ok">Aktif</Badge> : <Badge>Pasif</Badge>}</td>
-                  <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                    <Link href={`/yonetim/personel?duzenle=${r.id}`} className="mr-3 font-medium text-brand hover:underline">Düzenle</Link>
-                    <form action={setStaffActive.bind(null, r.id, !r.active)} className="inline"><button className="text-muted hover:text-ink hover:underline">{r.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
+                  <td className={`sticky right-0 whitespace-nowrap px-4 py-2.5 text-right shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.35)] ${r.id === duzenle ? "bg-brand-soft/90" : "bg-surface"}`}>
+                    <Link href={`/yonetim/personel?duzenle=${r.id}`} className="mr-1 inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
+                    <form action={setStaffActive.bind(null, r.id, !r.active)} className="inline"><button className="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{r.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
                   </td>
                 </tr>
               ))}

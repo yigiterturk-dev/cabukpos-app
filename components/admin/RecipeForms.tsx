@@ -45,12 +45,12 @@ export function RecipeForm({ owner, ingredients, initial }: { owner: RecipeOwner
       {rows.map((r) => {
         const ing = byId.get(r.id);
         return (
-          <div key={r.k} className="flex flex-wrap items-center gap-2" data-testid="recipe-row">
-            <div className="w-64"><Select name="ing" options={ingredients} defaultValue={r.id} placeholder="Malzeme seçin" onChange={(v) => set(r.k, { id: v })} /></div>
-            <Input name="qty" inputMode="decimal" value={r.qty} onChange={(e) => set(r.k, { qty: e.target.value })} aria-label="Miktar" className="w-28" />
-            <span className="w-10 text-sm text-muted">{ing ? inputUnit(ing.unit) : ""}</span>
-            <span className="tabular w-24 text-right text-sm text-muted">{ing?.cost != null ? formatTL(Math.round((ing.cost * toMilli(r.qty, ing.unit)) / 1000)) : ing ? "maliyet yok" : ""}</span>
-            <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.k !== r.k))} className="rounded px-2 text-muted hover:bg-surface-3" aria-label="Satırı sil">×</button>
+          <div key={r.k} className="grid min-w-0 grid-cols-1 items-center gap-2 lg:grid-cols-[minmax(0,16rem)_7rem_auto_minmax(6rem,auto)_2.75rem]" data-testid="recipe-row">
+            <div className="min-w-0"><Select ariaLabel="Malzeme" name="ing" options={ingredients} defaultValue={r.id} placeholder="Malzeme seçin" onChange={(v) => set(r.k, { id: v })} /></div>
+            <Input name="qty" inputMode="decimal" value={r.qty} onChange={(e) => set(r.k, { qty: e.target.value })} aria-label="Miktar" className="w-full" />
+            <span className="text-sm text-muted">{ing ? inputUnit(ing.unit) : ""}</span>
+            <span className="tabular text-left text-sm text-muted lg:text-right">{ing?.cost != null ? formatTL(Math.round((ing.cost * toMilli(r.qty, ing.unit)) / 1000)) : ing ? "maliyet yok" : ""}</span>
+            <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.k !== r.k))} className="inline-flex size-11 items-center justify-center rounded-lg text-lg text-muted outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60" aria-label="Satırı sil">×</button>
           </div>
         );
       })}
@@ -60,7 +60,7 @@ export function RecipeForm({ owner, ingredients, initial }: { owner: RecipeOwner
         {missing && <span className="ml-2 text-warn">(maliyeti olmayan malzeme var)</span>}
         {margin !== null && <> · KDV hariç fiyat {formatTL(Math.round(net!))} · marj <b className="tabular">%{margin.toFixed(1)}</b></>}
       </div>
-      {state.error && <p className="text-sm text-bad">{state.error}</p>}
+      {state.error && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Reçeteyi kaydet"}</Button>
         {state.savedAt && <span className="text-sm text-ok">Kaydedildi.</span>}
@@ -75,10 +75,10 @@ export function ProductionForm({ products }: { products: (Option & { yieldLabel:
   const y = products.find((p) => p.value === pid)?.yieldLabel;
   return (
     <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-3">
-      <div><div className="mb-1.5 text-sm font-medium">Ara ürün</div><Select name="productId" options={products} defaultValue="" placeholder="Seçin" onChange={setPid} />{state.field === "productId" && <p className="mt-1 text-sm text-bad">{state.error}</p>}</div>
-      <div><Field label="Parti sayısı" hint={y ? `1 parti = ${y}` : "ör. 2 ya da 0,5"}><Input key={state.savedAt ?? 0} name="batches" inputMode="decimal" defaultValue="1" /></Field>{state.field === "batches" && <p className="mt-1 text-sm text-bad">{state.error}</p>}</div>
+      <div><div className="mb-1.5 text-sm font-medium">Ara ürün</div><Select ariaLabel="Ara ürün" name="productId" options={products} defaultValue="" placeholder="Seçin" onChange={setPid} />{state.field === "productId" && <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}</div>
+      <div><Field label="Parti sayısı" hint={y ? `1 parti = ${y}` : "ör. 2 ya da 0,5"}><Input key={state.savedAt ?? 0} name="batches" inputMode="decimal" defaultValue="1" /></Field>{state.field === "batches" && <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}</div>
       <div><Field label="Not"><Input key={state.savedAt ?? 0} name="note" /></Field></div>
-      {state.error && !state.field && <p className="text-sm text-bad sm:col-span-3">{state.error}</p>}
+      {state.error && !state.field && <p className="break-words text-sm text-bad sm:col-span-3" role="alert" aria-live="assertive">{state.error}</p>}
       <div className="flex items-center gap-3 sm:col-span-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Üretimi kaydet"}</Button>
         {state.savedAt && <span className="text-sm text-ok">Kaydedildi; stok ve maliyet güncellendi.</span>}

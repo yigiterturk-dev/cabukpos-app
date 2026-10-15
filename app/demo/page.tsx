@@ -27,6 +27,13 @@ const DEMOS = [
 export default function DemoHub() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center px-4 py-12">
+      <nav className="mb-10 flex items-center justify-between gap-3" aria-label="ÇabukPOS bağlantıları">
+        <Link href="/" className="text-sm font-semibold text-ink-2 hover:text-ink">ÇabukPOS</Link>
+        <div className="flex items-center gap-2">
+          <Link href="/kasa" className="inline-flex min-h-10 items-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink-2 outline-none hover:border-line-strong hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kasayı aç</Link>
+          <Link href="/giris" className="inline-flex min-h-10 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white outline-none hover:bg-brand-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yönetim paneli</Link>
+        </div>
+      </nav>
       <div className="mb-8 text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-ink-2"><Sparkles aria-hidden className="size-3.5 text-brand" />Kayıt yok · kurulum yok</span>
         <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight">ÇabukPOS&apos;u canlı dene</h1>

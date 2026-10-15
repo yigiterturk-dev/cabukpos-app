@@ -21,7 +21,7 @@ const topics = [
 export default function Yardim() {
   return (
     <>
-      <PageHeader title="Yardım ve kurulum" desc="İlk işletmeyi birkaç kısa adımda satışa hazırlayın." actions={<Link href="/kasa" className={buttonClass("primary", "sm")}><ArrowRight aria-hidden className="size-4" />Kasayı aç</Link>} />
+      <PageHeader title="Yardım ve kurulum" desc="İlk işletmeyi birkaç kısa adımda satışa hazırlayın." actions={<Link href="/kasa" className={buttonClass("primary", "lg")}><ArrowRight aria-hidden className="size-4" />Kasayı aç</Link>} />
 
       <Card className="mb-6 overflow-hidden border-brand-ring bg-brand-soft/20">
         <div className="border-b border-brand-ring/70 px-5 py-4">
@@ -34,7 +34,7 @@ export default function Yardim() {
               <div className="mb-3 flex items-center gap-2 text-brand"><span className="grid size-7 place-items-center rounded-full bg-brand-soft text-sm font-bold">{index + 1}</span><CircleCheck aria-hidden className="size-4" /></div>
               <h3 className="font-semibold">{title}</h3>
               <p className="mt-1.5 min-h-12 text-sm leading-5 text-muted">{text}</p>
-              <Link href={href} className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand hover:underline">Aç<ArrowRight aria-hidden className="size-3.5" /></Link>
+              <Link href={href} className="mt-3 inline-flex min-h-11 items-center gap-1 rounded px-1 text-sm font-medium text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aç<ArrowRight aria-hidden className="size-3.5" /></Link>
             </li>
           ))}
         </ol>
@@ -45,7 +45,7 @@ export default function Yardim() {
           <Card key={topic.title} className="p-5">
             <h2 className="font-semibold">{topic.title}</h2>
             <p className="mt-2 text-sm leading-6 text-ink-2">{topic.text}</p>
-            <Link href={topic.href} className="mt-4 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand hover:underline">{topic.label}<ArrowRight aria-hidden className="size-3.5" /></Link>
+            <Link href={topic.href} className="mt-4 inline-flex min-h-11 items-center gap-1 rounded px-1 text-sm font-medium text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{topic.label}<ArrowRight aria-hidden className="size-3.5" /></Link>
           </Card>
         ))}
       </div>
@@ -53,13 +53,13 @@ export default function Yardim() {
       <Card className="flex flex-wrap items-center gap-4 p-5">
         <span className="grid size-10 place-items-center rounded-xl bg-surface-3 text-muted"><BookOpen aria-hidden className="size-5" /></span>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">Tüm kullanım kılavuzu</h2><p className="mt-1 text-sm text-muted">Kurulum, kasa, çevrimdışı, restoran, market, donanım, mali belgeler, raporlar, abonelik ve güvenlik başlıklarının tamamı adım adım.</p></div>
-        <Link href="/yardim" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand hover:underline">Kılavuzu aç<ExternalLink aria-hidden className="size-3.5" /></Link>
+        <Link href="/yardim" className="inline-flex min-h-11 items-center gap-1 rounded px-1 text-sm font-medium text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kılavuzu aç<ExternalLink aria-hidden className="size-3.5" /></Link>
       </Card>
 
       <Card className="mt-4 flex flex-wrap items-center gap-4 p-5">
         <span className="grid size-10 place-items-center rounded-xl bg-surface-3 text-muted"><Printer aria-hidden className="size-5" /></span>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">Donanım notu</h2><p className="mt-1 text-sm text-muted">Termal yazıcı, barkod okuyucu, çekmece ve terazi gerçek cihazla pilot öncesi denenmelidir.</p></div>
-        <Link href="/yonetim/donanim" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-brand hover:underline">Donanım sayfası<ExternalLink aria-hidden className="size-3.5" /></Link>
+        <Link href="/yonetim/donanim" className="inline-flex min-h-11 items-center gap-1 rounded px-1 text-sm font-medium text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Donanım sayfası<ExternalLink aria-hidden className="size-3.5" /></Link>
       </Card>
 
       <div className="mt-4 flex items-center gap-2 text-xs text-muted"><WifiOff aria-hidden className="size-4" />Çevrimdışı satış ve eşitleme ayrıntıları için pilot provasını gerçek cihazda uygulayın.</div>

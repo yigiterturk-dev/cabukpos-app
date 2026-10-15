@@ -9,7 +9,7 @@ import { Select } from "@/components/Select";
 import { Button, Field, Input } from "@/components/ui";
 
 function CodeBox({ s }: { s: AgentState }) {
-  if (!s.code) return s.error && !s.field ? <p className="mt-2 text-sm text-bad">{s.error}</p> : null;
+  if (!s.code) return s.error && !s.field ? <p className="mt-2 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null;
   return (
     <div className="mt-4 rounded-xl border border-brand bg-brand-soft p-4">
       <div className="text-sm">{s.agentName} için eşleme kodu</div>
@@ -27,7 +27,7 @@ export function AgentCreateForm() {
   return (
     <form onSubmit={onSubmit}>
       <div className="flex flex-wrap items-start gap-3">
-        <div><Field label="Bilgisayar adı"><Input name="name" placeholder="Kasa PC" required /></Field>{state.field === "name" && <p className="mt-1 text-sm text-bad">{state.error}</p>}</div>
+        <div><Field label="Bilgisayar adı"><Input name="name" placeholder="Kasa PC" required /></Field>{state.field === "name" && <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}</div>
         <Button type="submit" disabled={pending} className="mt-6">{pending ? "Ekleniyor…" : "Ajan ekle"}</Button>
       </div>
       <CodeBox s={state} />
@@ -39,7 +39,7 @@ export function AgentPairButton({ action }: { action: () => Promise<AgentState> 
   const [state, dispatch, pending] = useActionState(action, {} as AgentState);
   return (
     <div>
-      <form action={dispatch}><button disabled={pending} className="font-medium text-brand hover:underline">Yeni eşleme kodu</button></form>
+      <form action={dispatch}><button disabled={pending} className="inline-flex min-h-10 items-center rounded-lg px-2.5 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yeni eşleme kodu</button></form>
       <CodeBox s={state} />
     </div>
   );
@@ -63,7 +63,7 @@ function LogoPreview({ logo }: { logo: LogoConfig }) {
 const Seg = <T extends string | number>({ value, options, onChange, label }: { value: T; options: readonly { value: T; label: string }[]; onChange: (v: T) => void; label: string }) => (
   <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
     {options.map((o) => (
-      <button key={String(o.value)} type="button" aria-pressed={value === o.value} onClick={() => onChange(o.value)} className={`rounded-lg border px-3 py-2 text-sm ${value === o.value ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{o.label}</button>
+      <button key={String(o.value)} type="button" aria-pressed={value === o.value} onClick={() => onChange(o.value)} className={`inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${value === o.value ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`}>{o.label}</button>
     ))}
   </div>
 );
@@ -93,7 +93,7 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Ad"><Input value={p.name} onChange={(e) => setP(i, { name: e.target.value })} aria-label="Yazıcı adı" /></Field>
               <div><div className="mb-1.5 text-sm font-medium">Görev</div><Seg label="Görev" value={p.role} options={PRINTER_ROLES} onChange={(v) => setP(i, { role: v })} /></div>
-              <div><div className="mb-1.5 text-sm font-medium">Bağlantı</div><Select options={TRANSPORTS.map((t) => ({ value: t.value, label: t.label }))} defaultValue={p.transport} onChange={(v) => setP(i, { transport: v as PrinterConfig["transport"] })} /></div>
+              <div><div className="mb-1.5 text-sm font-medium">Bağlantı</div><Select ariaLabel="Bağlantı" options={TRANSPORTS.map((t) => ({ value: t.value, label: t.label }))} defaultValue={p.transport} onChange={(v) => setP(i, { transport: v as PrinterConfig["transport"] })} /></div>
               <Field label="Adres" hint={TRANSPORTS.find((t) => t.value === p.transport)?.hint}><Input value={p.address} onChange={(e) => setP(i, { address: e.target.value })} aria-label="Yazıcı adresi" required /></Field>
               <div><div className="mb-1.5 text-sm font-medium">Kâğıt</div><Seg label="Kâğıt" value={p.width} options={[{ value: 80, label: "80 mm" }, { value: 58, label: "58 mm" }] as const} onChange={(v) => setP(i, { width: v })} /></div>
               <div><div className="mb-1.5 text-sm font-medium">Türkçe karakter</div><Seg label="Kod sayfası" value={p.codepage} options={[{ value: "pc857", label: "PC857" }, { value: "ascii", label: "Türkçesiz (ç→c)" }] as const} onChange={(v) => setP(i, { codepage: v })} /></div>
@@ -101,11 +101,11 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
               <label className="inline-flex items-center gap-2"><input type="checkbox" checked={p.drawer} onChange={(e) => setP(i, { drawer: e.target.checked })} /> Para çekmecesi bu yazıcıya bağlı</label>
-              <button type="button" className="ml-auto text-bad underline" onClick={() => setC({ ...c, printers: c.printers.filter((_, j) => j !== i) })}>Yazıcıyı kaldır</button>
+              <button type="button" className="ml-auto inline-flex min-h-10 items-center rounded-lg px-2.5 text-bad underline outline-none hover:bg-bad-soft focus-visible:ring-4 focus-visible:ring-bad/20" onClick={() => setC({ ...c, printers: c.printers.filter((_, j) => j !== i) })}>Yazıcıyı kaldır</button>
             </div>
           </div>
         ))}
-        {c.printers.length < 8 && <button type="button" className="text-sm text-brand underline" onClick={() => setC({ ...c, printers: [...c.printers, newPrinter(nextN())] })}>+ Yazıcı ekle</button>}
+        {c.printers.length < 8 && <button type="button" className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60" onClick={() => setC({ ...c, printers: [...c.printers, newPrinter(nextN())] })}>+ Yazıcı ekle</button>}
       </div>
 
       <div className="rounded-xl border border-line p-4" data-testid="agent-logo">
@@ -117,10 +117,10 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
             {c.logo ? "Değiştir…" : "PNG yükle"}
             <input type="file" accept="image/png" className="sr-only" onChange={(e) => onLogo(e.target.files?.[0])} />
           </label>
-          {c.logo && <button type="button" className="text-bad underline" onClick={() => setC({ ...c, logo: null })}>Logoyu kaldır</button>}
+          {c.logo && <button type="button" className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-bad underline outline-none hover:bg-bad-soft focus-visible:ring-4 focus-visible:ring-bad/20" onClick={() => setC({ ...c, logo: null })}>Logoyu kaldır</button>}
           {c.logo && <span className="text-sm text-muted">{c.logo.w}×{c.logo.h} nokta</span>}
         </div>
-        {logoErr && <p className="mt-2 text-sm text-bad">{logoErr}</p>}
+        {logoErr && <p className="mt-2 break-words text-sm text-bad" role="alert" aria-live="assertive">{logoErr}</p>}
       </div>
 
       <div className="rounded-xl border border-line p-4">
@@ -130,7 +130,7 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
         {sc.kind === "seri" && (
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <Field label="Port" hint="COM3 ya da /dev/ttyUSB0"><Input value={sc.port} onChange={(e) => setC({ ...c, scale: { ...sc, port: e.target.value } })} aria-label="Terazi portu" /></Field>
-            <div><div className="mb-1.5 text-sm font-medium">Hız</div><Select options={[2400, 4800, 9600, 19200].map((b) => ({ value: String(b), label: `${b} baud` }))} defaultValue={String(sc.baud)} onChange={(v) => setC({ ...c, scale: { ...sc, baud: Number(v) } })} /></div>
+            <div><div className="mb-1.5 text-sm font-medium">Hız</div><Select ariaLabel="Baud hızı" options={[2400, 4800, 9600, 19200].map((b) => ({ value: String(b), label: `${b} baud` }))} defaultValue={String(sc.baud)} onChange={(v) => setC({ ...c, scale: { ...sc, baud: Number(v) } })} /></div>
           </div>
         )}
         {sc.kind === "tcp" && (
@@ -145,10 +145,10 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
       </div>
 
       <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={c.autoPrint} onChange={(e) => setC({ ...c, autoPrint: e.target.checked })} /> Satıştan sonra fişi kendiliğinden yazdır</label>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Donanımı kaydet"}</Button>
-        {state.savedAt && <span className="text-sm text-ok">Kaydedildi; ajan bir dakika içinde alır.</span>}
-        {state.error && <span className="text-sm text-bad">{state.error}</span>}
+        {state.savedAt && <span className="min-w-0 max-w-full text-sm text-ok">Kaydedildi; ajan bir dakika içinde alır.</span>}
+        {state.error && <span className="min-w-0 max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span>}
       </div>
     </form>
   );

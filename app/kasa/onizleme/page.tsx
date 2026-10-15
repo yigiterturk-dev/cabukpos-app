@@ -16,7 +16,7 @@ import { RefundScreen } from "@/components/kasa/RefundScreen";
 import { NewDelivery } from "@/components/kasa/NewDelivery";
 import { CourierScreen } from "@/components/kasa/CourierScreen";
 import { PinPad } from "@/components/kasa/PinPad";
-import { ActionTile, Kbd, StatCard } from "@/components/ui";
+import { ActionTile, Button, Kbd, StatCard } from "@/components/ui";
 
 const cats = [
   { id: "c1", name: "Ana yemek" },
@@ -24,6 +24,8 @@ const cats = [
   { id: "c3", name: "İçecek" },
   { id: "c4", name: "Başlangıç" },
 ];
+// Önizleme SSR ve istemci arasında aynı zamanı kullanmalı; aksi halde Next hydration uyarısı verir.
+const PREVIEW_NOW = Date.parse("2026-10-13T12:00:00+03:00");
 const mkP = (id: string, name: string, price: number, categoryId: string, kind: KasaProduct["kind"] = "adet", quick = true): KasaProduct =>
   ({ id, name, price, vatRate: 10, categoryId, barcodes: [`8690000${id}`], kind, plu: null, quick });
 
@@ -60,11 +62,11 @@ const meta: Meta = {
     deliveryZones: [{ id: "z1", name: "Merkez", fee: 1500, minOrder: 10000, perKm: null, startMin: null, endMin: null }],
     priceLists: [],
   },
-  shift: { id: "sh1", openedBy: "s2", openedAt: new Date(Date.now() - 3 * 3600_000).toISOString(), openingCash: 50000 },
+  shift: { id: "sh1", openedBy: "s2", openedAt: new Date(PREVIEW_NOW - 3 * 3600_000).toISOString(), openingCash: 50000 },
   lastClosed: null, nextSeq: 2, pinFails: 0, pinLockUntil: 0, agent: null, lan: null, drops: [],
 };
 
-const ISO = new Date(Date.now() - 32 * 60_000).toISOString();
+const ISO = new Date(PREVIEW_NOW - 32 * 60_000).toISOString();
 const DELIVERY: Delivery = { courierId: null, acceptedAt: null, prepMin: null, rejected: null, cancelled: null, outAt: null, deliveredAt: null, method: null, handedOver: false };
 const line = (lineId: string, productId: string, name: string, unitPrice: number, qtyMilli: number): TabLine =>
   ({ type: "add", lineId, productId, name, unitPrice, vatRate: 10, qtyMilli, options: [], note: null, stationId: "st1", addedAt: ISO, staffId: "s1", sent: true, voided: false, comped: false, paidMilli: 0, paidDiscount: 0 });
@@ -86,7 +88,7 @@ const paketTab: TabState = {
 };
 const platformTab: TabState = {
   ...paketTab, id: "tab3", kind: "platform", delivery: { ...DELIVERY },
-  order: { customerId: null, name: "Mert K.", phone: "05329876543", address: "Nispetiye Cad. 5", directions: null, zoneId: "z1", note: null, payIntent: "online", promisedAt: null, source: { platform: "yemeksepeti", externalId: "#4821", deadline: new Date(Date.now() + 3 * 60_000).toISOString() } },
+  order: { customerId: null, name: "Mert K.", phone: "05329876543", address: "Nispetiye Cad. 5", directions: null, zoneId: "z1", note: null, payIntent: "online", promisedAt: null, source: { platform: "yemeksepeti", externalId: "#4821", deadline: new Date(PREVIEW_NOW + 3 * 60_000).toISOString() } },
 };
 
 const tablaTabs = (): Map<string, TabState> => new Map([masaTab, masaTab2, paketTab, platformTab].map((t) => [t.id, t]));
@@ -98,7 +100,7 @@ const noop = () => {};
 export default function OnizlemePage() {
   const { TL } = kasaFmt(null);
   const [pay, setPay] = useState(false);
-  const [now] = useState(() => Date.now());
+  const [now] = useState(PREVIEW_NOW);
   const [tabs] = useState(tablaTabs);
 
   if (process.env.NODE_ENV === "production") {
@@ -108,7 +110,7 @@ export default function OnizlemePage() {
   const frame = (label: string, node: React.ReactNode, h = 560) => (
     <section className="space-y-2">
       <h2 className="font-display text-lg font-bold tracking-tight">{label}</h2>
-      <div className="overflow-hidden rounded-2xl border border-line bg-canvas" style={{ height: h }}>{node}</div>
+      <div className="min-w-0 overflow-y-auto overflow-x-hidden rounded-2xl border border-line bg-canvas" style={{ height: `min(${h}px, calc(100vh - 8rem))` }}>{node}</div>
     </section>
   );
 
@@ -136,7 +138,7 @@ export default function OnizlemePage() {
 
       {frame("Satış ekranı — market", <SaleScreen categories={cats} products={marketProducts} market onPay={okSale} onReceipt={noop} prints={{} as Record<string, PrintView>} />, 640)}
       {frame("Satış ekranı — restoran", <SaleScreen categories={cats} products={restProducts} market={false} onPay={okSale} onReceipt={noop} prints={{} as Record<string, PrintView>} />, 640)}
-      {frame("Salon (masa planı)", <SalonScreen areas={areas} tables={tables} tabs={tabs} now={now} onOpen={noop} />, 480)}
+      {frame("Salon (masa planı)", <SalonScreen areas={areas} tables={tables} tabs={tabs} now={now} onOpen={noop} callsEnabled={false} />, 480)}
       {frame("Adisyon (masa detayı)", <TabScreen meta={meta} onMeta={noop} table={tables[0]} title="M1" tabs={[masaTab]} allTabs={tabs} waiter={{ id: "s1", name: "Ayşe Garson", role: "garson" }} canPay add={noAdd} now={now} onBill={noop} onBack={noop} />, 640)}
       {frame("Mutfak ekranı", <KitchenScreen meta={meta} tabs={tabs} now={now} add={noAdd} />, 480)}
       {frame("Paket panosu", <DeliveryBoard meta={meta} onMeta={noop} tabs={tabs} now={now} add={noAdd} waiter={{ id: "s2", name: "Mehmet Kasiyer", role: "kasiyer" }} onNew={noop} onOpen={noop} onBill={noop} onHandover={async () => {}} />, 560)}
@@ -147,9 +149,7 @@ export default function OnizlemePage() {
 
       <section className="space-y-2">
         <h2 className="font-display text-lg font-bold tracking-tight">Ödeme diyaloğu</h2>
-        <button type="button" onClick={() => setPay(true)} className="press inline-flex h-12 items-center rounded-xl bg-gradient-to-b from-brand to-brand-hover px-5 font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 hover:shadow-glow">
-          Ödeme penceresini aç ({TL(38500)})
-        </button>
+        <Button type="button" size="lg" onClick={() => setPay(true)}>Ödeme penceresini aç ({TL(38500)})</Button>
       </section>
 
       {pay && <PayDialog total={38500} onPay={okPay} onClose={() => setPay(false)} onDone={() => setPay(false)} />}

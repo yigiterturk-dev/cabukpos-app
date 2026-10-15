@@ -14,9 +14,9 @@ export function ProductImportForm() {
       <div className="flex flex-wrap items-center gap-3">
         <input name="file" type="file" accept=".csv,text/csv" required className="block min-h-11 max-w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm" />
         <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Aktarılıyor…" : "Ürünleri aktar"}</Button>
-        <a href="/indir/cabukpos-urun-sablonu.csv" download className="text-sm font-medium text-brand underline">Örnek şablonu indir</a>
+        <a href="/indir/cabukpos-urun-sablonu.csv" download className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm font-medium text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">Örnek şablonu indir</a>
       </div>
-      {state.error && <p className="text-sm text-bad" role="alert">{state.error}</p>}
+      {state.error && <p className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
       {state.imported != null && <p className="text-sm text-ok" role="status">{state.imported} ürün aktarıldı.</p>}
     </form>
   );

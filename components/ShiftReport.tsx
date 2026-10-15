@@ -21,9 +21,9 @@ export const signedTL = (k: number, c?: Currency) => `${k < 0 ? "-" : k > 0 ? "+
 function Row({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: "ok" | "bad" }) {
   const c = tone === "bad" ? "text-bad" : tone === "ok" ? "text-ok" : "";
   return (
-    <div className={`flex justify-between gap-4 py-1.5 ${strong ? "font-semibold" : ""}`}>
-      <span>{label}</span>
-      <span className={`tabular-nums ${c}`}>{value}</span>
+    <div className={`flex items-start justify-between gap-4 py-1.5 ${strong ? "font-semibold" : ""}`}>
+      <span className="min-w-0 break-words">{label}</span>
+      <span className={`shrink-0 whitespace-nowrap text-right tabular-nums ${c}`}>{value}</span>
     </div>
   );
 }

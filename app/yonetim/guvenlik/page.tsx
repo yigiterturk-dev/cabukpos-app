@@ -40,9 +40,9 @@ export default async function GuvenlikPage() {
         {oturumlar.length > 0 && (
           <ul className="mb-5 divide-y divide-line rounded-[10px] border border-line">
             {oturumlar.map((o) => (
-              <li key={o.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                <div>
-                  <div className="font-medium">{uaLabel(o.ua)} {o.current && <span className="ml-1 rounded-full bg-ok-soft px-2 py-0.5 text-xs font-semibold text-ok">bu cihaz</span>}</div>
+              <li key={o.id} className="flex min-w-0 items-center justify-between gap-3 px-4 py-3 text-sm">
+                <div className="min-w-0">
+                  <div className="truncate font-medium" title={uaLabel(o.ua)}>{uaLabel(o.ua)} {o.current && <span className="ml-1 rounded-full bg-ok-soft px-2 py-0.5 text-xs font-semibold text-ok">bu cihaz</span>}</div>
                   <div className="text-xs text-muted">{[o.ip, sonGorulme(o.lastSeenAt)].filter(Boolean).join(" · ")}</div>
                 </div>
               </li>

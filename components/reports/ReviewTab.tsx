@@ -2,9 +2,9 @@
 import Link from "next/link";
 import { and, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
-import { formatTL } from "@/lib/core/money";
+import { moneyFormatter } from "@/lib/admin/currency";
 import { rangeBounds, type Range } from "@/lib/core/report";
-import { Card, Empty } from "@/components/ui";
+import { Card, Empty, TABLE_HEAD } from "@/components/ui";
 import { BuyerInvoices } from "./BuyerInvoices";
 
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
@@ -16,6 +16,7 @@ const TAB_TYPE: Record<string, string> = {
 type Row = { key: string; at: Date; kind: string; ref: string; amount: number | null; staff: string | null; review: string; shiftId: string | null };
 
 export async function ReviewTab({ tenantId, range }: { tenantId: string; range: Range }) {
+  const money = await moneyFormatter(tenantId);
   const { from, to } = rangeBounds(range);
   const S = schema.sales, E = schema.tabEvents, st = schema.staff;
   const rows: Row[] = await withTenant(tenantId, async (tx) => {
@@ -33,20 +34,20 @@ export async function ReviewTab({ tenantId, range }: { tenantId: string; range: 
       ...events.map((e) => ({ key: e.id, at: e.at, kind: `Adisyon · ${TAB_TYPE[e.type] ?? e.type}`, ref: "—", amount: null, staff: e.staff, review: e.review!, shiftId: null })),
     ].sort((a, b) => b.at.getTime() - a.at.getTime());
   });
-  const pending = <BuyerInvoices tenantId={tenantId} />;
+  const pending = <BuyerInvoices tenantId={tenantId} money={money} />;
   if (rows.length === 0) return <>{pending}<Empty>Bu dönemde incelenecek kayıt yok.</Empty></>;
   return (
     <>
     {pending}
     <Card className="overflow-x-auto" data-testid="review-list">
-      <table className="w-full text-sm">
-        <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr>{["Tarih", "Tür", "Fiş", "Tutar", "Personel", "Neden"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
+      <table className="w-full min-w-[760px] text-sm">
+        <thead className={TABLE_HEAD}><tr>{["Tarih", "Tür", "Fiş", "Tutar", "Personel", "Neden"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
         <tbody className="divide-y divide-line">{rows.map((r) => (
           <tr key={r.key}>
             <td className="whitespace-nowrap px-4 py-2.5">{dt(r.at)}</td>
             <td className="px-4 py-2.5">{r.kind}</td>
-            <td className="px-4 py-2.5">{r.shiftId ? <Link href={`/yonetim/raporlar/${r.shiftId}`} className="underline">{r.ref}</Link> : r.ref}</td>
-            <td className="px-4 py-2.5 tabular-nums">{r.amount === null ? "—" : formatTL(r.amount)}</td>
+            <td className="px-4 py-2.5">{r.shiftId ? <Link href={`/yonetim/raporlar/${r.shiftId}`} className="rounded px-1 underline outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{r.ref}</Link> : r.ref}</td>
+            <td className="px-4 py-2.5 tabular-nums">{r.amount === null ? "—" : money(r.amount)}</td>
             <td className="px-4 py-2.5">{r.staff ?? "—"}</td>
             <td className="px-4 py-2.5 text-warn">{r.review}</td>
           </tr>

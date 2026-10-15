@@ -18,10 +18,10 @@ export function ReportMailCard({ initial }: { initial: { daily: boolean; weekly:
           <label className="flex items-center gap-2"><input type="checkbox" name="weekly" defaultChecked={initial.weekly} className="size-4 accent-[var(--color-brand)]" />Haftalık (pazartesi, geçen hafta)</label>
           <label className="flex items-center gap-2"><input type="checkbox" name="monthly" defaultChecked={initial.monthly ?? false} className="size-4 accent-[var(--color-brand)]" />Aylık konsolide (ayın 1&rsquo;i, geçen ay)</label>
           <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
-          {state.savedAt ? <span className="text-sm text-ok" role="status">Kaydedildi.</span> : state.error ? <span className="text-sm text-bad">{state.error}</span> : null}
+          {state.savedAt ? <span className="shrink-0 text-sm text-ok" role="status">Kaydedildi.</span> : state.error ? <span className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span> : null}
         </form>
-        <button type="button" disabled={busy} onClick={() => start(async () => setMsg(await sendTestReport()))} className="text-sm font-medium text-brand hover:underline disabled:opacity-60">Şimdi dene</button>
-        {msg && <span role="status" className={`text-sm ${msg.error ? "text-bad" : "text-ok"}`}>{msg.error ?? msg.info}</span>}
+        <button type="button" disabled={busy} onClick={() => start(async () => setMsg(await sendTestReport()))} className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-60">{busy ? "Gönderiliyor…" : "Şimdi dene"}</button>
+        {msg && <span role="status" className={`max-w-full break-words text-sm ${msg.error ? "text-bad" : "text-ok"}`}>{msg.error ?? msg.info}</span>}
       </div>
       <p className="mt-1 text-xs text-muted">Doğrulanmış sahip ve müdür e-postalarına gider. PDF için raporu yazdırın (tarayıcıdan &ldquo;PDF olarak kaydet&rdquo;).</p>
     </Card>
@@ -29,5 +29,5 @@ export function ReportMailCard({ initial }: { initial: { daily: boolean; weekly:
 }
 
 export function PrintButton({ label = "Yazdır / PDF" }: { label?: string }) {
-  return <button type="button" onClick={() => window.print()} className="rounded-lg border border-line px-3 py-2 outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">{label}</button>;
+  return <button type="button" onClick={() => window.print()} className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 py-2 outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">{label}</button>;
 }

@@ -6,8 +6,8 @@ import { useFormAction } from "@/components/useFormAction";
 import { Select, type Option } from "@/components/Select";
 import { Button, Field, Input } from "@/components/ui";
 
-const Err = ({ s, f }: { s: DeliveryState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
-const Saved = ({ s }: { s: DeliveryState }) => (s.savedAt ? <span className="text-sm text-ok">{s.info ?? "Kaydedildi."}</span> : null);
+const Err = ({ s, f }: { s: DeliveryState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
+const Saved = ({ s }: { s: DeliveryState }) => (s.savedAt ? <span className="shrink-0 text-sm text-ok" role="status">{s.info ?? "Kaydedildi."}</span> : null);
 const tl = (k: number | undefined) => (k ? formatTL(k).replace(" ₺", "") : "");
 const hm = (m: number | null | undefined) => (m == null ? "" : `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
 
@@ -46,7 +46,7 @@ export function ConnectionForm({ platforms }: { platforms: Option[] }) {
   const { state, pending, onSubmit } = useFormAction(createConnection, {} as DeliveryState);
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
-      <div className="w-64"><div className="mb-1.5 text-sm font-medium">Platform</div><Select name="platform" options={platforms} defaultValue={platforms[0]?.value} /><Err s={state} f="platform" /></div>
+      <div className="w-64"><div className="mb-1.5 text-sm font-medium">Platform</div><Select ariaLabel="Platform" name="platform" options={platforms} defaultValue={platforms[0]?.value} /><Err s={state} f="platform" /></div>
       <Button type="submit" disabled={pending}>Bağla</Button>
       <Saved s={state} />
     </form>
@@ -69,7 +69,7 @@ export function CodeForm({ connectionId, products }: { connectionId: string; pro
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
       <div key={state.savedAt ?? 0} className="flex flex-wrap items-end gap-3">
         <div><Field label="Platform ürün kodu"><Input name="code" placeholder="LAH-01" className="w-40" required /></Field><Err s={state} f="code" /></div>
-        <div className="w-64"><div className="mb-1.5 text-sm font-medium">Ürün</div><Select name="productId" options={products} placeholder="Ürün seçin" /><Err s={state} f="productId" /></div>
+        <div className="w-64"><div className="mb-1.5 text-sm font-medium">Ürün</div><Select ariaLabel="Ürün" name="productId" options={products} placeholder="Ürün seçin" /><Err s={state} f="productId" /></div>
       </div>
       <Button type="submit" variant="secondary" disabled={pending}>Eşle</Button>
       <Saved s={state} /><Err s={state} />
@@ -80,7 +80,7 @@ export function CodeForm({ connectionId, products }: { connectionId: string; pro
 export function TestOrderButton({ connectionId }: { connectionId: string }) {
   const [state, dispatch, pending] = useActionState(sendTestOrder.bind(null, connectionId), {} as DeliveryState);
   return (
-    <form action={dispatch} className="flex items-center gap-3">
+    <form action={dispatch} className="flex flex-wrap items-center gap-3">
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Gönderiliyor…" : "Deneme siparişi gönder"}</Button>
       <Saved s={state} /><Err s={state} />
     </form>
@@ -90,7 +90,7 @@ export function TestOrderButton({ connectionId }: { connectionId: string }) {
 export function PushCatalogButton({ connectionId }: { connectionId: string }) {
   const [state, dispatch, pending] = useActionState(pushCatalog.bind(null, connectionId), {} as DeliveryState);
   return (
-    <form action={dispatch} className="flex items-center gap-3" data-testid="push-catalog">
+    <form action={dispatch} className="flex flex-wrap items-center gap-3" data-testid="push-catalog">
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Gönderiliyor…" : "Menü/fiyat/stok gönder"}</Button>
       <Saved s={state} /><Err s={state} />
     </form>

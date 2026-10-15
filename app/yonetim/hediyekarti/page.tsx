@@ -4,15 +4,17 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { createGiftCard, giftCardCancel, giftCardLoad } from "@/lib/admin/loyalty-actions";
 import { Badge, buttonClass, Card, Field, Input, PageHeader } from "@/components/ui";
+import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 
 export const dynamic = "force-dynamic";
 
 const statusTone = { aktif: "ok", bitti: "neutral", iptal: "bad" } as const;
 const statusLabel = { aktif: "aktif", bitti: "bitti", iptal: "iptal" } as const;
-const tl = (kurus: number) => (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 });
-
 export default async function HediyeKarti({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; id?: string }> }) {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
+  const currency = await tenantCurrency(a.tenantId);
+  const unit = currency === "TRY" ? "₺" : currency;
   const { ok, hata, id } = await searchParams;
   const G = schema.giftCards;
   const { rows, events } = await withTenant(a.tenantId, async (tx) => {
@@ -30,7 +32,7 @@ export default async function HediyeKarti({ searchParams }: { searchParams: Prom
       <section aria-label="Yeni hediye kartı" className="mb-8">
         <Card className="p-5">
           <form action={createGiftCard} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
-            <Field label="Yüklenecek tutar (₺)"><Input name="initial" inputMode="decimal" required /></Field>
+            <Field label={`Yüklenecek tutar (${unit})`}><Input name="initial" inputMode="decimal" required /></Field>
             <Field label="Kod" hint="Boş bırakılırsa HK-XXXXXX üretilir"><Input name="code" className="uppercase" /></Field>
             <Field label="Son kullanma" hint="Boş = süresiz"><Input name="expiresAt" type="date" /></Field>
             <Field label="Not"><Input name="note" /></Field>
@@ -44,25 +46,25 @@ export default async function HediyeKarti({ searchParams }: { searchParams: Prom
         <Card className="divide-y divide-line">
           {rows.map((g) => (
             <div key={g.id} className="p-4">
-              <div className="flex flex-wrap items-baseline gap-3">
-                <span className="font-mono font-semibold">{g.code}</span>
+              <div className="flex min-w-0 flex-wrap items-baseline gap-3">
+                <span className="shrink-0 font-mono font-semibold">{g.code}</span>
                 <Badge tone={statusTone[g.status]}>{statusLabel[g.status]}</Badge>
-                <span className="tabular font-semibold">{tl(g.balanceKurus)} ₺</span>
-                <span className="tabular text-sm text-muted">yüklenen {tl(g.initialKurus)} ₺</span>
-                {g.expiresAt && <span className="text-sm text-muted">son {g.expiresAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>}
-                {g.note && <span className="text-sm text-muted">{g.note}</span>}
-                {g.status === "aktif" && <Link href={id === g.id ? "/yonetim/hediyekarti" : `/yonetim/hediyekarti?id=${g.id}`} className="ml-auto text-sm text-brand underline">{id === g.id ? "Kapat" : "Yükle / İptal"}</Link>}
+                <span className="shrink-0 tabular font-semibold">{money(g.balanceKurus)}</span>
+                <span className="shrink-0 tabular text-sm text-muted">yüklenen {money(g.initialKurus)}</span>
+                {g.expiresAt && <span className="shrink-0 text-sm text-muted">son {g.expiresAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>}
+                {g.note && <span className="min-w-0 flex-1 break-words text-sm text-muted">{g.note}</span>}
+                {g.status === "aktif" && <Link href={id === g.id ? "/yonetim/hediyekarti" : `/yonetim/hediyekarti?id=${g.id}`} className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">{id === g.id ? "Kapat" : "Yükle / İptal"}</Link>}
               </div>
               {id === g.id && g.status === "aktif" && (
                 <div className="mt-3">
                   <form action={giftCardLoad} className="mb-4 flex flex-wrap items-end gap-3">
                     <input type="hidden" name="cardId" value={g.id} />
-                    <Field label="Bakiye yükle (₺)"><Input name="amount" inputMode="decimal" className="w-32" required /></Field>
+                    <Field label={`Bakiye yükle (${unit})`}><Input name="amount" inputMode="decimal" className="w-32" required /></Field>
                     <button className={buttonClass("primary")}>Yükle</button>
                   </form>
                   <form action={giftCardCancel}>
                     <input type="hidden" name="cardId" value={g.id} />
-                    <button className="text-sm text-bad underline">Kartı iptal et</button>
+                    <button className={buttonClass("danger", "sm")}>Kartı iptal et</button>
                   </form>
                   {events.length > 0 && (
                     <ul className="mt-4 space-y-1 text-sm text-ink-2">
@@ -70,8 +72,8 @@ export default async function HediyeKarti({ searchParams }: { searchParams: Prom
                         <li key={i} className="flex flex-wrap gap-2">
                           <span className="tabular w-20 text-muted">{e.createdAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>
                           <span>{e.kind}</span>
-                          <span className="tabular">{e.amountKurus ? `${e.amountKurus > 0 ? "+" : ""}${tl(Math.abs(e.amountKurus))} ₺` : ""}</span>
-                          <span className="text-muted">{e.note ?? ""}</span>
+                          <span className="tabular">{e.amountKurus ? `${e.amountKurus > 0 ? "+" : ""}${money(Math.abs(e.amountKurus))}` : ""}</span>
+                          <span className="min-w-0 break-words text-muted">{e.note ?? ""}</span>
                         </li>
                       ))}
                     </ul>

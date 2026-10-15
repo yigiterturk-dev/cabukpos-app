@@ -2,5 +2,9 @@
 import { KasaApp } from "@/components/kasa/KasaApp";
 
 export default function Kasa() {
-  return <KasaApp />;
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <KasaApp />
+    </div>
+  );
 }

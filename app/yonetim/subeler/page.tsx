@@ -34,20 +34,20 @@ export default async function Subeler({ searchParams }: { searchParams: Promise<
         <Card className="mb-8 divide-y divide-line">
           {rows.map((s) => (
             <div key={s.id} className="p-4">
-              <div className="flex flex-wrap items-baseline gap-3">
-                <span className="font-medium">{s.name}</span>
+              <div className="flex min-w-0 flex-wrap items-baseline gap-3">
+                <span className="min-w-0 break-words font-medium">{s.name}</span>
                 {current?.id === s.id && <Badge tone="brand">seçili</Badge>}
-                <span className="tabular text-sm text-muted">{deviceCount.find((d) => d.storeId === s.id)?.n ?? 0} cihaz</span>
-                <span className="tabular text-sm text-muted">30 günde {salesCount.find((d) => d.storeId === s.id)?.n ?? 0} satış</span>
+                <span className="shrink-0 tabular text-sm text-muted">{deviceCount.find((d) => d.storeId === s.id)?.n ?? 0} cihaz</span>
+                <span className="shrink-0 tabular text-sm text-muted">30 günde {salesCount.find((d) => d.storeId === s.id)?.n ?? 0} satış</span>
                 {s.id !== current?.id && (
-                  <form action={switchStore} className="ml-auto">
+                  <form action={switchStore} className="ml-auto shrink-0">
                     <input type="hidden" name="storeId" value={s.id} />
-                    <button className="text-sm text-brand underline">Bu şubeye geç</button>
+                    <button className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">Bu şubeye geç</button>
                   </form>
                 )}
-                <Link href={id === s.id ? "/yonetim/subeler" : `/yonetim/subeler?id=${s.id}`} className={id === s.id ? "text-sm text-muted underline" : "ml-auto text-sm text-brand underline"}>{id === s.id ? "Kapat" : "Düzenle"}</Link>
+                <Link href={id === s.id ? "/yonetim/subeler" : `/yonetim/subeler?id=${s.id}`} className={`inline-flex min-h-10 shrink-0 items-center rounded-lg px-2.5 text-sm underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${id === s.id ? "text-muted" : "ml-auto text-brand"}`}>{id === s.id ? "Kapat" : "Düzenle"}</Link>
               </div>
-              {s.address && <div className="mt-0.5 text-sm text-muted">{s.address}</div>}
+              {s.address && <div className="mt-0.5 break-words text-sm text-muted">{s.address}</div>}
               {id === s.id && (
                 <form action={updateStore} className="mt-3 flex flex-wrap items-end gap-3">
                   <input type="hidden" name="storeId" value={s.id} />

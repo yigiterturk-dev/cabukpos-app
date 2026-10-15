@@ -22,8 +22,8 @@ export default async function TestOdeme({ params }: { params: Promise<{ id: stri
       <div className="my-4 text-3xl font-semibold tabular-nums">{formatTL(p.amount)}</div>
       <form action={fakeResult} className="flex gap-2">
         <input type="hidden" name="id" value={p.id} />
-        <button name="ok" value="0" className="flex-1 rounded-lg border border-line py-2.5">Başarısız</button>
-        <button name="ok" value="1" className="flex-[2] rounded-lg bg-brand py-2.5 font-medium text-white">Ödemeyi onayla</button>
+        <button name="ok" value="0" className="inline-flex min-h-12 flex-1 items-center justify-center rounded-lg border border-line px-3 outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Başarısız</button>
+        <button name="ok" value="1" className="inline-flex min-h-12 flex-[2] items-center justify-center rounded-lg bg-brand px-3 font-medium text-white outline-none hover:bg-brand-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60">Ödemeyi onayla</button>
       </form>
     </Card>
   );

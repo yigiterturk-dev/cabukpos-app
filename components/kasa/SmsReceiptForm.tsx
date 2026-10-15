@@ -28,15 +28,15 @@ export function SmsReceiptForm({ saleId }: { saleId: string }) {
       setState("idle");
     }
   };
-  if (state === "ok") return <div className="pl-7 text-ok">Fiş SMS ile gönderildi.</div>;
+  if (state === "ok") return <div className="pl-7 text-ok" role="status" aria-live="polite">Fiş SMS ile gönderildi.</div>;
   return (
     <form
       className="mt-1.5 flex flex-wrap items-end gap-2 pl-7"
       onSubmit={(e) => { e.preventDefault(); if (state !== "sending") void send(); }}
     >
       <div className="w-44"><Field label="Fişi SMS gönder" hint="05xx…"><Input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="05321234567" /></Field></div>
-      <Button type="submit" variant="secondary" size="sm" disabled={state === "sending" || phone.trim().length < 10}><MessageSquare aria-hidden className="size-4" />{state === "sending" ? "Gönderiliyor…" : "Gönder"}</Button>
-      {error && <span className="text-sm text-bad">{error}</span>}
+      <Button type="submit" variant="secondary" size="sm" className="min-h-12" disabled={state === "sending" || phone.trim().length < 10}><MessageSquare aria-hidden className="size-4" />{state === "sending" ? "Gönderiliyor…" : "Gönder"}</Button>
+      {error && <span className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</span>}
     </form>
   );
 }

@@ -2,9 +2,9 @@
 // Kasa uygulaması (çevrimdışı çalışır). Veri IndexedDB'de; PIN cihazda doğrulanır; satış/vardiya giden kutusuna
 // yazılır ve arka planda /api/sync ile eşitlenir. Kasiyer oturumu yalnız bellekte (sayfa yenilenince PIN yeniden).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { formatReceipt, parseTL, type Currency } from "@/lib/core/money";
-import { kasaFmt } from "./kasa-format";
+import { currencyUnit, kasaFmt } from "./kasa-format";
 import { PAY_METHODS } from "@/lib/core/payment";
 import { countCash, summarizeShift, BANKNOTES, COINS, type CashBreakdown } from "@/lib/core/shift";
 import { clearResetNotice, closeShiftLocal, kasaDb, loadMeta, openShiftLocal, recordAuditLocal, recordRegisterEventLocal, recordSaleLocal, safeDropLocal, setSaleFiscal, shiftSales, waitPushed, type SaleExtrasInput } from "@/lib/offline/db";
@@ -16,7 +16,7 @@ import { refundNote } from "@/lib/core/refundNote";
 import { pendingPrints } from "@/lib/core/kitchen";
 import { paidLinesOf, payableLines, type PayLine } from "@/lib/core/split";
 import { totals } from "@/lib/core/cart";
-import { openTabsByTable, type PayIntent, type TabState, tabLabel } from "@/lib/core/tab";
+import { deliveryStatus, openTabsByTable, type PayIntent, type TabState, tabLabel } from "@/lib/core/tab";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
 import type { Payment } from "@/lib/core/payment";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
@@ -46,12 +46,12 @@ type PrintState = PrintView & { jobId?: string | null };
 
 function Center({ title, sub, logo, card, children }: { title: string; sub?: string; logo?: boolean; card?: boolean; children?: React.ReactNode }) {
   return (
-    <main className="relative grid flex-1 place-items-center overflow-hidden px-4 py-8">
+    <main className="relative grid min-h-0 flex-1 place-items-center overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-8">
       <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 h-72 w-[42rem] -translate-x-1/2 bg-[radial-gradient(50%_60%_at_50%_0%,rgb(224_90_16/0.14),transparent)]" />
       <div className="relative w-full max-w-sm">
         {logo && <LogoMark size="lg" className="mx-auto mb-6" />}
-        <h1 className="text-center font-display text-[28px] font-bold tracking-tight">{title}</h1>
-        {sub && <p className="mt-1.5 text-center text-sm text-muted">{sub}</p>}
+        <h1 className="break-words text-center font-display text-[28px] font-bold tracking-tight">{title}</h1>
+        {sub && <p className="mt-1.5 break-words text-center text-sm text-muted">{sub}</p>}
         {children && (card ? <Card className="mt-6 p-6 shadow-raised">{children}</Card> : <div className="mt-8">{children}</div>)}
       </div>
     </main>
@@ -61,17 +61,17 @@ function Center({ title, sub, logo, card, children }: { title: string; sub?: str
 /** Kasa üst şeridi: marka + işletme/cihaz, bölüm segmenti, sağda durum ve eylemler. */
 function Bar({ tenant, device, nav, children }: { tenant: string; device: string; nav?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-black/40 bg-gradient-to-b from-espresso-2 to-espresso px-3 py-2 text-cream shadow-[inset_0_1px_0_rgb(255_255_255/0.07)] ring-1 ring-inset ring-white/5 print:hidden">
+    <header className="flex min-w-0 min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-black/40 bg-espresso px-3 py-1 text-cream shadow-[inset_0_1px_0_rgb(255_255_255/0.07)] ring-1 ring-inset ring-white/5 print:hidden">
       <div className="flex min-w-0 items-center gap-2.5">
         <LogoMark />
         <div className="min-w-0 leading-tight">
-          <div className="truncate font-display text-sm font-bold tracking-tight">{tenant}</div>
-          <div className="truncate text-xs text-cream-muted">{device}</div>
+          <div className="truncate font-display text-sm font-bold tracking-tight" title={tenant}>{tenant}</div>
+          <div className="truncate text-xs text-cream-muted" title={device}>{device}</div>
         </div>
       </div>
       {nav && <span aria-hidden className="hidden h-7 w-px bg-white/10 sm:block" />}
       {nav}
-      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{children}</div>
+      <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">{children}</div>
     </header>
   );
 }
@@ -85,9 +85,11 @@ const LinkNote = ({ link }: { link: string }) => (
 
 function SyncBadge({ s }: { s: SyncStatus }) {
   const online = s.online && !s.unpaired;
+  const delayed = online && s.pending > 0;
+  const label = !online ? "Çevrimdışı — satışlar bu cihazda kuyruğa alınır" : delayed ? `${s.pending} belge eşitlenmeyi bekliyor` : "Bulut eşitlemesi güncel";
   return (
-    <span data-testid="sync-status" className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${online ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
-      <span className={`size-2 rounded-full ${online ? "bg-ok" : "animate-pulse bg-warn"}`} />
+    <span data-testid="sync-status" role="status" aria-live="polite" aria-label={label} title={label} className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${!online || delayed ? "bg-warn-soft text-warn" : "bg-ok-soft text-ok"}`}>
+      <span className={`size-2 rounded-full ${!online || delayed ? "motion-safe:animate-pulse bg-warn" : "bg-ok"}`} />
       {online ? "Çevrimiçi" : "Çevrimdışı"}
       {s.pending > 0 && <span data-testid="sync-pending"> · {s.pending} bekleyen</span>}
     </span>
@@ -113,10 +115,11 @@ function useLocalNetworkDenied(check: boolean) {
 function AgentBadge({ s }: { s: AgentStatus | null }) {
   const lnaDenied = useLocalNetworkDenied(!!s && !s.reachable);
   if (!s) return null;
+  const missing = s.printers.length === 0;
   const bad = !s.reachable || s.printers.some((p) => p.ok === false) || s.failed.length > 0;
   const text = !s.reachable ? (lnaDenied ? "Chrome yerel ağ izni kapalı" : "Ajan kapalı") : s.printers.length === 0 ? "Yazıcı tanımlı değil" : bad ? `Yazıcı hatası${s.failed.length ? ` · ${s.failed.length} fiş bekliyor` : ""}` : "Yazıcı hazır";
   return (
-    <span data-testid="agent-status" title={lnaDenied && !s.reachable ? "Adres çubuğundaki kilit simgesi → Site ayarları → Yerel ağ erişimi: İzin ver, sonra sayfayı yenileyin." : s.printers.find((p) => p.error)?.error ?? undefined} className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${bad ? "bg-bad-soft text-bad" : "bg-ok-soft text-ok"}`}>
+    <span data-testid="agent-status" role="status" aria-label={text} title={lnaDenied && !s.reachable ? "Adres çubuğundaki kilit simgesi → Site ayarları → Yerel ağ erişimi: İzin ver, sonra sayfayı yenileyin." : s.printers.find((p) => p.error)?.error ?? text} className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${bad ? "bg-bad-soft text-bad" : missing ? "bg-warn-soft text-warn" : "bg-ok-soft text-ok"}`}>
       <Printer aria-hidden className="size-3.5" />
       {text}
     </span>
@@ -133,14 +136,20 @@ function MoneyForm({ label, hint, submit, onSubmit, defaultValue = "" }: { label
         e.preventDefault();
         const k = parseTL(String(new FormData(e.currentTarget).get("amount") ?? ""));
         if (k === null) return setError("Tutar geçersiz (ör. 500 ya da 500,00).");
+        setError(null);
         setBusy(true);
-        await onSubmit(k);
-        setBusy(false);
+        try {
+          await onSubmit(k);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "İşlem kaydedilemedi. Tekrar deneyin.");
+        } finally {
+          setBusy(false);
+        }
       }}
     >
       <Field label={label} hint={hint}><Input name="amount" inputMode="decimal" defaultValue={defaultValue} className="tabular h-14 text-right text-2xl font-semibold" required /></Field>
-      {error && <p className="text-sm text-bad">{error}</p>}
-      <Button type="submit" size="lg" disabled={busy} className="w-full">{submit}</Button>
+      {error && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+      <Button type="submit" size="lg" disabled={busy} className="w-full">{busy ? "Kaydediliyor…" : submit}</Button>
     </form>
   );
 }
@@ -148,16 +157,17 @@ function MoneyForm({ label, hint, submit, onSubmit, defaultValue = "" }: { label
 /** #48: banknot/bozuk kırılımıyla sayım; toplamı sayılan nakde aktarır. */
 function CashCount({ onApply, currency }: { onApply: (k: number) => void; currency?: Currency }) {
   const { TL } = kasaFmt({ device: { currency } });
+  const unit = currencyUnit(currency);
   const [b, setB] = useState<CashBreakdown>({});
   const total = countCash(b);
   return (
     <details className="rounded-[10px] border border-line p-3" data-testid="cash-count">
-      <summary className="cursor-pointer text-sm font-medium">Para kırılımıyla say</summary>
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <summary className="inline-flex min-h-12 cursor-pointer items-center rounded-md px-1 text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Para kırılımıyla say</summary>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {[...BANKNOTES, ...COINS].map((v) => (
           <label key={v} className="text-xs">
-            <span className="mb-1 block font-medium">{v >= 100 ? `${v / 100} TL` : `${v} kr`}</span>
-            <Input aria-label={`${v / 100} adet`} inputMode="numeric" className="tabular h-10 text-right" value={b[v] ? String(b[v]) : ""}
+            <span className="mb-1 block font-medium">{v >= 100 ? `${v / 100} ${unit}` : `${v} ${unit === "TL" ? "kr" : unit}`}</span>
+            <Input aria-label={`${v / 100} adet`} inputMode="numeric" className="tabular min-h-12 text-right" value={b[v] ? String(b[v]) : ""}
               onChange={(e) => setB({ ...b, [v]: Math.min(9999, Number(e.target.value.replace(/\D/g, "")) || 0) })} />
           </label>
         ))}
@@ -166,7 +176,7 @@ function CashCount({ onApply, currency }: { onApply: (k: number) => void; curren
         <span className="text-muted">Sayılan toplam</span>
         <span className="tabular font-semibold" data-testid="cash-count-total">{TL(total)}</span>
       </div>
-      <Button type="button" variant="secondary" className="mt-3 w-full" disabled={total <= 0} onClick={() => onApply(total)}>Sayılanı nakde aktar</Button>
+      <Button type="button" variant="secondary" className="mt-3 min-h-12 w-full" disabled={total <= 0} onClick={() => onApply(total)}>Sayılanı nakde aktar</Button>
     </details>
   );
 }
@@ -189,25 +199,33 @@ async function closeShiftGuarded(staffId: string, counted: number): Promise<Meta
 }
 
 /** #48: gün sonu kapanış formu — kırılımlı sayım + sayılan nakit. */
-function KapanisForm({ onClose, currency }: { onClose: (counted: number) => Promise<void>; currency?: Currency }) {
+function KapanisForm({ onClose, currency, expected }: { onClose: (counted: number) => Promise<void>; currency?: Currency; expected?: number | null }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [applied, setApplied] = useState<number | null>(null);
+  const [amount, setAmount] = useState("");
+  const counted = amount ? parseTL(amount) : null;
+  const diff = counted !== null && expected != null ? counted - expected : null;
   return (
     <form className="space-y-4" onSubmit={(e) => {
       e.preventDefault();
-      const k = parseTL(String(new FormData(e.currentTarget).get("amount") ?? ""));
+      const k = parseTL(amount);
       if (k === null) return setError("Tutar geçersiz (ör. 500 ya da 500,00).");
       setError(null);
       setBusy(true);
       void onClose(k).catch((e) => setError(e instanceof Error ? e.message : "Kapanış kaydedilemedi.")).finally(() => setBusy(false));
     }}>
-      <CashCount onApply={setApplied} currency={currency} />
-      <Field label="Sayılan nakit (TL)" hint="Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır.">
-        <Input key={applied ?? "bos"} name="amount" inputMode="decimal" defaultValue={applied ? String(applied / 100).replace(".", ",") : ""} className="tabular h-14 text-right text-2xl font-semibold" required />
+      <CashCount onApply={(k) => setAmount(String(k / 100).replace(".", ","))} currency={currency} />
+      <Field label={`Sayılan nakit (${currencyUnit(currency)})`} hint="Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır.">
+        <Input name="amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="tabular h-14 text-right text-2xl font-semibold" required />
       </Field>
-      {error && <p className="text-sm text-bad">{error}</p>}
-      <Button type="submit" size="lg" disabled={busy} className="w-full">Gün sonunu kapat</Button>
+      {expected != null && (
+        <div className="rounded-xl border border-line bg-surface-2/60 px-4 py-3 text-sm">
+          <div className="flex items-center justify-between gap-3"><span className="text-muted">Beklenen kasa</span><span className="tabular font-medium">{formatReceipt(expected, currency)}</span></div>
+          <div className="mt-1 flex items-center justify-between gap-3"><span className="text-muted">Kapanış farkı</span><span className={`tabular font-semibold ${diff === null ? "text-muted" : diff < 0 ? "text-bad" : diff > 0 ? "text-ok" : "text-ink"}`}>{diff === null ? "Sayılan tutarı girin" : `${diff < 0 ? "−" : diff > 0 ? "+" : ""}${formatReceipt(Math.abs(diff), currency)}`}</span></div>
+        </div>
+      )}
+      {error && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+      <Button type="submit" size="lg" disabled={busy} className="w-full">{busy ? "Kapanış kaydediliyor…" : "Gün sonunu kapat"}</Button>
     </form>
   );
 }
@@ -239,13 +257,20 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
   const d = meta.device!;
   const TL = (k: number) => formatReceipt(k, d.currency); // ekrandaki fiş = basılan fiş (#16)
   const [msg, setMsg] = useState<string | null>(null);
+  const [printing, setPrinting] = useState(false);
   const print = async () => {
+    if (printing) return;
     const job = printSale(meta, sale);
     if (!job) return window.print();
+    setPrinting(true);
     setMsg("Yazdırılıyor…");
-    const r = await job;
-    onPrinted(r);
-    setMsg(r.ok ? "Yazıcıya gönderildi." : `Yazdırılamadı (${r.error}). Tarayıcıdan yazdırabilirsiniz.`);
+    try {
+      const r = await job;
+      onPrinted(r);
+      setMsg(r.ok ? "Yazıcıya gönderildi." : `Yazdırılamadı (${r.error}). Tarayıcıdan yazdırabilirsiniz.`);
+    } finally {
+      setPrinting(false);
+    }
   };
   const at = new Date(sale.at);
   const weighed = (id: string) => meta.catalog.products.find((p) => p.id === id)?.kind === "tartili";
@@ -256,9 +281,9 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
     <>
       <style>{`@page { size: 80mm auto; margin: 0 } @media print { body { background: #fff } }`}</style>
       <div className="flex justify-center gap-2 border-b border-line bg-surface p-3 print:hidden">
-        <Button variant="ghost" onClick={onBack}><ArrowLeft aria-hidden className="size-4" />Kasaya dön</Button>
-        {meta.agent && <Button variant="ghost" onClick={() => window.print()}>Tarayıcıdan yazdır</Button>}
-        <Button onClick={() => void print()}><Printer aria-hidden className="size-4" />Yazdır</Button>
+        <Button variant="ghost" className="min-h-12" onClick={onBack}><ArrowLeft aria-hidden className="size-4" />Kasaya dön</Button>
+        {meta.agent && <Button variant="ghost" className="min-h-12" onClick={() => window.print()}>Tarayıcıdan yazdır</Button>}
+        <Button className="min-h-12" disabled={printing} onClick={() => void print()}><Printer aria-hidden className="size-4" />{printing ? "Yazdırılıyor…" : "Yazdır"}</Button>
       </div>
       {msg && <p className="p-2 text-center text-sm print:hidden" role="status">{msg}</p>}
       <article className="mx-auto my-6 w-[80mm] bg-surface p-[4mm] font-mono shadow-card print:shadow-none text-[12px] leading-snug print:my-0 print:p-[4mm]">
@@ -349,15 +374,17 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
   }, [shiftId, meta, closed]);
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-6">
-      <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
-        <Button variant="ghost" onClick={onBack}>← Kasa</Button>
-        {closed && data && meta.agent && (
-          <Button variant="secondary" onClick={() => {
-            const sh = meta.lastClosed!;
-            void printShift(meta, { deviceName: meta.device!.name, openedByName: data.openedByName, closedByName: data.closedByName, openingCash: sh.openingCash, openedAt: new Date(sh.openedAt), closedAt: new Date(sh.closedAt), countedCash: sh.countedCash, expectedCash: sh.expectedCash, summary: data.summary, fiscalErrors: data.fiscalErrors });
-          }}>Fiş yazıcısına</Button>
-        )}
-        {closed && <Button variant="secondary" onClick={() => window.print()}>Yazdır / PDF</Button>}
+      <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
+        <Button variant="ghost" className="min-h-12" onClick={onBack}>← Kasa</Button>
+        {closed && <div className="ml-auto flex max-w-full flex-wrap gap-2">
+          {data && meta.agent && (
+          <Button variant="secondary" className="min-h-12" onClick={() => {
+              const sh = meta.lastClosed!;
+              void printShift(meta, { deviceName: meta.device!.name, openedByName: data.openedByName, closedByName: data.closedByName, openingCash: sh.openingCash, openedAt: new Date(sh.openedAt), closedAt: new Date(sh.closedAt), countedCash: sh.countedCash, expectedCash: sh.expectedCash, summary: data.summary, fiscalErrors: data.fiscalErrors });
+            }}>Fiş yazıcısına</Button>
+          )}
+          <Button variant="secondary" className="min-h-12" onClick={() => window.print()}>Yazdır / PDF</Button>
+        </div>}
       </div>
       <h1 className="text-2xl font-semibold tracking-tight">{closed ? "Vardiya kapandı" : "Gün sonu"}</h1>
       <p className="mb-5 text-sm text-muted">{meta.device?.tenantName} · {meta.device?.name}</p>
@@ -374,7 +401,7 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
       )}
       {!closed && (
         <Card className="mt-6 p-5 print:hidden">
-          <KapanisForm onClose={onClose} currency={meta.device?.currency} />
+          <KapanisForm onClose={onClose} currency={meta.device?.currency} expected={data?.shift.expectedCash ?? data?.summary.expectedCash} />
         </Card>
       )}
     </main>
@@ -409,8 +436,6 @@ export function KasaApp() {
     setPrints((p) => ({ ...p, [saleId]: { state: r.ok ? "ok" : "fail", error: r.error, jobId: r.jobId } }));
     refreshAgent();
   }, [refreshAgent]);
-  const router = useRouter();
-
   useEffect(() => {
     registerKasaSw();
     registerOutboxPeriodicDrain();
@@ -429,11 +454,6 @@ export function KasaApp() {
     es.onmessage = () => s.kick();
     return () => { es.close(); offSyncNow(); s.stop(); };
   }, []);
-
-  // Eşleme yok/iptal ve gönderilecek belge kalmadıysa eşleme ekranına.
-  useEffect(() => {
-    if (status?.unpaired && status.pending === 0) router.replace("/kasa/eslestir");
-  }, [status, router]);
 
   // Kasiyer yönetimden pasife alındıysa (katalogdan düştüyse) oturum geçersiz.
   const cashier = signedIn && meta?.catalog.staff.some((s) => s.id === signedIn.id) ? signedIn : null;
@@ -567,8 +587,15 @@ export function KasaApp() {
 
   if (!meta || !status) return <Center title="Kasa açılıyor…" />;
   if (!meta.device) {
-    if (status.syncing || status.lastOkAt === null && status.online) return <Center title="Kasa açılıyor…" />;
-    return <Center title="Bağlantı gerekli" sub="Bu cihazın ilk kurulumu için internet bağlantısı gerekir. Bağlanınca kasa kendiliğinden açılır." />;
+    if (status.syncing) return <Center title="Kasa açılıyor…" />;
+    return (
+      <Center logo title="Bu kasayı tanımla" sub={status.online ? "Yönetim panelindeki 8 haneli eşleme kodunu girerek bu cihazı işletmene bağla." : "İlk tanımlama için internet bağlantısı gerekir."} card>
+        <div className="space-y-3">
+          <Link href="/kasa/eslestir" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kasa eşlemesini başlat</Link>
+          <p className="text-center text-xs text-muted">Yönetim → Cihazlar → Kasa ekle</p>
+        </div>
+      </Center>
+    );
   }
   if (status.unpaired && status.pending > 0) {
     return <Center title="Cihaz eşlemesi kaldırıldı" sub={`${status.pending} satış buluta gönderilemedi. Yöneticinize başvurun; bu tarayıcıyı kapatmayın.`} />;
@@ -591,30 +618,32 @@ export function KasaApp() {
         <button
           type="button"
           data-testid="reset-notice"
+          role="alert"
+          aria-live="polite"
           title={`${status.reset.reason} — "Anladım" ile kapatın.`}
           onClick={() => { void clearResetNotice(); setStatus({ ...status, reset: null }); }}
-          className="text-xs font-medium text-bad underline decoration-dotted"
+          className="inline-flex min-h-12 items-center rounded-xl bg-bad-soft px-3 text-xs font-medium text-bad outline-none hover:bg-bad-soft/80 focus-visible:ring-4 focus-visible:ring-bad/20"
         >
           {status.reset.pending} bekleyen belge reddedildi listesine taşındı
         </button>
       )}
       <AgentBadge s={agentCfg ? agent : null} />
       {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-info">Yerel ağ (internet yok)</span>}
-      {status.rejected > 0 && <span className="text-xs font-medium text-bad">{status.rejected} belge reddedildi</span>}
+      {status.rejected > 0 && <span role="status" className="inline-flex h-7 items-center rounded-full bg-bad-soft px-2.5 text-xs font-medium text-bad">{status.rejected} belge reddedildi</span>}
       {cashier && meta.agent?.drawer && atHome && (
-        <Button variant="secondary" title="Çekmece" onClick={() => {
+        <Button variant="secondary" title="Çekmece" className="min-h-12" onClick={() => {
           if (meta.catalog.staff.find((x) => x.id === cashier.id)?.role === "mudur") void drawerBy(null);
           else setView({ name: "cekmece" });
-        }}><Inbox aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Çekmece</span></Button>
+          }}><Inbox aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Çekmece</span></Button>
       )}
-      {cashier && meta.shift && atHome && <Button variant="secondary" title="İade" onClick={() => setView({ name: "iade" })}><Undo2 aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">İade</span></Button>}
-      {cashier && meta.shift && atHome && <Button variant="secondary" title="Seifeye para al" data-testid="safe-drop-btn" onClick={() => setView({ name: "safe-drop" })}><Landmark aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Seife</span></Button>}
-      {cashier && meta.shift && atHome && <Button variant="secondary" title="Gün sonu" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Gün sonu</span></Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" title="İade" className="min-h-12" onClick={() => setView({ name: "iade" })}><Undo2 aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">İade</span></Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" title="Seifeye para al" data-testid="safe-drop-btn" className="min-h-12" onClick={() => setView({ name: "safe-drop" })}><Landmark aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Seife</span></Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" title="Gün sonu" className="min-h-12" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Gün sonu</span></Button>}
       {cashier && (
-        <span className="flex h-10 items-center gap-1 rounded-full border border-line bg-surface pl-1 shadow-card">
+        <span className="flex min-h-12 items-center gap-1 rounded-full border border-line bg-surface pl-1 shadow-card">
           <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{cashier.name.trim().charAt(0).toLocaleUpperCase("tr")}</span>
-          <span className="max-w-32 truncate px-1 text-sm font-medium text-ink">{cashier.name}</span>
-          <button type="button" title="Kasiyer değiştir" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted hover:bg-surface-3 hover:text-ink"><LogOut aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Kasiyer değiştir</span></button>
+          <span className="max-w-32 truncate px-1 text-sm font-medium text-ink" title={cashier.name}>{cashier.name}</span>
+          <button type="button" title="Kasiyer değiştir" aria-label="Kasiyer değiştir" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60"><LogOut aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Kasiyer değiştir</span></button>
         </span>
       )}
     </Bar>
@@ -629,6 +658,13 @@ export function KasaApp() {
       </>
     );
   }
+  if (meta.catalog.staff.length === 0) {
+    return (
+      <Center logo title="Önce personel ekleyin" sub="Kasaya girmek için en az bir kasiyer veya müdür PIN’i gerekiyor." card>
+        <Link href="/yonetim/personel" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Personel ve PIN oluştur</Link>
+      </Center>
+    );
+  }
   if (view.name === "closed") {
     return <>{header}<GunSonu meta={meta} closed onClose={async () => {}} onBack={() => setView({ name: "home" })} /></>;
   }
@@ -639,12 +675,12 @@ export function KasaApp() {
     const kHeader = (
       <Bar tenant={d.tenantName} device={cashier.name}>
         <LinkNote link={tabsApi.link} /><SyncBadge s={status} />
-        {view.name === "home" && <Button variant="ghost" onClick={() => setCashier(null)}><LogOut aria-hidden className="size-4" />Çıkış</Button>}
+        {view.name === "home" && <Button variant="ghost" className="min-h-12" onClick={() => setCashier(null)}><LogOut aria-hidden className="size-4" />Çıkış</Button>}
       </Bar>
     );
     if (view.name === "kurye-kapat") {
       return <>{kHeader}<Center title="Hesap kapat" sub="Kasiyer ya da müdür PIN'i"><PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "kasiyer" || x.role === "mudur"} onOk={(c) => setView({ name: "kurye-gun-sonu", by: c.id })} />
-        <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-4 w-full">Vazgeç</Button></Center></>;
+        <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-4 min-h-12 w-full">Vazgeç</Button></Center></>;
     }
     if (view.name === "kurye-gun-sonu" && meta.shift) {
       const by = view.by;
@@ -665,7 +701,7 @@ export function KasaApp() {
         {header}
         <Center title="Müdür onayı" sub="Çekmeceyi açmak için müdür PIN'i girsin.">
           <PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "mudur"} onOk={(m) => void drawerBy(m.id)} />
-          <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 w-full">Vazgeç</Button>
+          <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 min-h-12 w-full">Vazgeç</Button>
         </Center>
       </>
     );
@@ -681,8 +717,8 @@ export function KasaApp() {
               {drops.map((d) => <li key={d.id} className="flex justify-between py-1.5"><span>{new Date(d.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span><span className="tabular-nums">-{formatReceipt(d.amount, meta.device?.currency)}</span></li>)}
             </ul>
           )}
-          <MoneyForm label="Seifeye alınan tutar (TL)" submit="Seifeye al" onSubmit={async (k) => { const m2 = await safeDropLocal(cashier.id, k); if (m2) setMeta(m2); setView({ name: "gun-sonu" }); }} />
-          <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 w-full">Vazgeç</Button>
+          <MoneyForm label={`Seifeye alınan tutar (${currencyUnit(meta.device?.currency)})`} submit="Seifeye al" onSubmit={async (k) => { const m2 = await safeDropLocal(cashier.id, k); if (m2) setMeta(m2); setView({ name: "gun-sonu" }); }} />
+          <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 min-h-12 w-full">Vazgeç</Button>
         </Center>
       </>
     );
@@ -712,11 +748,13 @@ export function KasaApp() {
   const inPaket = view.name === "paket" || view.name === "yeni-paket" || view.name === "ptab" || Boolean(billTab && billTab.kind !== "masa");
   const section = view.name === "bugun" ? "bugun" : inPaket ? "paket" : view.name === "sale" || !hasSalon ? "sale" : "salon";
   const icon = "size-4";
+  const openSalon = [...openTabsByTable(tabsApi.tabs).values()].flat().filter((t) => !t.closed).length;
+  const waitingPaket = [...tabsApi.tabs.values()].filter((t) => !t.closed && t.kind === "platform" && deliveryStatus(t) === "onay_bekliyor").length;
   const kasaTabs = role === "kasa" && (
-    <nav aria-label="Kasa bölümü">
+    <nav aria-label="Kasa bölümü" className="min-w-0 max-w-full">
       <Segmented size="lg" items={[
-        ...(hasSalon ? [{ key: "salon", label: <><LayoutGrid aria-hidden className={icon} />Salon</>, pressed: section === "salon", onClick: () => setView({ name: "home" }) }] : []),
-        ...(hasPaket ? [{ key: "paket", label: <><Bike aria-hidden className={icon} />Paket</>, pressed: section === "paket", onClick: () => setView({ name: "paket" }) }] : []),
+        ...(hasSalon ? [{ key: "salon", label: <><LayoutGrid aria-hidden className={icon} />Salon{openSalon > 0 && <span aria-label={`${openSalon} açık adisyon`} className="tabular rounded-full bg-brand-soft px-1.5 text-xs font-bold text-brand">{openSalon}</span>}</>, pressed: section === "salon", onClick: () => setView({ name: "home" }) }] : []),
+        ...(hasPaket ? [{ key: "paket", label: <><Bike aria-hidden className={icon} />Paket{waitingPaket > 0 && <span aria-label={`${waitingPaket} onay bekliyor`} className="tabular rounded-full bg-warn-soft px-1.5 text-xs font-bold text-warn">{waitingPaket}</span>}</>, pressed: section === "paket", onClick: () => setView({ name: "paket" }) }] : []),
         { key: "sale", label: <><Zap aria-hidden className={icon} />Hızlı satış</>, pressed: section === "sale", onClick: () => setView({ name: "sale" }) },
         { key: "bugun", label: <><LayoutDashboard aria-hidden className={icon} />Bugün</>, pressed: section === "bugun", onClick: () => setView({ name: "bugun" }) },
       ]} />
@@ -745,7 +783,7 @@ export function KasaApp() {
         {header}
         <Center card title="Vardiya kapalı" sub="Satışa başlamak için kasadaki nakdi girip vardiyayı açın.">
           {d.billing && <p data-testid="kasa-billing" className="mb-4 rounded-[10px] bg-warn-soft px-3 py-2 text-sm text-warn">{d.billing.state === "deneme" || d.billing.state === "aktif" ? `Abonelik ${d.billing.daysLeft} gün sonra bitiyor.` : "Abonelik sona erdi. Satış devam eder; yöneticinize haber verin."}</p>}
-          <MoneyForm label="Kasadaki açılış nakdi (TL)" submit="Vardiyayı aç" defaultValue="0" onSubmit={async (k) => { setMeta(await openShiftLocal(cashier.id, k)); void sync.current?.kick(); }} />
+          <MoneyForm label={`Kasadaki açılış nakdi (${currencyUnit(d.currency)})`} submit="Vardiyayı aç" defaultValue="0" onSubmit={async (k) => { setMeta(await openShiftLocal(cashier.id, k)); void sync.current?.kick(); }} />
         </Center>
       </>
     );

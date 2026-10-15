@@ -16,7 +16,7 @@ export function InvoiceForm({ initial, onSave, onCancel }: { initial: Buyer | nu
     <div className="mt-4 space-y-3 rounded-2xl border border-line bg-surface-2 p-4" aria-label="Fatura bilgisi">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Fatura (e-Arşiv)</h3>
-        <button type="button" onClick={() => setV((x) => ({ ...x, taxId: NIHAI_TUKETICI.taxId, name: NIHAI_TUKETICI.name, address: "" }))} className="text-sm text-brand underline">Nihai tüketici</button>
+        <button type="button" onClick={() => setV((x) => ({ ...x, taxId: NIHAI_TUKETICI.taxId, name: NIHAI_TUKETICI.name, address: "" }))} className="inline-flex min-h-12 items-center text-sm text-brand underline">Nihai tüketici</button>
       </div>
       <Field label="VKN / TCKN" hint={kind === "vkn" ? "Vergi kimlik no (şirket)" : kind === "tckn" ? "T.C. kimlik no" : undefined}>
         <Input name="buyer-taxId" inputMode="numeric" maxLength={11} value={v.taxId} onChange={set("taxId")} autoComplete="off" />
@@ -29,8 +29,8 @@ export function InvoiceForm({ initial, onSave, onCancel }: { initial: Buyer | nu
       <Field label={kind === "vkn" ? "Adres (zorunlu)" : "Adres"}><Textarea name="buyer-address" rows={2} value={v.address} onChange={set("address")} maxLength={500} /></Field>
       {err("address") && <p className="text-xs text-bad">{err("address")}</p>}
       <div className="flex gap-2">
-        <Button type="button" variant="secondary" onClick={onCancel} className="flex-1">Faturasız</Button>
-        <Button type="button" onClick={save} className="flex-1">Fatura bilgisini kaydet</Button>
+        <Button type="button" variant="secondary" onClick={onCancel} className="min-h-12 flex-1">Faturasız</Button>
+        <Button type="button" onClick={save} className="min-h-12 flex-1">Fatura bilgisini kaydet</Button>
       </div>
     </div>
   );

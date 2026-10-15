@@ -8,7 +8,7 @@ import { Select, type Option } from "@/components/Select";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 
-const Err = ({ s, f }: { s: CatalogState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
+const Err = ({ s, f }: { s: CatalogState; f: string }) => (s.field === f && s.error ? <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
 
 export type ProductInitial = { id: string; name: string; price: number; vatRate: number; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; trackStock: boolean; quick: boolean; stationId?: string | null; optionGroupIds?: string[];
   sellable: boolean; unit: StockUnit; cost: number | null; minStock: number | null; yieldMilli: number | null };
@@ -75,7 +75,7 @@ function Fields({ s, initial, categories, salon }: { s: CatalogState; initial?: 
         </div>
         <Err s={s} f="vatRate" />
       </div>
-      <div><div className="mb-1.5 text-sm font-medium">Kategori</div><Select name="categoryId" options={[{ value: "", label: "Kategorisiz" }, ...categories]} defaultValue={initial?.categoryId ?? ""} placeholder="Kategorisiz" /><Err s={s} f="categoryId" /></div>
+      <div><div className="mb-1.5 text-sm font-medium">Kategori</div><Select ariaLabel="Kategori" name="categoryId" options={[{ value: "", label: "Kategorisiz" }, ...categories]} defaultValue={initial?.categoryId ?? ""} placeholder="Kategorisiz" /><Err s={s} f="categoryId" /></div>
       {kind === "tartili" ? <div><Field label="PLU" hint="Terazideki 5 haneli ürün kodu; etiketsiz tartımda boş"><Input name="plu" inputMode="numeric" maxLength={5} defaultValue={initial?.plu ?? ""} /></Field><Err s={s} f="plu" /></div> : <div />}
       <div className="flex flex-col justify-end gap-2 text-sm">
         <label className="flex items-center gap-2"><input type="checkbox" name="trackStock" defaultChecked={initial?.trackStock} className="size-4 accent-[var(--color-brand)]" />Stok takibi</label>
@@ -83,7 +83,7 @@ function Fields({ s, initial, categories, salon }: { s: CatalogState; initial?: 
       </div>
       {salon && (
         <>
-          <div><div className="mb-1.5 text-sm font-medium">Mutfak istasyonu</div><Select name="stationId" options={[{ value: "", label: "Kategoriden" }, ...salon.stations]} defaultValue={initial?.stationId ?? ""} placeholder="Kategoriden" /></div>
+              <div><div className="mb-1.5 text-sm font-medium">Mutfak istasyonu</div><Select ariaLabel="Mutfak istasyonu" name="stationId" options={[{ value: "", label: "Kategoriden" }, ...salon.stations]} defaultValue={initial?.stationId ?? ""} placeholder="Kategoriden" /></div>
           <div>
             <div className="mb-1.5 text-sm font-medium">Seçenek grupları</div>
             {salon.groups.length === 0 ? <p className="text-sm text-muted">Seçenekler sayfasından grup ekleyin.</p> : (
@@ -105,11 +105,11 @@ export function ProductForm({ initial, categories, salon }: { initial?: ProductI
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <Fields key={initial ? initial.id : state.savedAt ?? 0} s={state} initial={initial} categories={categories} salon={salon} />
-      {state.error && !FIELDS.includes(state.field ?? "") && <p className="text-sm text-bad">{state.error}</p>}
+      {state.error && !FIELDS.includes(state.field ?? "") && <p className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Ürünü kaydet"}</Button>
-        {initial && <Link href="/yonetim/urunler" className="text-sm text-muted hover:text-ink hover:underline">Vazgeç</Link>}
-        {state.savedAt && !initial && <span className="text-sm text-ok">Kaydedildi.</span>}
+        {initial && <Link href="/yonetim/urunler" className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-sm text-muted outline-none hover:bg-surface-2 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Vazgeç</Link>}
+        {state.savedAt && !initial && <span className="text-sm text-ok" role="status">Kaydedildi.</span>}
       </div>
     </form>
   );

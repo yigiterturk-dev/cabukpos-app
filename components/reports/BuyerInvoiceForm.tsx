@@ -11,7 +11,7 @@ export function BuyerInvoiceForm({ id, today }: { id: string; today: string }) {
       <Input name="no" aria-label="Alıcının fatura no" placeholder="Fatura no" className="!w-44" required />
       <Input name="date" type="date" aria-label="Fatura tarihi" defaultValue={today} max={today} className="!w-40" required />
       <Button type="submit" size="sm" disabled={pending} className="h-[38px]">{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
-      {state.error && <p className="basis-full text-xs text-bad">{state.error}</p>}
+      {state.error && <p className="basis-full break-words text-xs text-bad" role="alert" aria-live="assertive">{state.error}</p>}
     </form>
   );
 }

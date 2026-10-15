@@ -4,7 +4,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { DEFAULT_MODES, FISCAL_CHANNELS } from "@/lib/core/fiscal";
-import { formatTL } from "@/lib/core/money";
+import { moneyFormatter } from "@/lib/admin/currency";
 import { FiscalRowActions, FiscalSettingsForm, OkcZReportForm } from "@/components/admin/FiscalForms";
 import { queryEnvelopes } from "@/lib/admin/fiscal-actions";
 import { currentIstMonth } from "@/lib/admin/accounting";
@@ -24,10 +24,11 @@ const GIB: Record<string, { label: string; tone: "neutral" | "ok" | "warn" | "ba
   kabul: { label: "Kabul edildi", tone: "ok" }, red: { label: "Reddedildi", tone: "bad" },
 };
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
-const seg = (on: boolean) => `shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line text-ink-2 hover:bg-surface-2"}`;
+const seg = (on: boolean) => `inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line text-ink-2 hover:bg-surface-2"}`;
 
 export default async function Mali({ searchParams }: { searchParams: Promise<{ sekme?: string; durum?: string }> }) {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
   const q = await searchParams;
   const tab = q.sekme === "belgeler" ? "belgeler" : q.sekme === "muhasebe" ? "muhasebe" : "ayarlar";
   const { year, month } = currentIstMonth();
@@ -109,7 +110,7 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="font-semibold">e-Fatura zarfları</h2>
                 <span className="text-sm text-muted">VKN&apos;li alıcılara kesilen belgeler zarfla GİB&apos;e gider; alıcı cevabı (kabul/red) otomatik sorgulanır.</span>
-                <form action={queryEnvelopes} className="ml-auto"><button className="press inline-flex min-h-11 items-center rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-surface-2">Şimdi sorgula</button></form>
+                <form action={queryEnvelopes} className="ml-auto"><button className="press inline-flex min-h-11 items-center rounded-lg border border-line px-4 py-2 text-sm font-medium outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Şimdi sorgula</button></form>
               </div>
               <div className="mt-3 divide-y divide-line text-sm">
                 {envelopes.map((e) => (
@@ -125,9 +126,9 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
               </div>
             </Card>
           )}
-          {docs.length === 0 ? <Empty>Belge yok.</Empty> : (
+          {docs.length === 0 ? <Empty action={<Link href="/yonetim/mali" className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 font-medium text-brand outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Mali ayarlara git</Link>}>Belge yok. Mali ayarlar ve ilk satıştan sonra belgeler burada görünür.</Empty> : (
             <Card className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[960px] text-sm">
                 <thead className={TABLE_HEAD}><tr><th className="px-4 py-2.5 font-medium">Tarih</th><th className="px-4 py-2.5 font-medium">Fiş no</th><th className="px-4 py-2.5 font-medium">Alıcı</th><th className="px-4 py-2.5 text-right font-medium">Tutar</th><th className="px-4 py-2.5 font-medium">Durum</th><th className="px-4 py-2.5 font-medium">Numara</th><th className="px-4 py-2.5 font-medium">E-posta</th></tr></thead>
                 <tbody className="divide-y divide-line">
                   {docs.map((d) => (
@@ -135,12 +136,12 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
                       <td className="whitespace-nowrap px-4 py-3">{dt(d.createdAt)}</td>
                       <td className="whitespace-nowrap px-4 py-3 font-mono">{d.receiptNo}</td>
                       <td className="px-4 py-3">{d.buyer.name}<div className="text-xs text-muted">{d.buyer.taxId}</div></td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{formatTL(d.total)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{money(d.total)}</td>
                       <td className="px-4 py-3"><Badge tone={STATUS[d.status].tone}>{STATUS[d.status].label}</Badge>
                         {d.kind === "efatura" && d.gibStatus && <div className="mt-1"><Badge tone={GIB[d.gibStatus]?.tone ?? "neutral"}>{GIB[d.gibStatus]?.label ?? d.gibStatus}</Badge></div>}
                         {d.lastError && <div className="mt-1 max-w-56 text-xs text-muted">{d.lastError}{d.status === "error" ? ` (${d.attempts}. deneme)` : ""}</div>}
                         {refunds.filter((r) => r.docId === d.id).map((r) => (
-                          <Link key={r.id} href={`/yonetim/mali/iade/${r.id}`} className="mt-1 block text-xs text-brand hover:underline">
+                          <Link key={r.id} href={`/yonetim/mali/iade/${r.id}`} className="mt-1 block w-fit rounded px-1 text-xs text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">
                             {r.kind === "tutanak" ? "İade tutanağı" : r.resolvedAt ? `Alıcı iade faturası ${r.no}` : "Alıcı iade faturası bekleniyor"}
                           </Link>
                         ))}</td>

@@ -3,8 +3,8 @@ import { createBrand, saveBrand, setBrandProducts, type BrandState } from "@/lib
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input } from "@/components/ui";
 
-const Err = ({ s, f }: { s: BrandState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 text-sm text-bad">{s.error}</p> : null);
-const Saved = ({ s }: { s: BrandState }) => (s.savedAt ? <span className="text-sm text-ok">{s.info ?? "Kaydedildi."}</span> : null);
+const Err = ({ s, f }: { s: BrandState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
+const Saved = ({ s }: { s: BrandState }) => (s.savedAt ? <span className="text-sm text-ok" role="status">{s.info ?? "Kaydedildi."}</span> : null);
 
 export function BrandForm({ initial }: { initial?: { id: string; name: string; slug: string } }) {
   const { state, pending, onSubmit } = useFormAction((initial ? saveBrand.bind(null, initial.id) : createBrand), {} as BrandState);

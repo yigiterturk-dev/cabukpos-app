@@ -2,10 +2,10 @@ import { asc, desc, eq, inArray } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { cancelPurchase } from "@/lib/admin/purchase-actions";
-import { formatTL } from "@/lib/core/money";
+import { moneyFormatter } from "@/lib/admin/currency";
 import { formatQty, stockUnitOf } from "@/lib/core/stock";
 import { PurchaseForm } from "@/components/admin/PurchaseForms";
-import { Badge, Card, Empty, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 const today = () => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
@@ -13,6 +13,7 @@ const day = (d: string) => d.split("-").reverse().join(".");
 
 export default async function Alislar() {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
   const P = schema.products, Pu = schema.purchases, PL = schema.purchaseLines;
   const { prods, sups, list, lines } = await withTenant(a.tenantId, async (tx) => {
     const [prods, sups, list] = await Promise.all([
@@ -32,17 +33,17 @@ export default async function Alislar() {
       </Card>
       {list.length === 0 ? <Empty>Henüz alış yok.</Empty> : (
         <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr><th className="p-3 font-medium">Tarih</th><th className="p-3 font-medium">Tedarikçi</th><th className="p-3 font-medium">Belge</th><th className="p-3 font-medium">Kalemler</th><th className="p-3 text-right font-medium">Tutar</th><th className="p-3" /></tr></thead>
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className={TABLE_HEAD}><tr><th className="p-3 font-medium">Tarih</th><th className="p-3 font-medium">Tedarikçi</th><th className="p-3 font-medium">Belge</th><th className="p-3 font-medium">Kalemler</th><th className="p-3 text-right font-medium">Tutar</th><th className="sticky right-0 z-20 bg-surface-2 p-3 text-right font-medium shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.45)]">Aksiyonlar</th></tr></thead>
             <tbody className="divide-y divide-line">
               {list.map((x) => (
                 <tr key={x.id} className={x.status === "iptal" ? "opacity-60" : ""} data-testid="purchase">
                   <td className="tabular p-3">{day(x.date)}</td>
-                  <td className="p-3">{x.supplier ?? "—"}</td>
+                  <td className="max-w-[12rem] p-3"><span className="block truncate" title={x.supplier ?? "—"}>{x.supplier ?? "—"}</span></td>
                   <td className="p-3 text-muted">{x.docNo ?? ""}</td>
-                  <td className="p-3 text-muted">{lines.filter((l) => l.purchaseId === x.id).map((l) => `${l.name} ${formatQty(l.qtyMilli, stockUnitOf(l))}`).join(", ")}</td>
-                  <td className="tabular p-3 text-right">{formatTL(x.total)}</td>
-                  <td className="p-3 text-right">{x.status === "iptal" ? <Badge>İptal</Badge> : <form action={cancelPurchase.bind(null, x.id)}><button className="text-muted hover:text-ink hover:underline">İptal et</button></form>}</td>
+                  <td className="w-[24rem] max-w-[24rem] p-3 text-muted"><span className="block truncate" title={lines.filter((l) => l.purchaseId === x.id).map((l) => `${l.name} ${formatQty(l.qtyMilli, stockUnitOf(l))}`).join(", ")}>{lines.filter((l) => l.purchaseId === x.id).map((l) => `${l.name} ${formatQty(l.qtyMilli, stockUnitOf(l))}`).join(", ")}</span></td>
+                  <td className="tabular p-3 text-right">{money(x.total)}</td>
+                  <td className={`sticky right-0 p-3 text-right shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.35)] ${x.status === "iptal" ? "bg-surface/90" : "bg-surface"}`}>{x.status === "iptal" ? <Badge>İptal</Badge> : <form action={cancelPurchase.bind(null, x.id)}><button className={buttonClass("danger", "sm")}>İptal et</button></form>}</td>
                 </tr>
               ))}
             </tbody>

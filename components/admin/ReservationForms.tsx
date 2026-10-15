@@ -22,9 +22,9 @@ export function ReservationForm({ stores, day, tables }: { stores: { id: string;
         </Field>
       )}
       <div className="sm:col-span-2"><Field label="Not"><Textarea name="note" rows={2} maxLength={300} placeholder="ör. bebek sandalyesi" /></Field></div>
-      <div className="flex items-center gap-3 sm:col-span-2">
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
         <Button type="submit" disabled={pending || !stores.length}>{pending ? "Kaydediliyor…" : "Rezervasyon ekle"}</Button>
-        {state.savedAt ? <span className="text-sm text-ok" role="status">Eklendi.</span> : state.error ? <span className="text-sm text-bad">{state.error}</span> : null}
+        {state.savedAt ? <span className="shrink-0 text-sm text-ok" role="status">Eklendi.</span> : state.error ? <span className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span> : null}
       </div>
     </form>
   );
@@ -44,7 +44,7 @@ export function ResStatusButtons({ id, status }: { id: string; status: ResStatus
         <form key={s} action={setReservationStatus}>
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="status" value={s} />
-          <button className="press rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2">{label}</button>
+        <button type="submit" className="press inline-flex min-h-11 items-center rounded-lg border border-line px-2.5 py-2 text-xs font-medium outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">{label}</button>
         </form>
       ))}
       {status !== "bekliyor" && <span className="self-center text-xs text-muted">{RES_LABEL[status]}</span>}

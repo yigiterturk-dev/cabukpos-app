@@ -1,10 +1,12 @@
 // QR menü + self-order kiosko (herkese açık). k sırrı URL'de yoksa yalnız menü görünür.
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { getDb, schema } from "@/db";
 import { kioskConn, menuByStore, type MenuData } from "@/lib/kiosk";
 import { menuByBrand } from "@/lib/brands";
 import { clientIp, hit } from "@/lib/ratelimit";
-import { formatTL } from "@/lib/core/money";
+import { formatReceipt, isCurrency } from "@/lib/core/money";
 import { Cart, Add, WaiterCall } from "./Cart";
 
 export const dynamic = "force-dynamic";
@@ -25,16 +27,18 @@ export default async function Menu({ params, searchParams }: { params: Promise<{
   }
   const menu: (MenuData & { brand?: string }) | null = marka ? await menuByBrand(storeId, marka) : await menuByStore(storeId);
   if (!menu) notFound();
+  const [tenant] = await getDb().select({ currency: schema.tenants.currency }).from(schema.stores).innerJoin(schema.tenants, eq(schema.tenants.id, schema.stores.tenantId)).where(eq(schema.stores.id, storeId));
+  const currency = isCurrency(tenant?.currency) ? tenant.currency : "TRY";
   const conn = k ? Boolean(await kioskConn(storeId, k)) : false;
   const cats = menu.categories.filter((c) => menu.products.some((p) => p.categoryId === c.id));
   const uncategorized = menu.products.filter((p) => !p.categoryId);
   const groups = [...cats.map((c) => ({ name: c.name, items: menu.products.filter((p) => p.categoryId === c.id) })), ...(uncategorized.length ? [{ name: "Diğer", items: uncategorized }] : [])];
   return (
-    <main className="mx-auto w-full max-w-xl px-4 pb-24 pt-8">
+    <main className="mx-auto w-full max-w-xl px-4 pt-8" style={{ paddingBottom: "var(--kiosk-cart-space, 6rem)" }}>
       <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand">{menu.tenant}</p>
-        <h1 className="font-display text-2xl font-bold text-ink">{menu.brand ? `${menu.brand} · ${menu.store}` : menu.store}</h1>
-        <p className="mt-1 text-sm text-muted">{conn ? "Seç, sepeti onayla — siparişin mutfağa düşsün." : "Menü. Sipariş için kasa ya da garson yardımcı olur."}</p>
+        <p className="break-words text-xs font-semibold uppercase tracking-[0.12em] text-brand" title={menu.tenant}>{menu.tenant}</p>
+        <h1 className="break-words font-display text-2xl font-bold text-ink" title={menu.brand ? `${menu.brand} · ${menu.store}` : menu.store}>{menu.brand ? `${menu.brand} · ${menu.store}` : menu.store}</h1>
+        <p className="mt-1 break-words text-sm text-muted">{conn ? "Seç, sepeti onayla — siparişin mutfağa düşsün." : "Menü. Sipariş için kasa ya da garson yardımcı olur."}</p>
       </header>
       {groups.map((g) => (
         <section key={g.name} className="mb-7">
@@ -42,8 +46,9 @@ export default async function Menu({ params, searchParams }: { params: Promise<{
           <ul className="divide-y divide-line">
             {g.items.map((p) => (
               <li key={p.id} className="flex items-center gap-3 py-2.5">
-                <span className="min-w-0 flex-1 text-sm font-medium text-ink">{p.name}</span>
-                <span className="tabular text-sm text-ink-2">{formatTL(p.price)}{p.kind === "tartili" ? "/kg" : ""}</span>
+                <span className="min-w-0 flex-1 break-words text-sm font-medium text-ink" title={p.name}>{p.name}</span>
+                <span className="shrink-0 tabular text-sm text-ink-2">{formatReceipt(p.price, currency)}{p.kind === "tartili" ? "/kg" : ""}</span>
+                {conn && p.kind === "tartili" && <span className="shrink-0 text-xs text-muted">Kasada tartılır</span>}
                 {conn && p.kind === "adet" && <Add id={p.id} name={p.name} price={p.price} />}
               </li>
             ))}
@@ -51,7 +56,7 @@ export default async function Menu({ params, searchParams }: { params: Promise<{
         </section>
       ))}
       {menu.products.length === 0 && <p className="text-sm text-muted">Menü henüz boş.</p>}
-      {conn && <Cart storeId={storeId} secret={k!} vertical={menu.vertical} />}
+      {conn && <Cart storeId={storeId} secret={k!} vertical={menu.vertical} currency={currency} />}
       {conn && menu.vertical === "restoran" && menu.tables.length > 0 && <WaiterCall storeId={storeId} secret={k!} tables={menu.tables} />}
       {!conn && <p className="mt-10 text-center text-xs text-muted">ÇabukPOS ile hazırlanmıştır.</p>}
     </main>

@@ -22,7 +22,7 @@ export function StockForm({ productId, unit }: { productId: string; unit: StockU
       <div className="min-w-48 flex-1"><Field label="Not" hint={kind === "fire" ? "zorunlu" : "isteğe bağlı"}><Input key={`n${state.savedAt ?? 0}`} name="note" /></Field></div>
       <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
       <div className="basis-full text-sm" aria-live="polite">
-        {state.error ? <span className="text-bad">{state.error}</span> : state.savedAt ? <span className="text-ok">Kaydedildi.</span> : null}
+        {state.error ? <span className="max-w-full break-words text-bad" role="alert" aria-live="assertive">{state.error}</span> : state.savedAt ? <span className="text-ok" role="status">Kaydedildi.</span> : null}
       </div>
     </form>
   );

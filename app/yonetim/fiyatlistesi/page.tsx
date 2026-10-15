@@ -3,7 +3,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { ListForm, ItemForm, ListToggles, ItemDelete } from "@/components/admin/PriceListForms";
 import { Badge, Card, Empty, PageHeader, Panel } from "@/components/ui";
-import { formatTL } from "@/lib/core/money";
+import { moneyFormatter } from "@/lib/admin/currency";
 import type { Option } from "@/components/Select";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,7 @@ const hm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${
 
 export default async function FiyatListesi() {
   const a = await requireAdmin();
+  const money = await moneyFormatter(a.tenantId);
   const L = schema.priceLists, I = schema.priceListItems, P = schema.products, C = schema.categories;
   const [lists, items, prods, cats] = await withTenant(a.tenantId, (tx) =>
     Promise.all([
@@ -37,8 +38,8 @@ export default async function FiyatListesi() {
             const scope = yuzde ? (l.categoryIds && l.categoryIds.length ? l.categoryIds.map((id) => catName.get(id)).filter(Boolean).join(" · ") : "Tüm ürünler") : null;
             return (
               <Card key={l.id} className="p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className={`font-semibold ${l.active ? "" : "opacity-60"}`}>{l.name}</span>
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
+                  <span title={l.name} className={`min-w-0 max-w-full truncate font-semibold ${l.active ? "" : "opacity-60"}`}>{l.name}</span>
                   {yuzde ? <Badge tone="brand">Yüzde %{l.percent}</Badge> : <Badge>Ürün başı fiyat</Badge>}
                   <Badge>{l.days.length === 0 ? "Her gün" : l.days.map((d) => GUNLER[d]).join(" · ")}</Badge>
                   <span className="text-sm tabular text-muted">{hm(l.startMin)} – {hm(l.endMin)}{l.endMin <= l.startMin ? " (ertesi gün)" : ""}</span>
@@ -52,11 +53,11 @@ export default async function FiyatListesi() {
                     {mine.length === 0 ? <p className="text-sm text-muted">Ürün fiyatı yok: listeye ürün ekleyin.</p> : (
                       <div className="divide-y divide-line rounded-xl border border-line">
                         {mine.map((i) => (
-                          <div key={i.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-                            <span className="font-medium">{i.name}</span>
-                            <span className="tabular text-muted">taban {formatTL(i.base)}</span>
-                            <span className="tabular font-semibold text-ok">{formatTL(i.price)}</span>
-                            <div className="ml-auto"><ItemDelete listId={l.id} id={i.id} /></div>
+                          <div key={i.id} className="flex min-w-0 flex-wrap items-center gap-3 p-3 text-sm">
+                            <span title={i.name} className="min-w-0 max-w-full flex-1 truncate font-medium">{i.name}</span>
+                            <span className="tabular text-muted">taban {money(i.base)}</span>
+                            <span className="tabular font-semibold text-ok">{money(i.price)}</span>
+                            <div className="ml-auto shrink-0"><ItemDelete listId={l.id} id={i.id} /></div>
                           </div>
                         ))}
                       </div>

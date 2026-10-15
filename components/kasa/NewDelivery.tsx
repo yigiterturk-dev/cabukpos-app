@@ -8,9 +8,9 @@ import type { PayIntent } from "@/lib/core/tab";
 import type { CustomerLookup } from "@/lib/delivery/customers";
 import type { NewTabEvent } from "@/lib/offline/tabs";
 import type { Meta } from "@/lib/offline/state";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, Input, Textarea } from "@/components/ui";
 
-const pill = (on: boolean) => `press min-h-11 rounded-[10px] border px-3 py-2 text-sm ${on ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`;
+const pill = (on: boolean) => `press min-h-12 rounded-[10px] border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`;
 const EMPTY: CustomerLookup = { customer: null, addresses: [], recent: [] };
 
 export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: Meta; staffId: string; add: (list: NewTabEvent[]) => Promise<unknown>; onCreated: (tabId: string) => void; onBack: () => void }) {
@@ -41,7 +41,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
     let r: CustomerLookup = EMPTY;
     try {
       const res = await fetch(`/api/musteri?tel=${p}`, { cache: "no-store", signal: AbortSignal.timeout(5000) });
-      if (res.ok) r = await res.json(); else setOffline(true);
+      if (res.ok) { r = await res.json(); setOffline(false); } else setOffline(true);
     } catch { setOffline(true); }
     setBusy(false);
     setPhone(p);
@@ -68,25 +68,30 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
     const lines = found.recent.find((r) => r.tabId === repeat)?.lines ?? [];
     const known = lines.filter((l) => l.productId && meta.catalog.products.some((p) => p.id === l.productId));
     const fee = zoneFee(zone, kmN);
-    await add([
-      ev({ type: "open", guests: 0, kind: "paket" }),
-      ev({ type: "order", customerId: found.customer?.id ?? null, name: name.trim(), phone, address: address.trim(), directions: directions.trim() || null, zoneId, note: note.trim() || null, payIntent: intent, promisedAt: null, source: null }),
-      ...(zone && fee > 0 ? [ev(feeLine(crypto.randomUUID(), fee))] : []),
-      ...known.map((l) => ev({ ...l, lineId: crypto.randomUUID() })),
-    ]);
-    setBusy(false);
-    onCreated(tabId);
+    try {
+      await add([
+        ev({ type: "open", guests: 0, kind: "paket" }),
+        ev({ type: "order", customerId: found.customer?.id ?? null, name: name.trim(), phone, address: address.trim(), directions: directions.trim() || null, zoneId, note: note.trim() || null, payIntent: intent, promisedAt: null, source: null }),
+        ...(zone && fee > 0 ? [ev(feeLine(crypto.randomUUID(), fee))] : []),
+        ...known.map((l) => ev({ ...l, lineId: crypto.randomUUID() })),
+      ]);
+      onCreated(tabId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sipariş oluşturulamadı. Tekrar deneyin.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-6">
-      <button type="button" onClick={onBack} className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 hover:bg-surface-3 -ml-3 mb-4">← Paket</button>
+      <button type="button" onClick={onBack} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 -ml-3 mb-4">← Paket</button>
       <h1 className="mb-5 font-display text-2xl font-bold tracking-tight">Yeni paket sipariş</h1>
-      <form onSubmit={lookup} className="flex items-end gap-2">
-        <div className="flex-1"><Field label="Telefon"><Input name="phone" inputMode="tel" autoFocus value={phoneInput} onChange={(e) => { setPhoneInput(e.target.value); setFound(null); }} placeholder="0532 123 45 67" className="text-lg" /></Field></div>
-        <Button type="submit" disabled={busy} variant={found ? "ghost" : "primary"}>Müşteriyi bul</Button>
+      <form onSubmit={lookup} className="flex flex-wrap items-end gap-2">
+        <div className="min-w-[12rem] flex-1"><Field label="Telefon"><Input name="phone" inputMode="tel" autoFocus value={phoneInput} onChange={(e) => { setPhoneInput(e.target.value); setFound(null); }} placeholder="0532 123 45 67" className="text-lg" /></Field></div>
+        <Button type="submit" disabled={busy} variant={found ? "ghost" : "primary"} className="min-h-12 shrink-0">{busy && !found ? "Aranıyor…" : "Müşteriyi bul"}</Button>
       </form>
-      {!found && error && <p className="mt-3 text-sm text-bad">{error}</p>}
+      {!found && error && <p className="mt-3 break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
 
       {found && phone && (
         <div className="mt-6 space-y-5">
@@ -99,7 +104,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
               <div className="mb-1.5 text-sm font-medium">Kayıtlı adresler</div>
               <div className="grid gap-2">
                 {found.addresses.map((a) => (
-                  <button key={a.id} type="button" aria-pressed={addrId === a.id} onClick={() => pickAddress(a)} className={`${pill(addrId === a.id)} text-left`}>
+                  <button key={a.id} type="button" aria-pressed={addrId === a.id} onClick={() => pickAddress(a)} className={`${pill(addrId === a.id)} break-words text-left`}>
                     {a.label && <span className="font-medium">{a.label}: </span>}{a.address}
                   </button>
                 ))}
@@ -107,7 +112,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
               </div>
             </div>
           )}
-          <Field label="Adres"><Input value={address} onChange={(e) => { setAddress(e.target.value); setAddrId(null); }} maxLength={300} /></Field>
+          <Field label="Adres"><Textarea value={address} onChange={(e) => { setAddress(e.target.value); setAddrId(null); }} maxLength={300} rows={2} className="resize-y" /></Field>
           <Field label="Adres tarifi" hint="İsteğe bağlı (ör. yeşil kapı, 3. kat)"><Input value={directions} onChange={(e) => setDirections(e.target.value)} maxLength={200} /></Field>
           {zones.length > 0 && (
             <div role="group" aria-label="Bölge">
@@ -150,14 +155,14 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack }: { meta: M
                 {found.recent.map((r) => (
                   <button key={r.tabId} type="button" aria-pressed={repeat === r.tabId} onClick={() => setRepeat((x) => (x === r.tabId ? null : r.tabId))} className={`${pill(repeat === r.tabId)} text-left`}>
                     <span className="text-xs text-muted">{new Date(r.at).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })} · {TL(r.total)}{repeat === r.tabId ? " · tekrarlanacak" : " · tekrarla"}</span>
-                    <span className="block truncate">{r.lines.map((l) => `${l.qtyMilli / 1000}× ${l.name}`).join(", ")}</span>
+                    <span className="block truncate" title={r.lines.map((l) => `${l.qtyMilli / 1000}× ${l.name}`).join(", ")}>{r.lines.map((l) => `${l.qtyMilli / 1000}× ${l.name}`).join(", ")}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
-          {error && <p className="text-sm text-bad">{error}</p>}
-          <Button type="button" disabled={busy} onClick={() => void create()} className="w-full py-3 text-base">Siparişe geç</Button>
+          {error && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+        <Button type="button" disabled={busy} onClick={() => void create()} className="min-h-14 w-full text-base">{busy ? "Sipariş oluşturuluyor…" : "Siparişe geç"}</Button>
         </div>
       )}
     </main>

@@ -3,12 +3,13 @@ import { useState, useTransition } from "react";
 import { resendFiscalMail, retryFiscal, saveFiscalSettings, takeZReport, type FiscalState } from "@/lib/admin/fiscal-actions";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input, Textarea } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Select } from "@/components/Select";
 import type { Channel, ChannelModes, DocMode } from "@/lib/core/fiscal";
 import { OKC_PROVIDERS } from "@/lib/core/okc";
 
 const CH_LABEL: Record<Channel, string> = { kasa: "Kasa (hızlı satış)", masa: "Masa", paket: "Paket servis", platform: "Platform siparişi" };
-const Err = ({ s, f }: { s: FiscalState; f: string }) => (s.field === f && s.error ? <p className="mt-1 text-xs text-bad">{s.error}</p> : null);
+const Err = ({ s, f }: { s: FiscalState; f: string }) => (s.field === f && s.error ? <p className="mt-1 break-words text-xs text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
 
 export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }: {
   initial: { taxId: string; taxOffice: string; address: string; series: string; modes: ChannelModes; fakeFail: boolean };
@@ -40,7 +41,7 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
               <input type="hidden" name={`mode-${c}`} value={modes[c]} />
               <div className="flex gap-1" role="group" aria-label={CH_LABEL[c]}>
                 {([["info", "Bilgi fişi"], ["earsiv", "e-Arşiv"]] as [DocMode, string][]).map(([v, l]) => (
-                  <button key={v} type="button" aria-pressed={modes[c] === v} disabled={v === "earsiv" && blockEarsiv} onClick={() => setModes((m) => ({ ...m, [c]: v }))} className={`rounded-lg border px-3 py-2 text-sm ${modes[c] === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"} ${v === "earsiv" && blockEarsiv ? "cursor-not-allowed opacity-50" : ""}`}>{l}</button>
+                  <button key={v} type="button" aria-pressed={modes[c] === v} disabled={v === "earsiv" && blockEarsiv} onClick={() => setModes((m) => ({ ...m, [c]: v }))} className={`inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${modes[c] === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"} ${v === "earsiv" && blockEarsiv ? "cursor-not-allowed opacity-50" : ""}`}>{l}</button>
                 ))}
               </div>
             </div>
@@ -62,7 +63,7 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <div>
               <Field label="Sağlayıcı">
-                <Select name="okcProvider" defaultValue={okcProvider} onChange={setOkcProvider} options={OKC_PROVIDERS.map((p) => ({ value: p.value, label: p.label }))} />
+                <Select ariaLabel="ÖKC sağlayıcısı" name="okcProvider" defaultValue={okcProvider} onChange={setOkcProvider} options={OKC_PROVIDERS.map((p) => ({ value: p.value, label: p.label }))} />
               </Field>
               <Err s={state} f="okcProvider" />
             </div>
@@ -82,7 +83,7 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
                 </div>
                 <div className="sm:col-span-2">
                   <Field label="API anahtarı" hint={okc?.hasKey ? "Kayıtlı (şifreli); değiştirmek için yenisini yazın" : "Çözücü hesabının API anahtarı, şifreli saklanır"}>
-                    <Input name="okcApiKey" type="password" autoComplete="off" placeholder={okc?.hasKey ? "••••••••" : ""} />
+                    <PasswordInput name="okcApiKey" autoComplete="off" placeholder={okc?.hasKey ? "••••••••" : ""} />
                   </Field>
                   <Err s={state} f="okcApiKey" />
                 </div>
@@ -92,7 +93,7 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
           </div>
         )}
       </div>
-      {state.error && !state.field && <p className="text-sm text-bad">{state.error}</p>}
+      {state.error && !state.field && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
         {state.savedAt && !state.error && <span className="text-sm text-ok" role="status">Kaydedildi.</span>}
@@ -107,10 +108,10 @@ export function FiscalRowActions({ id, status, canMail, url }: { id: string; sta
   const run = (fn: () => Promise<FiscalState>) => start(async () => setMsg(await fn()));
   return (
     <div className={`flex flex-wrap items-center gap-3 text-xs ${pending ? "opacity-60" : ""}`}>
-      {(status === "pending" || status === "error") && <button type="button" disabled={pending} onClick={() => run(() => retryFiscal(id))} className="font-medium text-brand hover:underline">Yeniden dene</button>}
-      {status === "issued" && canMail && <button type="button" disabled={pending} onClick={() => run(() => resendFiscalMail(id))} className="font-medium text-brand hover:underline">E-postayı gönder</button>}
-      <a href={url} target="_blank" rel="noreferrer" className="underline">Sayfayı aç</a>
-      {msg && <span role="status" className={msg.error ? "text-bad" : "text-ok"}>{msg.error ?? msg.info}</span>}
+      {(status === "pending" || status === "error") && <button type="button" disabled={pending} onClick={() => run(() => retryFiscal(id))} className="inline-flex min-h-10 items-center rounded-lg px-2.5 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{pending ? "Deneniyor…" : "Yeniden dene"}</button>}
+      {status === "issued" && canMail && <button type="button" disabled={pending} onClick={() => run(() => resendFiscalMail(id))} className="inline-flex min-h-10 items-center rounded-lg px-2.5 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{pending ? "Gönderiliyor…" : "E-postayı gönder"}</button>}
+      <a href={url} target="_blank" rel="noreferrer" className="rounded px-1 underline outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Sayfayı aç</a>
+      {msg && <span role="status" className={`break-words ${msg.error ? "text-bad" : "text-ok"}`}>{msg.error ?? msg.info}</span>}
     </div>
   );
 }
@@ -126,7 +127,7 @@ export function OkcZReportForm() {
       <div className="ml-auto">
         <Button type="submit" disabled={pending}>{pending ? "Alınıyor…" : "Z raporu al"}</Button>
       </div>
-      {state.error && <p className="w-full text-sm text-bad" role="alert">{state.error}</p>}
+      {state.error && <p className="w-full break-words text-sm text-bad" role="alert">{state.error}</p>}
       {state.info && <p className="w-full text-sm text-ok" role="status">{state.info}</p>}
     </form>
   );
