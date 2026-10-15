@@ -5,7 +5,8 @@
 - **Kimlik formları:** `PasswordInput` (göster/gizle, aria-pressed), ilk alana autoFocus, 2FA bölümü hata gelince kendi açılıp koda odaklanıyor, hata mesajları `role="alert" aria-live="assertive"` + break-words.
 - **Yükleme/hata iskeletleri:** kök + menü sayfalarına yeni `loading.tsx`; yönetim iskeleti sayfa düzenini taklit eden bloklara geçti (hepsi `motion-safe`), hata sayfalarına "Ana sayfaya dön" + odak halkaları.
 - **Nav:** aktif öğe görünürse `scrollIntoView`, `data-testid`'ler, grup etiketleri `h2` oldu; aktif durum gradyandan açık yüzey + iç halkaya çekildi (sayfa başlığıyla aynı dil).
-- **Canlı hata tespiti:** cabukpos-app.vercel.app'ta yeni kayıt açınca `/yonetim/raporlar` + `/yonetim/hq` minified React #441 atıyordu — deploy edilmiş build eski `formatTL` kodu; yerel prod build'de iki sayfa da temiz. Commit + prod deploy ile kapanacak.
+- **Canlı hata tespiti + kök neden:** cabukpos-app.vercel.app'ta yeni kayıt açınca `/yonetim/raporlar` + `/yonetim/hq` minified React #441 atıyordu. Yerel prod build'i prod DB'ye bağlayınca gerçek hata çıktı: **prod şemasında `sales.discount` kolonu yok** (#33 satış indirimi işinin `prod-push.sh 1` adımı hiç koşulmamış; yerel dev DB'de kolon vardı). `sh scripts/prod-push.sh 1` ile uygulandı → canlıda iki sayfa da doğrulandı (TEMİZ). Deploy da bu turda yenilendi (311fb7c).
+- Not: prod kayıt ucu IP başına 5/saat (`signup:` rate limit); üst üste test kaydı "Çok fazla kayıt denemesi" verir.
 - Doğrulama: 395/395 test; lint + tsc + Webpack build temiz; kayıt→panel akışı yerel dev + yerel prod build'de playwright ile gezildi (urunler/musteriler/raporlar/markalar/hq/bildirimler TEMİZ).
 
 ## Happy hour yüzde indirim + kategori kapsamı (2026-10-10, commit bekliyor)
