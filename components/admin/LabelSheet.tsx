@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { markLabelsPrinted } from "@/lib/admin/label-actions";
 import { ean13Modules } from "@/lib/core/ean13";
-import { formatTL } from "@/lib/core/money";
+import { formatMoney, type Currency } from "@/lib/core/money";
 import { Button } from "@/components/ui";
 
 export type LabelItem = { id: string; name: string; price: number; kind: "adet" | "tartili"; plu: string | null; barcode: string | null };
@@ -21,7 +21,7 @@ function Bars({ code }: { code: string }) {
   );
 }
 
-export function LabelSheet({ items }: { items: LabelItem[] }) {
+export function LabelSheet({ items, currency = "TRY" }: { items: LabelItem[]; currency?: Currency }) {
   const [sel, setSel] = useState(() => new Set(items.map((i) => i.id)));
   const [pending, start] = useTransition();
   const [done, setDone] = useState(false);
@@ -44,7 +44,7 @@ export function LabelSheet({ items }: { items: LabelItem[] }) {
               <label className="flex items-center gap-3 p-3 text-sm">
                 <input type="checkbox" checked={sel.has(i.id)} onChange={() => toggle(i.id)} className="size-4 accent-[var(--color-brand)]" aria-label={`${i.name} etiketi`} />
                 <span className="flex-1 font-medium">{i.name}</span>
-                <span className="tabular">{formatTL(i.price)}{i.kind === "tartili" && "/kg"}</span>
+                <span className="tabular">{formatMoney(i.price, currency)}{i.kind === "tartili" && "/kg"}</span>
               </label>
             </li>
           ))}
@@ -56,7 +56,7 @@ export function LabelSheet({ items }: { items: LabelItem[] }) {
             <div className="line-clamp-2 text-[11pt] font-semibold leading-tight">{i.name}</div>
             <div className="flex items-end justify-between gap-2">
               <div>
-                <div className="tabular text-[20pt] font-bold leading-none">{formatTL(i.price)}</div>
+                <div className="tabular text-[20pt] font-bold leading-none">{formatMoney(i.price, currency)}</div>
                 {i.kind === "tartili" && <div className="text-[8pt]">kg fiyatı{i.plu ? ` · PLU ${i.plu}` : ""}</div>}
               </div>
               {i.barcode && <Bars code={i.barcode} />}

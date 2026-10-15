@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { tenantCurrency } from "@/lib/admin/currency";
 import { stockUnitOf } from "@/lib/core/stock";
 import { RecipeForm, type IngredientOption, type RecipeOwner } from "@/components/admin/RecipeForms";
 import { Card, Empty, PageHeader } from "@/components/ui";
@@ -52,7 +53,7 @@ export default async function Receteler({ searchParams }: { searchParams: Promis
           {owner ? (
             <>
               <h2 className="mb-3 font-semibold">{owner.name}</h2>
-              <RecipeForm key={owner.productId ?? owner.optionId} owner={owner} ingredients={ingredients} initial={initial} />
+              <RecipeForm key={owner.productId ?? owner.optionId} owner={owner} ingredients={ingredients} initial={initial} currency={await tenantCurrency(a.tenantId)} />
             </>
           ) : <Empty>Soldan bir ürün, ara ürün ya da seçenek seçin.</Empty>}
         </Card>

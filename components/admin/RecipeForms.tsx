@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { produce, saveRecipe, type RecipeState } from "@/lib/admin/recipe-actions";
-import { formatTL } from "@/lib/core/money";
+import { formatMoney, type Currency } from "@/lib/core/money";
 import type { StockUnit } from "@/lib/core/stock";
 import { Select, type Option } from "@/components/Select";
 import { useFormAction } from "@/components/useFormAction";
@@ -19,7 +19,7 @@ const toMilli = (s: string, u: StockUnit) => {
   return Number.isFinite(n) && n > 0 ? (u === "adet" ? n * 1000 : n) : 0;
 };
 
-export function RecipeForm({ owner, ingredients, initial }: { owner: RecipeOwner; ingredients: IngredientOption[]; initial: { ingredientId: string; qtyMilli: number }[] }) {
+export function RecipeForm({ owner, ingredients, initial, currency = "TRY" }: { owner: RecipeOwner; ingredients: IngredientOption[]; initial: { ingredientId: string; qtyMilli: number }[]; currency?: Currency }) {
   const { state, pending, onSubmit } = useFormAction(saveRecipe.bind(null, { productId: owner.productId, optionId: owner.optionId }), {} as RecipeState);
   const byId = new Map(ingredients.map((i) => [i.value, i]));
   const [rows, setRows] = useState(() => (initial.length ? initial : [{ ingredientId: "", qtyMilli: 0 }]).map((r, k) => ({ k, id: r.ingredientId, qty: r.qtyMilli ? shown(r.qtyMilli, byId.get(r.ingredientId)?.unit ?? "adet") : "" })));
@@ -49,16 +49,16 @@ export function RecipeForm({ owner, ingredients, initial }: { owner: RecipeOwner
             <div className="min-w-0"><Select ariaLabel="Malzeme" name="ing" options={ingredients} defaultValue={r.id} placeholder="Malzeme seçin" onChange={(v) => set(r.k, { id: v })} /></div>
             <Input name="qty" inputMode="decimal" value={r.qty} onChange={(e) => set(r.k, { qty: e.target.value })} aria-label="Miktar" className="w-full" />
             <span className="text-sm text-muted">{ing ? inputUnit(ing.unit) : ""}</span>
-            <span className="tabular text-left text-sm text-muted lg:text-right">{ing?.cost != null ? formatTL(Math.round((ing.cost * toMilli(r.qty, ing.unit)) / 1000)) : ing ? "maliyet yok" : ""}</span>
+            <span className="tabular text-left text-sm text-muted lg:text-right">{ing?.cost != null ? formatMoney(Math.round((ing.cost * toMilli(r.qty, ing.unit)) / 1000), currency) : ing ? "maliyet yok" : ""}</span>
             <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.k !== r.k))} className="inline-flex size-11 items-center justify-center rounded-lg text-lg text-muted outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60" aria-label="Satırı sil">×</button>
           </div>
         );
       })}
       <Button type="button" variant="secondary" onClick={() => { setRows((rs) => [...rs, { k: next, id: "", qty: "" }]); setNext(next + 1); }}>+ Malzeme</Button>
       <div className="rounded-lg bg-surface-2 p-3 text-sm" data-testid="recipe-cost">
-        {owner.yieldMilli ? <>Parti maliyeti <b className="tabular">{formatTL(Math.round(total))}</b> · {owner.unit} başına <b className="tabular">{formatTL(Math.round(perUnit))}</b></> : <>Maliyet <b className="tabular">{formatTL(Math.round(total))}</b></>}
+        {owner.yieldMilli ? <>Parti maliyeti <b className="tabular">{formatMoney(Math.round(total), currency)}</b> · {owner.unit} başına <b className="tabular">{formatMoney(Math.round(perUnit), currency)}</b></> : <>Maliyet <b className="tabular">{formatMoney(Math.round(total), currency)}</b></>}
         {missing && <span className="ml-2 text-warn">(maliyeti olmayan malzeme var)</span>}
-        {margin !== null && <> · KDV hariç fiyat {formatTL(Math.round(net!))} · marj <b className="tabular">%{margin.toFixed(1)}</b></>}
+        {margin !== null && <> · KDV hariç fiyat {formatMoney(Math.round(net!), currency)} · marj <b className="tabular">%{margin.toFixed(1)}</b></>}
       </div>
       {state.error && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
       <div className="flex items-center gap-3">

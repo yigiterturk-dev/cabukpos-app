@@ -2,7 +2,7 @@ import { asc, desc, eq, inArray } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { cancelPurchase } from "@/lib/admin/purchase-actions";
-import { moneyFormatter } from "@/lib/admin/currency";
+import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 import { formatQty, stockUnitOf } from "@/lib/core/stock";
 import { PurchaseForm } from "@/components/admin/PurchaseForms";
 import { Badge, buttonClass, Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
@@ -29,7 +29,7 @@ export default async function Alislar() {
       <PageHeader title="Alışlar" desc="Alış fişi stoğu artırır ve ürünün maliyetini son alış fiyatına çeker. Tutarlar KDV dahil." />
       <Card className="mb-6 p-5">
         <h2 className="mb-4 font-semibold">Yeni alış</h2>
-        {prods.length ? <PurchaseForm products={prods.map((p) => ({ value: p.id, label: p.name, unit: stockUnitOf(p) }))} suppliers={sups} today={today()} /> : <Empty>Stok takipli ürün yok. Ürünler’de stok takibini açın ya da hammadde ekleyin.</Empty>}
+        {prods.length ? <PurchaseForm products={prods.map((p) => ({ value: p.id, label: p.name, unit: stockUnitOf(p) }))} suppliers={sups} today={today()} currency={await tenantCurrency(a.tenantId)} /> : <Empty>Stok takipli ürün yok. Ürünler’de stok takibini açın ya da hammadde ekleyin.</Empty>}
       </Card>
       {list.length === 0 ? <Empty>Henüz alış yok.</Empty> : (
         <Card className="overflow-x-auto">

@@ -45,6 +45,12 @@ export function formatMoney(k: Kurus, c: Currency = "TRY"): string {
   return f.format(k / 100);
 }
 
+/** Birim fiyat/oran etiketleri için çıplak sembol ("₺", "$", "€", "£"). */
+export function currencySymbol(c: Currency): string {
+  const part = new Intl.NumberFormat("tr-TR", { style: "currency", currency: c, currencyDisplay: "narrowSymbol" }).formatToParts(0).find((p) => p.type === "currency");
+  return part?.value ?? c;
+}
+
 /** Fiş tarzı sonekli biçim. TRY "12,50 ₺" (yazıcıda "TL"); TRY dışı ISO koduyla "12,50 USD" —
  *  €/£ PC857'de yok, $ ise belirsiz; kod son eki her kod sayfasında basılır. */
 export function formatReceipt(k: Kurus, c: Currency = "TRY"): string {

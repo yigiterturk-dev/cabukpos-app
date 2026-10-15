@@ -2,6 +2,7 @@ import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { tenantCurrency } from "@/lib/admin/currency";
 import { LabelSheet } from "@/components/admin/LabelSheet";
 import { Empty, PageHeader } from "@/components/ui";
 
@@ -26,7 +27,7 @@ export default async function Etiketler({ searchParams }: { searchParams: Promis
           <Link href="/yonetim/etiketler?tum=1" className={tab(all)}>Tüm ürünler ({prods.length})</Link>
         </div>
       </div>
-      {list.length === 0 ? <Empty>Basılacak etiket yok.</Empty> : <LabelSheet key={list.map((l) => l.id).join()} items={list} />}
+      {list.length === 0 ? <Empty>Basılacak etiket yok.</Empty> : <LabelSheet key={list.map((l) => l.id).join()} items={list} currency={await tenantCurrency(a.tenantId)} />}
     </>
   );
 }

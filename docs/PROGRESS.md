@@ -7,6 +7,8 @@
 - **Nav:** aktif öğe görünürse `scrollIntoView`, `data-testid`'ler, grup etiketleri `h2` oldu; aktif durum gradyandan açık yüzey + iç halkaya çekildi (sayfa başlığıyla aynı dil).
 - **Canlı hata tespiti + kök neden:** cabukpos-app.vercel.app'ta yeni kayıt açınca `/yonetim/raporlar` + `/yonetim/hq` minified React #441 atıyordu. Yerel prod build'i prod DB'ye bağlayınca gerçek hata çıktı: **prod şemasında `sales.discount` kolonu yok** (#33 satış indirimi işinin `prod-push.sh 1` adımı hiç koşulmamış; yerel dev DB'de kolon vardı). `sh scripts/prod-push.sh 1` ile uygulandı → canlıda iki sayfa da doğrulandı (TEMİZ). Deploy da bu turda yenilendi (311fb7c).
 - Not: prod kayıt ucu IP başına 5/saat (`signup:` rate limit); üst üste test kaydı "Çok fazla kayıt denemesi" verir.
+- **Kalan kapsam kapatıldı — yönetim formları para birimi:** Alış formu (satır toplamları + Toplam + birim etiketi `currencySymbol`), reçete maliyet/marj kutusu, raf etiketi sayfası (basılı etiketler dahil) kiracı para birimiyle basıyor; alışlar/reçeteler/etiketler sayfaları `tenantCurrency` geçiriyor. ProductForm/SalonForms/DeliveryForms sembolleri söküp sayı basıyor (nötr), dokunulmadı. Yasal metin/fatura/pazarlama TRY sabit kalır.
+- Deploy sonrası kapı: runtime audit 16/16 PASS (BASE=prod), main push'landı (e0d9089..f585497).
 - Doğrulama: 395/395 test; lint + tsc + Webpack build temiz; kayıt→panel akışı yerel dev + yerel prod build'de playwright ile gezildi (urunler/musteriler/raporlar/markalar/hq/bildirimler TEMİZ).
 
 ## Happy hour yüzde indirim + kategori kapsamı (2026-10-10, commit bekliyor)

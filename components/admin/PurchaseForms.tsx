@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { addSupplierPayment, savePurchase, saveSupplier, type PurchaseState } from "@/lib/admin/purchase-actions";
-import { formatTL, parseTL } from "@/lib/core/money";
+import { currencySymbol, formatMoney, parseTL, type Currency } from "@/lib/core/money";
 import { parseQty, type StockUnit } from "@/lib/core/stock";
 import { purchaseLineTotal } from "@/lib/core/purchase";
 import { Select, type Option } from "@/components/Select";
@@ -11,12 +11,12 @@ import { Button, Field, Input } from "@/components/ui";
 
 const Err = ({ s, f }: { s: PurchaseState; f: string }) => (s.field === f && s.error ? <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
 
-export function PurchaseForm({ products, suppliers, today }: { products: (Option & { unit: StockUnit })[]; suppliers: Option[]; today: string }) {
+export function PurchaseForm({ products, suppliers, today, currency = "TRY" }: { products: (Option & { unit: StockUnit })[]; suppliers: Option[]; today: string; currency?: Currency }) {
   const { state, pending, onSubmit } = useFormAction(savePurchase, {} as PurchaseState);
-  return <PurchaseFields key={state.savedAt ?? 0} state={state} pending={pending} onSubmit={onSubmit} products={products} suppliers={suppliers} today={today} />;
+  return <PurchaseFields key={state.savedAt ?? 0} state={state} pending={pending} onSubmit={onSubmit} products={products} suppliers={suppliers} today={today} currency={currency} />;
 }
 
-function PurchaseFields({ state, pending, onSubmit, products, suppliers, today }: { state: PurchaseState; pending: boolean; onSubmit: (e: React.FormEvent<HTMLFormElement>) => void; products: (Option & { unit: StockUnit })[]; suppliers: Option[]; today: string }) {
+function PurchaseFields({ state, pending, onSubmit, products, suppliers, today, currency = "TRY" }: { state: PurchaseState; pending: boolean; onSubmit: (e: React.FormEvent<HTMLFormElement>) => void; products: (Option & { unit: StockUnit })[]; suppliers: Option[]; today: string; currency?: Currency }) {
   const unitOf = new Map(products.map((p) => [p.value, p.unit]));
   const [rows, setRows] = useState([{ k: 0, pid: "", qty: "", price: "" }]);
   const [next, setNext] = useState(1);
@@ -43,8 +43,8 @@ function PurchaseFields({ state, pending, onSubmit, products, suppliers, today }
               <div className="min-w-0"><Select ariaLabel="Ürün" name="pid" options={products} defaultValue="" placeholder="Ürün seçin" onChange={(v) => set(r.k, { pid: v })} /></div>
               <Input name="qty" inputMode="decimal" value={r.qty} onChange={(e) => set(r.k, { qty: e.target.value })} aria-label="Miktar" className="w-full" />
               <Input name="price" inputMode="decimal" value={r.price} onChange={(e) => set(r.k, { price: e.target.value })} aria-label="Birim fiyat" className="w-full" />
-              <span className="text-sm text-muted">{u ? `₺/${u}` : ""}</span>
-              <span className="tabular text-right text-sm">{t !== null ? formatTL(t) : ""}</span>
+              <span className="text-sm text-muted">{u ? `${currencySymbol(currency)}/${u}` : ""}</span>
+              <span className="tabular text-right text-sm">{t !== null ? formatMoney(t, currency) : ""}</span>
               {rows.length > 1 && <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.k !== r.k))} className="grid size-11 place-items-center rounded-lg text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60" aria-label="Kalemi sil">×</button>}
             </div>
           );
@@ -56,7 +56,7 @@ function PurchaseFields({ state, pending, onSubmit, products, suppliers, today }
       {state.error && !["supplierId", "date", "lines"].includes(state.field ?? "") && <p className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
       <div className="flex items-center gap-4">
         <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Alışı kaydet"}</Button>
-        <span className="text-sm">Toplam <b className="tabular" data-testid="purchase-total">{formatTL(total)}</b></span>
+        <span className="text-sm">Toplam <b className="tabular" data-testid="purchase-total">{formatMoney(total, currency)}</b></span>
         {state.savedAt && <span className="text-sm text-ok" role="status">Kaydedildi; stok ve maliyet güncellendi.</span>}
       </div>
     </form>
