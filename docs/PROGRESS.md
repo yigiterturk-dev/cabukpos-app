@@ -1,6 +1,7 @@
 # İlerleme — ÇabukPOS
 
-## Delta güvenlik incelemesi + card-vault v1→v2 göçü (2026-10-16, commit bekliyor)
+## Delta güvenlik incelemesi + card-vault v1→v2 göçü (2026-10-16)
+- **Çıkış:** commit 72c25ee → main push (0c51688..72c25ee) → `vercel deploy --prod` Ready (alias cabukpos.com) → canlı smoke /api/ready + /giris 200 → runtime audit PASS (BASE=cabukpos.com).
 - **Kapsam:** son genel denetim (106ad6a, 10-12) sonrası 8 commit'lik delta (0c51688 dahil) — telemetry rate-limit, card-vault v2, indirim-mali, rls.sql, kiosk/auth cila turu gözden geçirildi. **Bulgu yok:** rate-limit gövde çözümlemeden önce, `discountedVat` taşma/sıfıra-bölme güvenli, fiscal_doc_by_token yüzeyi yalnız `discount` alanıyla genişliyor, kiosk payload/ve server doğrulaması değişmemiş.
 - **Kapılar:** `npm audit --omit=dev` 0 bulgu, 401/401 test, lint + tsc temiz.
 - **İyileştirme — card-vault v1 satırları okumada v2'ye yükseltilir:** `cardTokenNeedsUpgrade` (`lib/billing/card-vault.ts`); `renewDue` başarılı çözümlemeden sonra satırı v2 ile yeniden yazar, `okcReceiptFor`/`okcPing`/`okcZReport` bulut anahtarı için aynı (`migrateCloudKey`, tx içinde). Böylece `AUTH_SECRET_PREVIOUS` bir kez kullanılıp kaldırılabilir; v1 bağımlılığı süreklileşmez. Bozuk/çözülemeyen satıra dokunmaz.
