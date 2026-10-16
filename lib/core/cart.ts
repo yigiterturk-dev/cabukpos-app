@@ -45,3 +45,17 @@ export function totals(cart: AnyLine[]): { total: Kurus; count: number; vat: Vat
   const vat = [...byRate].sort(([a], [b]) => a - b).map(([rate, gross]) => ({ rate, gross, ...splitVat(gross, rate) }));
   return { total, count, vat };
 }
+
+/** #33: satış düzeyi indirim (kupon/puan) KDV kırılımına oransal yansır — matrah ve KDV indirimsiz brütle gösterilir.
+ *  Kırılım brüt toplamı tam korunur: artan kuruş son orana yazılır. İndirim kırılım toplamını aşamaz. */
+export function discountedVat<R extends number>(vat: { rate: R; gross: Kurus; net: Kurus; vat: Kurus }[], discount: Kurus = 0): { rate: R; gross: Kurus; net: Kurus; vat: Kurus }[] {
+  const gross = vat.reduce((t, v) => t + v.gross, 0);
+  const cut = Math.min(Math.max(0, discount), gross);
+  let left = cut;
+  return vat.map((v, i) => {
+    const d = i === vat.length - 1 ? left : Math.min(left, Math.round((cut * v.gross) / (gross || 1)));
+    left -= d;
+    const g = v.gross - d;
+    return { rate: v.rate, gross: g, ...splitVat(g, v.rate as VatRate) } as { rate: R; gross: Kurus; net: Kurus; vat: Kurus };
+  });
+}

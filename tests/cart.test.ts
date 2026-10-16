@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CURRENCIES, formatTL, isCurrency, formatMoney, parseTL, parseMoney, splitVat } from "@/lib/core/money";
-import { addProduct, lineTotal, removedLines, setQty, totals } from "@/lib/core/cart";
+import { addProduct, discountedVat, lineTotal, removedLines, setQty, totals, type VatLine } from "@/lib/core/cart";
 
 const doner = { id: "d", name: "Döner", price: 18000, vatRate: 10 as const };
 const ayran = { id: "a", name: "Ayran", price: 2500, vatRate: 10 as const };
@@ -72,4 +72,19 @@ test("M9a: removedLines — silme, azaltma, artış yok sayılır, boşaltma", (
   assert.deepEqual(removedLines(c, addProduct(c, su)), []);
   assert.deepEqual(removedLines(c, setQty(c, "d", 4000)), []);
   assert.equal(removedLines(c, []).reduce((s, l) => s + l.total, 0), 56500);
+});
+
+test("#33: discountedVat — indirim oransal yansır, kırılım toplamı korunur", () => {
+  const vat: VatLine[] = [
+    { rate: 10, gross: 38500, net: 35000, vat: 3500 },
+    { rate: 20, gross: 1000, net: 833, vat: 167 },
+  ];
+  const d = discountedVat(vat, 5000);
+  assert.equal(d.reduce((s, v) => s + v.gross, 0), 34500); // brüt − indirim korunur
+  assert.equal(d[0].gross, 33627); // oransal pay yuvarlanır (5000×38500/39500 = 4873)
+  assert.equal(d[1].gross, 873); // son oran kalan kuruşu alır
+  assert.equal(d[1].net + d[1].vat, d[1].gross); // net + KDV = brüt
+  assert.deepEqual(discountedVat(vat, 0), vat); // indirimsiz kimlik
+  assert.deepEqual(discountedVat(vat, 999999), discountedVat(vat, 39500)); // kırılım toplamını aşamaz
+  assert.deepEqual(discountedVat([], 1000), []);
 });

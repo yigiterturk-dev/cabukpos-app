@@ -1,5 +1,12 @@
 # İlerleme — ÇabukPOS
 
+## #33 satış indirimi mali yüzeye tamamlandı (2026-10-16, commit bekliyor)
+- **Boşluk:** kupon/puan indirimi fişte ve raporlarda netti ama e-Arşiv fatura görüntüsü (`/f/[token]`), kesim girdisi, fiş KDV matrahı, gün sonu KDV kırılımı ve muhasebe yevmiyesi e-Arşiv satırında **brüt** kalıyordu (PROGRESS "Kalan (ayrı iş)" maddesi).
+- **Çekirdek:** `lib/core/cart.ts` `discountedVat` — satış düzeyi indirim KDV kırılımına oransal yansır (artan kuruş son orana, brüt−indirim tam korunur, kırılım toplamını aşamaz, generic oran tipi).
+- **Kullanım yerleri:** `fiscal_doc_by_token` sale nesnesine `discount` eklendi (rls.sql; `db:rls` ile test+dev, deploy'da prod-push) → `/f` sayfası "İndirim (kupon/puan)" satırı + net genel toplam + net matrah basıyor. `IssueInput.discount` alanı eklendi; `issueOne` net kırılım + `total − discount` geçiyor. Fiş (renderReceipt) matrahı, gün sonu (summarizeShift KDV birikimi — Z raporu değildir bandı aynen) ve muhasebe e-Arşiv satırı aynı yardımcıya geçti. OKC sandbox sürücüsüne dokunulmadı (brüt total; entegratör kapısında netleşir).
+- Test: `discountedVat` birim (oransal pay/yuvarlama/kimlik/taşma/boş) + fiscal-db "indirimli satış" senaryosu (token fonksiyonu discount taşır, kesim issued) → **400/400**, lint + tsc + Webpack build temiz.
+- Kalan: commit + deploy + prod-push (rls.sql prodde koşulmalı); OKC brüt total notu entegratör işine.
+
 ## Arayüz cila turu + kiracı para birimi + canlı rapor hatası tespiti (2026-10-16, commit bekliyor)
 - **Kiracı bazlı para birimi panelde:** `moneyFormatter(tenantId)` (`lib/admin/currency`) — HQ ve Raporlar `formatTL` yerine kiracının para birimiyle basıyor; HQ tablosu ortak `TABLE_HEAD` stilini aldı, `min-w` ile yatay taşma düzeldi. Kiosko sepeti `formatReceipt` + `currency` prop'una geçti, sepet yüksekliği `--kiosk-cart-space` ile sayfa akışına bağlandı (ResizeObserver).
 - **Kimlik formları:** `PasswordInput` (göster/gizle, aria-pressed), ilk alana autoFocus, 2FA bölümü hata gelince kendi açılıp koda odaklanıyor, hata mesajları `role="alert" aria-live="assertive"` + break-words.

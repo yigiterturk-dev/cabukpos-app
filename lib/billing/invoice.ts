@@ -55,7 +55,7 @@ export async function issueSubscriptionInvoice(invoiceId: string): Promise<boole
       buyer: b.data,
       lines: [{ name: `ÇabukPOS aboneliği (${p.period === "yillik" ? "Yıllık" : "Aylık"})`, qty: 1, unitPrice: p.amount, vatRate: 20, total: p.amount }],
       vat: [{ rate: 20, gross: p.amount, net, vat }],
-      total: p.amount, soldAt: at, number,
+      discount: 0, total: p.amount, soldAt: at, number,
     };
     let r;
     try { r = await getProvider(inv.provider, { fakeFail: false }).issue(input); }

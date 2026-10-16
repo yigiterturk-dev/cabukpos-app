@@ -3,6 +3,7 @@ import { and, eq, gte, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import type { Tx } from "@/db";
 import { schema } from "@/db";
 import { audit } from "@/lib/audit";
+import { discountedVat } from "@/lib/core/cart";
 import { buildMonthlyJournal, type MonthInput, type PosDay } from "@/lib/core/accounting";
 import { purchaseDocVat } from "@/lib/core/purchase";
 
@@ -68,7 +69,7 @@ export async function monthlyAccountingJournal(tx: Tx, input: { tenantId: string
   const monthInput: MonthInput = {
     year: input.year, month: input.month,
     posDays: [...posByDay.values()].sort((a, b) => a.date.localeCompare(b.date)),
-    earsiv: earsiv.filter((e) => e.no).map((e) => ({ date: dayLabel(e.at), no: e.no!, buyer: e.buyer.name, ...vatSum(e.vat ?? []), gross: e.total - e.discount })),
+    earsiv: earsiv.filter((e) => e.no).map((e) => ({ date: dayLabel(e.at), no: e.no!, buyer: e.buyer.name, ...vatSum(discountedVat(e.vat ?? [], e.discount ?? 0)), gross: e.total - e.discount })),
     refunds: refunds.map((r) => {
       const v = vatSum(r.vat ?? []);
       return { date: dayLabel(r.at), no: r.no, gross: r.total - r.discount, net: v.net - r.discount, vat: v.vat, earsiv: r.kind === "alici_faturasi", buyer: r.buyer?.name };

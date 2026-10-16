@@ -2,7 +2,7 @@
 import { formatReceipt, type Currency } from "./money";
 import { PAY_METHODS, shownMethods } from "./payment";
 import type { Payment } from "./payment";
-import type { VatLine } from "./cart";
+import { discountedVat, type VatLine } from "./cart";
 import type { summarizeShift } from "./shift";
 import { EscPos, fromBase64, type Codepage, type PaperWidth, type PrinterBrand } from "./escpos";
 import type { LogoImg } from "./png";
@@ -75,7 +75,7 @@ export function renderReceipt(sale: ReceiptSale, h: ReceiptHeader, o: PrintOpts,
     if (l.discount) p.cols2("  İndirim", `-${TL(l.discount)}`);
   }
   p.rule();
-  for (const v of sale.vat) p.cols2(`KDV %${v.rate}  matrah ${TL(v.net)}`, TL(v.vat));
+  for (const v of discountedVat(sale.vat, sale.discount)) p.cols2(`KDV %${v.rate}  matrah ${TL(v.net)}`, TL(v.vat));
   if (sale.discount) p.cols2("İndirim (kupon/puan)", `-${TL(sale.discount)}`); // #33
   p.rule().bold(true).size(2).cols2(sale.refund ? "İADE" : "TOPLAM", TL(sale.total - (sale.discount ?? 0))).size(1).bold(false);
   if (sale.tip) p.cols2("Bahşiş (dahil)", TL(sale.tip)); // #49: müşteri öder, personele kalır

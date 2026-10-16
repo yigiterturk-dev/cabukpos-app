@@ -1,7 +1,7 @@
 // lib/core/shift.ts — Vardiya (gün sonu) özeti (saf). Nakit = alınan nakit − para üstü − nakit iade.
 // İade (refund) brütten, ödeme türünden ve KDV'den düşer.
 import type { Kurus, VatRate } from "./money";
-import type { VatLine } from "./cart";
+import { discountedVat, type VatLine } from "./cart";
 import { splitVat } from "./money";
 import type { Payment, PayMethod } from "./payment";
 
@@ -27,7 +27,7 @@ export function summarizeShift(openingCash: Kurus, sales: ShiftSale[], drops: Ku
     gross += k * net;
     for (const p of s.payments) byMethod[p.method] += k * p.amount;
     byMethod.nakit -= k * s.change;
-    for (const v of s.vat) byRate.set(v.rate, (byRate.get(v.rate) ?? 0) + k * v.gross);
+    for (const v of discountedVat(s.vat, s.discount ?? 0)) byRate.set(v.rate, (byRate.get(v.rate) ?? 0) + k * v.gross); // #33: KDV kırılımı da indirim düşülmüş (net)
   }
   const vat = [...byRate].filter(([, g]) => g !== 0).sort(([a], [b]) => a - b).map(([rate, g]) => ({ rate, gross: g, ...splitVat(g, rate) }));
   const dropped = drops.reduce((s, d) => s + d, 0);

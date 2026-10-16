@@ -8,6 +8,8 @@ export type IssueInput = {
   buyer: Buyer;
   lines: { name: string; qty: number; unitPrice: number; vatRate: number; total: number }[];
   vat: { rate: number; gross: number; net: number; vat: number }[];
+  /** #33: satış düzeyi indirim (kupon/puan) — vat kırılımı bu tutar düşülmüş (net) gelir. */
+  discount: number;
   total: number;
   soldAt: Date;
   number: string;

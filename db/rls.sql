@@ -43,7 +43,7 @@ language sql stable security definer set search_path = public as $f$
   select jsonb_build_object(
     'status', d.status, 'number', d.number, 'ettn', d.ettn, 'buyer', d.buyer, 'issuedAt', d.issued_at, 'createdAt', d.created_at,
     'provider', fs.provider,
-    'sale', jsonb_build_object('receiptNo', s.receipt_no, 'total', s.total, 'vat', s.vat, 'createdAt', s.created_at),
+    'sale', jsonb_build_object('receiptNo', s.receipt_no, 'total', s.total, 'discount', s.discount, 'vat', s.vat, 'createdAt', s.created_at),
     'lines', coalesce((select jsonb_agg(jsonb_build_object('name', l.name, 'qtyMilli', l.qty_milli, 'unitPrice', l.unit_price, 'vatRate', l.vat_rate, 'total', l.total) order by l.name) from sale_lines l where l.sale_id = s.id), '[]'::jsonb),
     'seller', jsonb_build_object('name', t.name, 'taxId', t.tax_id, 'taxOffice', t.tax_office, 'address', t.address),
     'store', jsonb_build_object('name', st.name, 'address', st.address)

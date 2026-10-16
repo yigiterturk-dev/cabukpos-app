@@ -64,7 +64,7 @@ const input: IssueInput = {
   seller: { taxId: "1234567890", name: "Test", taxOffice: "Kadıköy", address: "İstanbul" },
   buyer: { taxId: NIHAI_TUKETICI.taxId, name: NIHAI_TUKETICI.name },
   lines: [{ name: "Çay", qty: 1, unitPrice: 2000, vatRate: 10, total: 2000 }],
-  vat: [{ rate: 10, gross: 2000, net: 1818, vat: 182 }], total: 2000, soldAt: new Date(), number: "CBP2026000000001",
+  vat: [{ rate: 10, gross: 2000, net: 1818, vat: 182 }], discount: 0, total: 2000, soldAt: new Date(), number: "CBP2026000000001",
 };
 
 test("sahte sürücü: başarı, hata simülasyonu, 7 gün iptal", async () => {

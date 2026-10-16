@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { formatTL } from "@/lib/core/money";
+import { discountedVat } from "@/lib/core/cart";
 import { qtyText } from "@/lib/core/receipt";
 import { clientIp, hit } from "@/lib/ratelimit";
 import { PrintButton } from "@/components/PrintButton";
@@ -65,10 +66,11 @@ export default async function Fatura({ params }: { params: Promise<{ token: stri
             </tbody>
           </table>
           <div className="ml-auto w-full max-w-xs space-y-1 tabular-nums">
-            {d.sale.vat.map((v) => (
+            {discountedVat(d.sale.vat, d.sale.discount).map((v) => (
               <div key={v.rate} className="flex justify-between"><span className="text-muted">KDV %{v.rate} (matrah {formatTL(v.net)})</span><span>{formatTL(v.vat)}</span></div>
             ))}
-            <div className="flex justify-between border-t border-line pt-1 text-base font-bold"><span>Genel toplam</span><span>{formatTL(d.sale.total)}</span></div>
+            {!!d.sale.discount && <div className="flex justify-between"><span className="text-muted">İndirim (kupon/puan)</span><span>-{formatTL(d.sale.discount)}</span></div>}
+            <div className="flex justify-between border-t border-line pt-1 text-base font-bold"><span>Genel toplam</span><span>{formatTL(d.sale.total - d.sale.discount)}</span></div>
           </div>
           <footer className="border-t border-line pt-3 text-xs text-muted">
             <div>ETTN: <span className="font-mono" data-testid="fiscal-ettn">{d.ettn}</span></div>

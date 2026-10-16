@@ -4,6 +4,7 @@ import { and, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { getDb, schema, withTenant, type Tx } from "@/db";
 import { buyerSchema, DEFAULT_MODES, docModeFor, formatNumber, MAX_ATTEMPTS, newFiscalToken, nextRetryDue, NIHAI_TUKETICI, type Buyer, type Channel } from "@/lib/core/fiscal";
 import { buyerKindOf } from "@/lib/core/refundNote";
+import { discountedVat } from "@/lib/core/cart";
 import { getProvider, type IssueInput } from "./provider";
 
 const D = schema.fiscalDocuments;
@@ -56,7 +57,7 @@ export async function issueOne(tenantId: string, saleId: string, { force = false
       seller: { taxId: t.taxId, name: t.name, taxOffice: t.taxOffice, address: t.address },
       buyer: buyer.data,
       lines: lines.map((l) => ({ name: l.name, qty: l.qtyMilli / 1000, unitPrice: l.unitPrice, vatRate: l.vatRate, total: l.total })),
-      vat: sale.vat, total: sale.total, soldAt: sale.createdAt, number,
+      vat: discountedVat(sale.vat, sale.discount ?? 0), discount: sale.discount ?? 0, total: sale.total - (sale.discount ?? 0), soldAt: sale.createdAt, number,
     };
     let r;
     try { r = await getProvider(s.provider, { fakeFail: s.fakeFail }).issue(input); }

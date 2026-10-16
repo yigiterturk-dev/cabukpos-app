@@ -62,6 +62,22 @@ test("RLS: başka kiracının mali belgesi görünmez; token fonksiyonu bağlams
   assert.ok(!pend.some((r) => r.id === b.t.id));
 });
 
+test("#33: indirimli satış — token fonksiyonu indirimi taşır, kesim girdisi net KDV kırılımı alır", async () => {
+  const f = await fixture("MALI-IND");
+  const saleId = await rawSale(f);
+  const token = newFiscalToken();
+  await withTenant(f.t.id, async (tx) => {
+    // 2000 brüt, 500 indirim → net 1500; matrah/KDV oransal nete düşer.
+    await tx.update(schema.sales).set({ discount: 500, vat: [{ rate: 10, gross: 1500, net: 1364, vat: 136 }] }).where(eq(schema.sales.id, saleId));
+    await tx.insert(schema.fiscalDocuments).values({ tenantId: f.t.id, saleId, buyer: NIHAI_TUKETICI, token });
+  });
+  const [row] = await getDb().execute(sql`select fiscal_doc_by_token(${token}) as d`) as unknown as { d: { sale: { total: number; discount: number } } }[];
+  assert.equal(row.d.sale.discount, 500);
+  assert.equal(row.d.sale.total, 2000);
+  const out = await issueOne(f.t.id, saleId, { force: true });
+  assert.equal(out?.status, "issued");
+});
+
 const line = (total: number) => ({ productId: null, name: "Çay", unitPrice: total, vatRate: 10, qtyMilli: 1000 });
 async function sync(f: Fx, extra: Record<string, unknown> = {}, total = 2000) {
   const id = randomUUID();
