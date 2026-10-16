@@ -21,7 +21,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
 - [x] Pilot E2E komutu CI kapısına bağlı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`); son 5 CI koşusu (2026-10-05 09:06–09:12) **success**
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
-- [~] `npm run launch:check` ile sırları göstermeden production ayar kontrolü; plan fiyatları production env'ine işlendi (2026-10-16, yeniden deploy sonrası etkin — AYLIK 100000, YILLIK 1000000 kuruş); yasal satıcı bilgileri (LEGAL_NAME/ADDRESS/EMAIL/PHONE) ve PayTR anahtarları hâlâ bekleniyor
+- [x] `npm run launch:check` ile sırları göstermeden production ayar kontrolü; plan fiyatları production env'ine işlendi ve canlıya çıktı (2026-10-16 deploy — `/fiyatlandirma` tutarları basıyor, "Fiyat yakında" placeholder'ı gitti); yasal satıcı bilgileri (LEGAL_NAME/ADDRESS/EMAIL/PHONE) ve PayTR anahtarları hâlâ bekleniyor
 
 ### Canlı işletme kapısı — açılıştan önce zorunlu
 
