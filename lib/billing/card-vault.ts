@@ -15,6 +15,11 @@ export function encryptCardToken(plain: string): string | null {
   return `v2:${iv.toString("base64url")}:${c.getAuthTag().toString("base64url")}:${ct.toString("base64url")}`;
 }
 
+/** v1 satırı (rotasyon öncesi) — başarılı okumada v2'ye yeniden yazılma adayı. */
+export function cardTokenNeedsUpgrade(v: string | null): boolean {
+  return typeof v === "string" && v.startsWith("v1:");
+}
+
 /** Bozuk/anahtar değişmiş girdide null döner; asla fırlatmaz. */
 export function decryptCardToken(v: string | null): string | null {
   const secret = process.env.AUTH_SECRET;

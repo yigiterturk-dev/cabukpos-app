@@ -2,11 +2,18 @@
 // kesilemeyen fişin künyesi yazılmaz, satış zaten eşitlenmiştir. Gerçek cihaz/entegratör (#18 insan payı)
 // gelince bu arayüze takılır — fake-okc sandbox yaşam döngüsünü simüle eder.
 import { eq, sql } from "drizzle-orm";
-import { schema, withTenant } from "@/db";import { okcFiscalNo, zNoOf, type OkcSaleData } from "@/lib/core/okc";
+import { schema, withTenant, type Tx } from "@/db";import { okcFiscalNo, zNoOf, type OkcSaleData } from "@/lib/core/okc";
 import { audit } from "@/lib/audit";
 import { fakeProvidersBlocked } from "@/lib/fake-providers";
-import { decryptCardToken } from "@/lib/billing/card-vault";
+import { decryptCardToken, encryptCardToken, cardTokenNeedsUpgrade } from "@/lib/billing/card-vault";
 import { cloudOkc } from "./okc-cloud";
+
+/** v1 ile şifrelenmiş bulut anahtarını okumada v2'ye yükseltir (bir kez; başarısız çözümlemede dokunmaz). */
+async function migrateCloudKey(tx: Tx, tenantId: string, enc: string | null, plain: string | null): Promise<void> {
+  if (!plain || !cardTokenNeedsUpgrade(enc)) return;
+  const next = encryptCardToken(plain);
+  if (next) await tx.update(schema.fiscalSettings).set({ okcApiKey: next }).where(eq(schema.fiscalSettings.tenantId, tenantId));
+}
 
 export type OkcReceiptInput = {
   serial: string;
@@ -73,7 +80,9 @@ export async function okcReceiptFor(tenantId: string, saleId: string): Promise<O
   return withTenant(tenantId, async (tx) => {
     const [s] = await tx.select().from(schema.fiscalSettings);
     if (!s?.okcProvider || !s.okcSerial) return null;
-    const cloud = { apiKey: decryptCardToken(s.okcApiKey), apiUrl: s.okcApiUrl };
+    const apiKey = decryptCardToken(s.okcApiKey);
+    await migrateCloudKey(tx, tenantId, s.okcApiKey, apiKey);
+    const cloud = { apiKey, apiUrl: s.okcApiUrl };
     const [sale] = await tx.select().from(schema.sales).where(eq(schema.sales.id, saleId));
     if (!sale || sale.status !== "kapandi") return null;
     if (sale.okc) return null;
@@ -101,8 +110,9 @@ export async function okcPing(tenantId: string): Promise<OkcResult> {
   return withTenant(tenantId, async (tx) => {
     const [s] = await tx.select().from(schema.fiscalSettings);
     if (!s?.okcProvider || !s.okcSerial) return { ok: false, error: "ÖKC kapalı", retryable: false };
-    const cloud = { apiKey: decryptCardToken(s.okcApiKey), apiUrl: s.okcApiUrl };
-    return getOkc(s.okcProvider, { fakeFail: s.okcFakeFail, ...cloud }).receipt({
+    const pingKey = decryptCardToken(s.okcApiKey);
+    await migrateCloudKey(tx, tenantId, s.okcApiKey, pingKey);
+    return getOkc(s.okcProvider, { fakeFail: s.okcFakeFail, apiKey: pingKey, apiUrl: s.okcApiUrl }).receipt({
       serial: s.okcSerial, seq: 1, receiptNo: "PING", total: 1, vat: [], payments: [], soldAt: new Date(),
     }).then((r) => r.ok ? { ok: true as const, no: r.no, zNo: r.zNo } : r);
   });
@@ -113,7 +123,9 @@ export async function okcZReport(tenantId: string): Promise<{ ok: true; no: stri
   return withTenant(tenantId, async (tx) => {
     const [s] = await tx.select().from(schema.fiscalSettings);
     if (!s?.okcProvider || !s.okcSerial) return { ok: false, error: "ÖKC kapalı" };
-    const p = getOkc(s.okcProvider, { fakeFail: s.okcFakeFail, apiKey: decryptCardToken(s.okcApiKey), apiUrl: s.okcApiUrl });
+    const zKey = decryptCardToken(s.okcApiKey);
+    await migrateCloudKey(tx, tenantId, s.okcApiKey, zKey);
+    const p = getOkc(s.okcProvider, { fakeFail: s.okcFakeFail, apiKey: zKey, apiUrl: s.okcApiUrl });
     if (!p.zReport) return { ok: false, error: "Sağlayıcı Z raporu desteklemiyor." };
     return p.zReport();
   });

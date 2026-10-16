@@ -3,7 +3,7 @@
 // aynı kiracıya 24 saat içinde ikinci deneme yapılmaz. Hata her durumda günlüğe yazılır, cron asla fırlatmaz.
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db";
-import { decryptCardToken } from "./card-vault";
+import { decryptCardToken, encryptCardToken, cardTokenNeedsUpgrade } from "./card-vault";
 import { getBillingProvider } from "./provider";
 import { planPriceFor } from "./plans";
 import { createPayment, completePayment, tenantUnits } from "./service";
@@ -31,6 +31,11 @@ export async function renewDue(now = new Date()): Promise<RenewResult> {
       if (!amount) { out.skipped++; continue; }
       const plain = decryptCardToken(t.cardToken!);
       if (!plain) { out.skipped++; continue; } // anahtar değişmiş/bozuk satır — sessiz atla
+      // v1 satırı (rotasyon öncesi) okumada v2'ye yükseltilir; PREVIOUS bağımlılığı bir kez kapanır.
+      if (cardTokenNeedsUpgrade(t.cardToken)) {
+        const enc = encryptCardToken(plain);
+        if (enc) await getDb().update(T).set({ cardToken: enc }).where(and(eq(T.id, t.id), isNotNull(T.cardToken)));
+      }
       const p = await createPayment(t.id, provider.name, "aylik", amount, units);
       out.attempted++;
       const r = await provider.chargeStored(plain, amount, p.id);

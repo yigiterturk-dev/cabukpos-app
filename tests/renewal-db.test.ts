@@ -8,7 +8,7 @@ process.env.AUTH_SECRET = process.env.AUTH_SECRET || "test-secret-renewal";
 process.env.PLAN_PRICE_AYLIK = process.env.PLAN_PRICE_AYLIK || "29900";
 const { getDb, closeDb, schema } = await import("@/db");
 const { eq } = await import("drizzle-orm");
-const { encryptCardToken, decryptCardToken } = await import("@/lib/billing/card-vault");
+const { encryptCardToken, decryptCardToken, cardTokenNeedsUpgrade } = await import("@/lib/billing/card-vault");
 const { renewDue, removeStoredCard, saveCardToken } = await import("@/lib/billing/renewal");
 
 const made: string[] = [];
@@ -34,6 +34,9 @@ test("card-vault: roundtrip + bozuk girdi null", () => {
   assert.equal(decryptCardToken(enc), "tok_abc123");
   assert.equal(decryptCardToken("v1:kirpik:tag:ct"), null);
   assert.equal(decryptCardToken(null), null);
+  assert.equal(cardTokenNeedsUpgrade(enc), false);
+  assert.equal(cardTokenNeedsUpgrade("v1:x:y:z"), true);
+  assert.equal(cardTokenNeedsUpgrade(null), false);
 });
 
 test("card-vault: v1 satırı yalnız AUTH_SECRET_PREVIOUS ile çözülür", () => {
@@ -78,4 +81,25 @@ test("saveCardToken: şifreli kaydeder", async () => {
   const [row] = await getDb().select({ cardToken: schema.tenants.cardToken, cardMark: schema.tenants.cardMark }).from(schema.tenants).where(eq(schema.tenants.id, t.id));
   assert.equal(decryptCardToken(row.cardToken), "tok_yeni");
   assert.equal(row.cardMark, "Mastercard •••• 1111");
+});
+
+test("renewDue: v1 kart satırı okumada v2'ye yükseltilir", async () => {
+  const iv = randomBytes(12);
+  const c = createCipheriv("aes-256-gcm", scryptSync("eski-secret", "cabukpos-card-token", 32), iv);
+  const ct = Buffer.concat([c.update("tok_v1_migrate", "utf8"), c.final()]);
+  const v1 = `v1:${iv.toString("base64url")}:${c.getAuthTag().toString("base64url")}:${ct.toString("base64url")}`;
+  const t = await tenantWith("RENEW-V1MIG", 1, null);
+  await getDb().update(schema.tenants).set({ cardToken: v1 }).where(eq(schema.tenants.id, t.id));
+  process.env.AUTH_SECRET_PREVIOUS = "eski-secret";
+  try {
+    const r = await renewDue();
+    assert.equal(r.ok, 1);
+    const [row] = await getDb().select({ cardToken: schema.tenants.cardToken }).from(schema.tenants).where(eq(schema.tenants.id, t.id));
+    assert.ok(row.cardToken!.startsWith("v2:"));
+    assert.equal(decryptCardToken(row.cardToken), "tok_v1_migrate"); // PREVIOUS olmadan da çözülür
+    const r2 = await renewDue(); // artık v2 — ikinci koşu denemez
+    assert.equal(r2.attempted, 0);
+  } finally {
+    delete process.env.AUTH_SECRET_PREVIOUS;
+  }
 });

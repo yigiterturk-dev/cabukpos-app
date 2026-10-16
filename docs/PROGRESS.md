@@ -1,5 +1,11 @@
 # İlerleme — ÇabukPOS
 
+## Delta güvenlik incelemesi + card-vault v1→v2 göçü (2026-10-16, commit bekliyor)
+- **Kapsam:** son genel denetim (106ad6a, 10-12) sonrası 8 commit'lik delta (0c51688 dahil) — telemetry rate-limit, card-vault v2, indirim-mali, rls.sql, kiosk/auth cila turu gözden geçirildi. **Bulgu yok:** rate-limit gövde çözümlemeden önce, `discountedVat` taşma/sıfıra-bölme güvenli, fiscal_doc_by_token yüzeyi yalnız `discount` alanıyla genişliyor, kiosk payload/ve server doğrulaması değişmemiş.
+- **Kapılar:** `npm audit --omit=dev` 0 bulgu, 401/401 test, lint + tsc temiz.
+- **İyileştirme — card-vault v1 satırları okumada v2'ye yükseltilir:** `cardTokenNeedsUpgrade` (`lib/billing/card-vault.ts`); `renewDue` başarılı çözümlemeden sonra satırı v2 ile yeniden yazar, `okcReceiptFor`/`okcPing`/`okcZReport` bulut anahtarı için aynı (`migrateCloudKey`, tx içinde). Böylece `AUTH_SECRET_PREVIOUS` bir kez kullanılıp kaldırılabilir; v1 bağımlılığı süreklileşmez. Bozuk/çözülemeyen satıra dokunmaz.
+- Test: renewal-db'ye göç senaryosu (v1 + PREVIOUS → renewDue → satır `v2:`, PREVIOUS'suz çözülür, ikinci koşu denemez) + `cardTokenNeedsUpgrade` birimleri → **401/401**.
+
 ## #33 satış indirimi mali yüzeye tamamlandı (2026-10-16, commit bekliyor)
 - **Boşluk:** kupon/puan indirimi fişte ve raporlarda netti ama e-Arşiv fatura görüntüsü (`/f/[token]`), kesim girdisi, fiş KDV matrahı, gün sonu KDV kırılımı ve muhasebe yevmiyesi e-Arşiv satırında **brüt** kalıyordu (PROGRESS "Kalan (ayrı iş)" maddesi).
 - **Çekirdek:** `lib/core/cart.ts` `discountedVat` — satış düzeyi indirim KDV kırılımına oransal yansır (artan kuruş son orana, brüt−indirim tam korunur, kırılım toplamını aşamaz, generic oran tipi).
