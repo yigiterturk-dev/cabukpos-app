@@ -18,8 +18,9 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
             </p>
           ) : null}
           <button
+            type="button"
             onClick={retry}
-            style={{ marginTop: 16, background: "#171717", color: "#fff", border: 0, borderRadius: 8, padding: "8px 16px", fontSize: 14 }}
+            style={{ marginTop: 16, minHeight: 44, background: "#171717", color: "#fff", border: 0, borderRadius: 8, padding: "10px 16px", fontSize: 14, cursor: "pointer" }}
           >
             Tekrar dene
           </button>

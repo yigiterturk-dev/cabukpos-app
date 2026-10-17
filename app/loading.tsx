@@ -10,7 +10,7 @@ export default function Loading() {
           <p className="mt-1 text-sm text-muted">Ekran hazırlanıyor…</p>
         </div>
         <span aria-hidden className="h-1.5 w-20 overflow-hidden rounded-full bg-surface-3">
-          <span className="block h-full w-1/2 rounded-full bg-brand motion-safe:animate-pulse" />
+          <span className="block h-full w-1/2 rounded-full bg-brand-action motion-safe:animate-pulse" />
         </span>
       </div>
     </main>

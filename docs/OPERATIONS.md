@@ -60,6 +60,11 @@ Bu komut yalnızca okur; `billing_invoices`, `billing_invoice_counters`,
 - Vercel Pro planı alınırsa zamanlamalar tekrar Vercel Cron'a taşınabilir; iki
   scheduler'ı aynı anda açmayın, yoksa işler çift çalışır.
 
+Alarm bildirimi için production'da `AGENT_ALERT_WEBHOOK_URL` webhook'unu veya
+`ALERT_EMAIL` + `RESEND_API_KEY` + `MAIL_FROM` e-posta üçlüsünü yapılandırın.
+Webhook tanımlıysa önce webhook denenir; başarısız olursa Resend yedeğine geçer.
+`npm run launch:check`, bu iki kanaldan en az birinin ayarlandığını doğrular.
+
 ## Canlı kontrol
 
 - Deploy sonrası anonim ve korumalı kritik uçları tek komutla kontrol etmek için

@@ -117,17 +117,17 @@ espresso (`espresso` / `espresso-2`), içerik yüzeyleri açık kalır.
 | Tuval | `canvas` (yeni) | #f3efe7 (sıcak kâğıt + SVG gren dokusu) |
 | Yüzey | `surface` (yeni) / `surface-2` / `surface-3` | #fffefb / #f7f4ee / #eee8dc |
 | Çizgi | `line` / `line-strong` | #e5ded0 / #d2c8b4 |
-| Metin | `ink` / `ink-2` / `muted` | #241f19 / #5b5142 / #8b7f6d |
-| Marka | `brand` / `brand-hover` / `brand-soft` / `brand-ring` | #e05a10 / #bf4408 / #fdf0e4 / #f8d8ba |
+| Metin | `ink` / `ink-2` / `muted` | Açık: #241f19 / #5b5142 / #716656. Koyu: #ece4d4 / #c7bba3 / #9c927c. |
+| Marka | `brand` (metin/vurgu) / `brand-hover` / `brand-action` (dolu kontrol) / `brand-action-hover` / `brand-soft` / `brand-ring` | Açık tema: #bf4408 / #a93f08 / #bf4408 / #a93f08 / #fdf0e4 / #f8d8ba. Koyu tema: metin #f2731f, dolu kontrol #ad4509. |
 | Krom | `espresso` / `espresso-2` / `cream` / `cream-muted` (yeni) | #221c15 / #2e261c / #ece4d4 / #a2957f |
-| Anlam | `ok` `ok-soft` · `warn` `warn-soft` · `bad` `bad-soft` | #177245 #e8f5ec · #b45309 #fdf6e3 · #c03530 #fdeeed |
+| Anlam | `ok` `ok-soft` `ok-action` · `warn` `warn-soft` · `bad` `bad-soft` `bad-action` | Açık: ok #177245 / soft #e8f5ec / action #177245; warn #ad4b05 / #fdf6e3; bad #c03530 / #fdeeed / action #c03530. Koyu: metin renkleri parlak kalır; beyaz yazılı dolu eylemler için `ok-action` #14663f ve `bad-action` #a72d29 kullanılır. |
 
 Tipografi: Geist (gövde) + **Bricolage Grotesque** (display: sayfa başlıkları, istatistik rakamları, marka yazıları),
 `font-display` utility. Yarıçap: kontrol 10px, kart 16px (rounded-2xl). Badge pill + inset ring.
 
 ### Bileşen değişiklikleri
 
-- `buttonClass` primary/success: kor gradyanı (from #ee6318 to #d64f08 / #14663f) + `shadow-glow` hover.
+- `buttonClass` primary/success: erişilebilir marka dolgusu / yeşil + `shadow-glow` hover. Metin rengi (`brand`) ile beyaz etiketli dolu eylem rengi (`brand-action`) ayrı tokenlardır; açık ve koyu tema kontrastları ayrı doğrulanır.
 - `Card` 16px yarıçap, `bg-surface`; `PageHeader` display font 26–30px bold; `Badge` pill+ring; `Empty` kesikli fiş çerçevesi;
   `Panel` başlık şeridi `bg-surface-2/60`, edit tonunda brand ring.
 - `LogoMark`: kor gradyanı + iç highlight ring + `shadow-glow`.

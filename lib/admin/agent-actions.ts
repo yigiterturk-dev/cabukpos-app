@@ -1,6 +1,6 @@
 "use server";
 // Yerel ajanlar: ekle (eşleme kodu), yeni kod (eski jeton düşer), iptal, yapılandırma. agents RLS dışı → tenantId koşulu.
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
@@ -8,6 +8,7 @@ import { checkReauth } from "@/lib/auth/reauth";
 import { newPairingCode } from "@/lib/auth/tokens";
 import { audit } from "@/lib/audit";
 import { agentConfig, emptyAgentConfig } from "@/lib/agent/config";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 
 export type AgentState = { error?: string; field?: string; code?: string; expiresAt?: string; agentName?: string; savedAt?: number };
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -32,8 +33,9 @@ export async function createAgent(_: AgentState, form: FormData): Promise<AgentS
   const u = await requireWriter();
   const name = String(form.get("name") ?? "").trim();
   if (name.length < 2 || name.length > 40) return { error: "Ad 2-40 karakter.", field: "name" };
-  const [store] = await withTenant(u.tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
-  const [row] = await getDb().insert(a).values({ tenantId: u.tenantId, storeId: store.id, name, config: emptyAgentConfig() }).returning({ id: a.id });
+  const storeId = await withTenant(u.tenantId, (tx) => scopedStoreId(tx, u.tenantId));
+  if (!storeId) return { error: "Önce bir şube oluşturun." };
+  const [row] = await getDb().insert(a).values({ tenantId: u.tenantId, storeId, name, config: emptyAgentConfig() }).returning({ id: a.id });
   const c = await assignCode(u.tenantId, row.id);
   await withTenant(u.tenantId, (tx) => audit(tx, u.tenantId, `user:${u.id}`, "agent.create", { id: row.id, name }));
   revalidatePath("/yonetim/donanim");

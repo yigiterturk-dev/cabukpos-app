@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "AI Sipariş · Telefon ve WhatsApp ile sipariş | ÇabukPOS",
-  description: "Müşteri doğal dille söyler; yapay zekâ siparişi ürünlere çevirip kasaya ve mutfağa düşürür. Kayıt olmadan canlı deneyin.",
+  description: "Örnek menüyle sipariş metnini ürünlere eşleyin ve demo mutfak fişini inceleyin.",
   openGraph: {
     title: "AI Sipariş · ÇabukPOS",
-    description: "Telefon/WhatsApp siparişini yapay zekâ alır, mutfağa düşürür. Canlı demo.",
+    description: "Örnek menüyle sipariş eşleştirme akışını deneyin. Demo verisi, telefon veya WhatsApp entegrasyonu yok.",
     type: "website",
   },
 };

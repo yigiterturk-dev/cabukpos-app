@@ -1,6 +1,6 @@
 "use client";
 // Masa hesabı: tümü / eşit N / ürün seçerek. Her parça ayrı satış (kendi fiş no'su), mevcut ödeme penceresiyle.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { totals } from "@/lib/core/cart";
 import type { Currency } from "@/lib/core/money";
 import { kasaFmt } from "./kasa-format";
@@ -24,6 +24,12 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
   const [picks, setPicks] = useState<Record<string, number>>({});
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState<{ saleId: string; receiptNo: string; change: number }[]>([]);
+  const closedHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!tab.closed) return;
+    const frame = requestAnimationFrame(() => closedHeadingRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [tab.closed]);
   const lines = payableLines(tab);
   const part = mode === "tumu" ? lines : mode === "esit" ? equalPart(lines, Math.max(1, parts - done)) : pickPart(lines, picks);
   const t = totals(part);
@@ -31,15 +37,15 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
 
   if (tab.closed) {
     return (
-      <div className="mx-auto mt-10 w-full max-w-md rounded-2xl border border-line bg-surface p-8 text-center shadow-card">
-        <h2 className="break-words text-2xl font-semibold tracking-tight">{tableName} kapandı</h2>
+      <div id="kasa-content" role="main" tabIndex={-1} className="mx-auto mt-10 w-full max-w-md rounded-2xl border border-line bg-surface p-8 text-center shadow-card outline-none">
+        <h2 ref={closedHeadingRef} tabIndex={-1} className="break-words text-2xl font-semibold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{tableName} kapandı</h2>
         <ul className="my-4 break-words space-y-1 text-sm">{paid.map((p) => <li key={p.saleId}><button type="button" onClick={() => onReceipt(p.saleId)} className="inline-flex min-h-12 items-center rounded px-1 font-medium text-brand underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{p.receiptNo}</button>{p.change > 0 && ` · para üstü ${TL(p.change)}`}</li>)}</ul>
-        <button type="button" onClick={onBack} className="press inline-flex min-h-12 items-center justify-center rounded-xl bg-brand px-6 py-3 font-semibold text-white shadow-card outline-none hover:bg-brand-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60">Salona dön</button>
+        <button type="button" onClick={onBack} className="press inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-action px-6 py-3 font-semibold text-white shadow-card outline-none hover:bg-brand-action-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60">Salona dön</button>
       </div>
     );
   }
   return (
-    <div className="mx-auto w-full max-w-2xl p-4">
+    <div id="kasa-content" role="main" tabIndex={-1} className="mx-auto w-full max-w-2xl p-4 outline-none">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <button type="button" onClick={onBack} className="press inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 -ml-2">← Adisyon</button>
         <h2 className="min-w-0 truncate text-xl font-semibold tracking-tight" title={`${tableName} · Hesap`}>{tableName} · Hesap</h2>
@@ -63,7 +69,7 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
           const q = mode === "sec" ? picks[l.lineId] ?? 0 : l.qtyMilli;
           return (
             <li key={l.lineId} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-              <span className="min-w-0 basis-full flex-1 break-words sm:basis-auto" title={l.name}>{l.name}{l.options.length > 0 && <span className="block truncate text-xs text-muted" title={optionsText(l.options)}>{optionsText(l.options)}</span>}</span>
+              <span className="min-w-0 basis-full flex-1 break-words sm:basis-auto">{l.name}{l.options.length > 0 && <span className="block break-words text-xs text-muted">{optionsText(l.options)}</span>}</span>
               {mode === "sec" ? (
                 <span className="flex shrink-0 items-center gap-2">
                   <button type="button" aria-label={`${l.name} azalt`} disabled={q <= 0} onClick={() => bump(l, -1000)} className="press grid size-12 place-items-center rounded-[10px] border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">−</button>
@@ -77,8 +83,8 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
         })}
       </ul>
       {part.some((l) => l.discount > 0) && <p className="mb-2 text-right text-sm">İndirim −{TL(part.reduce((a, l) => a + l.discount, 0))}</p>}
-      <button type="button" disabled={t.total <= 0} onClick={() => setPaying(true)} className="press h-16 w-full rounded-2xl bg-brand text-xl font-semibold text-white shadow-card outline-none hover:bg-brand-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">Öde {TL(t.total)}</button>
-      {paid.length > 0 && <p className="mt-3 break-words text-center text-sm text-muted">Ödenen: {paid.map((p) => p.receiptNo).join(", ")}</p>}
+      <button type="button" disabled={t.total <= 0} onClick={() => setPaying(true)} className="press h-16 w-full rounded-2xl bg-brand-action text-xl font-semibold text-white shadow-card outline-none hover:bg-brand-action-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">Öde {TL(t.total)}</button>
+      {paid.length > 0 && <p className="mt-3 break-words text-center text-sm text-muted" role="status" aria-live="polite" aria-atomic="true">Ödeme kaydedildi. Fiş: {paid.map((p) => p.receiptNo).join(", ")}.</p>}
       {paying && (
         <PayDialog total={t.total} currency={currency} onPay={(id, p, b, tip, ex) => onPay(part, id, p, b, tip, ex)} onClose={() => setPaying(false)}
           onDone={(r) => { setPaying(false); setPaid((x) => [...x, r]); setPicks({}); if (mode === "esit") setDone((n) => n + 1); }} />

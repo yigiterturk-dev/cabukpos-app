@@ -5,9 +5,9 @@ import { Card, PageHeader, buttonClass } from "@/components/ui";
 export const metadata = { title: "Yardım ve kurulum — ÇabukPOS" };
 
 const steps = [
+  ["Personel PIN'i verin", "Kasiyer ve yöneticileri ekleyin; herkes kendi PIN'iyle giriş yapsın.", "/yonetim/personel"],
   ["Ürünleri ekleyin", "Ürünler sayfasından tek tek ekleyin veya CSV şablonuyla toplu aktarın.", "/yonetim/urunler"],
   ["Kasayı bağlayın", "Cihazlar bölümünden Windows ajanını kurup bu işletmeye eşleyin.", "/yonetim/cihazlar"],
-  ["Personel PIN'i verin", "Kasiyer ve yöneticileri ekleyin; herkes kendi PIN'iyle giriş yapsın.", "/yonetim/personel"],
   ["Test satışı yapın", "Kasa ekranında vardiya açın, örnek satış yapın ve fişi kontrol edin.", "/kasa"],
 ] as const;
 
@@ -34,7 +34,7 @@ export default function Yardim() {
               <div className="mb-3 flex items-center gap-2 text-brand"><span className="grid size-7 place-items-center rounded-full bg-brand-soft text-sm font-bold">{index + 1}</span><CircleCheck aria-hidden className="size-4" /></div>
               <h3 className="font-semibold">{title}</h3>
               <p className="mt-1.5 min-h-12 text-sm leading-5 text-muted">{text}</p>
-              <Link href={href} className="mt-3 inline-flex min-h-11 items-center gap-1 rounded px-1 text-sm font-medium text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aç<ArrowRight aria-hidden className="size-3.5" /></Link>
+              <Link href={href} aria-label={`Aç: ${title}`} className="mt-3 inline-flex min-h-11 items-center gap-1 rounded px-1 text-sm font-medium text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aç<ArrowRight aria-hidden className="size-3.5" /></Link>
             </li>
           ))}
         </ol>

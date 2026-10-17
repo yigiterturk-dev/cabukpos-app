@@ -26,7 +26,7 @@ export default async function Fatura({ params }: { params: Promise<{ token: stri
   const ready = d.status === "issued" || d.status === "cancelled" || d.status === "cancel_rejected";
   const cancelled = d.status === "cancelled" && !!d.number;
   return (
-    <main className="mx-auto w-full max-w-3xl bg-white px-4 py-8 text-sm text-ink print:max-w-none print:py-0">
+    <main className="print-paper mx-auto w-full max-w-3xl bg-white px-4 py-8 text-sm text-ink print:max-w-none print:py-0">
       <style>{`@media print { @page { size: A4; margin: 14mm } body { background: #fff } }`}</style>
       {test && <div className="mb-4 rounded-lg border border-warn/40 bg-warn-soft p-3 text-center font-semibold text-warn" data-testid="test-band">TEST — mali değeri yoktur</div>}
       {cancelled && <div className="mb-4 rounded-lg border border-bad/40 bg-bad-soft p-3 text-center text-lg font-bold tracking-wide text-bad">İPTAL EDİLDİ</div>}
@@ -59,12 +59,25 @@ export default async function Fatura({ params }: { params: Promise<{ token: stri
             {d.buyer.address && <div className="whitespace-pre-line">{d.buyer.address}</div>}
             <div className="text-muted">{d.buyer.taxId.length === 10 ? "VKN" : "TCKN"} {d.buyer.taxId}</div>
           </section>
+          <ul aria-label="Mal ve hizmet kalemleri" className="divide-y divide-line lg:hidden print:hidden">
+            {d.lines.map((l, i) => <li key={i} className="py-2.5">
+              <p className="break-words font-medium">{l.name}</p>
+              <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                <div><dt className="text-muted">Miktar</dt><dd className="tabular-nums">{qtyText(l.qtyMilli)}</dd></div>
+                <div><dt className="text-muted">Birim fiyat</dt><dd className="tabular-nums">{formatTL(l.unitPrice)}</dd></div>
+                <div><dt className="text-muted">KDV</dt><dd>%{l.vatRate}</dd></div>
+                <div><dt className="text-muted">Tutar</dt><dd className="font-medium tabular-nums">{formatTL(l.total)}</dd></div>
+              </dl>
+            </li>)}
+          </ul>
+          <div className="hidden overflow-x-auto lg:block print:block">
           <table className="w-full border-y border-line">
-            <thead className="text-left text-xs text-muted"><tr><th className="py-2 font-medium">Mal / hizmet</th><th className="text-right font-medium">Miktar</th><th className="text-right font-medium">Birim fiyat</th><th className="text-right font-medium">KDV</th><th className="text-right font-medium">Tutar</th></tr></thead>
+            <thead className="text-left text-xs text-muted"><tr><th scope="col" className="py-2 font-medium">Mal / hizmet</th><th scope="col" className="text-right font-medium">Miktar</th><th scope="col" className="text-right font-medium">Birim fiyat</th><th scope="col" className="text-right font-medium">KDV</th><th scope="col" className="text-right font-medium">Tutar</th></tr></thead>
             <tbody className="tabular-nums">
               {d.lines.map((l, i) => <tr key={i} className="border-t border-line"><td className="py-1.5">{l.name}</td><td className="text-right">{qtyText(l.qtyMilli)}</td><td className="text-right">{formatTL(l.unitPrice)}</td><td className="text-right">%{l.vatRate}</td><td className="text-right">{formatTL(l.total)}</td></tr>)}
             </tbody>
           </table>
+          </div>
           <div className="ml-auto w-full max-w-xs space-y-1 tabular-nums">
             {discountedVat(d.sale.vat, d.sale.discount).map((v) => (
               <div key={v.rate} className="flex justify-between"><span className="text-muted">KDV %{v.rate} (matrah {formatTL(v.net)})</span><span>{formatTL(v.vat)}</span></div>

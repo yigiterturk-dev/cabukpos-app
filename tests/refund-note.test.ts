@@ -36,6 +36,7 @@ test("validateBuyerInvoice: no gerekli, tarih biçimi, asıl satıştan önce ol
   const sold = new Date("2026-09-20T10:00:00Z");
   assert.equal(validateBuyerInvoice("", "2026-09-25", sold), "Fatura no gerekli.");
   assert.equal(validateBuyerInvoice("ABC2026000000001", "25.09.2026", sold), "Tarih biçimi geçersiz.");
+  assert.equal(validateBuyerInvoice("ABC2026000000001", "2026-02-30", sold), "Tarih biçimi geçersiz.");
   assert.equal(validateBuyerInvoice("ABC2026000000001", "2026-09-19", sold), "Tarih asıl satıştan önce olamaz.");
   assert.equal(validateBuyerInvoice("ABC2026000000001", "2026-09-20", sold), null);
 });

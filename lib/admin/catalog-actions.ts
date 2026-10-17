@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { schema, withTenant, type Tx } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { parseProduct, type ProductValue } from "./catalog";
 import { parseProductCsv, type ProductCsvRow } from "@/lib/core/product-csv";
 
@@ -61,8 +62,10 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
   const groupIds = [...new Set(form.getAll("optionGroups").map(String))];
   if ((stationId && !UUID.test(stationId)) || groupIds.some((g) => !UUID.test(g))) return { error: "İstasyon/seçenek geçersiz.", field: "" };
   const err = await withTenant(a.tenantId, async (tx): Promise<{ error: string; field: string } | null> => {
+    const storeId = salon ? await scopedStoreId(tx, a.tenantId) : null;
+    if (salon && stationId && !storeId) return { error: "İstasyon atamak için önce bir şube seçin.", field: "" };
     if (stationId) {
-      const [st] = await tx.select({ id: schema.stations.id }).from(schema.stations).where(eq(schema.stations.id, stationId));
+      const [st] = await tx.select({ id: schema.stations.id }).from(schema.stations).where(and(eq(schema.stations.id, stationId), storeId ? eq(schema.stations.storeId, storeId) : sql`false`));
       if (!st) return { error: "İstasyon bulunamadı.", field: "" };
     }
     if (groupIds.length && (await tx.select({ id: schema.optionGroups.id }).from(schema.optionGroups).where(inArray(schema.optionGroups.id, groupIds))).length !== groupIds.length) return { error: "Seçenek grubu bulunamadı.", field: "" };
@@ -74,14 +77,21 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
       const [dup] = await tx.select({ name: P.name }).from(P).where(id ? and(eq(P.plu, p.value.plu), ne(P.id, id)) : eq(P.plu, p.value.plu));
       if (dup) return { error: `Bu PLU "${dup.name}" ürününde.`, field: "plu" };
     }
+    let productId = id;
     if (id) {
       // Fiyat değişince raf etiketi kuyruğuna girer.
-      const [row] = await tx.update(P).set({ ...p.value, ...(salon ? { stationId } : {}), priceChangedAt: sql`case when ${P.price} <> ${p.value.price} then now() else ${P.priceChangedAt} end`, costAt: sql`case when ${P.cost} is distinct from ${p.value.cost}::integer then now() else ${P.costAt} end` }).where(eq(P.id, id)).returning({ id: P.id });
+      const [row] = await tx.update(P).set({ ...p.value, priceChangedAt: sql`case when ${P.price} <> ${p.value.price} then now() else ${P.priceChangedAt} end`, costAt: sql`case when ${P.cost} is distinct from ${p.value.cost}::integer then now() else ${P.costAt} end` }).where(eq(P.id, id)).returning({ id: P.id });
       if (!row) return { error: "Ürün bulunamadı.", field: "" };
       if (salon) await linkGroups(tx, a.tenantId, id, groupIds);
     } else {
-      const [row] = await tx.insert(schema.products).values({ tenantId: a.tenantId, ...p.value, costAt: p.value.cost === null ? null : new Date(), ...(salon ? { stationId } : {}) }).returning({ id: P.id });
+      const [row] = await tx.insert(schema.products).values({ tenantId: a.tenantId, ...p.value, costAt: p.value.cost === null ? null : new Date() }).returning({ id: P.id });
+      productId = row.id;
       if (salon) await linkGroups(tx, a.tenantId, row.id, groupIds);
+    }
+    if (salon && storeId && productId) {
+      const R = schema.productStationRoutes;
+      await tx.insert(R).values({ tenantId: a.tenantId, storeId, productId, stationId })
+        .onConflictDoUpdate({ target: [R.storeId, R.productId], set: { stationId } });
     }
     await audit(tx, a.tenantId, `user:${a.id}`, id ? "product.update" : "product.create", { id, name: p.value.name, price: p.value.price });
     return null;

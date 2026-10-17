@@ -2,12 +2,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  parseRange, prevRange, rangeBounds, dayCount, dateRanges, summarize, pctChange, byChannel, byMethod, heatmap,
+  isValidCalendarDay, parseRange, prevRange, rangeBounds, dayCount, dateRanges, summarize, pctChange, byChannel, byMethod, heatmap,
   productRows, categoryRows, staffRows, tabEventRow, registerEventRow, toCsv, csvTL, csvQty, type SaleRow,
 } from "@/lib/core/report";
 
 const NOW = Date.parse("2026-09-29T10:00:00Z"); // İstanbul 13:00, Salı
 const sale = (o: Partial<SaleRow>): SaleRow => ({ id: crypto.randomUUID(), status: "kapandi", channel: "kasa", total: 10000, net: 9091, change: 0, at: new Date(NOW), staffId: "s1", ...o });
+
+test("takvim günü: gerçek tarihleri kabul et, rollover olan günleri reddet", () => {
+  assert.equal(isValidCalendarDay("2024-02-29"), true);
+  assert.equal(isValidCalendarDay("2026-02-30"), false);
+  assert.equal(isValidCalendarDay("2025-02-29"), false);
+  assert.equal(isValidCalendarDay("2026-13-01"), false);
+});
 
 test("dönem: varsayılan 7 gün, ters sıra düzelir, tavan 366, önceki dönem, İstanbul sınırı", () => {
   assert.deepEqual(parseRange(undefined, undefined, NOW), { bas: "2026-09-23", bit: "2026-09-29" });

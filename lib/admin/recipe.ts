@@ -1,5 +1,5 @@
 // lib/admin/recipe.ts — Reçete ekranı yardımcıları (sunucu, eylem değil).
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import type { StockUnit } from "@/lib/core/stock";
 
@@ -13,8 +13,8 @@ export function parseRecipeQty(s: string, unit: StockUnit): number | null {
 }
 
 /** Son üretimler (sayfa için). */
-export async function recentProductions(tenantId: string) {
+export async function recentProductions(tenantId: string, storeId: string | null) {
   const Pr = schema.productions, P = schema.products;
   return withTenant(tenantId, (tx) => tx.select({ id: Pr.id, at: Pr.createdAt, batchesMilli: Pr.batchesMilli, note: Pr.note, name: P.name, yieldMilli: P.yieldMilli, unit: P.unit })
-    .from(Pr).innerJoin(P, eq(P.id, Pr.productId)).orderBy(desc(Pr.createdAt)).limit(30));
+    .from(Pr).innerJoin(P, eq(P.id, Pr.productId)).where(storeId ? eq(Pr.storeId, storeId) : sql`false`).orderBy(desc(Pr.createdAt)).limit(30));
 }

@@ -47,13 +47,28 @@ export default async function IadeBelgesi({ params }: { params: Promise<{ id: st
             <dl className="mt-6 grid grid-cols-[minmax(8rem,10rem)_minmax(0,1fr)] gap-y-1.5 text-sm">
               {rn.rows.map(([k, v]) => <div key={k} className="contents"><dt className="text-muted">{k}</dt><dd className="break-all font-medium">{v}</dd></div>)}
             </dl>
-            <div className="mt-6 overflow-x-auto">
-            <table className="w-full min-w-[36rem] text-sm">
-              <thead className="border-b border-line text-left text-xs text-muted"><tr><th className="py-2 font-medium">Ürün</th><th className="py-2 text-right font-medium">Miktar</th><th className="py-2 text-right font-medium">Birim fiyat</th><th className="py-2 text-right font-medium">KDV</th><th className="py-2 text-right font-medium">Tutar</th></tr></thead>
+            <div className="mt-6">
+            <ul aria-label="İade ürün kalemleri" className="divide-y divide-line lg:hidden print:hidden">
+              {data.lines.map((l, i) => (
+                <li key={i} className="space-y-2 py-3">
+                  <p className="break-words font-medium">{l.name}</p>
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                    <div><dt className="text-xs text-muted">Miktar</dt><dd className="tabular-nums">{qtyText(l.qtyMilli)}</dd></div>
+                    <div><dt className="text-xs text-muted">Birim fiyat</dt><dd className="tabular-nums">{money(l.unitPrice)}</dd></div>
+                    <div><dt className="text-xs text-muted">KDV</dt><dd>%{l.vatRate}</dd></div>
+                    <div><dt className="text-xs text-muted">Tutar</dt><dd className="tabular-nums font-medium">{money(l.total)}</dd></div>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto lg:block print:block">
+            <table aria-label="İade ürün kalemleri" className="w-full min-w-[36rem] text-sm">
+              <thead className="border-b border-line text-left text-xs text-muted"><tr><th scope="col" className="py-2 font-medium">Ürün</th><th scope="col" className="py-2 text-right font-medium">Miktar</th><th scope="col" className="py-2 text-right font-medium">Birim fiyat</th><th scope="col" className="py-2 text-right font-medium">KDV</th><th scope="col" className="py-2 text-right font-medium">Tutar</th></tr></thead>
               <tbody className="divide-y divide-line">{data.lines.map((l, i) => (
                 <tr key={i}><td className="py-2">{l.name}</td><td className="py-2 text-right tabular-nums">{qtyText(l.qtyMilli)}</td><td className="py-2 text-right tabular-nums">{money(l.unitPrice)}</td><td className="py-2 text-right">%{l.vatRate}</td><td className="py-2 text-right tabular-nums">{money(l.total)}</td></tr>
               ))}</tbody>
             </table>
+            </div>
             </div>
             <div className="mt-3 space-y-0.5 border-t border-line pt-3 text-sm">
               {data.vat.map((v) => <div key={v.rate} className="flex justify-between text-muted"><span>KDV %{v.rate} · matrah {money(v.net)}</span><span className="tabular-nums">{money(v.vat)}</span></div>)}

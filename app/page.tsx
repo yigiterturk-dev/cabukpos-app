@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Bot, Box, ChartColumn, Check, Printer, Receipt, Router, Sparkles, TabletSmartphone, Users, Utensils, WifiOff, type LucideIcon } from "lucide-react";
 import { LegalFooter } from "@/components/Legal";
+import { MobileSiteNav } from "@/components/MobileSiteNav";
+import { SkipToContent } from "@/components/SkipToContent";
 import { LogoMark, buttonClass } from "@/components/ui";
 import { planPrice, salesContact } from "@/lib/billing/plans";
 import { formatTL } from "@/lib/core/money";
@@ -53,14 +55,14 @@ function KasaMock() {
         <div className="mt-4 grid grid-cols-3 gap-2 text-sm font-medium">
           <span className="rounded-lg border border-line py-2.5 text-center">Nakit</span>
           <span className="rounded-lg border border-line py-2.5 text-center">Kart</span>
-          <span className="rounded-lg bg-brand py-2.5 text-center text-white">Öde</span>
+          <span className="rounded-lg bg-brand-action py-2.5 text-center text-white">Öde</span>
         </div>
       </div>
       <div className="absolute -bottom-5 -left-8 hidden rounded-xl border border-line bg-surface px-3 py-2 text-xs shadow-pop sm:block">
         <div className="font-semibold">Mutfak · Izgara</div>
         <div className="text-muted">2 × Adana Dürüm · 4 dk</div>
       </div>
-      <div className="absolute right-0 -top-4 rounded-xl bg-ok px-3 py-2 text-xs font-medium text-white shadow-pop lg:-right-6">Fiş yazdırıldı</div>
+      <div className="absolute right-0 -top-4 rounded-xl bg-ok-action px-3 py-2 text-xs font-medium text-white shadow-pop xl:-right-6">Fiş yazdırıldı</div>
     </div>
   );
 }
@@ -69,9 +71,10 @@ export default function Home() {
   const monthly = planPrice("aylik"), yearly = planPrice("yillik"), contact = salesContact();
   return (
     <div className="bg-surface">
+      <SkipToContent />
       <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:gap-6">
-          <Link href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-3 sm:gap-6 sm:px-4">
+          <Link href="/" className="inline-flex min-h-11 items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
           <nav aria-label="Ana" className="hidden gap-5 text-sm text-ink-2 md:flex">
             <a href="#ozellikler" className="hover:text-ink">Özellikler</a>
             <a href="#fiyat" className="hover:text-ink">Fiyat</a>
@@ -79,12 +82,13 @@ export default function Home() {
             <Link href="/demo" className="hover:text-ink">Canlı demo</Link>
             <Link href="/yardim" className="hover:text-ink">Yardım</Link>
           </nav>
+          <MobileSiteNav />
           <div className="ml-auto flex items-center gap-2 text-sm">
             <span className="hidden items-center gap-2 print:hidden sm:flex">
               <Link href="/kasa" className={buttonClass("ghost", "sm")}>Kasayı aç</Link>
               <Link href="/giris" className={buttonClass("ghost", "sm")}>Giriş</Link>
             </span>
-            <Link data-cta="nav-signup" href="/kayit" className={buttonClass("primary", "sm")}>Ücretsiz dene</Link>
+            <Link data-cta="nav-signup" href="/kayit" className={`${buttonClass("primary", "sm")} max-[360px]:px-2`}>Ücretsiz dene</Link>
           </div>
         </div>
       </header>
@@ -93,7 +97,7 @@ export default function Home() {
         <section className="mx-auto grid max-w-6xl min-w-0 items-center gap-14 px-4 pb-20 pt-14 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:pt-20">
           <div>
             <p className="mb-4 inline-flex rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">Restoran ve market için bulut kasa</p>
-            <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">İnternet gitse de <span className="text-brand">kasa durmaz.</span></h1>
+            <h1 id="main-content" tabIndex={-1} className="rounded-sm text-4xl font-semibold leading-[1.1] tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 sm:text-5xl">İnternet gitse de <span className="text-brand">kasa durmaz.</span></h1>
             <p className="mt-5 max-w-xl text-lg text-ink-2">Masa, mutfak, paket servis, barkod ve terazi; stok, reçete ve raporlar. Tablette, bilgisayarda ya da POS cihazında, birkaç dakikalık kurulumla.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link data-cta="hero-signup" href="/kayit" className={buttonClass("primary", "lg")}>14 gün ücretsiz deneyin</Link>
@@ -130,8 +134,8 @@ export default function Home() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand"><Sparkles aria-hidden className="size-3.5" />Yapay zekâ</p>
-              <h2 className="max-w-2xl text-3xl font-semibold tracking-tight">Rakiplerin yapamadığı iki şey — burada canlı deneyin.</h2>
-              <p className="mt-2 max-w-xl text-ink-2">Telefon/WhatsApp siparişini yapay zekâ alır, mutfağa düşürür; işletmeni panelde aramadan, konuşarak yönetirsin.</p>
+              <h2 className="max-w-2xl text-3xl font-semibold tracking-tight">Siparişi ve işletme verini konuşarak keşfet.</h2>
+              <p className="mt-2 max-w-xl text-ink-2">İki etkileşimli demoda sipariş akışını ve satış sorularını deneyebilirsin. Bu örnekler demo verisiyle çalışır.</p>
             </div>
             <Link href="/demo" className={buttonClass("primary", "lg")}>Canlı deneyin<ArrowRight aria-hidden className="size-4" /></Link>
           </div>
@@ -139,30 +143,30 @@ export default function Home() {
             <Link href="/demo/ai-siparis" className="group rounded-2xl border border-line bg-surface p-6 shadow-rest transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised">
               <span aria-hidden className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand"><Utensils className="size-6" /></span>
               <h3 className="mt-4 text-lg font-semibold">AI sipariş (telefon / WhatsApp)</h3>
-              <p className="mt-1 text-ink-2">Müşteri doğal dille söyler; sistem ürünlere çevirir, kasaya ve mutfağa düşürür.</p>
+              <p className="mt-1 text-ink-2">Örnek siparişi yaz veya söyle; demo menüsünde eşleşen ürünleri ve mutfak fişini gör.</p>
             </Link>
             <Link href="/demo/konusarak-yonet" className="group rounded-2xl border border-line bg-surface p-6 shadow-rest transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-raised">
               <span aria-hidden className="grid size-11 place-items-center rounded-xl bg-brand-soft text-brand"><Bot className="size-6" /></span>
               <h3 className="mt-4 text-lg font-semibold">Konuşarak yönet</h3>
-              <p className="mt-1 text-ink-2">“Dün en çok ne sattım, kritik stok var mı?” — sor, cevabı getirsin.</p>
+              <p className="mt-1 text-ink-2">Demo satış ve stok verileriyle doğal dilde sorular sor.</p>
             </Link>
           </div>
         </section>
 
         <section id="ozellikler" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
-          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight">Dükkânın gerçek hâli için yapıldı: yoğun saat, kopan internet, yazıcı sırası.</h2>
+          <h2 tabIndex={-1} className="max-w-2xl text-3xl font-semibold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Dükkânın gerçek hâli için yapıldı: yoğun saat, kopan internet, yazıcı sırası.</h2>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => (
-              <div key={f.title} className={`rounded-2xl border border-line p-6 ${i === 0 ? "bg-brand text-white sm:col-span-2 lg:col-span-1 lg:row-span-2" : "bg-surface"}`}>
+              <div key={f.title} className={`rounded-2xl border border-line p-6 ${i === 0 ? "bg-brand-action text-white sm:col-span-2 lg:col-span-1 lg:row-span-2" : "bg-surface"}`}>
                 <div className={`mb-4 inline-flex rounded-xl p-2.5 ${i === 0 ? "bg-surface/15" : "bg-brand-soft text-brand"}`}><f.icon aria-hidden className="size-5" /></div>
                 <h3 className={`font-semibold ${i === 0 ? "text-2xl" : "text-lg"}`}>{f.title}</h3>
-                <p className={`mt-2 ${i === 0 ? "text-white/90" : "text-ink-2"}`}>{f.text}</p>
+                <p className={`mt-2 ${i === 0 ? "text-white" : "text-ink-2"}`}>{f.text}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="bg-ink text-white">
+        <section className="bg-espresso text-white">
           <div className="mx-auto max-w-6xl px-4 py-20">
             <h2 className="text-3xl font-semibold tracking-tight">Üç adımda satışa başlayın</h2>
             <ol className="mt-10 grid gap-8 md:grid-cols-3">
@@ -178,7 +182,7 @@ export default function Home() {
         </section>
 
         <section id="fiyat" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-20">
-          <h2 className="text-3xl font-semibold tracking-tight">Tek paket, her şey dahil</h2>
+          <h2 tabIndex={-1} className="text-3xl font-semibold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Tek paket, her şey dahil</h2>
           <p className="mt-2 text-ink-2">Tüm modüller, sınırsız ürün ve cihaz. Fiyatlara KDV dahildir.</p>
           <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
             {([["Aylık", monthly, "her ay"], ["Yıllık", yearly, "yılda bir"]] as const).map(([label, price, per]) => (
@@ -191,16 +195,16 @@ export default function Home() {
             ))}
           </div>
           <p className="mt-4 text-sm text-muted">Deneme bitince ödeme yapmazsanız ücret doğmaz. Ayrıntı: <Link href="/yasal/iade-iptal" className="underline">İptal ve iade</Link>.</p>
-          <Link href="/fiyatlandirma" className="mt-4 inline-block text-sm font-medium text-brand hover:underline">Şube ve terminal sayınıza göre hesaplayın →</Link>
+          <Link href="/fiyatlandirma" className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-brand hover:underline">Şube ve terminal sayınıza göre hesaplayın →</Link>
         </section>
 
         <section id="sss" className="border-t border-line bg-surface-2">
           <div className="mx-auto max-w-3xl scroll-mt-20 px-4 py-20">
-            <h2 className="text-3xl font-semibold tracking-tight">Sık sorulanlar</h2>
+            <h2 tabIndex={-1} className="text-3xl font-semibold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Sık sorulanlar</h2>
             <div className="mt-8 divide-y divide-line rounded-2xl border border-line bg-surface">
               {FAQ.map((f) => (
                 <details key={f.q} className="group px-6 py-4">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">{f.q}<span className="text-muted transition-transform group-open:rotate-45" aria-hidden>+</span></summary>
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 font-medium">{f.q}<span className="text-muted transition-transform group-open:rotate-45" aria-hidden>+</span></summary>
                   <p className="mt-2 text-ink-2">{f.a}</p>
                 </details>
               ))}

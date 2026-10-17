@@ -1,6 +1,7 @@
 // lib/core/refundNote.ts — e-Arşiv'li satışın iadesinde belge içeriği (kasa ekranı, ESC/POS ve A4 aynı kaynak).
 // Nihai tüketiciye (TCKN) satıcı iade faturası kesemez → iade tutanağı; VKN'li alıcı iade faturasını kendisi keser.
 import { validateTaxId } from "./fiscal";
+import { isValidCalendarDay } from "./report";
 
 export type FiscalBuyerKind = "tckn" | "vkn";
 export type RefundFiscal = { number: string; ettn: string; invoiceAt: string; buyerKind: FiscalBuyerKind; partial: boolean; sellerTaxId: string | null };
@@ -35,7 +36,7 @@ export function refundNote(f: RefundFiscal, sellerName: string, refundNo: string
 export function validateBuyerInvoice(no: string, date: string, soldAt: Date): string | null {
   if (!no.trim()) return "Fatura no gerekli.";
   if (no.trim().length > 40) return "Fatura no en çok 40 karakter.";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return "Tarih biçimi geçersiz.";
+  if (!isValidCalendarDay(date)) return "Tarih biçimi geçersiz.";
   const soldDay = soldAt.toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
   return date < soldDay ? "Tarih asıl satıştan önce olamaz." : null;
 }

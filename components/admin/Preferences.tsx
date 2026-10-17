@@ -11,6 +11,13 @@ const SES_KEY = "sesli_uyari";
 
 const listeners = new Set<() => void>();
 const subscribe = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
+const subscribeTheme = (fn: () => void) => {
+  listeners.add(fn);
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = () => { if (getTema() === "sistem") apply("sistem"); fn(); };
+  media.addEventListener("change", onChange);
+  return () => { listeners.delete(fn); media.removeEventListener("change", onChange); };
+};
 const emit = () => listeners.forEach((l) => l());
 
 const apply = (t: Tema) => {
@@ -24,7 +31,7 @@ export const getSesKapali = (): boolean => { try { return localStorage.getItem(S
 const getServerSesKapali = () => false;
 
 export function useTema(): [Tema, (t: Tema) => void] {
-  const tema = useSyncExternalStore(subscribe, getTema, getServerTema);
+  const tema = useSyncExternalStore(subscribeTheme, getTema, getServerTema);
   return [tema, (t) => { try { localStorage.setItem("tema", t); } catch { /* yok say */ } apply(t); emit(); }];
 }
 
@@ -33,7 +40,7 @@ export function useSesKapali(): [boolean, (v: boolean) => void] {
   return [kapali, (v) => { try { localStorage.setItem(SES_KEY, v ? "kapali" : "acik"); } catch { /* yok say */ } emit(); }];
 }
 
-const temaBtn = (on: boolean) => `min-h-11 rounded-lg border px-4 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`;
+const temaBtn = (on: boolean) => `inline-flex min-h-11 cursor-pointer items-center rounded-lg border px-4 py-2 text-sm outline-none transition focus-within:ring-4 focus-within:ring-brand-ring/60 ${on ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"}`;
 
 /** Yönetim başlığındaki küçük döngü: açık → koyu → sistem. */
 export function ThemeToggle() {
@@ -60,10 +67,14 @@ export function SesToggle() {
 export function TemaSecimi() {
   const [tema, setTemaState] = useTema();
   return (
-    <div className="flex gap-2" role="group" aria-label="Tema">
+    <fieldset className="m-0 flex gap-2 border-0 p-0">
+      <legend className="sr-only">Tema</legend>
       {(Object.keys(TEMA_LABEL) as Tema[]).map((t) => (
-        <button key={t} type="button" aria-pressed={tema === t} onClick={() => setTemaState(t)} className={temaBtn(tema === t)}>{TEMA_LABEL[t]}</button>
+        <label key={t} className={temaBtn(tema === t)}>
+          <input type="radio" name="tema" value={t} checked={tema === t} onChange={() => setTemaState(t)} className="peer sr-only" />
+          {TEMA_LABEL[t]}
+        </label>
       ))}
-    </div>
+    </fieldset>
   );
 }

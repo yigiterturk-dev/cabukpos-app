@@ -11,7 +11,7 @@ export default function MesafeliSatis() {
   const [m, y] = [planPrice("aylik"), planPrice("yillik")];
   return (
     <>
-      <h1>Mesafeli satış sözleşmesi</h1>
+      <h1 id="main-content" tabIndex={-1} className="rounded-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Mesafeli satış sözleşmesi</h1>
       <h2>1. Taraflar</h2>
       <p><b>Satıcı:</b></p>
       <SellerBlock />

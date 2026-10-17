@@ -10,15 +10,21 @@ import { RES_STATUSES, timeToAt, validateReservation, type ResStatus } from "@/l
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type ResState = { error?: string; savedAt?: number };
+export type ResState = { error?: string; field?: string; savedAt?: number };
 
 export async function createReservation(_: ResState, form: FormData): Promise<ResState> {
   const a = await requireWriter();
   const v = { name: str(form, "name"), phone: str(form, "phone").replace(/\D/g, ""), guests: Number(str(form, "guests")), note: str(form, "note") };
   const err = validateReservation(v);
-  if (err) return { error: err };
+  if (err) {
+    const field = !v.name.trim() || v.name.trim().length > 120 ? "name"
+      : !/^\d{6,15}$/.test(v.phone) ? "phone"
+      : !Number.isInteger(v.guests) || v.guests < 1 || v.guests > 99 ? "guests"
+      : "note";
+    return { error: err, field };
+  }
   const at = timeToAt(str(form, "day"), str(form, "time"));
-  if (!at) return { error: "Tarih/saat geçersiz." };
+  if (!at) return { error: "Tarih/saat geçersiz.", field: "time" };
   const storeId = str(form, "storeId");
   if (!UUID.test(storeId)) return { error: "Şube seçin." };
   const tableId = str(form, "tableId");

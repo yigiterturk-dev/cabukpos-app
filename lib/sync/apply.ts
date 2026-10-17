@@ -497,12 +497,12 @@ export async function soldLines(tx: Tx, saleId: string) {
   const [sale] = await tx.select({ id: schema.sales.id }).from(schema.sales).where(and(eq(schema.sales.id, saleId), eq(schema.sales.status, "kapandi")));
   if (!sale) return null;
   const L = schema.saleLines;
-  const lines = await tx.select({ productId: L.productId, name: L.name, unitPrice: L.unitPrice, vatRate: L.vatRate, qtyMilli: L.qtyMilli }).from(L).where(eq(L.saleId, saleId));
+  const lines = await tx.select({ productId: L.productId, name: L.name, unitPrice: L.unitPrice, vatRate: L.vatRate, qtyMilli: L.qtyMilli, options: L.options, note: L.note }).from(L).where(eq(L.saleId, saleId));
   const refunds = await tx.select({ id: schema.sales.id }).from(schema.sales).where(and(eq(schema.sales.refundOf, saleId), eq(schema.sales.status, "iade")));
-  const refunded = refunds.length ? await tx.select({ productId: L.productId, qtyMilli: L.qtyMilli }).from(L).where(inArray(L.saleId, refunds.map((r) => r.id))) : [];
+  const refunded = refunds.length ? await tx.select({ productId: L.productId, qtyMilli: L.qtyMilli, unitPrice: L.unitPrice, vatRate: L.vatRate, options: L.options }).from(L).where(inArray(L.saleId, refunds.map((r) => r.id))) : [];
   return {
-    lines: lines.flatMap((l): RefLine[] => (l.productId ? [{ ...l, productId: l.productId, vatRate: l.vatRate as RefLine["vatRate"] }] : [])),
-    refunded: refunded.flatMap((l) => (l.productId ? [{ productId: l.productId, qtyMilli: l.qtyMilli }] : [])),
+    lines: lines.flatMap((l): RefLine[] => (l.productId ? [{ ...l, productId: l.productId, vatRate: l.vatRate as RefLine["vatRate"], options: l.options ?? undefined }] : [])),
+    refunded: refunded.flatMap((l) => (l.productId ? [{ ...l, productId: l.productId, vatRate: l.vatRate as RefLine["vatRate"] }] : [])),
   };
 }
 

@@ -56,7 +56,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
         <section>
           <h2 className="mb-1 font-display text-base font-bold tracking-tight">KDV</h2>
           <table className="w-full border-y border-line">
-            <thead className="text-left text-xs text-muted"><tr><th className="py-1.5 font-medium">Oran</th><th className="text-right font-medium">Matrah</th><th className="text-right font-medium">KDV</th><th className="text-right font-medium">Toplam</th></tr></thead>
+            <thead className="text-left text-xs text-muted"><tr><th scope="col" className="py-1.5 font-medium">Oran</th><th scope="col" className="text-right font-medium">Matrah</th><th scope="col" className="text-right font-medium">KDV</th><th scope="col" className="text-right font-medium">Toplam</th></tr></thead>
             <tbody className="tabular-nums">
               {s.vat.map((v) => <tr key={v.rate} className="border-t border-line"><td className="py-1.5">%{v.rate}</td><td className="text-right">{TL(v.net)}</td><td className="text-right">{TL(v.vat)}</td><td className="text-right">{TL(v.gross)}</td></tr>)}
             </tbody>

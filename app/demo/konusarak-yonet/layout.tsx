@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Konuşarak Yönet · Doğal dille rapor ve stok | ÇabukPOS",
-  description: "“Dün en çok ne sattım, kritik stok var mı, bugün ciro ne?” — işletmeni panelde aramadan, konuşarak yönet. Canlı deneyin.",
+  description: "Örnek satış ve stok verilerine doğal dille soru soran konuşarak yönet demo akışı.",
   openGraph: {
     title: "Konuşarak Yönet · ÇabukPOS",
-    description: "Ciro, stok, en çok satan… sor, cevabı getirsin. Canlı demo.",
+    description: "Demo satış ve stok verilerine örnek sorular sor. Gerçek işletme verisi kullanılmaz.",
     type: "website",
   },
 };

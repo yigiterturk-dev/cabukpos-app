@@ -56,7 +56,7 @@ const groups: { title: string; items: Item[] }[] = [
   ] },
 ];
 
-function NavItem({ item, path }: { item: Item; path: string }) {
+function NavItem({ item, path, onSelect }: { item: Item; path: string; onSelect?: () => void }) {
   const on = item.exact ? path === item.href : path.startsWith(item.href);
   const Icon = item.icon;
   const ref = useRef<HTMLAnchorElement>(null);
@@ -67,13 +67,14 @@ function NavItem({ item, path }: { item: Item; path: string }) {
     <Link
       ref={ref}
       href={item.href}
+      onClick={onSelect}
       aria-current={on ? "page" : undefined}
       data-testid={`nav-${item.href.replaceAll("/", "-").replace(/^-/, "root")}`}
       className={`group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm outline-none transition-[background-color,color,box-shadow] focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "bg-white/[0.1] font-semibold text-cream shadow-rest ring-1 ring-inset ring-white/10" : "font-medium text-cream-muted hover:bg-white/[0.06] hover:text-cream"}`}
     >
       <Icon aria-hidden className={`size-[18px] shrink-0 ${on ? "text-brand" : "text-cream-muted/80 group-hover:text-cream"}`} />
       <span className="truncate">{item.label}</span>
-      {on && <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-brand" />}
+      {on && <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-action" />}
     </Link>
   );
 }
@@ -83,7 +84,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 /** Sidebar menüsü: arama ile filtrele + gruplu liste. Masaüstü ve mobil çekmecede aynı. */
-export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
+export function Nav({ vertical, onNavigate }: { vertical: "restoran" | "market"; onNavigate?: () => void }) {
   const path = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -91,6 +92,13 @@ export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLocaleLowerCase() === "k") {
+        const target = e.target;
+        const active = document.activeElement;
+        const typing = target instanceof HTMLElement && (
+          target.isContentEditable ||
+          target.matches("input, textarea, select")
+        );
+        if (e.repeat || document.querySelector('[aria-modal="true"]') || (typing && active !== searchRef.current)) return;
         e.preventDefault();
         searchRef.current?.focus();
         searchRef.current?.select();
@@ -116,7 +124,7 @@ export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Escape") { e.preventDefault(); setQ(""); e.currentTarget.blur(); }
-            else if (e.key === "Enter" && matches[0]) { e.preventDefault(); router.push(matches[0].href); setQ(""); e.currentTarget.blur(); }
+          else if (e.key === "Enter" && matches[0]) { e.preventDefault(); router.push(matches[0].href); setQ(""); e.currentTarget.blur(); onNavigate?.(); }
           }}
           placeholder="Menüde ara"
           aria-label="Menüde ara"
@@ -125,7 +133,7 @@ export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
         />
         {!q && <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-medium text-cream-muted/65">⌘/Ctrl K</span>}
         {q && (
-          <button type="button" aria-label="Aramayı temizle" onClick={() => setQ("")} className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-lg text-cream-muted outline-none hover:bg-white/10 hover:text-cream focus-visible:ring-2 focus-visible:ring-brand-ring/60">
+          <button type="button" aria-label="Aramayı temizle" onClick={() => { setQ(""); requestAnimationFrame(() => searchRef.current?.focus()); }} className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-lg text-cream-muted outline-none hover:bg-white/10 hover:text-cream focus-visible:ring-2 focus-visible:ring-brand-ring/60">
             <X aria-hidden className="size-4" />
           </button>
         )}
@@ -138,7 +146,7 @@ export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
       {needle ? (
         <ul className="space-y-0.5">
           {matches.length === 0 && <li className="px-3 py-6 text-center text-sm text-cream-muted/70">Sonuç yok</li>}
-          {matches.map((i) => <li key={i.href}><NavItem item={i} path={path} /></li>)}
+          {matches.map((i) => <li key={i.href}><NavItem item={i} path={path} onSelect={() => { setQ(""); onNavigate?.(); }} /></li>)}
         </ul>
       ) : (
         <div className="space-y-5">
@@ -146,7 +154,7 @@ export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
             <div key={g.title}>
               <GroupLabel>{g.title}</GroupLabel>
               <ul className="space-y-0.5">
-                {g.items.map((i) => <li key={i.href}><NavItem item={i} path={path} /></li>)}
+                {g.items.map((i) => <li key={i.href}><NavItem item={i} path={path} onSelect={() => { setQ(""); onNavigate?.(); }} /></li>)}
               </ul>
             </div>
           ))}
@@ -157,20 +165,44 @@ export function Nav({ vertical }: { vertical: "restoran" | "market" }) {
 }
 
 /** Mobil: üst çubuktaki düğme + soldan çekmece. Rota değişince kapanır. */
-export function MobileNav({ children }: { children: React.ReactNode }) {
+export function MobileNav({ children }: { children: (onNavigate: () => void) => React.ReactNode }) {
   // Açıldığı rotayı tutar: rota değişince kendiliğinden kapalı sayılır (efektte setState yok).
   const path = usePathname();
   const [openAt, setOpenAt] = useState<string | null>(null);
+  const previousPath = useRef(path);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const open = openAt === path;
   const setOpen = (v: boolean) => setOpenAt(v ? path : null);
+  const close = () => setOpenAt(null);
+  useEffect(() => {
+    if (previousPath.current === path) return;
+    previousPath.current = path;
+    document.getElementById("main-content")?.focus();
+  }, [path]);
   useEffect(() => {
     if (open) {
-      closeRef.current?.focus();
+      const previousOverflow = document.body.style.overflow;
+      const previousPaddingRight = document.body.style.paddingRight;
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = "hidden";
+      if (scrollbarWidth > 0) {
+        const currentPadding = Number.parseFloat(window.getComputedStyle(document.body).paddingRight) || 0;
+        document.body.style.paddingRight = `${currentPadding + scrollbarWidth}px`;
+      }
+      // Put keyboard users directly into the navigation task; keep the close
+      // button reachable first in DOM order when they move backwards.
+      const firstNavigationItem = [...(drawerRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [])].find((item) => item !== closeRef.current && item.offsetParent !== null);
+      (firstNavigationItem ?? closeRef.current)?.focus();
       const trigger = triggerRef.current;
-      return () => trigger?.focus();
+      return () => {
+        document.body.style.overflow = previousOverflow;
+        document.body.style.paddingRight = previousPaddingRight;
+        trigger?.focus();
+      };
     }
   }, [open]);
   useEffect(() => {
@@ -194,17 +226,17 @@ export function MobileNav({ children }: { children: React.ReactNode }) {
   }, [open]);
   return (
     <>
-      <button ref={triggerRef} type="button" aria-label="Menüyü aç" aria-expanded={open} onClick={() => setOpen(true)} className="press grid size-11 place-items-center rounded-[10px] text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 md:hidden">
+      <button ref={triggerRef} type="button" aria-label={open ? "Menüyü kapat" : "Menüyü aç"} aria-expanded={open} onClick={() => setOpen(!open)} className="press grid size-11 place-items-center rounded-[10px] text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 md:hidden">
         <Menu aria-hidden className="size-5" />
       </button>
       {open && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menü">
           <div className="absolute inset-0 bg-espresso/50" onClick={() => setOpen(false)} />
-          <div ref={drawerRef} className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-espresso p-4 shadow-pop">
+          <div ref={drawerRef} className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overscroll-contain overflow-y-auto bg-espresso p-4 shadow-pop">
             <button ref={closeRef} type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-11 place-items-center rounded-[10px] text-cream-muted outline-none hover:bg-surface/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
               <X aria-hidden className="size-5" />
             </button>
-            {children}
+            {children(close)}
           </div>
         </div>
       )}

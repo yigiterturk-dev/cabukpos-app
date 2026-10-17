@@ -57,13 +57,19 @@ export async function saveZone(id: string | null, _: DeliveryState, form: FormDa
   if (endMin === undefined) return { error: "Bitiş saati geçersiz.", field: "end" };
   if (startMin !== null && endMin !== null && startMin === endMin) return { error: "Başlangıç ve bitiş aynı olamaz.", field: "end" };
   if (id && !UUID.test(id)) return { error: "Bölge bulunamadı." };
-  const storeId = await firstStore(a.tenantId);
-  await withTenant(a.tenantId, async (tx) => {
+  let storeId: string;
+  try { storeId = await firstStore(a.tenantId); }
+  catch { return { error: "Önce bir şube oluşturun." }; }
+  const err = await withTenant(a.tenantId, async (tx) => {
     const Z = schema.deliveryZones;
-    if (id) await tx.update(Z).set({ name, fee, minOrder, perKm, startMin, endMin }).where(eq(Z.id, id));
-    else await tx.insert(Z).values({ tenantId: a.tenantId, storeId, name, fee, minOrder, perKm, startMin, endMin, sort: (await tx.select({ id: Z.id }).from(Z)).length });
+    if (id) {
+      const [row] = await tx.update(Z).set({ name, fee, minOrder, perKm, startMin, endMin }).where(and(eq(Z.id, id), eq(Z.storeId, storeId))).returning({ id: Z.id });
+      if (!row) return "Bölge seçili şubede bulunamadı.";
+    } else await tx.insert(Z).values({ tenantId: a.tenantId, storeId, name, fee, minOrder, perKm, startMin, endMin, sort: (await tx.select({ id: Z.id }).from(Z).where(eq(Z.storeId, storeId))).length });
     await audit(tx, a.tenantId, `user:${a.id}`, id ? "zone.update" : "zone.create", { id, name, fee, minOrder, perKm, startMin, endMin });
+    return null;
   });
+  if (err) return { error: err };
   revalidatePath("/yonetim/bolgeler");
   return { savedAt: Date.now() };
 }
@@ -72,8 +78,12 @@ export async function saveZone(id: string | null, _: DeliveryState, form: FormDa
 export async function toggleZone(id: string, active: boolean) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
+  let storeId: string;
+  try { storeId = await firstStore(a.tenantId); }
+  catch { return; }
   await withTenant(a.tenantId, async (tx) => {
-    await tx.update(schema.deliveryZones).set({ active }).where(eq(schema.deliveryZones.id, id));
+    const [row] = await tx.update(schema.deliveryZones).set({ active }).where(and(eq(schema.deliveryZones.id, id), eq(schema.deliveryZones.storeId, storeId))).returning({ id: schema.deliveryZones.id });
+    if (!row) return;
     await audit(tx, a.tenantId, `user:${a.id}`, "zone.active", { id, active });
   });
   revalidatePath("/yonetim/bolgeler");

@@ -9,6 +9,7 @@ import { isCurrency, isVatRate } from "@/lib/core/money";
 import { kasaAgentFor } from "@/lib/agent/registry";
 import type { KasaAgent, LanLink } from "@/lib/agent/config";
 import { DEFAULT_MODES } from "@/lib/core/fiscal";
+import { categoryStationForStore, loadStoreStationRoutes, productStationForStore } from "@/lib/core/station-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +45,14 @@ export async function GET(req: Request) {
     getDb().select({ taxId: schema.tenants.taxId, currency: schema.tenants.currency }).from(schema.tenants).where(eq(schema.tenants.id, device.tenantId)), // iade tutanağında satıcı VKN + fiş para birimi (#16)
     priceListCatalog(device),
   ]);
+  const routes = device.vertical === "restoran"
+    ? await withTenant(device.tenantId, (tx) => loadStoreStationRoutes(tx, device.storeId))
+    : { stationIds: new Set<string>(), categories: new Map<string, string | null>(), products: new Map<string, string | null>() };
+  const categoryStations = new Map(cats.map((c) => [c.id, categoryStationForStore(c.id, c.stationId, routes)]));
   const products = prods.filter((p) => isVatRate(p.vatRate)).map(({ stationId, ...p }) => ({
     ...p,
-    // İstasyon: ürün ?? kategori. Seçenek grupları sıralı kimlikler.
-    stationId: stationId ?? cats.find((c) => c.id === p.categoryId)?.stationId ?? null,
+    // Şube istasyonu: ürün rotası ?? kategori rotası. Seçenek grupları sıralı kimlikler.
+    stationId: productStationForStore(p.id, stationId, p.categoryId ? categoryStations.get(p.categoryId) ?? null : null, routes),
     optionGroupIds: salon?.links.filter((l) => l.productId === p.id).map((l) => l.groupId) ?? [],
   }));
   const catalog = {

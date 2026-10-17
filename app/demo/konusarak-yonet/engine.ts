@@ -26,10 +26,10 @@ const dayTotal = (i: number) => Object.entries(QTY).reduce((a, [n, arr]) => a + 
 const PERIODS: { keys: string[]; days: number; label: string }[] = [
   { keys: ["bugün", "bugun"], days: 1, label: "bugün" },
   { keys: ["dün", "dun"], days: 2, label: "dün" },
-  { keys: ["hafta", "7 gün", "haftalık", "haftalik"], days: 7, label: "bu hafta" },
+  { keys: ["hafta", "7 gün", "haftalık", "haftalik"], days: 7, label: "son 7 gün" },
   { keys: ["ay", "aylık", "aylik", "30 gün"], days: 30, label: "bu ay" },
 ];
-const nrm = (s: string) => s.toLocaleLowerCase("tr").replace(/\s+/g, " ").trim();
+const nrm = (s: string) => s.toLocaleLowerCase("tr").normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/ı/g, "i").replace(/\s+/g, " ").trim();
 
 /** Son `days` günün ürün satışlarını toplar (index 0 bugün). */
 function periodSales(days: number): SaleRow[] {
@@ -52,11 +52,14 @@ const fmt = (k: number) => `${(k / 100).toLocaleString("tr-TR", { minimumFractio
 
 export function query(text: string): Answer {
   const s = nrm(text);
-  const period = PERIODS.find((p) => p.keys.some((k) => s.includes(k)));
+  const period = PERIODS.find((p) => p.keys.some((k) => (` ${s} `).includes(` ${nrm(k)} `)));
+  if (period?.days === 30) {
+    return { answer: "Bu demoda yalnızca son 7 günlük örnek veri var; aylık toplamı güvenilir biçimde gösteremiyorum. Son 7 günü sorabilir veya demo için günlük ciroyu inceleyebilirsin." };
+  }
   const days = period?.days ?? 1;
   const label = period?.label ?? "bugün";
 
-  const has = (...ks: string[]) => ks.some((k) => s.includes(k));
+  const has = (...ks: string[]) => ks.some((k) => s.includes(nrm(k)));
 
   // Tüm stok listesi
   if (has("stok") && has("tüm", "hepsi", "liste", "durum")) {

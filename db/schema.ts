@@ -348,6 +348,23 @@ export const stations = pgTable("stations", {
   sort: integer("sort").notNull().default(0),
 });
 
+/** Ürün kataloğu kiracı genelidir; mutfak yönlendirmesi ise şubeye göre değişir. */
+export const categoryStationRoutes = pgTable("category_station_routes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  categoryId: uuid("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
+  stationId: uuid("station_id").references(() => stations.id, { onDelete: "set null" }),
+}, (t) => [uniqueIndex("category_station_routes_store_category_uq").on(t.storeId, t.categoryId)]);
+
+export const productStationRoutes = pgTable("product_station_routes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  stationId: uuid("station_id").references(() => stations.id, { onDelete: "set null" }),
+}, (t) => [uniqueIndex("product_station_routes_store_product_uq").on(t.storeId, t.productId)]);
+
 /** Adisyon olayları: tek kaynak, yalnız eklenir. lib/core/tab.ts katlar. seq = sunucu sırası (akış imleci). */
 export const tabEvents = pgTable("tab_events", {
   id: uuid("id").primaryKey(), // istemci üretir (idempotent); ödeme olayında satış kimliği

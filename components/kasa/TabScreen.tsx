@@ -1,7 +1,7 @@
 "use client";
 // Masa adisyonu: ürün ızgarası (seçenek penceresi), adisyon satırları, mutfağa gönder, taşı, ikram/indirim/iptal (müdür onayı), hesap.
 // Her dokunuş bir adisyon olayıdır (yerel + giden kutusu) → çökmede kaybolmaz, diğer cihazlara akışla gider.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { parseMoney, type Currency } from "@/lib/core/money";
 import { currencyUnit, kasaFmt } from "./kasa-format";
 import { optionsText, validateOptions, type OptionGroup } from "@/lib/core/options";
@@ -15,21 +15,22 @@ import { PinPad } from "./PinPad";
 import { Dialog } from "@/components/ui";
 import { categoryTone } from "@/lib/ui/categoryTone";
 import { minutesSince } from "./useTabs";
+import { useKasaMainProps } from "./KasaPreviewContext";
 
 type Add = (list: NewTabEvent[]) => Promise<unknown>;
 export type Waiter = { id: string; name: string; role: KasaStaff["role"] };
 
-export function Modal({ label, children, onClose }: { label: string; children: React.ReactNode; onClose: () => void }) {
-  return <Dialog label={label} title={label} onClose={onClose}>{children}</Dialog>;
+export function Modal({ label, children, onClose, closeDisabled = false }: { label: string; children: React.ReactNode; onClose: () => void; closeDisabled?: boolean }) {
+  return <Dialog label={label} title={label} onClose={onClose} closeDisabled={closeDisabled}>{children}</Dialog>;
 }
 
 const focus = "outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60";
 const btn = `press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm font-medium shadow-card hover:border-line-strong hover:bg-surface-2 disabled:opacity-40 ${focus}`;
-const strong = `press inline-flex min-h-12 items-center justify-center rounded-[10px] bg-ink px-3 text-sm font-medium text-white shadow-card hover:bg-ink-2 disabled:pointer-events-none disabled:opacity-40 ${focus}`;
-const chip = (on: boolean) => `press inline-flex h-12 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${on ? "border-brand bg-brand text-white shadow-card" : "border-line bg-surface text-ink-2 hover:border-line-strong"} ${focus}`;
-const primary = `press inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 hover:bg-brand-hover hover:shadow-raised disabled:opacity-40 ${focus}`;
+const strong = `press inline-flex min-h-12 items-center justify-center rounded-[10px] bg-espresso px-3 text-sm font-medium text-white shadow-card hover:bg-espresso-2 disabled:pointer-events-none disabled:opacity-40 ${focus}`;
+const chip = (on: boolean) => `press inline-flex h-12 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${on ? "border-brand bg-brand-action text-white shadow-card" : "border-line bg-surface text-ink-2 hover:border-line-strong"} ${focus}`;
+const primary = `press inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-action px-4 py-3 font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 hover:bg-brand-action-hover hover:shadow-raised disabled:opacity-40 ${focus}`;
 
-function OptionsDialog({ product, groups, onAdd, onClose, currency }: { product: KasaProduct; groups: OptionGroup[]; onAdd: (unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number) => void; onClose: () => void; currency?: Currency }) {
+function OptionsDialog({ product, groups, onAdd, onClose, currency, busy }: { product: KasaProduct; groups: OptionGroup[]; onAdd: (unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number) => void; onClose: () => void; currency?: Currency; busy: boolean }) {
   const { TL } = kasaFmt({ device: { currency } });
   const [picked, setPicked] = useState<string[]>([]);
   const [note, setNote] = useState("");
@@ -41,39 +42,42 @@ function OptionsDialog({ product, groups, onAdd, onClose, currency }: { product:
     return g.max === 1 ? [...p.filter((x) => !inGroup.includes(x)), id] : inGroup.length >= g.max ? p : [...p, id];
   });
   return (
-    <Modal label={product.name} onClose={onClose}>
+    <Modal label={product.name} onClose={onClose} closeDisabled={busy}>
       {groups.map((g) => (
         <fieldset key={g.id} className="mb-4">
           <legend className="mb-2 text-sm font-medium">{g.name} <span className="font-normal text-muted">{g.min > 0 ? "(zorunlu)" : ""}{g.max > 1 ? ` en çok ${g.max}` : ""}</span></legend>
           <div className="flex flex-wrap gap-2">
-            {g.options.map((o) => (
-              <button key={o.id} type="button" aria-pressed={picked.includes(o.id)} onClick={() => toggle(g, o.id)} className={`inline-flex min-h-12 items-center rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${picked.includes(o.id) ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>
+            {g.options.map((o) => {
+              const selected = picked.includes(o.id);
+              const groupFull = g.max > 1 && picked.filter((id) => g.options.some((option) => option.id === id)).length >= g.max;
+              return <button key={o.id} type="button" disabled={busy || (groupFull && !selected)} aria-pressed={selected} onClick={() => toggle(g, o.id)} className={`inline-flex min-h-12 items-center rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-not-allowed disabled:opacity-50 ${selected ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>
                 {o.name}{o.delta ? ` ${o.delta > 0 ? "+" : "−"}${TL(Math.abs(o.delta))}` : ""}
-              </button>
-            ))}
+              </button>;
+            })}
           </div>
+          {g.max > 1 && picked.filter((id) => g.options.some((option) => option.id === id)).length >= g.max && <p className="mt-1 text-xs text-muted">En fazla {g.max} seçenek seçebilirsiniz.</p>}
         </fieldset>
       ))}
-      <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Not</span><input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="ör. soğansız" className="min-h-12 w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
+      <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Not</span><input disabled={busy} value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="ör. soğansız" className="min-h-12 w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50 disabled:opacity-60" /></label>
       <div className="mb-4 flex items-center gap-3">
-        <button type="button" aria-label="Azalt" onClick={() => setQty((q) => Math.max(1, q - 1))} className={btn}>−</button>
+        <button type="button" aria-label={`${product.name} miktarını azalt`} disabled={busy} onClick={() => setQty((q) => Math.max(1, q - 1))} className={btn}>−</button>
         <span className="tabular w-8 text-center text-lg font-semibold">{qty}</span>
-        <button type="button" aria-label="Artır" onClick={() => setQty((q) => Math.min(99, q + 1))} className={btn}>+</button>
-        <span className="tabular ml-auto font-semibold">{r.ok ? TL(r.unitPrice * qty) : ""}</span>
+        <button type="button" aria-label={`${product.name} miktarını artır`} disabled={busy} onClick={() => setQty((q) => Math.min(99, q + 1))} className={btn}>+</button>
+        <span className="tabular ml-auto font-semibold" aria-live="polite" aria-atomic="true">{r.ok ? `${qty} adet. Toplam ${TL(r.unitPrice * qty)}` : `${qty} adet`}</span>
       </div>
-      {!r.ok && picked.length > 0 && <p className="mb-2 text-sm text-bad">{r.error}</p>}
+      {!r.ok && <p className="mb-2 text-sm text-bad" role="status" aria-live="polite">{r.error}</p>}
       <div className="flex gap-2">
-        <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
-        <button type="button" disabled={!r.ok} onClick={() => r.ok && onAdd(r.unitPrice, r.options, note.trim() || null, qty * 1000)} className={`flex-[2] ${primary}`}>Ekle</button>
+        <button type="button" disabled={busy} onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
+        <button type="button" disabled={!r.ok || busy} onClick={() => r.ok && !busy && onAdd(r.unitPrice, r.options, note.trim() || null, qty * 1000)} className={`flex-[2] ${primary}`}>{busy ? "Ekleniyor…" : "Ekle"}</button>
       </div>
     </Modal>
   );
 }
 
 /** Gerekçe (+ indirimde tutar) ve müdür değilse müdür PIN'i. */
-function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose }: {
+function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose, busy }: {
   meta: Meta; onMeta: (m: Meta) => void; waiter: Waiter; title: string; discount?: boolean;
-  onOk: (approvedBy: string | null, reason: string, d?: { percent: number | null; amount: number | null }) => void; onClose: () => void;
+  onOk: (approvedBy: string | null, reason: string, d?: { percent: number | null; amount: number | null }) => void | Promise<void>; onClose: () => void; busy: boolean;
 }) {
   const [reason, setReason] = useState("");
   const [kind, setKind] = useState<"yuzde" | "tutar" | "kaldir">("yuzde");
@@ -82,33 +86,41 @@ function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose }
   const pct = Number(value), amt = parseMoney(value);
   const d = !discount ? undefined : kind === "kaldir" ? { percent: null, amount: null } : kind === "yuzde" ? { percent: Number.isInteger(pct) && pct >= 1 && pct <= 100 ? pct : NaN, amount: null } : { percent: null, amount: amt ?? NaN };
   const valid = reason.trim().length >= 2 || kind === "kaldir" && discount;
-  const dValid = !d || (d.percent === null || !Number.isNaN(d.percent)) && (d.amount === null || !Number.isNaN(d.amount));
+  const amountInvalid = discount && kind === "tutar" && (amt === null || amt > 100_000_000);
+  const dValid = !d || (d.percent === null || !Number.isNaN(d.percent)) && !amountInvalid && (d.amount === null || !Number.isNaN(d.amount));
   const next = () => (waiter.role === "mudur" ? onOk(null, reason.trim(), d) : setStep("pin"));
   return (
-    <Modal label={title} onClose={onClose}>
-      {step === "form" ? (
+    <Modal label={title} onClose={onClose} closeDisabled={busy}>
+      {busy ? <p className="py-6 text-center text-sm text-muted" role="status" aria-live="polite">İşleniyor…</p> : step === "form" ? (
         <>
           {discount && (
             <div className="mb-4">
-              <div className="mb-2 flex gap-1">
+              <fieldset className="mb-2 m-0 flex gap-1 border-0 p-0">
+                <legend className="sr-only">İndirim türü</legend>
                 {([["yuzde", "Yüzde"], ["tutar", `Tutar (${currencyUnit(meta.device?.currency)})`], ["kaldir", "İndirimi kaldır"]] as const).map(([k, l]) => (
-                  <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={`inline-flex min-h-12 items-center rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${kind === k ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>{l}</button>
+                  <label key={k} className={`inline-flex min-h-12 cursor-pointer items-center rounded-lg border px-3 py-2 text-sm outline-none transition focus-within:ring-4 focus-within:ring-brand-ring/60 ${kind === k ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>
+                    <input type="radio" name="discount-kind" value={k} checked={kind === k} onChange={() => setKind(k)} className="peer sr-only" />
+                    {l}
+                  </label>
                 ))}
-              </div>
-              {kind !== "kaldir" && <input aria-label={kind === "yuzde" ? "İndirim yüzdesi" : "İndirim tutarı"} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} className="tabular min-h-12 w-full rounded-lg border border-line px-3 py-2 text-right" />}
+              </fieldset>
+              {kind !== "kaldir" && <>
+                <input aria-label={kind === "yuzde" ? "İndirim yüzdesi" : "İndirim tutarı"} aria-describedby="approval-discount-hint" aria-invalid={amountInvalid || undefined} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder={kind === "yuzde" ? "1–100" : "0,00"} className={`tabular min-h-12 w-full rounded-lg border px-3 py-2 text-right ${amountInvalid ? "border-bad focus:ring-4 focus:ring-bad/30" : "border-line"}`} />
+                <p id="approval-discount-hint" className={`mt-1 text-xs ${amountInvalid ? "text-bad" : "text-muted"}`}>{kind === "yuzde" ? "1–100 arasında tam sayı girin." : `İndirim tutarını ${currencyUnit(meta.device?.currency)} biçiminde girin (ör. 25,00); üst sınır 1.000.000.`}</p>
+              </>}
             </div>
           )}
-          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="min-h-12 w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
+          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder="Ör. müşteri talebi" aria-describedby="approval-reason-hint" className="min-h-12 w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /><span id="approval-reason-hint" className="mt-1 block text-xs text-muted">En az 2 karakter girin; onay kaydında saklanır.</span></label>
           {waiter.role !== "mudur" && <p className="mb-3 text-sm text-muted">Müdür onayı gerekir.</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
+            <button type="button" disabled={busy} onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
             <button type="button" disabled={!valid || !dValid} onClick={next} className={`flex-[2] ${primary}`}>{waiter.role === "mudur" ? "Onayla" : "Müdür onayına"}</button>
           </div>
         </>
       ) : (
         <>
-          <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => onOk(m.id, reason.trim(), d)} />
-          <button type="button" onClick={onClose} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full">Vazgeç</button>
+          <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => onOk(m.id, reason.trim(), d)} autoFocusFirst />
+          <button type="button" disabled={busy} onClick={onClose} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full">Vazgeç</button>
         </>
       )}
     </Modal>
@@ -128,6 +140,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   meta: Meta; onMeta: (m: Meta) => void; table: Table | null; title: string; tabs: TabState[]; allTabs: Map<string, TabState>; waiter: Waiter; canPay: boolean; add: Add; now: number;
   onBill: (tabId: string) => void; onBack: () => void; onFirstSend?: (tab: TabState) => void;
 }) {
+  const mainProps = useKasaMainProps();
   const { TL } = kasaFmt(meta);
   const [newTabId] = useState(() => crypto.randomUUID());
   const [pick, setPick] = useState<string | null>(null);
@@ -136,23 +149,45 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   const [cat, setCat] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState("");
   const cats = meta.catalog.categories;
   const groups = meta.catalog.optionGroups ?? [];
   const tables = meta.catalog.tables ?? [];
   const products = meta.catalog.products.filter((p) => p.kind === "adet" && (cat === null || p.categoryId === cat));
   const ev = (e: NewTabEvent["ev"], approvedBy: string | null = null): NewTabEvent => ({ tabId, tableId: table?.id ?? null, staffId: waiter.id, approvedBy, ev: e });
   const run = async (list: NewTabEvent[]) => {
+    if (busyRef.current) return false;
+    busyRef.current = true;
     setBusy(true);
     setActionError(null);
+    setActionNotice("");
     try {
       await add(list);
+      const added = list.flatMap((item) => item.ev.type === "add" ? [item.ev] : []);
+      const events = list.map((item) => item.ev);
+      if (events.some((event) => event.type === "void" && event.reason === "not değişti") && added.length) setActionNotice("Ürün notu güncellendi.");
+      else if (added.length === 1) setActionNotice(`${added[0].name} adisyona eklendi.`);
+      else if (added.length > 1) setActionNotice(`${added.length} ürün adisyona eklendi.`);
+      else if (events.some((event) => event.type === "send")) {
+        const count = events.reduce((total, event) => total + (event.type === "send" ? event.lineIds.length : 0), 0);
+        setActionNotice(`${count} ürün mutfağa gönderildi.`);
+      } else if (events.some((event) => event.type === "bill")) setActionNotice("Hesap isteği gönderildi.");
+      else if (events.some((event) => event.type === "kitchen")) setActionNotice("Hazır ürün teslim edildi.");
+      else if (events.some((event) => event.type === "discount")) setActionNotice("Adisyon indirimi kaydedildi.");
+      else if (events.some((event) => event.type === "comp")) setActionNotice("İkram kaydedildi.");
+      else if (events.some((event) => event.type === "merge" || event.type === "merge_away")) setActionNotice("Adisyonlar birleştirildi.");
+      else if (events.some((event) => event.type === "move")) setActionNotice("Masa taşındı.");
+      else if (events.some((event) => event.type === "void")) setActionNotice("Ürün adisyondan kaldırıldı.");
+      else if (events.some((event) => event.type === "close")) setActionNotice("Masa kapatıldı.");
       setDialog(null);
       return true;
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "İşlem tamamlanamadı. Tekrar deneyin.");
       return false;
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -166,6 +201,8 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   };
 
   const live = tab?.lines.filter((l) => !l.voided) ?? [];
+  const inTab = new Map<string, number>();
+  for (const line of live) if (line.productId) inTab.set(line.productId, (inTab.get(line.productId) ?? 0) + line.qtyMilli);
   const unsent = live.filter((l) => !l.sent && l.productId !== null);
   const send = () => {
     const first = tab && tab.tickets.length === 0;
@@ -181,18 +218,20 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   const occupied = openTabsByTable(allTabs);
 
   return (
-    <div className="grid min-h-0 min-w-0 flex-1 md:overflow-hidden md:grid-cols-[minmax(0,1fr)_24rem]">
+    <div {...mainProps} className="grid min-h-0 min-w-0 flex-1 outline-none md:overflow-hidden md:grid-cols-[minmax(0,1fr)_24rem]">
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{actionNotice}</p>
       <section className="min-w-0 p-4 md:min-h-0 md:overflow-y-auto">
-        <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
-          <button type="button" onClick={() => setCat(null)} className={chip(cat === null)}>Tümü</button>
-          {cats.map((c) => <button key={c.id} type="button" title={c.name} onClick={() => setCat(c.id)} className={chip(cat === c.id)}><span aria-hidden className={`size-2.5 rounded-full ${categoryTone(c.id).dot}`} />{c.name}</button>)}
+        <div role="group" aria-label="Ürün kategorisi" className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button type="button" aria-pressed={cat === null} onClick={() => setCat(null)} className={chip(cat === null)}>Tümü</button>
+          {cats.map((c) => <button key={c.id} type="button" aria-pressed={cat === c.id} title={c.name} onClick={() => setCat(c.id)} className={chip(cat === c.id)}><span aria-hidden className={`size-2.5 rounded-full ${categoryTone(c.id).dot}`} />{c.name}</button>)}
         </div>
         <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
           {products.map((p) => (
-            <button key={p.id} type="button" disabled={busy} onClick={() => tapProduct(p)} className="press relative flex min-w-0 min-h-24 flex-col overflow-hidden rounded-2xl border border-line bg-surface p-3.5 pt-4 text-left shadow-card outline-none hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+            <button key={p.id} type="button" disabled={busy} onClick={() => tapProduct(p)} className={`press relative flex min-w-0 min-h-24 flex-col overflow-hidden rounded-2xl border bg-surface p-3.5 pt-4 text-left shadow-card outline-none hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50 ${inTab.has(p.id) ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
               <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
               <span className="line-clamp-2 min-w-0 font-display font-semibold leading-snug" title={p.name}>{p.name}</span>
               <span className="tabular mt-auto pt-2 text-sm font-medium text-ink-2">{TL(p.price)}{p.optionGroupIds?.length ? " ⋯" : ""}</span>
+              {inTab.has(p.id) && <span className="absolute right-2 top-2 grid min-w-7 place-items-center rounded-full bg-brand-action px-1.5 py-0.5 text-xs font-bold text-white">{inTab.get(p.id)! / 1000}<span className="sr-only"> adisyonda</span></span>}
             </button>
           ))}
         </div>
@@ -204,8 +243,8 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
           <h2 className="min-w-0 flex-1 truncate font-display text-xl font-bold tracking-tight" title={title}>{title}</h2>
           {tab && <span className="shrink-0 text-sm text-muted">{minutesSince(tab.openedAt, now)} dk</span>}
           {tabs.length > 1 && (
-            <div className="order-last flex w-full max-w-full shrink-0 gap-1 overflow-x-auto sm:order-none sm:ml-auto sm:w-auto sm:max-w-[45%]">
-              {tabs.map((t, i) => <button key={t.id} type="button" aria-pressed={t.id === tabId} onClick={() => setPick(t.id)} className={`inline-flex min-h-12 shrink-0 items-center rounded px-2 py-1 text-xs outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${t.id === tabId ? "bg-brand text-white" : "border border-line bg-surface"}`}>Adisyon {i + 1}</button>)}
+            <div role="group" aria-label="Adisyon seçimi" className="order-last flex w-full max-w-full shrink-0 gap-1 overflow-x-auto sm:order-none sm:ml-auto sm:w-auto sm:max-w-[45%]">
+              {tabs.map((t, i) => <button key={t.id} type="button" disabled={busy} aria-pressed={t.id === tabId} onClick={() => setPick(t.id)} className={`inline-flex min-h-12 shrink-0 items-center rounded px-2 py-1 text-xs outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50 ${t.id === tabId ? "bg-brand-action text-white" : "border border-line bg-surface"}`}>Adisyon {i + 1}</button>)}
             </div>
           )}
         </div>
@@ -223,7 +262,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             const k = tab.tickets.find((t) => t.lineIds.includes(l.lineId));
             return (
               <li key={l.lineId}>
-            <button type="button" disabled={l.voided} onClick={() => setDialog({ k: "line", line: l })} className={`flex min-h-12 w-full items-start gap-2 px-3 py-2.5 text-left outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${l.voided ? "text-muted line-through" : ""}`}>
+            <button type="button" disabled={l.voided || busy} onClick={() => setDialog({ k: "line", line: l })} className={`flex min-h-12 w-full items-start gap-2 px-3 py-2.5 text-left outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-60 ${l.voided ? "text-muted line-through" : ""}`}>
                   <span className="tabular w-8 font-semibold">{qtyText(l.qtyMilli)}×</span>
                   <span className="min-w-0 flex-1">
                     <span className="block break-words">{l.name}</span>
@@ -231,7 +270,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
                     {l.note && <span className="block break-words text-xs text-warn">! {l.note}</span>}
                     <span className="mt-0.5 flex flex-wrap gap-1 text-[11px]">
                       {!l.sent && !l.voided && l.productId !== null && <span className="rounded bg-warn-soft px-1.5 text-warn">gönderilmedi</span>}
-                      {k && <span className={`rounded px-1.5 ${k.status === "hazir" ? "bg-ok text-white" : "bg-surface-3"}`}>{{ yeni: "mutfakta", hazirlaniyor: "hazırlanıyor", hazir: "hazır", teslim: "teslim" }[k.status]}</span>}
+                      {k && <span className={`rounded px-1.5 ${k.status === "hazir" ? "bg-ok-action text-white" : "bg-surface-3"}`}>{{ yeni: "mutfakta", hazirlaniyor: "hazırlanıyor", hazir: "hazır", teslim: "teslim" }[k.status]}</span>}
                       {l.comped && <span className="rounded bg-brand-soft px-1.5 text-brand">ikram</span>}
                       {l.paidMilli > 0 && <span className="rounded bg-surface-3 px-1.5">ödendi {qtyText(l.paidMilli)}</span>}
                     </span>
@@ -250,13 +289,13 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             {tab.remaining === 0 && live.length > 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli) && (
               <button type="button" disabled={busy} onClick={() => void run([ev({ type: "close", reason: "ödenecek tutar yok" })]).then((ok) => { if (ok) onBack(); })} className={`w-full ${strong}`}>{busy ? "Kapatılıyor…" : "Masayı kapat"}</button>
             )}
-            {ready.length > 0 && <button type="button" disabled={busy} onClick={() => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })))} className="press min-h-12 w-full rounded-[10px] bg-ok text-sm font-medium text-white shadow-card outline-none hover:bg-ok/90 focus-visible:ring-4 focus-visible:ring-ok/30 disabled:pointer-events-none disabled:opacity-40">{busy ? "Güncelleniyor…" : "Hazır — teslim edildi"}</button>}
+            {ready.length > 0 && <button type="button" disabled={busy} onClick={() => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })))} className="press min-h-12 w-full rounded-[10px] bg-ok-action text-sm font-medium text-white shadow-card outline-none hover:bg-ok-action-hover focus-visible:ring-4 focus-visible:ring-ok/30 disabled:pointer-events-none disabled:opacity-40">{busy ? "Güncelleniyor…" : "Hazır — teslim edildi"}</button>}
             <div className="grid grid-cols-2 gap-2">
-              {table && <button type="button" onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>}
-              {table && <button type="button" onClick={() => setDialog({ k: "merge" })} className={btn}>Birleştir</button>}
-              <button type="button" onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by)] })} className={btn}>İndirim</button>
-              {!canPay && table && <button type="button" disabled={tab.billRequested} onClick={() => void run([ev({ type: "bill" })])} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
-              {canPay && <button type="button" disabled={tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli)} onClick={() => onBill(tab.id)} className={`${btn} font-medium`}>Hesap</button>}
+              {table && <button type="button" disabled={busy} onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>}
+              {table && <button type="button" disabled={busy} onClick={() => setDialog({ k: "merge" })} className={btn}>Birleştir</button>}
+              <button type="button" disabled={busy} onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by)] })} className={btn}>İndirim</button>
+              {!canPay && table && <button type="button" disabled={busy || tab.billRequested} onClick={() => void run([ev({ type: "bill" })])} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
+              {canPay && <button type="button" disabled={busy || (tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli))} onClick={() => onBill(tab.id)} className={`${btn} font-medium`}>Hesap</button>}
             </div>
           </div>
         )}
@@ -266,46 +305,46 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
       </aside>
 
       {dialog?.k === "options" && (
-        <OptionsDialog product={dialog.product} currency={meta.device?.currency} groups={(dialog.product.optionGroupIds ?? []).map((id) => groups.find((g) => g.id === id)).filter((g): g is OptionGroup => Boolean(g))}
+        <OptionsDialog product={dialog.product} currency={meta.device?.currency} busy={busy} groups={(dialog.product.optionGroupIds ?? []).map((id) => groups.find((g) => g.id === id)).filter((g): g is OptionGroup => Boolean(g))}
           onClose={() => setDialog(null)} onAdd={(unit, opts, note, q) => void addLine(dialog.product, unit, opts, note, q)} />
       )}
       {dialog?.k === "line" && (
-        <Modal label={dialog.line.name} onClose={() => setDialog(null)}>
+        <Modal label={dialog.line.name} onClose={() => setDialog(null)} closeDisabled={busy}>
           <div className="grid gap-2">
             {!dialog.line.sent ? (
               <>
-                <button type="button" onClick={() => void run([ev({ type: "void", lineId: dialog.line.lineId, reason: "gönderilmeden silindi" })])} className={btn}>Sil</button>
-                <button type="button" onClick={() => setDialog({ k: "note", line: dialog.line })} className={btn}>Not ekle / değiştir</button>
+                <button type="button" disabled={busy} onClick={() => void run([ev({ type: "void", lineId: dialog.line.lineId, reason: "gönderilmeden silindi" })])} className={btn}>Sil</button>
+                <button type="button" disabled={busy} onClick={() => setDialog({ k: "note", line: dialog.line })} className={btn}>Not ekle / değiştir</button>
               </>
             ) : dialog.line.paidMilli === 0 && (
-              <button type="button" onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İptal: ${l.name}`, run: (by, reason) => [ev({ type: "void", lineId: l.lineId, reason }, by)] }); }} className={btn}>İptal et (müdür onayı)</button>
+              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İptal: ${l.name}`, run: (by, reason) => [ev({ type: "void", lineId: l.lineId, reason }, by)] }); }} className={btn}>İptal et (müdür onayı)</button>
             )}
             {!dialog.line.comped && dialog.line.paidMilli === 0 && (
-              <button type="button" onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İkram: ${l.name}`, run: (by, reason) => [ev({ type: "comp", lineId: l.lineId, reason }, by)] }); }} className={btn}>İkram et</button>
+              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İkram: ${l.name}`, run: (by, reason) => [ev({ type: "comp", lineId: l.lineId, reason }, by)] }); }} className={btn}>İkram et</button>
             )}
-            <button type="button" onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-2 w-full">Kapat</button>
+            <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-2 w-full">Kapat</button>
           </div>
         </Modal>
       )}
-      {dialog?.k === "note" && <NoteDialog line={dialog.line} onClose={() => setDialog(null)} onSave={(note) => {
+      {dialog?.k === "note" && <NoteDialog line={dialog.line} busy={busy} onClose={() => setDialog(null)} onSave={(note) => {
         const l = dialog.line; // not = satırı sil + aynısını notla yeniden ekle (gönderilmemiş satır)
         void run([ev({ type: "void", lineId: l.lineId, reason: "not değişti" }), ev({ type: "add", lineId: crypto.randomUUID(), productId: l.productId, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli, options: l.options, note, stationId: l.stationId })]);
       }} />}
       {dialog?.k === "approve" && (
-        <ApprovalDialog meta={meta} onMeta={onMeta} waiter={waiter} title={dialog.title} discount={dialog.discount} onClose={() => setDialog(null)} onOk={(by, reason, d) => void run(dialog.run(by, reason, d))} />
+        <ApprovalDialog meta={meta} onMeta={onMeta} waiter={waiter} title={dialog.title} discount={dialog.discount} busy={busy} onClose={() => setDialog(null)} onOk={async (by, reason, d) => { await run(dialog.run(by, reason, d)); }} />
       )}
       {dialog?.k === "move" && table && (
-        <Modal label={`${table.name} → taşı`} onClose={() => setDialog(null)}>
+        <Modal label={`${table.name} → taşı`} onClose={() => setDialog(null)} closeDisabled={busy}>
           <div className="grid grid-cols-4 gap-2">
             {tables.filter((t) => t.id !== table.id && !occupied.has(t.id)).map((t) => (
               <button key={t.id} type="button" disabled={busy} onClick={() => void run([ev({ type: "move", toTableId: t.id })]).then((ok) => { if (ok) onBack(); })} className={btn}>{busy ? "Taşınıyor…" : t.name}</button>
             ))}
           </div>
-          <button type="button" onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full">Vazgeç</button>
+          <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
       {dialog?.k === "merge" && table && tab && (
-        <Modal label="Masayı birleştir" onClose={() => setDialog(null)}>
+        <Modal label="Masayı birleştir" onClose={() => setDialog(null)} closeDisabled={busy}>
           <p className="mb-3 text-sm text-muted">Bu adisyona katılacak masayı seçin: ödemesi başlamamış, açık masa adisyonları birleştirilebilir. Seçilen masadaki tüm satırlar buraya taşınır, o masa boşalır.</p>
           <div className="grid gap-2">
             {mergeCandidates(allTabs, tabId).map((src) => {
@@ -323,7 +362,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
               );
             })}
             {mergeCandidates(allTabs, tabId).length === 0 && <p className="text-sm text-muted">Birleştirilecek açık adisyon yok.</p>}
-          <button type="button" onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-2 w-full">Vazgeç</button>
+          <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-2 w-full">Vazgeç</button>
           </div>
         </Modal>
       )}
@@ -336,14 +375,14 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   );
 }
 
-function NoteDialog({ line, onSave, onClose }: { line: TabLine; onSave: (note: string | null) => void; onClose: () => void }) {
+function NoteDialog({ line, onSave, onClose, busy }: { line: TabLine; onSave: (note: string | null) => void; onClose: () => void; busy: boolean }) {
   const [note, setNote] = useState(line.note ?? "");
   return (
-    <Modal label={`Not: ${line.name}`} onClose={onClose}>
-      <input autoFocus aria-label="Not" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} className="mb-4 min-h-12 w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
+    <Modal label={`Not: ${line.name}`} onClose={onClose} closeDisabled={busy}>
+      <input autoFocus disabled={busy} aria-label="Not" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} className="mb-4 min-h-12 w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50 disabled:opacity-60" />
       <div className="flex gap-2">
-        <button type="button" onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
-        <button type="button" onClick={() => onSave(note.trim() || null)} className={`flex-[2] ${primary}`}>Kaydet</button>
+        <button type="button" disabled={busy} onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
+        <button type="button" disabled={busy} onClick={() => onSave(note.trim() || null)} className={`flex-[2] ${primary}`}>{busy ? "Kaydediliyor…" : "Kaydet"}</button>
       </div>
     </Modal>
   );

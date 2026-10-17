@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export type SegmentItem = { key: string; label: ReactNode; pressed: boolean; onClick: () => void };
 
 export function Segmented({ items, size = "md", className = "" }: { items: SegmentItem[]; size?: "md" | "lg"; className?: string }) {
-  const h = size === "lg" ? "h-12 px-5 text-[15px]" : "h-10 px-4 text-sm";
+  const h = size === "lg" ? "h-12 px-5 text-[15px]" : "min-h-11 px-4 text-sm";
   return (
     <div className={`inline-flex max-w-full overflow-x-auto rounded-xl bg-surface-3 p-1 shadow-[inset_0_1px_2px_rgb(0_0_0/0.05)] ${className}`}>
       {items.map((it) => (

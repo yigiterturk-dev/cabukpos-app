@@ -4,61 +4,80 @@
 import { useState } from "react";
 import { kasaFmt } from "./kasa-format";
 import { deliveryStatus, type PayIntent, type TabState } from "@/lib/core/tab";
-import { courierCash, formatPhone, intentLabel, PAY_INTENTS } from "@/lib/core/delivery";
+import { istToday } from "@/lib/core/report";
+import { courierCash, formatPhone, intentLabel, normalizePhone, PAY_INTENTS } from "@/lib/core/delivery";
 import type { NewTabEvent } from "@/lib/offline/tabs";
 import type { Meta } from "@/lib/offline/state";
 import type { Cashier } from "./PinPad";
 import { Modal } from "./TabScreen";
 import { minutesSince } from "./useTabs";
+import { useKasaMainProps } from "./KasaPreviewContext";
 
 const btn = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm font-medium shadow-card outline-none hover:border-line-strong hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
-const strong = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] bg-ink px-3 py-2 text-sm font-medium text-white shadow-card outline-none hover:bg-ink-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
+const strong = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] bg-espresso px-3 py-2 text-sm font-medium text-white shadow-card outline-none hover:bg-espresso-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
+const phoneHref = (raw: string) => {
+  const tr = normalizePhone(raw);
+  if (tr) return `tel:+${tr}`;
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return null;
+  if (/^\s*\+/.test(raw)) return `tel:+${digits}`;
+  if (digits.startsWith("00")) return `tel:+${digits.slice(2)}`;
+  return `tel:${digits}`;
+};
 
 export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onCloseShift }: {
   meta: Meta; courier: Cashier; tabs: Map<string, TabState>; now: number; add: (list: NewTabEvent[]) => Promise<unknown>;
   onDeliver: (tab: TabState, method: PayIntent) => Promise<void>; onCloseShift: () => void;
 }) {
+  const mainProps = useKasaMainProps();
   const { TL } = kasaFmt(meta);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"out" | "deliver" | null>(null);
   const [deliver, setDeliver] = useState<TabState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
   const zones = meta.catalog.deliveryZones ?? [];
+  const todayStart = Date.parse(`${istToday(now)}T00:00:00+03:00`);
   const mine = [...tabs.values()].filter((t) => t.kind === "paket" && t.delivery.courierId === courier.id && !t.delivery.cancelled);
   const active = mine.filter((t) => !t.delivery.deliveredAt).sort((a, b) => a.openedAt.localeCompare(b.openedAt));
-  const done = mine.filter((t) => t.delivery.deliveredAt && Date.parse(t.delivery.deliveredAt) > now - 16 * 3600_000);
+  const done = mine.filter((t) => t.delivery.deliveredAt && Date.parse(t.delivery.deliveredAt) >= todayStart);
   const waiting = active.filter((t) => !t.delivery.outAt);
   const cash = courierCash(done, courier.id);
-  const run = async (fn: () => Promise<unknown>) => {
-    setBusy(true);
+  const run = async (action: "out" | "deliver", fn: () => Promise<unknown>, success: string) => {
+    setBusy(action);
     setError(null);
+    setNotice("");
     try {
       await fn();
+      setNotice(success);
       setDeliver(null);
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "İşlem tamamlanamadı. Tekrar deneyin.");
       return false;
-    } finally { setBusy(false); }
+    } finally { setBusy(null); }
   };
-  const out = () => run(() => add(waiting.map((t) => ({ tabId: t.id, tableId: null, staffId: courier.id, ev: { type: "out" as const } }))));
+  const out = () => run("out", () => add(waiting.map((t) => ({ tabId: t.id, tableId: null, staffId: courier.id, ev: { type: "out" as const } }))), "Siparişler yola çıktı olarak kaydedildi.");
 
   return (
-    <main className="mx-auto w-full max-w-lg px-4 py-5">
+    <div {...mainProps} className="mx-auto w-full max-w-lg px-4 py-5 outline-none">
       <div className="mb-4 flex items-center gap-3">
         <h1 className="min-w-0 break-words font-display text-xl font-bold tracking-tight">Siparişlerim <span className="tabular text-muted">({active.length})</span></h1>
-        {waiting.length > 0 && <button type="button" disabled={busy} onClick={() => void out()} className={`ml-auto shrink-0 ${strong}`}>{busy ? "Güncelleniyor…" : `Yola çıktım (${waiting.length})`}</button>}
+        {waiting.length > 0 && <button type="button" disabled={busy !== null} aria-busy={busy === "out" || undefined} onClick={() => void out()} className={`ml-auto shrink-0 ${strong}`}>{busy === "out" ? "Yola çıkış kaydediliyor…" : `Yola çıktım (${waiting.length})`}</button>}
       </div>
       {error && !deliver && <p className="mb-3 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+      {busy && <p className="sr-only" role="status" aria-live="polite">{busy === "out" ? "Siparişlerin yola çıkışı kaydediliyor." : "Teslimat ve ödeme kaydediliyor."}</p>}
+      {notice && <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{notice}</p>}
       <ul className="space-y-3">
         {active.map((t) => {
           const o = t.order;
           const st = deliveryStatus(t);
           const zone = zones.find((z) => z.id === o?.zoneId);
           const addr = [o?.address, zone?.name].filter(Boolean).join(", ");
+          const phone = o?.phone ? phoneHref(o.phone) : null;
           return (
             <li key={t.id} data-testid="courier-card" className="rounded-xl border border-line bg-surface p-4 text-sm">
-              <div className="flex items-baseline gap-2">
-                <span className="min-w-0 truncate font-semibold" title={o?.name ?? "Paket"}>{o?.name ?? "Paket"}</span>
+              <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
+                <span className="min-w-0 flex-1 break-words font-semibold">{o?.name ?? "Paket"}</span>
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${st === "yolda" ? "bg-info-soft text-info" : st === "hazir" ? "bg-ok-soft text-ok" : "bg-surface-3 text-ink-2"}`}>
                   {st === "yolda" ? "Yolda" : st === "hazir" ? "Hazır" : "Hazırlanıyor"}
                 </span>
@@ -73,8 +92,8 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {addr && <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" className={btn}>Harita</a>}
-                {o?.phone && <a href={`tel:+${o.phone}`} className={btn}>Ara {formatPhone(o.phone)}</a>}
-                {t.delivery.outAt && <button type="button" disabled={busy} onClick={() => { setError(null); setDeliver(t); }} className={`ml-auto ${strong}`}>{busy ? "Güncelleniyor…" : "Teslim ettim"}</button>}
+                {phone && o?.phone && <a href={phone} className={btn}>Ara {formatPhone(o.phone)}</a>}
+                {t.delivery.outAt && <button type="button" disabled={busy !== null} onClick={() => { setError(null); setDeliver(t); }} className={`ml-auto ${strong}`}>Teslim ettim</button>}
               </div>
             </li>
           );
@@ -85,24 +104,26 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
       <section className="mt-8 rounded-xl border border-line bg-surface p-4 text-sm">
         <div className="flex items-baseline justify-between">
           <span>Bugün teslim: <span className="tabular font-medium">{done.length}</span></span>
-          <span>Üzerimdeki nakit: <span className="tabular font-display text-base font-bold" data-testid="courier-cash">{TL(cash)}</span></span>
+          <span>Bugün tahsil edilen nakit: <span className="tabular font-display text-base font-bold" data-testid="courier-cash">{TL(cash)}</span></span>
         </div>
-        <button type="button" disabled={busy || active.some((t) => t.delivery.outAt)} onClick={onCloseShift} className={`mt-3 w-full ${btn}`}>{busy ? "Güncelleniyor…" : "Hesap kapat (kasiyer onayı)"}</button>
+        <button type="button" disabled={busy !== null || active.some((t) => t.delivery.outAt)} aria-describedby={active.some((t) => t.delivery.outAt) ? "courier-shift-blocked" : undefined} onClick={onCloseShift} className={`mt-3 w-full ${btn}`}>Hesap kapat (kasiyer onayı)</button>
+        {active.some((t) => t.delivery.outAt) && <p id="courier-shift-blocked" className="mt-2 text-xs text-muted">Yoldaki siparişler teslim edilmeden hesap kapatılamaz.</p>}
       </section>
 
       {deliver && (
-        <Modal label="Nasıl ödendi?" onClose={() => setDeliver(null)}>
+        <Modal label="Nasıl ödendi?" onClose={() => setDeliver(null)} closeDisabled={busy !== null}>
           <p className="mb-3 text-sm">{deliver.order?.name} · <span className="tabular font-semibold">{TL(deliver.remaining)}</span></p>
+          {deliver.order?.payIntent && <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">Sipariş tercihi: <b className="text-ink">{intentLabel(deliver.order.payIntent)}</b>. Lütfen teslimde gerçekte tahsil edilen yöntemi seçin.</p>}
           {error && <p className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
           <div className="grid grid-cols-2 gap-2">
             {PAY_INTENTS.map((p) => (
-              <button key={p.value} type="button" disabled={busy} onClick={() => void run(() => onDeliver(deliver, p.value))}
-                className={`${btn} ${deliver.order?.payIntent === p.value ? "border-brand font-medium text-brand" : ""}`}>{p.label}</button>
+              <button key={p.value} type="button" disabled={busy !== null} onClick={() => void run("deliver", () => onDeliver(deliver, p.value), `Teslimat ${p.label.toLocaleLowerCase("tr-TR")} olarak kaydedildi.`)}
+                className={`${btn} ${deliver.order?.payIntent === p.value ? "border-brand font-medium text-brand" : ""}`}>{busy === "deliver" ? "Teslimat kaydediliyor…" : p.label}</button>
             ))}
           </div>
-          <button type="button" onClick={() => setDeliver(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full">Vazgeç</button>
+          <button type="button" disabled={busy !== null} onClick={() => setDeliver(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full disabled:cursor-not-allowed disabled:opacity-40">Vazgeç</button>
         </Modal>
       )}
-    </main>
+    </div>
   );
 }

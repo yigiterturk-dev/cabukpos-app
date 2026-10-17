@@ -1,6 +1,6 @@
 // Ortak UI parçaları (tasarım dili: docs/superpowers/specs/2026-09-29-cabukpos-arayuz-tasarim-dili-design.md).
 // Native <select> kullanılmaz (bkz. components/Select.tsx).
-import type { ComponentProps, ReactNode } from "react";
+import { cloneElement, isValidElement, useId, type ComponentProps, type ReactElement, type ReactNode } from "react";
 
 export { Dialog } from "./Dialog";
 export { Segmented } from "./Segmented";
@@ -9,15 +9,15 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "success";
 type Size = "sm" | "md" | "lg" | "xl";
 
 const VARIANT: Record<Variant, string> = {
-  primary: "bg-brand text-white shadow-rest ring-1 ring-inset ring-white/15 hover:bg-brand-hover hover:shadow-raised",
+  primary: "bg-brand-action text-white shadow-rest ring-1 ring-inset ring-white/15 hover:bg-brand-action-hover hover:shadow-raised",
   secondary: "border border-line bg-surface text-ink shadow-rest hover:border-line-strong hover:bg-surface-2 hover:shadow-raised",
   ghost: "text-ink-2 hover:bg-surface-3 hover:text-ink",
   danger: "border border-bad/25 bg-surface text-bad shadow-rest hover:bg-bad-soft hover:shadow-raised",
-  success: "bg-ok text-white shadow-rest hover:bg-ok/90 hover:shadow-raised",
+  success: "bg-ok-action text-white shadow-rest hover:bg-ok-action-hover hover:shadow-raised",
 };
 const SIZE: Record<Size, string> = {
-  sm: "min-h-10 rounded-lg px-2.5 text-[13px]",
-  md: "h-10 rounded-[10px] px-3.5 text-sm",
+  sm: "min-h-11 rounded-lg px-2.5 text-[13px]",
+  md: "min-h-11 rounded-[10px] px-3.5 text-sm",
   lg: "h-12 rounded-xl px-4 text-[15px]",
   xl: "h-16 rounded-2xl px-5 text-lg font-semibold",
 };
@@ -31,11 +31,11 @@ export function Button({ variant = "primary", size = "md", className = "", ...p 
 }
 
 export function IconButton({ label, variant = "ghost", size = "md", className = "", ...p }: ComponentProps<"button"> & { label: string; variant?: Variant; size?: Size }) {
-  const sq = { sm: "w-10", md: "w-10", lg: "w-12", xl: "w-16" }[size];
+  const sq = { sm: "w-11", md: "w-11", lg: "w-12", xl: "w-16" }[size];
   return <button type="button" aria-label={label} title={label} {...p} className={`${buttonClass(variant, size)} ${sq} !px-0 ${className}`} />;
 }
 
-const FIELD = "min-h-11 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50";
+const FIELD = "min-h-11 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-base outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted hover:border-line-strong focus:border-brand focus:ring-4 focus:ring-brand-ring/50 lg:text-sm";
 
 export function Input({ className = "", ...p }: ComponentProps<"input">) {
   return <input {...p} className={`${FIELD} ${className}`} />;
@@ -46,12 +46,24 @@ export function Textarea({ className = "", ...p }: ComponentProps<"textarea">) {
 }
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  const id = useId();
+  const childProps = isValidElement(children) ? children.props as Record<string, unknown> : {};
+  const controlId = typeof childProps.id === "string" && childProps.id ? childProps.id : `field-${id}`;
+  const hintId = `field-${id}-hint`;
+  const existingDescription = typeof childProps["aria-describedby"] === "string" ? childProps["aria-describedby"] : "";
+  const description = [existingDescription, hint ? hintId : ""].filter(Boolean).join(" ") || undefined;
+  const control = isValidElement(children)
+    ? cloneElement(children as ReactElement<Record<string, unknown>>, {
+        id: controlId,
+        ...(description ? { "aria-describedby": description } : {}),
+      })
+    : children;
   return (
-    <label className="block space-y-1.5">
-      <span className="text-sm font-medium text-ink-2">{label}</span>
-      {children}
-      {hint && <span className="block text-xs text-muted">{hint}</span>}
-    </label>
+    <div className="block space-y-1.5">
+      <label htmlFor={controlId} className="block text-sm font-medium text-ink-2">{label}</label>
+      {control}
+      {hint && <span id={hintId} className="block text-xs text-muted">{hint}</span>}
+    </div>
   );
 }
 
@@ -101,7 +113,7 @@ export function Empty({ icon, action, children }: { icon?: ReactNode; action?: R
 export function LogoMark({ size = "md", className = "" }: { size?: "sm" | "md" | "lg"; className?: string }) {
   const s = { sm: "size-7 rounded-lg text-sm", md: "size-9 rounded-[10px] text-base", lg: "size-14 rounded-2xl text-2xl" }[size];
   return (
-    <span aria-hidden className={`grid shrink-0 place-items-center bg-brand font-display font-extrabold text-white shadow-rest ring-1 ring-inset ring-white/25 ${s} ${className}`}>Ç</span>
+    <span aria-hidden className={`grid shrink-0 place-items-center bg-brand-action font-display font-extrabold text-white shadow-rest ring-1 ring-inset ring-white/25 ${s} ${className}`}>Ç</span>
   );
 }
 

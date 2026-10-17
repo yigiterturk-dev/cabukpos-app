@@ -4,14 +4,15 @@ export type OrderProduct = { id: string; name: string; price: number; kind: "ade
 export type ParsedLine = { productId: string; name: string; qtyMilli: number; unitPrice: number; kind: "adet" | "tartili" };
 export type ParseResult = { lines: ParsedLine[]; unmatched: string[]; total: number };
 
-const NUM: Record<string, number> = {
+const nrm = (s: string) => s.toLocaleLowerCase("tr").replace(/şu/g, "shu").normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/ı/g, "i").replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+
+const NUM: Record<string, number> = Object.fromEntries(Object.entries({
   bir: 1, iki: 2, "üç": 3, uc: 3, "dört": 4, dort: 4, "beş": 5, bes: 5, altı: 6, alti: 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10,
   yarım: 0.5, yarim: 0.5, "çeyrek": 0.25, ceyrek: 0.25,
-};
-const FILLER = new Set(["bi", "tane", "adet", "olsun", "lutfen", "lütfen", "de", "da", "daha", "ekle", "al", "ver", "getir", "bu", "şu", "bana", "bir"]);
-const KG = new Set(["kilo", "kg", "kilogram"]);
+}).map(([word, quantity]) => [nrm(word), quantity]));
+const FILLER = new Set(["alo", "iyi", "günler", "gunler", "olur", "mu", "misiniz", "misin", "bi", "tane", "adet", "olsun", "lutfen", "lütfen", "de", "da", "daha", "ekle", "ekleyin", "ekler misiniz", "al", "ver", "getir", "bu", "şu", "bana", "bir"].map(nrm));
+const KG = new Set(["kilo", "kg", "kilogram"].map(nrm));
 
-const nrm = (s: string) => s.toLocaleLowerCase("tr").replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
 const words = (s: string) => nrm(s).split(" ").filter(Boolean);
 const qtyOf = (w: string): number | null => {
   if (/^\d+(?:[.,]\d+)?$/.test(w)) return Number(w.replace(",", "."));
@@ -40,7 +41,7 @@ export function parseOrder(text: string, products: OrderProduct[]): ParseResult 
   let i = 0;
   while (i < w.length) {
     const word = w[i];
-    if (word === "bir" && w[i + 1] === "buçuk") { qty = 1.5; i += 2; continue; }
+    if (word === "bir" && w[i + 1] === "bucuk") { qty = 1.5; i += 2; continue; }
     const q = qtyOf(word);
     if (q !== null) { qty = q; i++; continue; }
     if (KG.has(word)) { weighed = true; i++; continue; }

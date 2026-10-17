@@ -5,6 +5,7 @@ import { formatTL } from "@/lib/core/money";
 import { LegalFooter } from "@/components/Legal";
 import { LogoMark, buttonClass } from "@/components/ui";
 import { PriceCalculator } from "@/components/PriceCalculator";
+import { SkipToContent } from "@/components/SkipToContent";
 
 export const dynamic = "force-dynamic";
 
@@ -25,27 +26,32 @@ const INCLUDED = [
 
 export default function Fiyatlandirma() {
   const aylik = unitPrices("aylik"), yillik = unitPrices("yillik");
+  const yearlySavings = aylik && yillik ? Math.max(0, aylik.base * 12 - yillik.base) : 0;
   const contact = salesContact();
   return (
     <div className="bg-surface">
+      <SkipToContent />
       <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-          <Link href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
+          <Link href="/" className="inline-flex min-h-11 items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
           <div className="ml-auto flex items-center gap-2 text-sm">
-            <Link href="/giris" className={buttonClass("ghost", "sm")}>Giriş</Link>
-            <Link href="/kayit" className={buttonClass("primary", "sm")}>Ücretsiz dene</Link>
+            <Link href="/giris" className={`${buttonClass("ghost", "sm")} min-h-11`}>Giriş</Link>
+            <Link href="/kayit" className={`${buttonClass("primary", "sm")} min-h-11`}>Ücretsiz dene</Link>
           </div>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-16">
-        <h1 className="text-4xl font-semibold tracking-tight">Fiyatlandırma</h1>
+        <h1 id="main-content" tabIndex={-1} className="rounded-sm text-4xl font-semibold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Fiyatlandırma</h1>
         <p className="mt-3 max-w-2xl text-lg text-ink-2">Taban paket 1 şube ve 1 kasa terminali kapsar; büyürken yalnız eklediğiniz birimler için ödersiniz. Fiyatlara KDV dahildir. Bilgi fişi hemen kullanılabilir; e-Arşiv için canlı entegratör bağlantısı ayrıca tanımlanır.</p>
 
         <div className="mt-10 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
           <div className="space-y-4">
             {([["Aylık", aylik, "her ay"], ["Yıllık", yillik, "yılda bir, peşin"]] as const).map(([label, p, per]) => (
-              <div key={label} className={`rounded-2xl border p-7 shadow-card ${label === "Yıllık" ? "border-brand ring-4 ring-brand-ring/40" : "border-line"}`}>
-                <h2 className="font-semibold">{label}</h2>
+              <div key={label} className="rounded-2xl border border-line p-7 shadow-card">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-semibold">{label}</h2>
+                  {label === "Yıllık" && yearlySavings > 0 && <span className="rounded-full bg-ok-soft px-2.5 py-1 text-xs font-semibold text-ok">Yılda {formatTL(yearlySavings)} tasarruf</span>}
+                </div>
                 <div className="mt-3 text-4xl font-semibold tracking-tight tabular">{p ? formatTL(p.base) : "—"}</div>
                 <p className="mt-1 text-sm text-muted">{p ? `${per} · 1 şube + 1 terminal dahil` : contact ? `Fiyat için: ${contact}` : <Link href="/yasal/iletisim" className="underline underline-offset-4">Teklif için iletişime geçin</Link>}</p>
                 {p?.store != null && <div className="mt-3 text-sm text-ink-2 tabular">Ek şube: {formatTL(p.store)}/ay</div>}

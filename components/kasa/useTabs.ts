@@ -7,9 +7,13 @@ import type { LanLink } from "@/lib/agent/config";
 
 export function useTabs(enabled: boolean, kick: () => void, agent?: LanLink | null) {
   const [events, setEvents] = useState<TabEvent[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [cloud, setCloud] = useState(false);
   const [lan, setLan] = useState(false);
-  const reload = useCallback(async () => setEvents(await allTabEvents()), []);
+  const reload = useCallback(async () => {
+    setEvents(await allTabEvents());
+    setLoaded(true);
+  }, []);
   useEffect(() => {
     if (!enabled) return;
     void pruneTabEvents().then(reload);
@@ -32,7 +36,7 @@ export function useTabs(enabled: boolean, kick: () => void, agent?: LanLink | nu
   }, [reload, kick, agent]);
   const lanLive = lan && enabled && !!agentUrl; // ajan kalkınca eski "canlı" durumu sayılmaz
   const link: "bulut" | "lan" | "yok" = cloud ? "bulut" : lanLive ? "lan" : "yok";
-  return { tabs, live: cloud || lanLive, link, add, reload };
+  return { tabs, live: cloud || lanLive, link, add, reload, loaded };
 }
 
 /** Geçen süre göstergeleri için dakikalık saat. */

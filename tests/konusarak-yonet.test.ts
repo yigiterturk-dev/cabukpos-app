@@ -10,6 +10,24 @@ test("ciro sorusu tutar döner", () => {
   assert.equal(a.period, "bugün");
 });
 
+test("haftalık soru yedi günlük örnek aralığını doğru adlandırır", () => {
+  const a = query("haftalık ciro ne");
+  assert.equal(a.period, "son 7 gün");
+  assert.match(a.answer, /son 7 gün cirosu/);
+});
+
+test("aylık soru yedi günlük demo verisini aylık toplam diye sunmaz", () => {
+  const a = query("bu ay ciro ne");
+  assert.match(a.answer, /yalnızca son 7 günlük örnek veri/);
+  assert.equal(a.period, undefined);
+});
+
+test("ay sözcüğünün başka kelimenin parçası olması aylık dönem seçmez", () => {
+  const a = query("ayrıca ciro ne");
+  assert.equal(a.period, "bugün");
+  assert.match(a.answer, /bugün cirosu/);
+});
+
 test("en çok satan: 5 satır, ilk ürün Su (dün)", () => {
   const a = query("dün en çok ne sattım");
   assert.equal(a.rows?.length, 5);
@@ -50,6 +68,11 @@ test("tüm stok listesi", () => {
 
 test("en iyi gün", () => {
   const a = query("hangi gün en yoğundu");
+  assert.match(a.answer, /en iyi günü/);
+});
+
+test("Türkçe karakter kullanmadan yazılan gün sorusu da eşleşir", () => {
+  const a = query("hangi gun en yogundu");
   assert.match(a.answer, /en iyi günü/);
 });
 

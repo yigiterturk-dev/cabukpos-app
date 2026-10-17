@@ -12,13 +12,14 @@ import { clientIp } from "@/lib/ratelimit";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function startCheckout(form: FormData) {
+export type CheckoutState = { error?: string; field?: string };
+export async function startCheckout(_: CheckoutState, form: FormData): Promise<CheckoutState> {
   const a = await requireAdmin();
   const period: BillingPeriod = form.get("period") === "yillik" ? "yillik" : "aylik";
   const provider = getBillingProvider(), units = await tenantUnits(a.tenantId), amount = planPriceFor(period, units);
   const phone = String(form.get("phone") ?? "").replace(/[^\d+]/g, "");
-  if (!provider || !amount) redirect("/yonetim/abonelik?sonuc=hata");
-  if (provider.name === "paytr" && phone.length < 10) redirect("/yonetim/abonelik?sonuc=telefon");
+  if (!provider || !amount) return { error: "Ödeme şu anda başlatılamadı. Biraz sonra tekrar deneyin." };
+  if (provider.name === "paytr" && phone.replace(/\D/g, "").length < 10) return { error: "Geçerli bir cep telefonu girin.", field: "phone" };
   const p = await createPayment(a.tenantId, provider.name, period, amount, units);
   const t = await tenantBilling(a.tenantId);
   let url: string;
@@ -27,7 +28,7 @@ export async function startCheckout(form: FormData) {
   } catch (e) {
     console.error("[billing] start", e);
     await completePayment(p.id, false, "start-hata");
-    redirect("/yonetim/abonelik?sonuc=hata");
+    return { error: "Ödeme sayfası açılamadı. Bilgilerin korunuyor; yeniden deneyebilirsin." };
   }
   redirect(url);
 }
@@ -50,14 +51,15 @@ const refundReason = (v: FormDataEntryValue | null): RefundReason | null => {
   return (REFUND_REASONS as readonly string[]).includes(s) ? (s as RefundReason) : null;
 };
 
-export async function requestRefundAction(form: FormData) {
+export type RefundRequestState = { error?: string; field?: string };
+export async function requestRefundAction(_: RefundRequestState, form: FormData): Promise<RefundRequestState> {
   const a = await requireAdmin();
   const id = String(form.get("id") ?? "");
   const reason = refundReason(form.get("reason"));
   const note = String(form.get("note") ?? "").trim().slice(0, 300) || null;
-  if (!UUID.test(id) || !reason) redirect("/yonetim/abonelik?iade=hata");
+  if (!UUID.test(id) || !reason) return { error: "İade nedeni seçin; ödeme bilgisini yenileyip tekrar deneyin.", field: "reason" };
   const p = await paymentOf(a.tenantId, id);
-  if (!p || p.status !== "odendi") redirect("/yonetim/abonelik?iade=hata");
+  if (!p || p.status !== "odendi") return { error: "Bu ödeme için artık iade talebi açılamıyor. Ödeme durumunu yenileyin." };
   await requestRefund(id, reason, note);
   redirect("/yonetim/abonelik?iade=talep");
 }

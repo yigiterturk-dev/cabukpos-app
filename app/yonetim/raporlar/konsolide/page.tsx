@@ -26,13 +26,13 @@ export default async function Konsolide({ searchParams }: { searchParams: Promis
   });
   const c = digestContent("aylik", out.name, { ...out.data, range: { bas, bit } }, `${appUrl()}/yonetim/raporlar/konsolide?ay=${ay}`);
   return (
-    <main className="mx-auto w-full max-w-3xl bg-white px-6 py-8 text-sm text-ink print:max-w-none print:px-0 print:py-0">
+    <article aria-label="Aylık konsolide rapor" className="print-paper mx-auto w-full max-w-3xl bg-white px-6 py-8 text-sm text-ink print:max-w-none print:px-0 print:py-0">
       <style>{`@media print { @page { size: A4; margin: 14mm } body { background: #fff } }`}</style>
       <div className="mb-4 flex items-center justify-between print:hidden">
         <Link href="/yonetim/raporlar" className="text-sm text-muted hover:underline">← Raporlar</Link>
         <PrintButton label="Yazdır / PDF" />
       </div>
       <div dangerouslySetInnerHTML={{ __html: c.html }} />
-    </main>
+    </article>
   );
 }

@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { setStaffActive } from "@/lib/admin/staff-actions";
 import { StaffForm } from "@/components/admin/StaffDeviceForms";
 import { Badge, Card, Empty, PageHeader, Panel, SplitView, TABLE_HEAD } from "@/components/ui";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,27 @@ export default async function Personel({ searchParams }: { searchParams: Promise
         }
         list={<>
       {rows.length === 0 ? <Empty>Henüz personel yok.</Empty> : (
-        <Card className="overflow-x-auto">
-          <table className="w-full min-w-[620px] text-sm">
-            <thead className={TABLE_HEAD}><tr><th className="px-4 py-2.5 font-medium">Ad</th><th className="px-4 py-2.5 font-medium">Rol</th><th className="px-4 py-2.5 font-medium">Durum</th><th className="sticky right-0 z-20 bg-surface-2 px-4 py-2.5 text-right font-medium shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.45)]">Aksiyonlar</th></tr></thead>
+        <>
+        <Card className="overflow-hidden lg:hidden">
+          <ul aria-label="Personel listesi" className="divide-y divide-line">
+            {rows.map((r) => (
+              <li key={r.id} className={`space-y-3 p-4 ${r.id === duzenle ? "bg-brand-soft/45" : ""} ${r.active ? "" : "opacity-70"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0"><p className="break-words font-medium">{r.name}</p><p className="mt-1 text-sm text-muted">{r.role === "mudur" ? "Müdür" : r.role === "garson" ? "Garson" : r.role === "kurye" ? "Kurye" : "Kasiyer"}</p></div>
+                  {r.active ? <Badge tone="ok">Aktif</Badge> : <Badge>Pasif</Badge>}
+                </div>
+                <div className="flex flex-wrap items-center gap-1 border-t border-line pt-2">
+                  <Link href={`/yonetim/personel?duzenle=${r.id}`} aria-label={`Düzenle: ${r.name}`} className="inline-flex min-h-11 items-center rounded-lg px-3 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
+                  <form action={setStaffActive.bind(null, r.id, !r.active)}><button aria-label={`${r.active ? "Pasifleştir" : "Aktifleştir"}: ${r.name}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{r.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card className="hidden p-0 lg:block">
+          <HorizontalScrollRegion label="Personel listesi, yatay kaydırılabilir" className="rounded-2xl">
+          <table aria-label="Personel listesi" className="w-full min-w-[620px] text-sm">
+            <thead className={TABLE_HEAD}><tr><th scope="col" className="px-4 py-2.5 font-medium">Ad</th><th scope="col" className="px-4 py-2.5 font-medium">Rol</th><th scope="col" className="px-4 py-2.5 font-medium">Durum</th><th scope="col" className="sticky right-0 z-20 bg-surface-2 px-4 py-2.5 text-right font-medium shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.45)]">Aksiyonlar</th></tr></thead>
             <tbody className="divide-y divide-line">
               {rows.map((r) => (
                 <tr key={r.id} className={`${r.id === duzenle ? "bg-brand-soft/45" : "hover:bg-surface-2"} ${r.active ? "" : "opacity-60"}`}>
@@ -34,14 +53,16 @@ export default async function Personel({ searchParams }: { searchParams: Promise
                   <td className="px-4 py-2.5">{r.role === "mudur" ? "Müdür" : r.role === "garson" ? "Garson" : r.role === "kurye" ? "Kurye" : "Kasiyer"}</td>
                   <td className="px-4 py-2.5">{r.active ? <Badge tone="ok">Aktif</Badge> : <Badge>Pasif</Badge>}</td>
                   <td className={`sticky right-0 whitespace-nowrap px-4 py-2.5 text-right shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.35)] ${r.id === duzenle ? "bg-brand-soft/90" : "bg-surface"}`}>
-                    <Link href={`/yonetim/personel?duzenle=${r.id}`} className="mr-1 inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
-                    <form action={setStaffActive.bind(null, r.id, !r.active)} className="inline"><button className="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{r.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
+                    <Link href={`/yonetim/personel?duzenle=${r.id}`} aria-label={`Düzenle: ${r.name}`} className="mr-1 inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
+                    <form action={setStaffActive.bind(null, r.id, !r.active)} className="inline"><button aria-label={`${r.active ? "Pasifleştir" : "Aktifleştir"}: ${r.name}`} className="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{r.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </HorizontalScrollRegion>
         </Card>
+        </>
       )}
         </>}
       />

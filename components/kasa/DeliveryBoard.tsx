@@ -1,7 +1,7 @@
 "use client";
 // Paket panosu: paket + platform siparişleri durum sütunlarında. Kabul/red (platform), kurye ata, kuryeye verildi, iptal (müdür).
 // Her işlem bir adisyon olayıdır; kurye tahsilatı kurye telefonunda (CourierScreen), gel-al paket kasada "Hesap" ile.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { kasaFmt } from "./kasa-format";
 import { deliveryStatus, openDeliveries, tabLabel, type DeliveryStatus, type TabState } from "@/lib/core/tab";
 import { PLATFORM_NAMES, sendByStation } from "@/lib/core/platform";
@@ -12,15 +12,22 @@ import { Modal, type Waiter } from "./TabScreen";
 import { PinPad } from "./PinPad";
 import { minutesSince } from "./useTabs";
 import { beep } from "./beep";
+import { useKasaMainProps } from "./KasaPreviewContext";
 
 type Add = (list: NewTabEvent[]) => Promise<unknown>;
+const EMPTY_TABLES: NonNullable<Meta["catalog"]["tables"]> = [];
+const deadlineInfo = (tab: TabState) => {
+  const raw = tab.order?.source?.deadline;
+  const at = raw ? Date.parse(raw) : NaN;
+  return { provided: Boolean(raw), at: Number.isFinite(at) ? at : null };
+};
 
 const COLUMNS: { key: DeliveryStatus[]; title: string }[] = [
   { key: ["onay_bekliyor"], title: "Onay bekliyor" },
   { key: ["hazirlaniyor"], title: "Hazırlanıyor" },
   { key: ["hazir"], title: "Hazır" },
   { key: ["yolda"], title: "Yolda" },
-  { key: ["teslim", "iptal", "reddedildi"], title: "Bugün kapanan" },
+  { key: ["teslim", "iptal", "reddedildi"], title: "Son 12 saatte kapanan" },
 ];
 const PREP = [10, 20, 30, 45];
 const REJECT = ["Ürün kalmadı", "Yoğunluk", "Kapalıyız", "Adres bölge dışı"];
@@ -44,20 +51,26 @@ const STATUS_LABEL: Record<DeliveryStatus, string> = {
 };
 
 const btn = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm font-medium shadow-card outline-none hover:border-line-strong hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
-const strong = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] bg-brand px-3 py-2 text-sm font-medium text-white shadow-card outline-none hover:bg-brand-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
+const strong = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] bg-brand-action px-3 py-2 text-sm font-medium text-white shadow-card outline-none hover:bg-brand-action-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
 
 type Dialog = { k: "accept" | "reject" | "courier" | "cancel"; tab: TabState };
 
-export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onOpen, onBill, onHandover }: {
+export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onOpen, onBill, onHandover, loaded = false }: {
   meta: Meta; onMeta: (m: Meta) => void; tabs: Map<string, TabState>; now: number; add: Add; waiter: Waiter;
-  onNew: () => void; onOpen: (tabId: string) => void; onBill: (tabId: string) => void; onHandover: (tab: TabState) => Promise<void>;
+  onNew: () => void; onOpen: (tabId: string) => void; onBill: (tabId: string) => void; onHandover: (tab: TabState) => Promise<void>; loaded?: boolean;
 }) {
+  const mainProps = useKasaMainProps();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const { TL } = kasaFmt(meta);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [pendingMessage, setPendingMessage] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const announcementRef = useRef<HTMLParagraphElement>(null);
+  const previousWaitingRef = useRef<Set<string> | null>(null);
   const list = openDeliveries(tabs, now);
-  const tables = meta.catalog.tables ?? [];
+  const tables = meta.catalog.tables ?? EMPTY_TABLES;
   const zones = meta.catalog.deliveryZones ?? [];
   const couriers = meta.catalog.staff.filter((s) => s.role === "kurye");
   const staffName = (id: string | null) => meta.catalog.staff.find((s) => s.id === id)?.name ?? null;
@@ -71,6 +84,20 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
     return eta != null && t.delivery.outAt ? Math.max(0, Math.ceil((Date.parse(t.delivery.outAt) + eta * 60_000 - now) / 60_000)) : null;
   };
 
+  useEffect(() => {
+    if (!loaded) return;
+    const current = new Map(list.filter((tab) => deliveryStatus(tab) === "onay_bekliyor").map((tab) => [tab.id, tab]));
+    const previous = previousWaitingRef.current;
+    if (previous) {
+      const added = [...current].filter(([id]) => !previous.has(id)).map(([, tab]) => tab);
+      if (added.length && announcementRef.current) {
+        const messages = added.slice(0, 3).map((tab) => `Yeni onay bekleyen sipariş: ${tabLabel(tab, tables, PLATFORM_NAMES)}.`);
+        announcementRef.current.textContent = messages.join(" ") + (added.length > 3 ? ` Ayrıca ${added.length - 3} yeni sipariş daha.` : "");
+      }
+    }
+    previousWaitingRef.current = new Set(current.keys());
+  }, [loaded, list, tables]);
+
   // Onay bekleyen platform siparişi varken 4 sn'de bir ses.
   useEffect(() => {
     if (!waiting) return;
@@ -80,40 +107,50 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   }, [waiting]);
   const ev = (tab: TabState, e: NewTabEvent["ev"], approvedBy: string | null = null): NewTabEvent => ({ tabId: tab.id, tableId: null, staffId: waiter.id, approvedBy, ev: e });
   const openDialog = (next: Dialog) => { setActionError(null); setDialog(next); };
-  const run = async (fn: () => Promise<unknown>) => {
+  const run = async (fn: () => Promise<unknown>, successNotice: string, actionKey = "dialog", pendingNotice = "Sipariş güncelleniyor.") => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
+    setPendingAction(actionKey);
+    setPendingMessage(pendingNotice);
     setActionError(null);
     try {
       await fn();
+      if (announcementRef.current) announcementRef.current.textContent = successNotice;
       setDialog(null);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "İşlem tamamlanamadı. Tekrar deneyin.");
     } finally {
+      busyRef.current = false;
       setBusy(false);
+      setPendingAction(null);
+      setPendingMessage("");
     }
   };
   const accept = (tab: TabState, prepMin: number) => {
     const unsent = tab.lines.filter((l) => !l.sent && !l.voided);
-    return run(() => add([ev(tab, { type: "accept", prepMin }), ...sendByStation(unsent, () => crypto.randomUUID()).map((s) => ev(tab, s))]));
+    return run(() => add([ev(tab, { type: "accept", prepMin }), ...sendByStation(unsent, () => crypto.randomUUID()).map((s) => ev(tab, s))]), "Sipariş kabul edildi ve mutfağa gönderildi.", `accept:${tab.id}:${prepMin}`, `${prepMin} dk hazırlama süresiyle sipariş kabul edilip mutfağa gönderiliyor.`);
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col p-4">
+    <div {...mainProps} className="flex min-h-0 flex-1 flex-col p-4 outline-none">
+      <p ref={announcementRef} className="sr-only" role="status" aria-live="polite" aria-atomic="true" />
+      {pendingMessage && <p className="sr-only" role="status" aria-live="polite">{pendingMessage}</p>}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div>
           <h2 className="font-display text-xl font-bold tracking-tight">Paket siparişleri</h2>
-          <p className="mt-0.5 text-sm text-muted">{active} aktif · {closed} bugün kapanan</p>
+          <p className="mt-0.5 text-sm text-muted">{active} aktif · {closed} son 12 saatte kapanan</p>
         </div>
-        {waiting > 0 && <span className="rounded-full bg-bad px-2.5 py-0.5 text-xs font-medium text-white motion-safe:animate-pulse" data-testid="waiting-count">{waiting} onay bekliyor</span>}
-        <button type="button" onClick={onNew} className="press ml-auto inline-flex min-h-12 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 outline-none hover:bg-brand-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">+ Yeni paket</button>
+        {waiting > 0 && <span className="rounded-full bg-bad-action px-2.5 py-0.5 text-xs font-medium text-white" data-testid="waiting-count">{waiting} onay bekliyor</span>}
+        <button type="button" onClick={onNew} className="press ml-auto inline-flex min-h-12 items-center rounded-xl bg-brand-action px-4 text-sm font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">+ Yeni paket</button>
       </div>
       {actionError && !dialog && <p className="mb-4 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{actionError}</p>}
       <div className="grid min-w-0 gap-3 md:min-h-0 md:flex-1 md:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] 2xl:grid-cols-[repeat(5,minmax(0,1fr))]">
         {COLUMNS.map((c) => {
           const cards = list.filter((t) => c.key.includes(deliveryStatus(t))).sort((a, b) => {
             if (c.key[0] === "onay_bekliyor") {
-              const aDeadline = a.order?.source?.deadline ? Date.parse(a.order.source.deadline) : Number.POSITIVE_INFINITY;
-              const bDeadline = b.order?.source?.deadline ? Date.parse(b.order.source.deadline) : Number.POSITIVE_INFINITY;
+              const aDeadline = deadlineInfo(a).at ?? Number.POSITIVE_INFINITY;
+              const bDeadline = deadlineInfo(b).at ?? Number.POSITIVE_INFINITY;
               if (aDeadline !== bDeadline) return aDeadline - bDeadline;
             }
             return a.openedAt.localeCompare(b.openedAt);
@@ -126,16 +163,19 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                 {cards.map((t) => {
                   const st = deliveryStatus(t);
                   const o = t.order;
+                  const orderLabel = tabLabel(t, tables, PLATFORM_NAMES);
                   const zone = zones.find((z) => z.id === o?.zoneId);
                   const courier = staffName(t.delivery.courierId);
-                  const deadline = o?.source?.deadline ? Math.ceil((Date.parse(o.source.deadline) - now) / 60_000) : null;
+                  const deadline = deadlineInfo(t);
+                  const deadlineRemaining = deadline.at === null ? null : Math.ceil((deadline.at - now) / 60_000);
                   const closed = st === "teslim" || st === "iptal" || st === "reddedildi";
+                  const ageFrom = closed && t.closedAt ? t.closedAt : t.openedAt;
                   return (
                     <li key={t.id} data-testid="delivery-card" className={`min-w-0 rounded-xl border bg-surface p-3 text-sm shadow-card ${st === "onay_bekliyor" ? "border-bad/40 ring-2 ring-bad-soft" : "border-line"} ${closed ? "opacity-70" : ""}`}>
-                      <button type="button" onClick={() => !closed && onOpen(t.id)} className="block w-full rounded-lg text-left outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+                      <button type="button" aria-label={`${orderLabel}, ${STATUS_LABEL[st]} sipariş ayrıntıları`} disabled={closed} onClick={() => onOpen(t.id)} className="block w-full rounded-lg text-left outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-default">
                         <div className="flex items-center gap-2">
-                          <span className="min-w-0 truncate font-semibold" title={tabLabel(t, tables, PLATFORM_NAMES)}>{tabLabel(t, tables, PLATFORM_NAMES)}</span>
-                          <span className="ml-auto shrink-0 tabular text-xs text-muted">{minutesSince(t.openedAt, now)} dk</span>
+                          <span className="min-w-0 truncate font-semibold" title={orderLabel}>{orderLabel}</span>
+                          <span className="ml-auto shrink-0 tabular text-xs text-muted">{closed && t.closedAt ? "Kapanalı " : ""}{minutesSince(ageFrom, now)} dk</span>
                         </div>
                         <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_CHIP[st]}`}>{STATUS_LABEL[st]}</span>
                         {o && <div className="truncate text-ink-2" title={t.kind === "platform" ? o.name : formatPhone(o.phone)}>{t.kind === "platform" ? o.name : formatPhone(o.phone)}</div>}
@@ -146,7 +186,9 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                         </div>
                         {courier && <div className="mt-1 break-words text-xs">Kurye: <span className="font-medium">{courier}</span></div>}
                         {st === "yolda" && (() => { const e = etaFor(t); return e != null ? <div className="mt-1 text-xs font-medium text-ink-2" data-testid="eta">Tahmini teslim ~{e} dk</div> : null; })()}
-                        {st === "onay_bekliyor" && deadline !== null && <div className={`mt-1 text-xs font-medium ${deadline <= 2 ? "text-bad" : "text-warn"}`}>{deadline <= 0 ? "Onay süresi doldu" : `Onay için ${deadline} dk`}</div>}
+                        {st === "onay_bekliyor" && deadline.provided && <div className={`mt-1 text-xs font-medium ${deadlineRemaining === null || deadlineRemaining <= 2 ? "text-bad" : "text-warn"}`}>
+                          {deadlineRemaining === null ? "Onay süresi bilgisi okunamadı" : deadlineRemaining <= 0 ? "Onay süresi doldu" : `Onay için ${deadlineRemaining} dk`}
+                        </div>}
                         {st === "iptal" && <div className="mt-1 break-words text-xs text-bad">İptal: {t.delivery.cancelled}</div>}
                         {st === "reddedildi" && <div className="mt-1 break-words text-xs text-bad">Red: {t.delivery.rejected}</div>}
                       </button>
@@ -154,17 +196,17 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {st === "onay_bekliyor" ? (
                             <>
-                              <button type="button" disabled={busy} onClick={() => openDialog({ k: "accept", tab: t })} className={strong}>Kabul</button>
-                              <button type="button" disabled={busy} onClick={() => openDialog({ k: "reject", tab: t })} className={btn}>Red</button>
+                              <button type="button" aria-label={`Kabul: ${orderLabel}`} disabled={busy} onClick={() => openDialog({ k: "accept", tab: t })} className={strong}>Kabul</button>
+                              <button type="button" aria-label={`Red: ${orderLabel}`} disabled={busy} onClick={() => openDialog({ k: "reject", tab: t })} className={btn}>Red</button>
                             </>
                           ) : st !== "yolda" && (
                             <>
-                              {t.kind === "paket" && couriers.length > 0 && <button type="button" disabled={busy} onClick={() => openDialog({ k: "courier", tab: t })} className={btn}>{courier ? "Kurye değiştir" : "Kurye ata"}</button>}
-                              {t.kind === "platform" && <button type="button" disabled={busy} onClick={() => void run(() => onHandover(t))} className={strong}>Kuryeye verildi</button>}
-                              {t.kind === "paket" && !t.delivery.courierId && <button type="button" disabled={busy || t.remaining === 0} onClick={() => onBill(t.id)} className={btn}>Hesap (gel-al)</button>}
+                              {t.kind === "paket" && couriers.length > 0 && <button type="button" aria-label={`${courier ? "Kurye değiştir" : "Kurye ata"}: ${orderLabel}`} disabled={busy} onClick={() => openDialog({ k: "courier", tab: t })} className={btn}>{courier ? "Kurye değiştir" : "Kurye ata"}</button>}
+                              {t.kind === "platform" && <button type="button" aria-label={`${pendingAction === `handover:${t.id}` ? "Kurye teslimi kaydediliyor" : "Kuryeye verildi"}: ${orderLabel}`} disabled={busy} aria-busy={pendingAction === `handover:${t.id}` || undefined} onClick={() => void run(() => onHandover(t), "Sipariş kurye teslimine verildi.", `handover:${t.id}`, "Sipariş kurye teslimine veriliyor.")} className={strong}>{pendingAction === `handover:${t.id}` ? "Kurye teslimi kaydediliyor…" : "Kuryeye verildi"}</button>}
+                              {t.kind === "paket" && !t.delivery.courierId && <button type="button" aria-label={`Hesap (gel-al): ${orderLabel}`} disabled={busy || t.remaining === 0} onClick={() => onBill(t.id)} className={btn}>Hesap (gel-al)</button>}
                             </>
                           )}
-                          {st !== "onay_bekliyor" && t.paid === 0 && <button type="button" disabled={busy} onClick={() => openDialog({ k: "cancel", tab: t })} className="inline-flex min-h-12 items-center rounded-lg px-2 py-1.5 text-xs text-bad underline outline-none focus-visible:ring-4 focus-visible:ring-bad/30">İptal</button>}
+                          {st !== "onay_bekliyor" && t.paid === 0 && <button type="button" aria-label={`İptal: ${orderLabel}`} disabled={busy} onClick={() => openDialog({ k: "cancel", tab: t })} className="inline-flex min-h-12 items-center rounded-lg px-3 py-1.5 text-xs text-bad underline outline-none focus-visible:ring-4 focus-visible:ring-bad/30">İptal</button>}
                         </div>
                       )}
                     </li>
@@ -178,64 +220,64 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
       </div>
 
       {dialog?.k === "accept" && (
-        <Modal label="Hazırlama süresi" onClose={() => setDialog(null)}>
+        <Modal label="Hazırlama süresi" onClose={() => setDialog(null)} closeDisabled={busy}>
           <p className="mb-1 font-medium">{tabLabel(dialog.tab, tables, PLATFORM_NAMES)} · {TL(dialog.tab.total)}</p>
           <p className="mb-4 text-sm text-muted">Siparişi kabul edip mutfağa göndermek için tahmini hazırlama süresini seçin.</p>
           {actionError && <p className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{actionError}</p>}
           <div className="grid grid-cols-4 gap-2">
-            {PREP.map((m) => <button key={m} type="button" disabled={busy} onClick={() => void accept(dialog.tab, m)} className={btn}>{busy ? "Gönderiliyor…" : `${m} dk`}</button>)}
+            {PREP.map((m) => <button key={m} type="button" disabled={busy} aria-busy={pendingAction === `accept:${dialog.tab.id}:${m}` || undefined} onClick={() => void accept(dialog.tab, m)} className={btn}>{pendingAction === `accept:${dialog.tab.id}:${m}` ? "Gönderiliyor…" : `${m} dk`}</button>)}
           </div>
-            <button type="button" onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full">Vazgeç</button>
+            <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
       {dialog?.k === "reject" && (
-        <Modal label="Red sebebi" onClose={() => setDialog(null)}>
+        <Modal label="Red sebebi" onClose={() => setDialog(null)} closeDisabled={busy}>
           <p className="mb-4 text-sm text-muted">{tabLabel(dialog.tab, tables, PLATFORM_NAMES)} siparişi reddedilecek. Nedeni seçin; bu bilgi işlem kaydına eklenir.</p>
           {actionError && <p className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{actionError}</p>}
           <div className="grid gap-2">
-            {REJECT.map((r) => <button key={r} type="button" disabled={busy} onClick={() => void run(() => add([ev(dialog.tab, { type: "reject", reason: r })]))} className={btn}>{busy ? "Gönderiliyor…" : r}</button>)}
+            {REJECT.map((r) => <button key={r} type="button" disabled={busy} aria-busy={pendingAction === `reject:${dialog.tab.id}:${r}` || undefined} onClick={() => void run(() => add([ev(dialog.tab, { type: "reject", reason: r })]), "Sipariş reddedildi.", `reject:${dialog.tab.id}:${r}`, `Sipariş “${r}” gerekçesiyle reddediliyor.`)} className={btn}>{pendingAction === `reject:${dialog.tab.id}:${r}` ? "Gönderiliyor…" : r}</button>)}
           </div>
-            <button type="button" onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full">Vazgeç</button>
+            <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
       {dialog?.k === "courier" && (
-        <Modal label="Kurye ata" onClose={() => setDialog(null)}>
+        <Modal label="Kurye ata" onClose={() => setDialog(null)} closeDisabled={busy}>
           <p className="mb-4 text-sm text-muted">{tabLabel(dialog.tab, tables, PLATFORM_NAMES)} için kuryeyi seçin. Atama sipariş kartında görünür.</p>
           {actionError && <p className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{actionError}</p>}
-          <div className="grid gap-2">
+          <div role="group" aria-label="Kurye seçimi" className="grid gap-2">
             {couriers.map((c) => (
-              <button key={c.id} type="button" aria-pressed={dialog.tab.delivery.courierId === c.id} disabled={busy} onClick={() => void run(() => add([ev(dialog.tab, { type: "courier", staffId: c.id })]))}
-                className={`${btn} ${dialog.tab.delivery.courierId === c.id ? "border-brand font-medium text-brand" : ""}`}>{c.name}</button>
+              <button key={c.id} type="button" aria-pressed={dialog.tab.delivery.courierId === c.id} disabled={busy} aria-busy={pendingAction === `courier:${dialog.tab.id}:${c.id}` || undefined} onClick={() => void run(() => add([ev(dialog.tab, { type: "courier", staffId: c.id })]), `${c.name} kurye olarak atandı.`, `courier:${dialog.tab.id}:${c.id}`, `${c.name} siparişe atanıyor.`)}
+                className={`${btn} ${dialog.tab.delivery.courierId === c.id ? "border-brand font-medium text-brand" : ""}`}>{pendingAction === `courier:${dialog.tab.id}:${c.id}` ? "Atanıyor…" : c.name}</button>
             ))}
-            {dialog.tab.delivery.courierId && <button type="button" disabled={busy} onClick={() => void run(() => add([ev(dialog.tab, { type: "courier", staffId: null })]))} className={btn}>Kuryeyi kaldır</button>}
+            {dialog.tab.delivery.courierId && <button type="button" disabled={busy} aria-busy={pendingAction === `courier:${dialog.tab.id}:remove` || undefined} onClick={() => void run(() => add([ev(dialog.tab, { type: "courier", staffId: null })]), "Siparişten kurye ataması kaldırıldı.", `courier:${dialog.tab.id}:remove`, "Kurye ataması kaldırılıyor.")} className={btn}>{pendingAction === `courier:${dialog.tab.id}:remove` ? "Kaldırılıyor…" : "Kuryeyi kaldır"}</button>}
           </div>
-            <button type="button" onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full">Vazgeç</button>
+            <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
-      {dialog?.k === "cancel" && <CancelDialog meta={meta} onMeta={onMeta} waiter={waiter} busy={busy} error={actionError} onClose={() => setDialog(null)} onOk={(by, reason) => void run(() => add([ev(dialog.tab, { type: "cancel", reason }, by)]))} />}
+      {dialog?.k === "cancel" && <CancelDialog meta={meta} onMeta={onMeta} waiter={waiter} busy={busy} error={actionError} onClose={() => setDialog(null)} onOk={(by, reason) => run(() => add([ev(dialog.tab, { type: "cancel", reason }, by)]), "Sipariş iptal edildi.")} />}
     </div>
   );
 }
 
 /** İptal: gerekçe + müdür değilse müdür PIN'i. */
-function CancelDialog({ meta, onMeta, waiter, busy, error, onOk, onClose }: { meta: Meta; onMeta: (m: Meta) => void; waiter: Waiter; busy: boolean; error?: string | null; onOk: (approvedBy: string | null, reason: string) => void; onClose: () => void }) {
+function CancelDialog({ meta, onMeta, waiter, busy, error, onOk, onClose }: { meta: Meta; onMeta: (m: Meta) => void; waiter: Waiter; busy: boolean; error?: string | null; onOk: (approvedBy: string | null, reason: string) => void | Promise<void>; onClose: () => void }) {
   const [reason, setReason] = useState("");
   const [pin, setPin] = useState(false);
   return (
-    <Modal label="Siparişi iptal et" onClose={onClose}>
+    <Modal label="Siparişi iptal et" onClose={onClose} closeDisabled={busy}>
       {!pin ? (
         <>
           {error && <p className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
           <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="min-h-12 w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
-            <button type="button" disabled={busy || reason.trim().length < 2} onClick={() => (waiter.role === "mudur" ? onOk(null, reason.trim()) : setPin(true))} className="inline-flex min-h-12 flex-[2] items-center justify-center rounded-lg bg-bad px-4 py-2 text-sm font-medium text-white outline-none focus-visible:ring-4 focus-visible:ring-bad/30 disabled:opacity-40">{busy ? "Gönderiliyor…" : waiter.role === "mudur" ? "İptal et" : "Müdür onayına"}</button>
+            <button type="button" disabled={busy || reason.trim().length < 2} onClick={() => (waiter.role === "mudur" ? onOk(null, reason.trim()) : setPin(true))} className="inline-flex min-h-12 flex-[2] items-center justify-center rounded-lg bg-bad-action px-4 py-2 text-sm font-medium text-white outline-none hover:bg-bad-action-hover focus-visible:ring-4 focus-visible:ring-bad/30 disabled:opacity-40">{busy ? "Gönderiliyor…" : waiter.role === "mudur" ? "İptal et" : "Müdür onayına"}</button>
           </div>
         </>
       ) : (
         <>
           {error && <p className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
-          <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => onOk(m.id, reason.trim())} />
+          <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => onOk(m.id, reason.trim())} autoFocusFirst />
             <button type="button" disabled={busy} onClick={onClose} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40 mt-4 w-full">Vazgeç</button>
         </>
       )}

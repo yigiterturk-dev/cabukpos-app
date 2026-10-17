@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { createGiftCard, giftCardCancel, giftCardLoad } from "@/lib/admin/loyalty-actions";
-import { Badge, buttonClass, Card, Field, Input, PageHeader } from "@/components/ui";
+import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
+import { GiftCardCreateForm, GiftCardLoadForm } from "@/components/admin/GiftCardFormsPending";
+import { Badge, buttonClass, Card, PageHeader } from "@/components/ui";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 import { currencySymbol } from "@/lib/core/money";
 
@@ -11,39 +13,46 @@ export const dynamic = "force-dynamic";
 
 const statusTone = { aktif: "ok", bitti: "neutral", iptal: "bad" } as const;
 const statusLabel = { aktif: "aktif", bitti: "bitti", iptal: "iptal" } as const;
-export default async function HediyeKarti({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; id?: string }> }) {
+const eventLabel: Record<string, string> = { yukleme: "Bakiye yükleme", iptal: "Kart iptali" };
+const PAGE_SIZE = 50;
+export default async function HediyeKarti({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; id?: string; page?: string }> }) {
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
   const currency = await tenantCurrency(a.tenantId);
   const unit = currencySymbol(currency);
-  const { ok, hata, id } = await searchParams;
+  const { ok, hata, id, page } = await searchParams;
+  const requestedPage = Number(page);
+  const pageNo = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const G = schema.giftCards;
-  const { rows, events } = await withTenant(a.tenantId, async (tx) => {
-    const rows = await tx.select().from(G).orderBy(desc(G.createdAt)).limit(100);
+  const { rows, events, total } = await withTenant(a.tenantId, async (tx) => {
+    const [{ total }] = await tx.select({ total: count() }).from(G);
+    const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const safePage = Math.min(pageNo, pageCount);
+    const rows = await tx.select().from(G).orderBy(desc(G.createdAt)).limit(PAGE_SIZE).offset((safePage - 1) * PAGE_SIZE);
     const events = id
       ? await tx.select({ kind: schema.giftCardEvents.kind, amountKurus: schema.giftCardEvents.amountKurus, note: schema.giftCardEvents.note, createdAt: schema.giftCardEvents.createdAt }).from(schema.giftCardEvents).where(eq(schema.giftCardEvents.cardId, id)).orderBy(desc(schema.giftCardEvents.createdAt)).limit(20)
       : [];
-    return { rows, events };
+    return { rows, events, total };
   });
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentPage = Math.min(pageNo, pageCount);
+  const firstItem = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const lastItem = Math.min(currentPage * PAGE_SIZE, total);
   return (
     <>
       <PageHeader title="Hediye kartı" desc="Önceden yüklü bakiye; kod, kasada ödeme yöntemi olarak harcanır. İptal edilen kartın kalan bakiyesi donar." />
-      {ok && <div className="mb-6 rounded-[14px] border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">Kaydedildi.</div>}
-      {hata && <div className="mb-6 rounded-[14px] border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</div>}
+      {ok && <div role="status" aria-live="polite" className="mb-6 rounded-[14px] border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">Kaydedildi.</div>}
+      {hata && <div role="alert" aria-live="assertive" className="mb-6 rounded-[14px] border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</div>}
       <section aria-label="Yeni hediye kartı" className="mb-8">
         <Card className="p-5">
-          <form action={createGiftCard} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
-            <Field label={`Yüklenecek tutar (${unit})`}><Input name="initial" inputMode="decimal" required /></Field>
-            <Field label="Kod" hint="Boş bırakılırsa HK-XXXXXX üretilir"><Input name="code" className="uppercase" /></Field>
-            <Field label="Son kullanma" hint="Boş = süresiz"><Input name="expiresAt" type="date" /></Field>
-            <Field label="Not"><Input name="note" /></Field>
-            <button className={buttonClass("primary")}>Kart oluştur</button>
-          </form>
+          <GiftCardCreateForm action={createGiftCard} unit={unit} />
         </Card>
       </section>
       {rows.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted">Henüz hediye kartı yok. Yukarıdan ilk kartı oluşturun.</Card>
       ) : (
+        <>
+        <p className="mb-3 text-sm text-muted">{firstItem}–{lastItem} / {total} hediye kartı</p>
         <Card className="divide-y divide-line">
           {rows.map((g) => (
             <div key={g.id} className="p-4">
@@ -54,36 +63,38 @@ export default async function HediyeKarti({ searchParams }: { searchParams: Prom
                 <span className="shrink-0 tabular text-sm text-muted">yüklenen {money(g.initialKurus)}</span>
                 {g.expiresAt && <span className="shrink-0 text-sm text-muted">son {g.expiresAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>}
                 {g.note && <span className="min-w-0 flex-1 break-words text-sm text-muted">{g.note}</span>}
-                {g.status === "aktif" && <Link href={id === g.id ? "/yonetim/hediyekarti" : `/yonetim/hediyekarti?id=${g.id}`} className="ml-auto inline-flex min-h-10 shrink-0 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">{id === g.id ? "Kapat" : "Yükle / İptal"}</Link>}
+                {g.status === "aktif" && <Link href={id === g.id ? "/yonetim/hediyekarti" : `/yonetim/hediyekarti?id=${g.id}`} aria-label={id === g.id ? `${g.code} kart ayrıntılarını kapat` : `Yükle veya iptal et: ${g.code}`} className="ml-auto inline-flex min-h-11 shrink-0 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">{id === g.id ? "Kapat" : "Yükle / İptal"}</Link>}
               </div>
               {id === g.id && g.status === "aktif" && (
                 <div className="mt-3">
-                  <form action={giftCardLoad} className="mb-4 flex flex-wrap items-end gap-3">
-                    <input type="hidden" name="cardId" value={g.id} />
-                    <Field label={`Bakiye yükle (${unit})`}><Input name="amount" inputMode="decimal" className="w-32" required /></Field>
-                    <button className={buttonClass("primary")}>Yükle</button>
-                  </form>
-                  <form action={giftCardCancel}>
-                    <input type="hidden" name="cardId" value={g.id} />
-                    <button className={buttonClass("danger", "sm")}>Kartı iptal et</button>
-                  </form>
-                  {events.length > 0 && (
-                    <ul className="mt-4 space-y-1 text-sm text-ink-2">
-                      {events.map((e, i) => (
-                        <li key={i} className="flex flex-wrap gap-2">
-                          <span className="tabular w-20 text-muted">{e.createdAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>
-                          <span>{e.kind}</span>
-                          <span className="tabular">{e.amountKurus ? `${e.amountKurus > 0 ? "+" : ""}${money(Math.abs(e.amountKurus))}` : ""}</span>
-                          <span className="min-w-0 break-words text-muted">{e.note ?? ""}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <GiftCardLoadForm action={giftCardLoad} cardId={g.id} unit={unit} />
+                  <ConfirmActionForm action={giftCardCancel} fields={{ cardId: g.id }} ariaLabel={`Hediye kartını iptal et: ${g.code}`} label="Kartı iptal et" prompt="Bu hediye kartı iptal edilecek ve kalan bakiye dondurulacak. Devam etmek istiyor musunuz?" className={buttonClass("danger", "sm")} />
+                  <section aria-label={`${g.code} kart hareketleri`} className="mt-4">
+                    <h3 className="text-sm font-semibold">Son hareketler</h3>
+                    {events.length > 0 ? (
+                      <ul className="mt-2 space-y-2 text-sm text-ink-2">
+                        {events.map((e, i) => (
+                          <li key={i} className="flex flex-wrap gap-x-3 gap-y-1">
+                            <time className="tabular text-muted" dateTime={e.createdAt.toISOString()}>{e.createdAt.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })}</time>
+                            <span>{eventLabel[e.kind] ?? e.kind}</span>
+                            {e.amountKurus !== 0 && <span className="tabular">{e.amountKurus > 0 ? "+" : "−"}{money(Math.abs(e.amountKurus))}</span>}
+                            {e.note && <span className="min-w-0 break-words text-muted">{e.note}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="mt-1 text-sm text-muted">Henüz bakiye hareketi yok.</p>}
+                  </section>
                 </div>
               )}
             </div>
           ))}
         </Card>
+        {pageCount > 1 && <nav aria-label="Hediye kartı sayfaları" className="mt-4 flex items-center justify-between gap-3">
+          {currentPage > 1 ? <Link href={`/yonetim/hediyekarti?page=${currentPage - 1}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Önceki</Link> : <span />}
+          <span className="text-sm text-muted">Sayfa {currentPage} / {pageCount}</span>
+          {currentPage < pageCount ? <Link href={`/yonetim/hediyekarti?page=${currentPage + 1}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Sonraki</Link> : <span />}
+        </nav>}
+        </>
       )}
     </>
   );

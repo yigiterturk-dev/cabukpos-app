@@ -1,7 +1,7 @@
 "use client";
 // Kasa uygulaması (çevrimdışı çalışır). Veri IndexedDB'de; PIN cihazda doğrulanır; satış/vardiya giden kutusuna
 // yazılır ve arka planda /api/sync ile eşitlenir. Kasiyer oturumu yalnız bellekte (sayfa yenilenince PIN yeniden).
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { formatReceipt, parseTL, type Currency } from "@/lib/core/money";
 import { currencyUnit, kasaFmt } from "./kasa-format";
@@ -26,6 +26,8 @@ import { Button, Card, Field, Input, LogoMark, Segmented } from "@/components/ui
 import { InstallButton } from "@/components/InstallButton";
 import { ShiftReport, type ShiftReportData } from "@/components/ShiftReport";
 import { PinPad, type Cashier } from "./PinPad";
+
+const MAX_SYNC_CASH_KURUS = 100_000_000;
 import { RefundScreen } from "./RefundScreen";
 import { SaleScreen, type OnSale, type PrintView } from "./SaleScreen";
 import { onSyncNow, registerKasaSw, registerOutboxPeriodicDrain, registerOutboxSync } from "./sw-register";
@@ -46,7 +48,7 @@ type PrintState = PrintView & { jobId?: string | null };
 
 function Center({ title, sub, logo, card, children }: { title: string; sub?: string; logo?: boolean; card?: boolean; children?: React.ReactNode }) {
   return (
-    <main className="relative grid min-h-0 flex-1 place-items-center overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-8">
+    <main id="kasa-content" tabIndex={-1} className="relative grid min-h-0 flex-1 place-items-center overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-8 outline-none">
       <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 h-72 w-[42rem] -translate-x-1/2 bg-[radial-gradient(50%_60%_at_50%_0%,rgb(224_90_16/0.14),transparent)]" />
       <div className="relative w-full max-w-sm">
         {logo && <LogoMark size="lg" className="mx-auto mb-6" />}
@@ -62,6 +64,7 @@ function Center({ title, sub, logo, card, children }: { title: string; sub?: str
 function Bar({ tenant, device, nav, children }: { tenant: string; device: string; nav?: React.ReactNode; children?: React.ReactNode }) {
   return (
     <header className="flex min-w-0 min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-black/40 bg-espresso px-3 py-1 text-cream shadow-[inset_0_1px_0_rgb(255_255_255/0.07)] ring-1 ring-inset ring-white/5 print:hidden">
+      <a href="#kasa-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-3 focus:font-semibold focus:text-ink focus:shadow-pop focus-visible:ring-4 focus-visible:ring-brand-ring/60">İçeriğe geç</a>
       <div className="flex min-w-0 items-center gap-2.5">
         <LogoMark />
         <div className="min-w-0 leading-tight">
@@ -119,24 +122,51 @@ function AgentBadge({ s }: { s: AgentStatus | null }) {
   const bad = !s.reachable || s.printers.some((p) => p.ok === false) || s.failed.length > 0;
   const text = !s.reachable ? (lnaDenied ? "Chrome yerel ağ izni kapalı" : "Ajan kapalı") : s.printers.length === 0 ? "Yazıcı tanımlı değil" : bad ? `Yazıcı hatası${s.failed.length ? ` · ${s.failed.length} fiş bekliyor` : ""}` : "Yazıcı hazır";
   return (
-    <span data-testid="agent-status" role="status" aria-label={text} title={lnaDenied && !s.reachable ? "Adres çubuğundaki kilit simgesi → Site ayarları → Yerel ağ erişimi: İzin ver, sonra sayfayı yenileyin." : s.printers.find((p) => p.error)?.error ?? text} className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${bad ? "bg-bad-soft text-bad" : missing ? "bg-warn-soft text-warn" : "bg-ok-soft text-ok"}`}>
-      <Printer aria-hidden className="size-3.5" />
-      {text}
-    </span>
+    <>
+      <span data-testid="agent-status" role="status" aria-label={text} title={lnaDenied && !s.reachable ? "Adres çubuğundaki kilit simgesi → Site ayarları → Yerel ağ erişimi: İzin ver, sonra sayfayı yenileyin." : s.printers.find((p) => p.error)?.error ?? text} className={`inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ${bad ? "bg-bad-soft text-bad" : missing ? "bg-warn-soft text-warn" : "bg-ok-soft text-ok"}`}>
+        <Printer aria-hidden className="size-3.5" />
+        {text}
+      </span>
+      {lnaDenied && !s.reachable && (
+        <details className="relative">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-lg px-2 text-xs font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 [&::-webkit-details-marker]:hidden">İzin adımları</summary>
+          <div role="note" className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-surface p-3 text-sm text-ink shadow-raised">
+            <p>Adres çubuğundaki kilit simgesini açın, Site ayarları → Yerel ağ erişimi bölümünde İzin ver’i seçin, ardından kasayı yenileyin.</p>
+          </div>
+        </details>
+      )}
+    </>
   );
 }
 
-function MoneyForm({ label, hint, submit, onSubmit, defaultValue = "" }: { label: string; hint?: string; submit: string; defaultValue?: string; onSubmit: (k: number) => Promise<void> }) {
+function MoneyForm({ label, hint, submit, pendingMessage, onSubmit, defaultValue = "", currency }: { label: string; hint?: string; submit: string; pendingMessage: string; onSubmit: (k: number) => Promise<void>; defaultValue?: string; currency?: Currency }) {
+  const errorId = useId();
+  const amountRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [amountInvalid, setAmountInvalid] = useState(false);
+  const [amount, setAmount] = useState(defaultValue);
   const [busy, setBusy] = useState(false);
   return (
     <form
       className="space-y-4"
+      aria-busy={busy}
       onSubmit={async (e) => {
         e.preventDefault();
-        const k = parseTL(String(new FormData(e.currentTarget).get("amount") ?? ""));
-        if (k === null) return setError("Tutar geçersiz (ör. 500 ya da 500,00).");
+        const k = parseTL(amount);
+        if (k === null) {
+          setError("Tutar geçersiz (ör. 500 ya da 500,00).");
+          setAmountInvalid(true);
+          requestAnimationFrame(() => amountRef.current?.focus());
+          return;
+        }
+        if (k > MAX_SYNC_CASH_KURUS) {
+          setError("Tutar en fazla 1.000.000 olabilir.");
+          setAmountInvalid(true);
+          requestAnimationFrame(() => amountRef.current?.focus());
+          return;
+        }
         setError(null);
+        setAmountInvalid(false);
         setBusy(true);
         try {
           await onSubmit(k);
@@ -147,8 +177,9 @@ function MoneyForm({ label, hint, submit, onSubmit, defaultValue = "" }: { label
         }
       }}
     >
-      <Field label={label} hint={hint}><Input name="amount" inputMode="decimal" defaultValue={defaultValue} className="tabular h-14 text-right text-2xl font-semibold" required /></Field>
-      {error && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+      <Field label={label} hint={hint ?? `En fazla 1.000.000 ${currencyUnit(currency)}.`}><Input ref={amountRef} name="amount" inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value); setError(null); setAmountInvalid(false); }} disabled={busy} aria-invalid={amountInvalid || undefined} aria-describedby={amountInvalid ? errorId : undefined} className={`tabular h-14 text-right text-2xl font-semibold disabled:cursor-wait disabled:opacity-50 ${amountInvalid ? "border-bad focus:border-bad focus:ring-bad/40" : ""}`} required /></Field>
+      {error && <p id={errorId} className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+      {busy && <p className="sr-only" role="status" aria-live="polite">{pendingMessage}</p>}
       <Button type="submit" size="lg" disabled={busy} className="w-full">{busy ? "Kaydediliyor…" : submit}</Button>
     </form>
   );
@@ -160,23 +191,34 @@ function CashCount({ onApply, currency }: { onApply: (k: number) => void; curren
   const unit = currencyUnit(currency);
   const [b, setB] = useState<CashBreakdown>({});
   const total = countCash(b);
+  const [announcedTotal, setAnnouncedTotal] = useState(total);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAnnouncedTotal(total), 600);
+    return () => window.clearTimeout(timer);
+  }, [total]);
   return (
     <details className="rounded-[10px] border border-line p-3" data-testid="cash-count">
       <summary className="inline-flex min-h-12 cursor-pointer items-center rounded-md px-1 text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Para kırılımıyla say</summary>
+      <p className="mt-2 text-xs text-muted">Kupür başına en fazla 9.999 adet girilebilir.</p>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {[...BANKNOTES, ...COINS].map((v) => (
-          <label key={v} className="text-xs">
-            <span className="mb-1 block font-medium">{v >= 100 ? `${v / 100} ${unit}` : `${v} ${unit === "TL" ? "kr" : unit}`}</span>
-            <Input aria-label={`${v / 100} adet`} inputMode="numeric" className="tabular min-h-12 text-right" value={b[v] ? String(b[v]) : ""}
-              onChange={(e) => setB({ ...b, [v]: Math.min(9999, Number(e.target.value.replace(/\D/g, "")) || 0) })} />
-          </label>
-        ))}
+        {[...BANKNOTES, ...COINS].map((v) => {
+          const denomination = v >= 100 ? `${v / 100} ${unit}` : unit === "TL" ? `${v} kr` : TL(v);
+          return (
+            <label key={v} className="text-xs">
+              <span className="mb-1 block font-medium">{denomination}</span>
+              <Input aria-label={`${denomination} adedi`} inputMode="numeric" maxLength={4} className="tabular min-h-12 text-right" value={b[v] ? String(b[v]) : ""}
+                onChange={(e) => setB({ ...b, [v]: Math.min(9999, Number(e.target.value.replace(/\D/g, "")) || 0) })} />
+            </label>
+          );
+        })}
       </div>
       <div className="mt-3 flex items-center justify-between text-sm">
         <span className="text-muted">Sayılan toplam</span>
         <span className="tabular font-semibold" data-testid="cash-count-total">{TL(total)}</span>
       </div>
-      <Button type="button" variant="secondary" className="mt-3 min-h-12 w-full" disabled={total <= 0} onClick={() => onApply(total)}>Sayılanı nakde aktar</Button>
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcedTotal !== total ? "" : `Sayılan toplam: ${TL(announcedTotal)}`}</span>
+      {total > MAX_SYNC_CASH_KURUS && <p className="mt-2 text-sm text-bad" role="status" aria-live="polite">Toplam 1.000.000 {unit} sınırını aşıyor; adetleri azaltın.</p>}
+      <Button type="button" variant="secondary" className="mt-3 min-h-12 w-full" disabled={total <= 0 || total > MAX_SYNC_CASH_KURUS} onClick={() => onApply(total)}>Sayılanı nakde aktar</Button>
     </details>
   );
 }
@@ -200,31 +242,45 @@ async function closeShiftGuarded(staffId: string, counted: number): Promise<Meta
 
 /** #48: gün sonu kapanış formu — kırılımlı sayım + sayılan nakit. */
 function KapanisForm({ onClose, currency, expected }: { onClose: (counted: number) => Promise<void>; currency?: Currency; expected?: number | null }) {
+  const amountRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
   const [error, setError] = useState<string | null>(null);
+  const [invalidAmount, setInvalidAmount] = useState(false);
   const [busy, setBusy] = useState(false);
   const [amount, setAmount] = useState("");
-  const counted = amount ? parseTL(amount) : null;
+  const parsedCounted = amount ? parseTL(amount) : null;
+  const counted = parsedCounted !== null && parsedCounted <= MAX_SYNC_CASH_KURUS ? parsedCounted : null;
   const diff = counted !== null && expected != null ? counted - expected : null;
+  const changeAmount = (value: string) => { setAmount(value); setError(null); setInvalidAmount(false); };
   return (
     <form className="space-y-4" onSubmit={(e) => {
       e.preventDefault();
       const k = parseTL(amount);
-      if (k === null) return setError("Tutar geçersiz (ör. 500 ya da 500,00).");
+      if (k === null || k > MAX_SYNC_CASH_KURUS) {
+        setError(k === null ? "Tutar geçersiz (ör. 500 ya da 500,00)." : "Sayılan tutar en fazla 1.000.000 olabilir.");
+        setInvalidAmount(true);
+        requestAnimationFrame(() => amountRef.current?.focus());
+        return;
+      }
       setError(null);
+      setInvalidAmount(false);
       setBusy(true);
       void onClose(k).catch((e) => setError(e instanceof Error ? e.message : "Kapanış kaydedilemedi.")).finally(() => setBusy(false));
     }}>
-      <CashCount onApply={(k) => setAmount(String(k / 100).replace(".", ","))} currency={currency} />
-      <Field label={`Sayılan nakit (${currencyUnit(currency)})`} hint="Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır.">
-        <Input name="amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="tabular h-14 text-right text-2xl font-semibold" required />
-      </Field>
-      {expected != null && (
-        <div className="rounded-xl border border-line bg-surface-2/60 px-4 py-3 text-sm">
-          <div className="flex items-center justify-between gap-3"><span className="text-muted">Beklenen kasa</span><span className="tabular font-medium">{formatReceipt(expected, currency)}</span></div>
-          <div className="mt-1 flex items-center justify-between gap-3"><span className="text-muted">Kapanış farkı</span><span className={`tabular font-semibold ${diff === null ? "text-muted" : diff < 0 ? "text-bad" : diff > 0 ? "text-ok" : "text-ink"}`}>{diff === null ? "Sayılan tutarı girin" : `${diff < 0 ? "−" : diff > 0 ? "+" : ""}${formatReceipt(Math.abs(diff), currency)}`}</span></div>
-        </div>
-      )}
-      {error && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+      <fieldset disabled={busy} aria-busy={busy} className="m-0 space-y-4 border-0 p-0">
+        <CashCount onApply={(k) => changeAmount(String(k / 100).replace(".", ","))} currency={currency} />
+        <Field label={`Sayılan nakit (${currencyUnit(currency)})`} hint={`Kasadaki nakdi sayıp girin; fark beklenen kasaya göre hesaplanır. En fazla 1.000.000 ${currencyUnit(currency)}.`}>
+          <Input ref={amountRef} id="shift-counted-cash" name="amount" inputMode="decimal" value={amount} onChange={(e) => changeAmount(e.target.value)} aria-invalid={invalidAmount || undefined} aria-describedby={invalidAmount ? errorId : undefined} className="tabular h-14 text-right text-2xl font-semibold" required />
+        </Field>
+        {expected != null && (
+          <div className="rounded-xl border border-line bg-surface-2/60 px-4 py-3 text-sm">
+            <div className="flex items-center justify-between gap-3"><span className="text-muted">Beklenen kasa</span><span className="tabular font-medium">{formatReceipt(expected, currency)}</span></div>
+            <div className="mt-1 flex items-center justify-between gap-3"><span className="text-muted">Kapanış farkı</span><span className={`tabular font-semibold ${diff === null ? "text-muted" : diff < 0 ? "text-bad" : diff > 0 ? "text-ok" : "text-ink"}`}>{diff === null ? "Sayılan tutarı girin" : `${diff < 0 ? "−" : diff > 0 ? "+" : ""}${formatReceipt(Math.abs(diff), currency)}`}</span></div>
+          </div>
+        )}
+      </fieldset>
+      {error && <p id={errorId} className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+      {busy && <p className="sr-only" role="status" aria-live="polite">Gün sonu kapanışı kaydediliyor.</p>}
       <Button type="submit" size="lg" disabled={busy} className="w-full">{busy ? "Kapanış kaydediliyor…" : "Gün sonunu kapat"}</Button>
     </form>
   );
@@ -280,6 +336,7 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
   return (
     <>
       <style>{`@page { size: 80mm auto; margin: 0 } @media print { body { background: #fff } }`}</style>
+      <main id="kasa-content" tabIndex={-1} className="outline-none">
       <div className="flex justify-center gap-2 border-b border-line bg-surface p-3 print:hidden">
         <Button variant="ghost" className="min-h-12" onClick={onBack}><ArrowLeft aria-hidden className="size-4" />Kasaya dön</Button>
         {meta.agent && <Button variant="ghost" className="min-h-12" onClick={() => window.print()}>Tarayıcıdan yazdır</Button>}
@@ -311,7 +368,7 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
           ))}
         </div>
         <table className="mt-1 w-full border-t border-dashed border-ink">
-          <thead><tr><th className="text-left font-normal">KDV</th><th className="text-right font-normal">Matrah</th><th className="text-right font-normal">KDV</th></tr></thead>
+          <thead><tr><th scope="col" className="text-left font-normal">Oran</th><th scope="col" className="text-right font-normal">Matrah</th><th scope="col" className="text-right font-normal">KDV</th></tr></thead>
           <tbody>{sale.vat.map((v) => <tr key={v.rate}><td>%{v.rate}</td><td className="text-right">{TL(v.net)}</td><td className="text-right">{TL(v.vat)}</td></tr>)}</tbody>
         </table>
         <div className="mt-1 flex justify-between border-t border-dashed border-ink pt-1 text-[14px] font-bold"><span>{sale.refund ? "İADE TOPLAMI" : "TOPLAM"}</span><span>{TL(sale.total)}</span></div>
@@ -338,6 +395,7 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
         )}
         {!fiscal?.title && <p className="mt-3 border-t border-dashed border-ink pt-2 text-center">Bilgi fişidir, mali değeri yoktur.</p>}
       </article>
+      </main>
     </>
   );
 }
@@ -358,22 +416,29 @@ function reportData(meta: Meta, sales: LocalSale[], closed: boolean): ShiftRepor
 }
 
 function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolean; onClose: (counted: number) => Promise<void>; onBack: () => void }) {
-  const [data, setData] = useState<ShiftReportData | null>(null);
   const shiftId = closed ? meta.lastClosed?.id : meta.shift?.id;
+  const [loaded, setLoaded] = useState<{ shiftId: string; data: ShiftReportData } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (!shiftId) return;
+    let alive = true;
     void shiftSales(shiftId).then(async (s) => {
       const d = reportData(meta, s, closed);
-      setData(d);
+      if (!alive) return;
+      if (d) setLoaded({ shiftId, data: d });
       // M8: kesilemeyen e-Arşiv sayısı buluttan (çevrimdışıysa gösterilmez)
       if (d && s.some((x) => x.fiscal)) {
         const n = await fetch(`/api/fiscal/shift?shiftId=${shiftId}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j: { errors?: number } | null) => j?.errors).catch(() => undefined);
-        if (n) setData({ ...d, fiscalErrors: n });
+        if (alive && n) setLoaded({ shiftId, data: { ...d, fiscalErrors: n } });
       }
-    });
-  }, [shiftId, meta, closed]);
+    }).catch(() => { if (alive) setLoadError(shiftId); });
+    return () => { alive = false; };
+  }, [shiftId, meta, closed, retry]);
+  const data = shiftId && loaded?.shiftId === shiftId ? loaded.data : null;
+  const failed = !!shiftId && loadError === shiftId;
   return (
-    <main className="mx-auto w-full max-w-lg px-4 py-6">
+    <main id="kasa-content" tabIndex={-1} className="mx-auto w-full max-w-lg px-4 py-6 outline-none">
       <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
         <Button variant="ghost" className="min-h-12" onClick={onBack}>← Kasa</Button>
         {closed && <div className="ml-auto flex max-w-full flex-wrap gap-2">
@@ -388,6 +453,10 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
       </div>
       <h1 className="text-2xl font-semibold tracking-tight">{closed ? "Vardiya kapandı" : "Gün sonu"}</h1>
       <p className="mb-5 text-sm text-muted">{meta.device?.tenantName} · {meta.device?.name}</p>
+      {!data && (failed ? <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warn/30 bg-warn-soft p-3 text-sm text-warn" role="alert">
+        <span>Vardiya satışları okunamadı; beklenen kasa tutarı doğrulanamıyor.</span>
+        <button type="button" onClick={() => { setLoadError(null); setRetry((n) => n + 1); }} className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-ink outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yeniden yükle</button>
+      </div> : <p className="sr-only" role="status" aria-live="polite">Vardiya satışları yükleniyor.</p>)}
       {data && <ShiftReport data={data} showSales={closed} />}
       {!closed && (meta.drops?.length ?? 0) > 0 && (
         <Card className="mt-6 p-5 print:hidden" data-testid="drops">
@@ -399,7 +468,7 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
           </ul>
         </Card>
       )}
-      {!closed && (
+      {!closed && data && (
         <Card className="mt-6 p-5 print:hidden">
           <KapanisForm onClose={onClose} currency={meta.device?.currency} expected={data?.shift.expectedCash ?? data?.summary.expectedCash} />
         </Card>
@@ -417,6 +486,16 @@ export function KasaApp() {
   const [agent, setAgent] = useState<AgentStatus | null>(null);
   const sync = useRef<ReturnType<typeof createSync> | null>(null);
   const agentCfg = meta?.agent ?? null;
+
+  // A view switch unmounts the activated control. Move keyboard focus into the new screen,
+  // but preserve an intentional autofocus target such as the sale search field.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const content = document.getElementById("kasa-content");
+      if (content && !content.contains(document.activeElement)) content.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [view, meta?.shift?.id]);
 
   // Ajan durumu: tanımlıysa 30 sn'de bir (ve yazdırmadan sonra) sorulur.
   const refreshAgent = useCallback(() => { if (agentCfg) void agentStatus(agentCfg).then(setAgent); }, [agentCfg]);
@@ -591,7 +670,7 @@ export function KasaApp() {
     return (
       <Center logo title="Bu kasayı tanımla" sub={status.online ? "Yönetim panelindeki 8 haneli eşleme kodunu girerek bu cihazı işletmene bağla." : "İlk tanımlama için internet bağlantısı gerekir."} card>
         <div className="space-y-3">
-          <Link href="/kasa/eslestir" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kasa eşlemesini başlat</Link>
+          <Link href="/kasa/eslestir" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-action px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kasa eşlemesini başlat</Link>
           <p className="text-center text-xs text-muted">Yönetim → Cihazlar → Kasa ekle</p>
         </div>
       </Center>
@@ -615,17 +694,18 @@ export function KasaApp() {
       <InstallButton />
       <SyncBadge s={status} />
       {status.reset && (
-        <button
-          type="button"
-          data-testid="reset-notice"
-          role="alert"
-          aria-live="polite"
-          title={`${status.reset.reason} — "Anladım" ile kapatın.`}
-          onClick={() => { void clearResetNotice(); setStatus({ ...status, reset: null }); }}
-          className="inline-flex min-h-12 items-center rounded-xl bg-bad-soft px-3 text-xs font-medium text-bad outline-none hover:bg-bad-soft/80 focus-visible:ring-4 focus-visible:ring-bad/20"
-        >
-          {status.reset.pending} bekleyen belge reddedildi listesine taşındı
-        </button>
+        <>
+          <span className="sr-only" role="status" aria-live="polite">{status.reset.pending} bekleyen belge reddedildi listesine taşındı.</span>
+          <button
+            type="button"
+            data-testid="reset-notice"
+            title={`${status.reset.reason} — "Anladım" ile kapatın.`}
+            onClick={() => { void clearResetNotice(); setStatus({ ...status, reset: null }); }}
+            className="inline-flex min-h-12 items-center rounded-xl bg-bad-soft px-3 text-xs font-medium text-bad outline-none hover:bg-bad-soft/80 focus-visible:ring-4 focus-visible:ring-bad/20"
+          >
+            {status.reset.pending} bekleyen belge reddedildi listesine taşındı
+          </button>
+        </>
       )}
       <AgentBadge s={agentCfg ? agent : null} />
       {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-info">Yerel ağ (internet yok)</span>}
@@ -654,14 +734,14 @@ export function KasaApp() {
     return (
       <>
         <Bar tenant={d.tenantName} device={`${d.name} · Mutfak`}><LinkNote link={tabsApi.link} /><SyncBadge s={status} /></Bar>
-        <KitchenScreen meta={meta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} />
+        <KitchenScreen meta={meta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} loaded={tabsApi.loaded} />
       </>
     );
   }
   if (meta.catalog.staff.length === 0) {
     return (
       <Center logo title="Önce personel ekleyin" sub="Kasaya girmek için en az bir kasiyer veya müdür PIN’i gerekiyor." card>
-        <Link href="/yonetim/personel" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Personel ve PIN oluştur</Link>
+        <Link href="/yonetim/personel" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-action px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Personel ve PIN oluştur</Link>
       </Center>
     );
   }
@@ -669,7 +749,7 @@ export function KasaApp() {
     return <>{header}<GunSonu meta={meta} closed onClose={async () => {}} onBack={() => setView({ name: "home" })} /></>;
   }
   if (!cashier) {
-    return <>{header}<Center logo title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} /></Center></>;
+    return <>{header}<Center logo title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} autoFocusFirst /></Center></>;
   }
   if (restoran && role === "kurye") {
     const kHeader = (
@@ -679,7 +759,7 @@ export function KasaApp() {
       </Bar>
     );
     if (view.name === "kurye-kapat") {
-      return <>{kHeader}<Center title="Hesap kapat" sub="Kasiyer ya da müdür PIN'i"><PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "kasiyer" || x.role === "mudur"} onOk={(c) => setView({ name: "kurye-gun-sonu", by: c.id })} />
+      return <>{kHeader}<Center title="Hesap kapat" sub="Kasiyer ya da müdür PIN'i"><PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "kasiyer" || x.role === "mudur"} onOk={(c) => setView({ name: "kurye-gun-sonu", by: c.id })} autoFocusFirst />
         <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-4 min-h-12 w-full">Vazgeç</Button></Center></>;
     }
     if (view.name === "kurye-gun-sonu" && meta.shift) {
@@ -700,7 +780,7 @@ export function KasaApp() {
       <>
         {header}
         <Center title="Müdür onayı" sub="Çekmeceyi açmak için müdür PIN'i girsin.">
-          <PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "mudur"} onOk={(m) => void drawerBy(m.id)} />
+          <PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "mudur"} onOk={(m) => drawerBy(m.id)} autoFocusFirst />
           <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 min-h-12 w-full">Vazgeç</Button>
         </Center>
       </>
@@ -717,7 +797,7 @@ export function KasaApp() {
               {drops.map((d) => <li key={d.id} className="flex justify-between py-1.5"><span>{new Date(d.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span><span className="tabular-nums">-{formatReceipt(d.amount, meta.device?.currency)}</span></li>)}
             </ul>
           )}
-          <MoneyForm label={`Seifeye alınan tutar (${currencyUnit(meta.device?.currency)})`} submit="Seifeye al" onSubmit={async (k) => { const m2 = await safeDropLocal(cashier.id, k); if (m2) setMeta(m2); setView({ name: "gun-sonu" }); }} />
+          <MoneyForm label={`Seifeye alınan tutar (${currencyUnit(meta.device?.currency)})`} currency={meta.device?.currency} submit="Seifeye al" pendingMessage="Kasadan para alınıyor ve kaydediliyor." onSubmit={async (k) => { const m2 = await safeDropLocal(cashier.id, k); if (m2) setMeta(m2); setView({ name: "gun-sonu" }); }} />
           <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 min-h-12 w-full">Vazgeç</Button>
         </Center>
       </>
@@ -783,7 +863,7 @@ export function KasaApp() {
         {header}
         <Center card title="Vardiya kapalı" sub="Satışa başlamak için kasadaki nakdi girip vardiyayı açın.">
           {d.billing && <p data-testid="kasa-billing" className="mb-4 rounded-[10px] bg-warn-soft px-3 py-2 text-sm text-warn">{d.billing.state === "deneme" || d.billing.state === "aktif" ? `Abonelik ${d.billing.daysLeft} gün sonra bitiyor.` : "Abonelik sona erdi. Satış devam eder; yöneticinize haber verin."}</p>}
-          <MoneyForm label={`Kasadaki açılış nakdi (${currencyUnit(d.currency)})`} submit="Vardiyayı aç" defaultValue="0" onSubmit={async (k) => { setMeta(await openShiftLocal(cashier.id, k)); void sync.current?.kick(); }} />
+          <MoneyForm label={`Kasadaki açılış nakdi (${currencyUnit(d.currency)})`} currency={d.currency} submit="Vardiyayı aç" pendingMessage="Vardiya açılıyor, lütfen bekleyin." defaultValue="0" onSubmit={async (k) => { setMeta(await openShiftLocal(cashier.id, k)); void sync.current?.kick(); }} />
         </Center>
       </>
     );
@@ -822,7 +902,7 @@ export function KasaApp() {
     return (
       <>
         {bar(kasaTabs)}
-        {paketView() ?? <DeliveryBoard meta={meta} onMeta={setMeta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} waiter={waiter}
+        {paketView() ?? <DeliveryBoard meta={meta} onMeta={setMeta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} waiter={waiter} loaded={tabsApi.loaded}
           onNew={() => setView({ name: "yeni-paket" })} onOpen={(tabId) => setView({ name: "ptab", tabId })} onBill={(tabId) => setView({ name: "bill", tabId })} onHandover={onHandover} />}
       </>
     );

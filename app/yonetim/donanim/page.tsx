@@ -1,6 +1,8 @@
 import { asc, eq } from "drizzle-orm";
-import { getDb, schema } from "@/db";
+import Link from "next/link";
+import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { newAgentPairing, revokeAgent } from "@/lib/admin/agent-actions";
 import { RevokeForm } from "@/components/admin/RevokeForms";
 import { agentConfig, emptyAgentConfig } from "@/lib/agent/config";
@@ -16,12 +18,17 @@ const future = (d: Date | null) => !!d && d.getTime() > Date.now();
 
 export default async function Donanim() {
   const u = await requireAdmin();
+  const [activeStoreId, stores] = await withTenant(u.tenantId, (tx) => Promise.all([
+    scopedStoreId(tx, u.tenantId),
+    tx.select({ id: schema.stores.id, name: schema.stores.name }).from(schema.stores),
+  ]));
+  const storeNames = new Map(stores.map((s) => [s.id, s.name]));
   const rows = await getDb().select().from(schema.agents).where(eq(schema.agents.tenantId, u.tenantId)).orderBy(asc(schema.agents.createdAt));
   return (
     <>
       <PageHeader title="Donanım" desc="Kasadaki bilgisayarda çalışan ÇabukPOS ajanı fiş yazıcısını, para çekmecesini ve teraziyi yönetir." />
       <Card className="mb-6 p-5">
-        <AgentCreateForm />
+        {activeStoreId ? <AgentCreateForm /> : <div className="space-y-3 text-sm text-muted"><p>Ajan eklemeden önce bir şube oluşturun.</p><Link href="/yonetim/subeler" className={buttonClass("primary")}>Şube ekle</Link></div>}
         <p className="mt-4 break-words rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn" data-testid="lna-note">Kasa ekranında Chrome “yerel ağ erişimi” izni sorduğunda <strong>İzin ver</strong> deyin; aksi halde ajan “kapalı” görünür.</p>
         <div className="mt-4 rounded-lg border border-line bg-surface-2 px-3 py-3 text-sm">
           <p className="font-medium">Windows’ta hızlı kurulum</p>
@@ -29,7 +36,7 @@ export default async function Donanim() {
           <a href="/indir/cabukpos-agent-install.ps1" download className={`${buttonClass("primary")} mt-2`}>Windows kurulum betiğini indir</a>
         </div>
         <details className="mt-4 text-sm text-ink-2">
-          <summary className="inline-flex min-h-10 cursor-pointer items-center rounded-lg px-2.5 font-medium outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kurulum adımları</summary>
+          <summary className="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-2.5 font-medium outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kurulum adımları</summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>Kasadaki bilgisayara Node.js (LTS) kurun.</li>
             <li><a href="/indir/cabukpos-agent.cjs" download className="font-medium text-brand underline">cabukpos-agent.cjs</a> dosyasını indirip bir klasöre koyun (ör. <code>C:\CabukPOS</code>).</li>
@@ -49,12 +56,12 @@ export default async function Donanim() {
             return (
               <Card key={r.id} className="p-5" data-testid={`agent-${r.id}`}>
                 <div className="flex min-w-0 flex-wrap items-center gap-3">
-                  <div className="min-w-0 break-words font-medium">{r.name}</div>
+                  <div className="min-w-0 break-words font-medium">{r.name}<span className="ml-2 font-normal text-muted">· {storeNames.get(r.storeId) ?? "Şube bulunamadı"}</span></div>
                   {r.revokedAt ? <Badge tone="bad">İptal</Badge> : !r.pairedAt ? <Badge tone="warn">Eşlenmedi</Badge> : online ? <Badge tone="ok">Çevrimiçi</Badge> : <Badge tone="warn">Çevrimdışı</Badge>}
                   {r.lastSeenAt && <span className="min-w-0 break-words text-xs text-muted">Son görülme {dt(r.lastSeenAt)}{r.version ? ` · sürüm ${r.version}` : ""}{r.lanIp ? ` · ${r.lanIp}` : ""}</span>}
                   <div className="ml-auto flex shrink-0 flex-wrap items-start gap-4 text-sm">
                     <AgentPairButton action={newAgentPairing.bind(null, r.id)} />
-                    {!r.revokedAt && <RevokeForm action={revokeAgent.bind(null, r.id)} />}
+                    {!r.revokedAt && <RevokeForm action={revokeAgent.bind(null, r.id)} ariaLabel={`Ajanı iptal et: ${r.name}`} />}
                   </div>
                 </div>
                 {r.status && (

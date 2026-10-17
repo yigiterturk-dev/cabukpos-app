@@ -16,6 +16,7 @@ import { RefundScreen } from "@/components/kasa/RefundScreen";
 import { NewDelivery } from "@/components/kasa/NewDelivery";
 import { CourierScreen } from "@/components/kasa/CourierScreen";
 import { PinPad } from "@/components/kasa/PinPad";
+import { KasaPreviewProvider } from "@/components/kasa/KasaPreviewContext";
 import { ActionTile, Button, Kbd, StatCard } from "@/components/ui";
 
 const cats = [
@@ -108,13 +109,14 @@ export default function OnizlemePage() {
   }
 
   const frame = (label: string, node: React.ReactNode, h = 560) => (
-    <section className="space-y-2">
+    <section aria-label={label} className="space-y-2">
       <h2 className="font-display text-lg font-bold tracking-tight">{label}</h2>
-      <div className="min-w-0 overflow-y-auto overflow-x-hidden rounded-2xl border border-line bg-canvas" style={{ height: `min(${h}px, calc(100vh - 8rem))` }}>{node}</div>
+      <div className="transform-gpu min-w-0 overflow-y-auto overflow-x-hidden rounded-2xl border border-line bg-canvas" style={{ height: `min(${h}px, calc(100vh - 8rem))` }}>{node}</div>
     </section>
   );
 
   return (
+    <KasaPreviewProvider>
     <main className="mx-auto w-full max-w-[1400px] space-y-10 px-4 py-8">
       <div className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-3 text-sm text-warn">
         Tasarım önizlemesi · <b>sahte veri</b>, DB/eşleme gerekmez · gerçek bileşenler, eylemler çalışmaz.
@@ -136,16 +138,16 @@ export default function OnizlemePage() {
         <p className="text-sm text-muted">Kısayol: <Kbd>F2</Kbd> ara · <Kbd>Enter</Kbd> ekle</p>
       </section>
 
-      {frame("Satış ekranı — market", <SaleScreen categories={cats} products={marketProducts} market onPay={okSale} onReceipt={noop} prints={{} as Record<string, PrintView>} />, 640)}
-      {frame("Satış ekranı — restoran", <SaleScreen categories={cats} products={restProducts} market={false} onPay={okSale} onReceipt={noop} prints={{} as Record<string, PrintView>} />, 640)}
+      {frame("Satış ekranı — market", <SaleScreen categories={cats} products={marketProducts} market onPay={okSale} onReceipt={noop} prints={{} as Record<string, PrintView>} autoFocusSearch={false} />, 640)}
+      {frame("Satış ekranı — restoran", <SaleScreen categories={cats} products={restProducts} market={false} onPay={okSale} onReceipt={noop} prints={{} as Record<string, PrintView>} autoFocusSearch={false} />, 640)}
       {frame("Salon (masa planı)", <SalonScreen areas={areas} tables={tables} tabs={tabs} now={now} onOpen={noop} callsEnabled={false} />, 480)}
       {frame("Adisyon (masa detayı)", <TabScreen meta={meta} onMeta={noop} table={tables[0]} title="M1" tabs={[masaTab]} allTabs={tabs} waiter={{ id: "s1", name: "Ayşe Garson", role: "garson" }} canPay add={noAdd} now={now} onBill={noop} onBack={noop} />, 640)}
       {frame("Mutfak ekranı", <KitchenScreen meta={meta} tabs={tabs} now={now} add={noAdd} />, 480)}
       {frame("Paket panosu", <DeliveryBoard meta={meta} onMeta={noop} tabs={tabs} now={now} add={noAdd} waiter={{ id: "s2", name: "Mehmet Kasiyer", role: "kasiyer" }} onNew={noop} onOpen={noop} onBill={noop} onHandover={async () => {}} />, 560)}
       {frame("Kurye ekranı", <CourierScreen meta={meta} courier={{ id: "s3", name: "Ali Kurye" }} tabs={tabs} now={now} add={noAdd} onDeliver={async () => {}} onCloseShift={noop} />, 480)}
-      {frame("İade", <RefundScreen meta={meta} cashier={{ id: "s2", name: "Mehmet Kasiyer" }} online onMeta={noop} onDone={noop} onBack={noop} />, 480)}
-      {frame("Yeni paket sipariş", <NewDelivery meta={meta} staffId="s2" add={noAdd} onCreated={noop} onBack={noop} />, 560)}
-      {frame("PIN girişi", <div className="grid h-full place-items-center p-6"><PinPad meta={meta} onOk={noop} onMeta={noop} /></div>, 420)}
+      {frame("İade", <RefundScreen meta={meta} cashier={{ id: "s2", name: "Mehmet Kasiyer" }} online onMeta={noop} onDone={noop} onBack={noop} autoFocusLookup={false} />, 480)}
+      {frame("Yeni paket sipariş", <NewDelivery meta={meta} staffId="s2" add={noAdd} onCreated={noop} onBack={noop} autoFocusPhone={false} />, 560)}
+      {frame("PIN girişi", <div className="grid h-full place-items-center p-6"><PinPad meta={meta} onOk={noop} onMeta={noop} previewOnly /></div>, 420)}
 
       <section className="space-y-2">
         <h2 className="font-display text-lg font-bold tracking-tight">Ödeme diyaloğu</h2>
@@ -154,5 +156,6 @@ export default function OnizlemePage() {
 
       {pay && <PayDialog total={38500} onPay={okPay} onClose={() => setPay(false)} onDone={() => setPay(false)} />}
     </main>
+    </KasaPreviewProvider>
   );
 }

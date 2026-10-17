@@ -35,7 +35,7 @@ export default async function AbonelikFatura({ params }: { params: Promise<{ tok
   const kunye = seller ?? { name: "—", taxId: "—", address: null, taxOffice: null };
   const period = d.payment.period === "yillik" ? "Yıllık" : "Aylık";
   return (
-    <main className="mx-auto w-full max-w-3xl bg-white px-4 py-8 text-sm text-ink print:max-w-none print:py-0">
+    <main className="print-paper mx-auto w-full max-w-3xl bg-white px-4 py-8 text-sm text-ink print:max-w-none print:py-0">
       <style>{`@media print { @page { size: A4; margin: 14mm } body { background: #fff } }`}</style>
       {test && <div className="mb-4 rounded-lg border border-warn/40 bg-warn-soft p-3 text-center font-semibold text-warn" data-testid="test-band">TEST — mali değeri yoktur</div>}
       {!ready || !seller ? (
@@ -66,12 +66,21 @@ export default async function AbonelikFatura({ params }: { params: Promise<{ tok
             {d.buyer.address && <div className="whitespace-pre-line">{d.buyer.address}</div>}
             <div className="text-muted">{d.buyer.taxId.length === 10 ? "VKN" : "TCKN"} {d.buyer.taxId}</div>
           </section>
+          <dl aria-label="Mal ve hizmet kalemi" className="grid grid-cols-2 gap-x-4 gap-y-2 border-y border-line py-3 text-sm lg:hidden print:hidden">
+            <div className="col-span-2"><dt className="text-xs text-muted">Mal / hizmet</dt><dd className="font-medium">ÇabukPOS aboneliği ({period})</dd></div>
+            <div><dt className="text-xs text-muted">Miktar</dt><dd>1</dd></div>
+            <div><dt className="text-xs text-muted">Birim fiyat</dt><dd className="tabular-nums">{formatTL(d.payment.amount)}</dd></div>
+            <div><dt className="text-xs text-muted">KDV</dt><dd>%20</dd></div>
+            <div><dt className="text-xs text-muted">Tutar</dt><dd className="font-medium tabular-nums">{formatTL(d.payment.amount)}</dd></div>
+          </dl>
+          <div className="hidden overflow-x-auto lg:block print:block">
           <table className="w-full border-y border-line">
-            <thead className="text-left text-xs text-muted"><tr><th className="py-2 font-medium">Mal / hizmet</th><th className="text-right font-medium">Miktar</th><th className="text-right font-medium">Birim fiyat</th><th className="text-right font-medium">KDV</th><th className="text-right font-medium">Tutar</th></tr></thead>
+            <thead className="text-left text-xs text-muted"><tr><th scope="col" className="py-2 font-medium">Mal / hizmet</th><th scope="col" className="text-right font-medium">Miktar</th><th scope="col" className="text-right font-medium">Birim fiyat</th><th scope="col" className="text-right font-medium">KDV</th><th scope="col" className="text-right font-medium">Tutar</th></tr></thead>
             <tbody className="tabular-nums">
               <tr className="border-t border-line"><td className="py-1.5">ÇabukPOS aboneliği ({period})</td><td className="text-right">1</td><td className="text-right">{formatTL(d.payment.amount)}</td><td className="text-right">%20</td><td className="text-right">{formatTL(d.payment.amount)}</td></tr>
             </tbody>
           </table>
+          </div>
           <div className="ml-auto w-full max-w-xs space-y-1 tabular-nums">
             <div className="flex justify-between"><span className="text-muted">KDV %20 (matrah {formatTL(netOf(d.payment.amount))})</span><span>{formatTL(d.payment.amount - netOf(d.payment.amount))}</span></div>
             <div className="flex justify-between border-t border-line pt-1 text-base font-bold"><span>Genel toplam</span><span>{formatTL(d.payment.amount)}</span></div>

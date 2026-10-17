@@ -1,5 +1,5 @@
 // lib/admin/report.ts — M9a dönem sorguları (withTenant içinde) → lib/core/report saf hesabı.
-import { and, desc, eq, gte, inArray, lt, notInArray, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lt, notInArray, sql, type SQL } from "drizzle-orm";
 import { alias, type PgColumn } from "drizzle-orm/pg-core";
 import { schema, type Tx } from "@/db";
 import { rfmData } from "@/lib/admin/rfm";
@@ -12,18 +12,19 @@ import type { PayMethod } from "@/lib/core/payment";
 
 const S = schema.sales, L = schema.saleLines;
 const inRange = (col: PgColumn, r: Range) => { const { from, to } = rangeBounds(r); return and(gte(col, from), lt(col, to)) as SQL; };
+const inStore = (col: PgColumn, storeId?: string | null) => storeId === undefined ? undefined : storeId ? eq(col, storeId) : sql`false`;
 const closedOrRefund = inArray(S.status, ["kapandi", "iade"]);
 
-async function salesIn(tx: Tx, r: Range): Promise<SaleRow[]> {
+async function salesIn(tx: Tx, r: Range, storeId?: string | null): Promise<SaleRow[]> {
   const rows = await tx.select({ id: S.id, status: S.status, channel: S.channel, total: S.total, discount: S.discount, change: S.change, vat: S.vat, at: S.createdAt, staffId: S.staffId })
-    .from(S).where(and(closedOrRefund, inRange(S.createdAt, r)));
+    .from(S).where(and(closedOrRefund, inRange(S.createdAt, r), inStore(S.storeId, storeId)));
   // #33: ciro ve KDV matrahı satış düzeyi indirim düşülmüş (net) gösterilir.
   return rows.map((x) => ({ id: x.id, status: x.status as SaleRow["status"], channel: x.channel, total: x.total - x.discount, change: x.change, net: (x.vat as { net: number }[]).reduce((t, v) => t + v.net, 0) - x.discount, at: x.at, staffId: x.staffId }));
 }
 
-async function paymentsIn(tx: Tx, r: Range): Promise<PayRow[]> {
+async function paymentsIn(tx: Tx, r: Range, storeId?: string | null): Promise<PayRow[]> {
   const P = schema.payments;
-  const rows = await tx.select({ saleId: P.saleId, method: P.method, amount: P.amount }).from(P).innerJoin(S, eq(S.id, P.saleId)).where(and(closedOrRefund, inRange(S.createdAt, r)));
+  const rows = await tx.select({ saleId: P.saleId, method: P.method, amount: P.amount }).from(P).innerJoin(S, eq(S.id, P.saleId)).where(and(closedOrRefund, inRange(S.createdAt, r), inStore(S.storeId, storeId)));
   return rows.map((x) => ({ ...x, method: x.method as PayMethod }));
 }
 
@@ -31,18 +32,18 @@ async function staffNames(tx: Tx) {
   return new Map((await tx.select({ id: schema.staff.id, name: schema.staff.name }).from(schema.staff)).map((x) => [x.id, x.name]));
 }
 
-export async function summaryData(tx: Tx, r: Range) {
-  const [sales, pays, before] = [await salesIn(tx, r), await paymentsIn(tx, r), await salesIn(tx, prevRange(r))];
+export async function summaryData(tx: Tx, r: Range, storeId?: string | null) {
+  const [sales, pays, before] = [await salesIn(tx, r, storeId), await paymentsIn(tx, r, storeId), await salesIn(tx, prevRange(r), storeId)];
   return { now: summarize(sales), before: summarize(before), channels: byChannel(sales), methods: byMethod(sales, pays) };
 }
 
-export const heatData = async (tx: Tx, r: Range) => heatmap(await salesIn(tx, r));
+export const heatData = async (tx: Tx, r: Range, storeId?: string | null) => heatmap(await salesIn(tx, r, storeId));
 
-export async function productData(tx: Tx, r: Range, sort: "adet" | "ciro") {
+export async function productData(tx: Tx, r: Range, sort: "adet" | "ciro", storeId?: string | null) {
   const Pr = schema.products;
   const lines = await tx.select({ productId: L.productId, name: L.name, categoryId: Pr.categoryId, qtyMilli: L.qtyMilli, total: L.total, status: S.status })
     .from(L).innerJoin(S, eq(S.id, L.saleId)).leftJoin(Pr, eq(Pr.id, L.productId))
-    .where(and(closedOrRefund, inRange(S.createdAt, r)));
+    .where(and(closedOrRefund, inRange(S.createdAt, r), inStore(S.storeId, storeId)));
   const rows = productRows(lines.map((l) => ({ ...l, refund: l.status === "iade" })), sort);
   const names = new Map((await tx.select({ id: schema.categories.id, name: schema.categories.name }).from(schema.categories)).map((c) => [c.id, c.name]));
   const sold = rows.flatMap((x) => (x.productId ? [x.productId] : []));
@@ -51,41 +52,62 @@ export async function productData(tx: Tx, r: Range, sort: "adet" | "ciro") {
   return { rows, categories: categoryRows(rows, names), unsold };
 }
 
-async function eventsIn(tx: Tx, r: Range, staffId?: string, limit?: number): Promise<StaffEvent[]> {
+async function eventsIn(tx: Tx, r: Range, staffId?: string, limit?: number, storeId?: string | null): Promise<StaffEvent[]> {
   const T = schema.tabEvents, A = alias(schema.tabEvents, "a"), R = schema.registerEvents;
   const who = (c: PgColumn) => (staffId ? eq(c, staffId) : undefined);
   const refunds = await tx.select({ at: S.createdAt, staffId: S.staffId, approvedBy: S.approvedBy, receiptNo: S.receiptNo, total: S.total, discount: S.discount }).from(S)
-    .where(and(eq(S.status, "iade"), inRange(S.createdAt, r), who(S.staffId))).orderBy(desc(S.createdAt)).limit(limit ?? 100_000);
+    .where(and(eq(S.status, "iade"), inRange(S.createdAt, r), who(S.staffId), inStore(S.storeId, storeId))).orderBy(desc(S.createdAt), desc(S.id)).limit(limit ?? 100_000);
   const tabs = await tx.select({ at: T.at, staffId: T.staffId, approvedBy: T.approvedBy, type: T.type, payload: T.payload, line: A.payload }).from(T)
     .leftJoin(A, and(eq(A.tabId, T.tabId), eq(A.type, "add"), sql`${A.payload}->>'lineId' = ${T.payload}->>'lineId'`))
-    .where(and(inArray(T.type, ["void", "comp", "discount", "cancel"]), inRange(T.at, r), who(T.staffId))).orderBy(desc(T.at)).limit(limit ?? 100_000);
+    .where(and(inArray(T.type, ["void", "comp", "discount", "cancel"]), inRange(T.at, r), who(T.staffId), inStore(T.storeId, storeId))).orderBy(desc(T.at), desc(T.id)).limit(limit ?? 100_000);
   const regs = await tx.select({ at: R.at, staffId: R.staffId, type: R.type, lines: R.lines, total: R.total }).from(R)
-    .where(and(inRange(R.at, r), who(R.staffId))).orderBy(desc(R.at)).limit(limit ?? 100_000);
+    .where(and(inRange(R.at, r), who(R.staffId), inStore(R.storeId, storeId))).orderBy(desc(R.at), desc(R.id)).limit(limit ?? 100_000);
   const all: StaffEvent[] = [
     ...refunds.map((x) => ({ at: x.at, staffId: x.staffId, kind: "iade" as const, text: `İade ${x.receiptNo}`, amount: x.total - x.discount, approvedBy: x.approvedBy, reason: null })),
     ...tabs.map(tabEventRow),
     ...regs.map(registerEventRow),
-  ].sort((a, b) => b.at.getTime() - a.at.getTime());
+  ].sort((a, b) => b.at.getTime() - a.at.getTime() || (b.staffId ?? "").localeCompare(a.staffId ?? "") || a.text.localeCompare(b.text));
   return limit ? all.slice(0, limit) : all;
 }
 
-export async function staffData(tx: Tx, r: Range) {
+export async function staffData(tx: Tx, r: Range, storeId?: string | null) {
   const discounts = await tx.select({ staffId: S.staffId, discount: sql<number>`sum(${L.discount})::int` }).from(L).innerJoin(S, eq(S.id, L.saleId))
-    .where(and(eq(S.status, "kapandi"), inRange(S.createdAt, r), sql`${L.discount} > 0`)).groupBy(S.staffId);
-  return staffRows(await salesIn(tx, r), discounts, await eventsIn(tx, r), await staffNames(tx));
+    .where(and(eq(S.status, "kapandi"), inRange(S.createdAt, r), sql`${L.discount} > 0`, inStore(S.storeId, storeId))).groupBy(S.staffId);
+  return staffRows(await salesIn(tx, r, storeId), discounts, await eventsIn(tx, r, undefined, undefined, storeId), await staffNames(tx));
 }
 
-export async function staffEvents(tx: Tx, r: Range, staffId: string) {
-  return { events: await eventsIn(tx, r, staffId, 500), names: await staffNames(tx) };
+export async function staffEvents(tx: Tx, r: Range, staffId: string, page?: number, storeId?: string | null) {
+  const names = await staffNames(tx);
+  if (!page) return { events: await eventsIn(tx, r, staffId, undefined, storeId), names, hasPrevious: false, hasNext: false, page: 1, total: 0 };
+  const pageSize = 50;
+  const T = schema.tabEvents, R = schema.registerEvents;
+  const [[{ refunds }], [{ tabEvents }], [{ registerEvents }]] = await Promise.all([
+    tx.select({ refunds: count() }).from(S).where(and(eq(S.status, "iade"), inRange(S.createdAt, r), eq(S.staffId, staffId), inStore(S.storeId, storeId))),
+    tx.select({ tabEvents: count() }).from(T).where(and(inArray(T.type, ["void", "comp", "discount", "cancel"]), inRange(T.at, r), eq(T.staffId, staffId), inStore(T.storeId, storeId))),
+    tx.select({ registerEvents: count() }).from(R).where(and(inRange(R.at, r), eq(R.staffId, staffId), inStore(R.storeId, storeId))),
+  ]);
+  const total = refunds + tabEvents + registerEvents;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(1, Math.floor(page)), pageCount);
+  const allThroughNext = await eventsIn(tx, r, staffId, safePage * pageSize + 1, storeId);
+  const start = (safePage - 1) * pageSize;
+  return {
+    events: allThroughNext.slice(start, start + pageSize),
+    names,
+    hasPrevious: safePage > 1,
+    hasNext: safePage < pageCount,
+    page: safePage,
+    total,
+  };
 }
 
 const pct = (n: number | null) => (n === null ? "" : n.toFixed(1).replace(".", ","));
 const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function reportCsv(tx: Tx, tenantId: string, sekme: string, r: Range, kisi: string | null): Promise<string | null> {
+export async function reportCsv(tx: Tx, tenantId: string, sekme: string, r: Range, kisi: string | null, storeId?: string | null): Promise<string | null> {
   if (sekme === "ozet") {
-    const d = await summaryData(tx, r);
+    const d = await summaryData(tx, r, storeId);
     return toCsv(["Kalem", "Değer", "Önceki dönem"], [
       ["Brüt ciro", csvTL(d.now.gross), csvTL(d.before.gross)], ["Net ciro (KDV hariç)", csvTL(d.now.net), csvTL(d.before.net)],
       ["Fiş", d.now.count, d.before.count], ["Ortalama sepet", d.now.avg === null ? null : csvTL(d.now.avg), d.before.avg === null ? null : csvTL(d.before.avg)],
@@ -94,21 +116,21 @@ export async function reportCsv(tx: Tx, tenantId: string, sekme: string, r: Rang
     ]);
   }
   if (sekme === "yogunluk") {
-    const h = await heatData(tx, r);
+    const h = await heatData(tx, r, storeId);
     return toCsv(["Gün", ...Array.from({ length: 24 }, (_, i) => `${i}:00`)], h.cells.map((row, i) => [WEEKDAYS[i], ...row.map((c) => csvTL(c.gross))]));
   }
   if (sekme === "urunler") {
-    const p = await productData(tx, r, "ciro");
+    const p = await productData(tx, r, "ciro", storeId);
     const cat = new Map(p.categories.map((c) => [c.key, c.name]));
     return toCsv(["Ürün", "Kategori", "Adet", "Brüt", "Pay %"], p.rows.map((x) => [x.name, cat.get(x.categoryId ?? "-") ?? "Kategorisiz", csvQty(x.qtyMilli), csvTL(x.gross), pct(x.share)]));
   }
   if (sekme === "personel") {
-    const rows = await staffData(tx, r);
+    const rows = await staffData(tx, r, storeId);
     return toCsv(["Personel", "Satış", "Fiş", "İade adet", "İade", "Adisyon iptali adet", "Adisyon iptali", "İkram adet", "İkram", "İndirim adet", "İndirim + ikram payı", "Paket iptali", "Sepetten silme adet", "Sepetten silme"],
       rows.map((x) => [x.name, csvTL(x.gross), x.count, x.refunds, csvTL(x.refundTotal), x.voids, csvTL(x.voidTotal), x.comps, csvTL(x.compTotal), x.discounts, csvTL(x.discountTotal), x.cancels, x.removed, csvTL(x.removedTotal)]));
   }
   if (sekme === "olaylar" && kisi && UUID.test(kisi)) {
-    const { events, names } = await staffEvents(tx, r, kisi);
+    const { events, names } = await staffEvents(tx, r, kisi, undefined, storeId);
     return toCsv(["Zaman", "Tür", "İçerik", "Tutar", "Onaylayan", "Gerekçe"],
       events.map((e) => [dt(e.at), EVENT_LABEL[e.kind], e.text, e.amount === null ? null : csvTL(e.amount), e.approvedBy ? names.get(e.approvedBy) ?? "Bilinmeyen" : null, e.reason]));
   }
@@ -120,9 +142,9 @@ export async function reportCsv(tx: Tx, tenantId: string, sekme: string, r: Rang
 }
 
 /** M9c ajans API'si: iadenin kanalı asıl satışınkidir (iade satırı kendisi 'kasa' yazılır). */
-export async function dailyStatsData(tx: Tx, r: Range): Promise<DailyStat[]> {
+export async function dailyStatsData(tx: Tx, r: Range, storeId?: string | null): Promise<DailyStat[]> {
   const O = alias(S, "o");
   const rows = await tx.select({ status: S.status, channel: sql<SaleRow["channel"]>`coalesce(${O.channel}, ${S.channel})`, total: S.total, discount: S.discount, tabId: S.tabId, at: S.createdAt })
-    .from(S).leftJoin(O, eq(O.id, S.refundOf)).where(and(closedOrRefund, inRange(S.createdAt, r)));
+    .from(S).leftJoin(O, eq(O.id, S.refundOf)).where(and(closedOrRefund, inRange(S.createdAt, r), inStore(S.storeId, storeId)));
   return dailyStats(rows.map((x) => ({ ...x, total: x.total - x.discount, status: x.status as "kapandi" | "iade" })));
 }

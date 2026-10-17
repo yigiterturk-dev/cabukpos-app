@@ -4,14 +4,19 @@ import { notFound } from "next/navigation";
 import { eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { kioskStatus, menuByStore } from "@/lib/kiosk";
+import { foldTabs, lineGross, type TabEvent } from "@/lib/core/tab";
+import { optionsText } from "@/lib/core/options";
 import { formatReceipt, isCurrency } from "@/lib/core/money";
 import { clientIp, hit } from "@/lib/ratelimit";
 import type { TabEv } from "@/lib/core/tab";
+import { OrderRefresh } from "./OrderRefresh";
+import { SkipToContent } from "@/components/SkipToContent";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Sipariş durumu", robots: { index: false, follow: false } };
 
 type Ev = { type: string; at: string; payload: TabEv };
+const formatQty = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 3 }).format;
 
 export default async function Siparis({ params }: { params: Promise<{ storeId: string; tabId: string }> }) {
   const { storeId, tabId } = await params;
@@ -26,42 +31,49 @@ export default async function Siparis({ params }: { params: Promise<{ storeId: s
   const rows = (await getDb().execute(sql`select public_tab_events(${storeId}::uuid, ${tabId}::uuid) as e`)) as unknown as { e: Ev[] }[];
   const events = rows[0]?.e ?? [];
   if (!events.length) notFound();
+  const tabEvents: TabEvent[] = events.map((event, index) => ({ id: `public-${index}`, tabId, tableId: null, at: event.at, staffId: null, approvedBy: null, seq: index, ev: event.payload }));
+  const tab = foldTabs(tabEvents).get(tabId);
+  if (!tab) notFound();
   const st = kioskStatus(events);
-  const order = events.find((e) => e.type === "order")?.payload as Extract<TabEv, { type: "order" }> | undefined;
-  const adds = events.filter((e) => e.type === "add").map((e) => e.payload as Extract<TabEv, { type: "add" }>);
-  const total = adds.reduce((s, l) => s + Math.round((l.unitPrice * l.qtyMilli) / 1000), 0);
+  const order = tab.order;
+  const liveLines = tab.lines.filter((line) => !line.voided);
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-8">
-      {!st.closed && <meta httpEquiv="refresh" content="20" />}
+      <SkipToContent />
       <header className="mb-6">
         <p className="break-words text-xs font-semibold uppercase tracking-[0.12em] text-brand" title={menu.tenant}>{menu.tenant}</p>
-        <h1 className="break-words font-display text-2xl font-bold text-ink" title={menu.store}>{menu.store}</h1>
+        <h1 id="main-content" tabIndex={-1} className="break-words rounded-sm font-display text-2xl font-bold text-ink outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" title={menu.store}>{menu.store}</h1>
       </header>
-      <section aria-label="Durum" role="status" aria-live="polite" className="mb-6 rounded-[18px] border border-line bg-surface p-5 text-center shadow-card">
+      <section aria-label="Durum" className="mb-6 rounded-[18px] border border-line bg-surface p-5 text-center shadow-card">
         <div className={`mx-auto mb-3 grid size-14 place-items-center rounded-full text-2xl ${st.step === "iptal" ? "bg-bad-soft" : st.step === "tamam" ? "bg-ok-soft" : "bg-brand-soft"}`}>
           {st.step === "iptal" ? "✕" : st.step === "tamam" ? "✓" : st.step === "yolda" ? "🛎️" : "⏳"}
         </div>
-        <p className="break-words text-lg font-semibold text-ink" data-testid="siparis-durum">{st.label}</p>
+        <p className="break-words text-lg font-semibold text-ink" data-testid="siparis-durum" role="status" aria-live="polite" aria-atomic="true">{st.label}</p>
         {st.etaAt && !st.closed && <p className="mt-1 text-sm text-muted">Tahmini bitiş: ~{st.etaAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })}</p>}
         {order?.name && <p className="mt-1 break-words text-sm text-muted" title={order.name}>Sipariş: {order.name}</p>}
       </section>
       <section aria-label="Sipariş içeriği" className="rounded-[18px] border border-line bg-surface p-5 shadow-card">
         <ul className="divide-y divide-line text-sm">
-          {adds.map((l) => (
-            <li key={l.lineId} className="flex items-center gap-3 py-2">
-              <span className="tabular w-10 text-muted">{l.qtyMilli / 1000}×</span>
-              <span className="min-w-0 flex-1 break-words" title={l.name}>{l.name}</span>
-              <span className="shrink-0 tabular">{formatReceipt(Math.round((l.unitPrice * l.qtyMilli) / 1000), currency)}</span>
+          {liveLines.map((line) => (
+            <li key={line.lineId} className="flex items-center gap-3 py-2">
+              <span className="tabular w-10 text-muted">{formatQty(line.qtyMilli / 1000)}×</span>
+              <span className="min-w-0 flex-1 break-words" title={line.name}>
+                <span className="block">{line.name}{line.comped ? " · ikram" : ""}</span>
+                {line.options.length > 0 && <span className="block text-xs text-muted">{optionsText(line.options)}</span>}
+                {line.note && <span className="block text-xs text-warn">Not: {line.note}</span>}
+              </span>
+              <span className="shrink-0 tabular">{formatReceipt(line.comped ? 0 : lineGross(line), currency)}</span>
             </li>
           ))}
         </ul>
-        <div className="mt-2 flex justify-between border-t border-line pt-2 font-semibold" aria-live="polite">
+        {tab.discountAmount > 0 && <div className="mt-2 flex justify-between border-t border-line pt-2 text-sm"><span>İndirim</span><span className="tabular">−{formatReceipt(tab.discountAmount, currency)}</span></div>}
+        <div className="mt-2 flex justify-between border-t border-line pt-2 font-semibold">
           <span>Toplam</span>
-          <span className="tabular" data-testid="siparis-toplam">{formatReceipt(total, currency)}</span>
+          <span className="tabular" data-testid="siparis-toplam">{formatReceipt(tab.total, currency)}</span>
         </div>
         <p className="mt-1 text-xs text-muted">Ödeme kasada yapılır.</p>
       </section>
-      <p className="mt-6 text-center text-xs text-muted">Bu sayfa sipariş bitene dek kendiliğinden yenilenir.</p>
+      <OrderRefresh closed={st.closed} />
     </main>
   );
 }

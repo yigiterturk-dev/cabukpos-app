@@ -1,11 +1,12 @@
 "use server";
 // M5 restoran salonu: bölge + masa, mutfak istasyonları, seçenek grupları, cihaz rolü.
 // Seçenekler ada göre güncellenir (kimlik korunur): çevrimdışı kasadaki eski kimlikli satış fiyat kontrolünden geçsin.
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { expandTableNames, parseOptionLines } from "./salon";
 
 export type SalonState = { error?: string; field?: string; savedAt?: number };
@@ -28,9 +29,9 @@ export async function salonSetup(_: SalonState, form: FormData): Promise<SalonSt
     used.add(fb!);
     return fb!;
   };
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  if (!storeId) return { error: "Önce bir şube oluşturun." };
   await withTenant(a.tenantId, async (tx) => {
-    const storeId = (await tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1))[0]?.id;
-    if (!storeId) return;
     for (const [i, z] of list.entries()) {
       const [area] = await tx.insert(schema.areas).values({ tenantId: a.tenantId, storeId, name: z.name, sort: i }).returning({ id: schema.areas.id });
       const names = expandTableNames(`${prefixOf(z.name)}1-${z.count}`);
@@ -42,19 +43,15 @@ export async function salonSetup(_: SalonState, form: FormData): Promise<SalonSt
   return { savedAt: Date.now() };
 }
 
-async function firstStore(tenantId: string) {
-  const [s] = await withTenant(tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
-  return s.id;
-}
-
 // — Bölge + masa —
 export async function saveArea(_: SalonState, form: FormData): Promise<SalonState> {
   const a = await requireWriter();
   const name = str(form, "name");
   if (name.length < 1 || name.length > 40) return { error: "Bölge adı 1-40 karakter.", field: "name" };
-  const storeId = await firstStore(a.tenantId);
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  if (!storeId) return { error: "Önce bir şube oluşturun." };
   await withTenant(a.tenantId, async (tx) => {
-    const n = (await tx.select({ id: schema.areas.id }).from(schema.areas)).length;
+    const n = (await tx.select({ id: schema.areas.id }).from(schema.areas).where(eq(schema.areas.storeId, storeId))).length;
     await tx.insert(schema.areas).values({ tenantId: a.tenantId, storeId, name, sort: n });
     await audit(tx, a.tenantId, `user:${a.id}`, "area.create", { name });
   });
@@ -65,7 +62,11 @@ export async function saveArea(_: SalonState, form: FormData): Promise<SalonStat
 export async function deleteArea(id: string) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  if (!storeId) return;
   await withTenant(a.tenantId, async (tx) => {
+    const [area] = await tx.select({ id: schema.areas.id }).from(schema.areas).where(and(eq(schema.areas.id, id), eq(schema.areas.storeId, storeId)));
+    if (!area) return;
     await tx.delete(schema.areas).where(eq(schema.areas.id, id));
     await audit(tx, a.tenantId, `user:${a.id}`, "area.delete", { id });
   });
@@ -78,7 +79,9 @@ export async function addTables(areaId: string, _: SalonState, form: FormData): 
   const names = expandTableNames(str(form, "names"));
   if (!names) return { error: "Masa adları geçersiz (ör. M1-M12 ya da Bahçe 1, Bahçe 2).", field: "names" };
   const err = await withTenant(a.tenantId, async (tx) => {
-    const [area] = await tx.select({ id: schema.areas.id }).from(schema.areas).where(eq(schema.areas.id, areaId));
+    const storeId = await scopedStoreId(tx, a.tenantId);
+    if (!storeId) return "Önce bir şube oluşturun.";
+    const [area] = await tx.select({ id: schema.areas.id }).from(schema.areas).where(and(eq(schema.areas.id, areaId), eq(schema.areas.storeId, storeId)));
     if (!area) return "Bölge bulunamadı.";
     const had = await tx.select({ name: schema.tables.name }).from(schema.tables).where(eq(schema.tables.areaId, areaId));
     const fresh = names.filter((n) => !had.some((h) => h.name === n));
@@ -94,7 +97,13 @@ export async function addTables(areaId: string, _: SalonState, form: FormData): 
 export async function deleteTable(id: string) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  if (!storeId) return;
   await withTenant(a.tenantId, async (tx) => {
+    const [table] = await tx.select({ id: schema.tables.id }).from(schema.tables)
+      .innerJoin(schema.areas, eq(schema.tables.areaId, schema.areas.id))
+      .where(and(eq(schema.tables.id, id), eq(schema.areas.storeId, storeId)));
+    if (!table) return;
     await tx.delete(schema.tables).where(eq(schema.tables.id, id));
     await audit(tx, a.tenantId, `user:${a.id}`, "table.delete", { id });
   });
@@ -109,12 +118,17 @@ export async function saveStation(id: string | null, _: SalonState, form: FormDa
   const printer = str(form, "printer") || null;
   if (name.length < 1 || name.length > 40) return { error: "İstasyon adı 1-40 karakter.", field: "name" };
   if (printer && !/^[a-z0-9-]{1,12}$/i.test(printer)) return { error: "Yazıcı geçersiz.", field: "printer" };
-  const storeId = await firstStore(a.tenantId);
-  await withTenant(a.tenantId, async (tx) => {
-    if (id) await tx.update(schema.stations).set({ name, printer }).where(eq(schema.stations.id, id));
-    else await tx.insert(schema.stations).values({ tenantId: a.tenantId, storeId, name, printer });
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  if (!storeId) return { error: "Önce bir şube oluşturun." };
+  const err = await withTenant(a.tenantId, async (tx) => {
+    if (id) {
+      const [row] = await tx.update(schema.stations).set({ name, printer }).where(and(eq(schema.stations.id, id), eq(schema.stations.storeId, storeId))).returning({ id: schema.stations.id });
+      if (!row) return "İstasyon seçili şubede bulunamadı.";
+    } else await tx.insert(schema.stations).values({ tenantId: a.tenantId, storeId, name, printer });
     await audit(tx, a.tenantId, `user:${a.id}`, id ? "station.update" : "station.create", { id, name, printer });
+    return null;
   });
+  if (err) return { error: err };
   revalidatePath("/yonetim/istasyonlar");
   return { savedAt: Date.now() };
 }
@@ -122,8 +136,11 @@ export async function saveStation(id: string | null, _: SalonState, form: FormDa
 export async function deleteStation(id: string) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  if (!storeId) return;
   await withTenant(a.tenantId, async (tx) => {
-    await tx.delete(schema.stations).where(eq(schema.stations.id, id));
+    const [row] = await tx.delete(schema.stations).where(and(eq(schema.stations.id, id), eq(schema.stations.storeId, storeId))).returning({ id: schema.stations.id });
+    if (!row) return;
     await audit(tx, a.tenantId, `user:${a.id}`, "station.delete", { id });
   });
   revalidatePath("/yonetim/istasyonlar");
@@ -133,11 +150,15 @@ export async function setCategoryStation(categoryId: string, stationId: string) 
   const a = await requireWriter();
   if (!UUID.test(categoryId) || (stationId && !UUID.test(stationId))) return;
   await withTenant(a.tenantId, async (tx) => {
+    const storeId = await scopedStoreId(tx, a.tenantId);
+    if (!storeId) return;
     if (stationId) {
-      const [s] = await tx.select({ id: schema.stations.id }).from(schema.stations).where(eq(schema.stations.id, stationId));
+      const [s] = await tx.select({ id: schema.stations.id }).from(schema.stations).where(and(eq(schema.stations.id, stationId), eq(schema.stations.storeId, storeId)));
       if (!s) return;
     }
-    await tx.update(schema.categories).set({ stationId: stationId || null }).where(eq(schema.categories.id, categoryId));
+    const R = schema.categoryStationRoutes;
+    await tx.insert(R).values({ tenantId: a.tenantId, storeId, categoryId, stationId: stationId || null })
+      .onConflictDoUpdate({ target: [R.storeId, R.categoryId], set: { stationId: stationId || null } });
     await audit(tx, a.tenantId, `user:${a.id}`, "category.station", { categoryId, stationId: stationId || null });
   });
   revalidatePath("/yonetim/istasyonlar");
@@ -194,13 +215,17 @@ export async function setDeviceRole(deviceId: string, _: SalonState, form: FormD
   if (!UUID.test(deviceId)) return { error: "Cihaz bulunamadı." };
   const role = str(form, "role");
   if (role !== "kasa" && role !== "garson" && role !== "mutfak" && role !== "kurye") return { error: "Rol geçersiz." };
-  const wanted = form.getAll("stations").map(String).filter((s) => UUID.test(s));
+  const wanted = [...new Set(form.getAll("stations").map(String).filter((s) => UUID.test(s)))];
+  const [device] = await getDb().select({ storeId: schema.devices.storeId }).from(schema.devices).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId)));
+  if (!device) return { error: "Cihaz bulunamadı." };
   const stations = role === "mutfak" && wanted.length
-    ? (await withTenant(a.tenantId, (tx) => tx.select({ id: schema.stations.id }).from(schema.stations).where(inArray(schema.stations.id, wanted)))).map((s) => s.id)
+    ? await withTenant(a.tenantId, (tx) => tx.select({ id: schema.stations.id }).from(schema.stations).where(and(inArray(schema.stations.id, wanted), eq(schema.stations.storeId, device.storeId))))
     : [];
-  const [row] = await getDb().update(schema.devices).set({ role, stations }).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId))).returning({ id: schema.devices.id });
+  if (stations.length !== wanted.length) return { error: "Seçilen istasyon cihazın şubesinde yok. Listeyi yenileyip tekrar deneyin." };
+  const stationIds = stations.map((s) => s.id);
+  const [row] = await getDb().update(schema.devices).set({ role, stations: stationIds }).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId))).returning({ id: schema.devices.id });
   if (!row) return { error: "Cihaz bulunamadı." };
-  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "device.role", { id: deviceId, role, stations }));
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "device.role", { id: deviceId, role, stations: stationIds }));
   revalidatePath("/yonetim/cihazlar");
   return { savedAt: Date.now() };
 }

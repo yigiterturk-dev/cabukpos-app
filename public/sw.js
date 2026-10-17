@@ -1,4 +1,4 @@
-// ÇabukPOS service worker'ı. /kasa ve /yonetim gezinmesi: ağ önce, yoksa önbellek. /_next/static: önbellek önce.
+// ÇabukPOS service worker'ı. Gezinme ve /_next/static: ağ önce, yoksa önbellek.
 // API istekleri hiç önbelleğe alınmaz. Giden kutusu için Background Sync: ağ dönünce sayfaya "sync-now" yollar.
 const KASA = "cabukpos-kasa-v1";
 const YONETIM = "cabukpos-yonetim-v1";
@@ -47,15 +47,17 @@ self.addEventListener("fetch", (e) => {
   }
 
   if (url.pathname.startsWith("/_next/static/")) {
+    let cacheWrite = Promise.resolve();
+    const response = fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        cacheWrite = caches.open(YONETIM).then((cache) => cache.put(req, copy)).catch(() => {});
+      }
+      return res;
+    });
+    e.waitUntil(response.then(() => cacheWrite).catch(() => {}));
     e.respondWith(
-      caches.match(req, { ignoreVary: true }).then(
-        (hit) =>
-          hit ||
-          fetch(req).then((res) => {
-            if (res.ok) { const copy = res.clone(); caches.open(YONETIM).then((c) => c.put(req, copy)); }
-            return res;
-          }),
-      ),
+      response.catch(() => caches.match(req, { ignoreVary: true }).then((hit) => hit || Response.error())),
     );
   }
 });

@@ -12,6 +12,7 @@ import { parseRecipeQty } from "./recipe";
 
 export type RecipeState = { error?: string; field?: string; savedAt?: number };
 const UUID = /^[0-9a-f-]{36}$/i;
+const MAX_DB_INT = 2_147_483_647;
 const R = schema.recipeItems, P = schema.products;
 
 export async function saveRecipe(target: { productId?: string; optionId?: string }, _: RecipeState, form: FormData): Promise<RecipeState> {
@@ -75,11 +76,15 @@ export async function produce(_: RecipeState, form: FormData): Promise<RecipeSta
     if (!p || p.sellable || !p.yieldMilli) return { error: "Ara ürün bulunamadı (parti miktarı olan satılmaz ürün).", field: "productId" };
     const items = await tx.select({ ingredientId: R.ingredientId, qtyMilli: R.qtyMilli }).from(R).where(eq(R.productId, productId));
     if (!items.length) return { error: "Ara ürünün reçetesi yok.", field: "productId" };
+    const moves = productionMoves(productId, batchesMilli, p.yieldMilli, items);
+    if (moves.some((move) => !Number.isSafeInteger(move.qtyMilli) || Math.abs(move.qtyMilli) > MAX_DB_INT)) {
+      return { error: "Bu reçete için parti sayısı çok yüksek; daha az parti girin.", field: "batches" };
+    }
     const storeId = await scopedStoreId(tx, a.tenantId);
     if (!storeId) return { error: "Şube yok." };
     const [prod] = await tx.insert(schema.productions).values({ tenantId: a.tenantId, storeId, productId, batchesMilli, note, createdBy: a.id }).returning({ id: schema.productions.id });
     const actor = `user:${a.id}`;
-    await tx.insert(schema.stockMovements).values(productionMoves(productId, batchesMilli, p.yieldMilli, items).map((m) => ({ tenantId: a.tenantId, storeId, productId: m.productId, kind: "uretim" as const, qtyMilli: m.qtyMilli, productionId: prod.id, actor, note })));
+    await tx.insert(schema.stockMovements).values(moves.map((m) => ({ tenantId: a.tenantId, storeId, productId: m.productId, kind: "uretim" as const, qtyMilli: m.qtyMilli, productionId: prod.id, actor, note })));
     const costs = new Map((await tx.select({ id: P.id, cost: P.cost }).from(P).where(inArray(P.id, items.map((i) => i.ingredientId)))).map((c) => [c.id, c.cost]));
     const cost = batchCost(items, (id) => costs.get(id), p.yieldMilli);
     if (cost !== null) await tx.update(P).set({ cost, costAt: new Date() }).where(eq(P.id, productId));

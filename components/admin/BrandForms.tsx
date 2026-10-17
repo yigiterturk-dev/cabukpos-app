@@ -1,18 +1,28 @@
 "use client";
+import { useEffect, useId, useRef } from "react";
 import { createBrand, saveBrand, setBrandProducts, type BrandState } from "@/lib/admin/brand-actions";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input } from "@/components/ui";
 
-const Err = ({ s, f }: { s: BrandState; f?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
+const Err = ({ s, f, idPrefix = "brand" }: { s: BrandState; f?: string; idPrefix?: string }) => (s.error && (f ? s.field === f : !s.field) ? <p id={f ? `${idPrefix}-${f}-error` : undefined} className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
+const errorProps = (s: BrandState, f: string, idPrefix = "brand") => s.field === f && s.error
+  ? { "aria-invalid": true as const, "aria-describedby": `${idPrefix}-${f}-error` }
+  : {};
 const Saved = ({ s }: { s: BrandState }) => (s.savedAt ? <span className="text-sm text-ok" role="status">{s.info ?? "Kaydedildi."}</span> : null);
 
 export function BrandForm({ initial }: { initial?: { id: string; name: string; slug: string } }) {
   const { state, pending, onSubmit } = useFormAction((initial ? saveBrand.bind(null, initial.id) : createBrand), {} as BrandState);
+  const idPrefix = `brand-${useId()}`;
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (state.error && state.field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+  }, [state.error, state.field]);
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
-      <div><Field label="Marka adı"><Input name="name" defaultValue={initial?.name} placeholder="Örn. Pideci İnşaat" className="w-56" required /></Field><Err s={state} f="name" /></div>
-      <div><Field label="Adres (slug)" hint="boşsa isimden üretilir"><Input name="slug" defaultValue={initial?.slug} placeholder="pideci-insaat" className="w-44" /></Field><Err s={state} f="slug" /></div>
+    <form ref={formRef} onSubmit={onSubmit} aria-busy={pending} className="flex flex-wrap items-end gap-3">
+      <div><Field label="Marka adı"><Input name="name" disabled={pending} defaultValue={initial?.name} placeholder="Örn. Pideci İnşaat" className="w-56" required {...errorProps(state, "name", idPrefix)} /></Field><Err s={state} f="name" idPrefix={idPrefix} /></div>
+      <div><Field label="Adres (slug)" hint="boşsa isimden üretilir"><Input name="slug" disabled={pending} defaultValue={initial?.slug} placeholder="pideci-insaat" className="w-44" {...errorProps(state, "slug", idPrefix)} /></Field><Err s={state} f="slug" idPrefix={idPrefix} /></div>
       <Button type="submit" variant={initial ? "ghost" : "primary"} disabled={pending}>{initial ? "Kaydet" : "Marka ekle"}</Button>
+      {pending && <span className="sr-only" role="status" aria-live="polite">Marka bilgileri kaydediliyor.</span>}
       <Saved s={state} /><Err s={state} />
     </form>
   );
@@ -28,12 +38,13 @@ export function ProductPicker({ brandId, products, selected }: { brandId: string
   }
   return (
     <form onSubmit={onSubmit} className="mt-2 space-y-3">
+      <fieldset disabled={pending} aria-busy={pending} className="space-y-3">
       {[...byCat.entries()].map(([cat, items]) => (
         <div key={cat}>
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{cat}</p>
           <div className="flex flex-wrap gap-x-5 gap-y-1.5">
             {items.map((p) => (
-              <label key={p.id} className="flex items-center gap-2 text-sm">
+              <label key={p.id} className="flex min-h-11 items-center gap-2 text-sm">
                 <input type="checkbox" name="product" value={p.id} defaultChecked={selected.has(p.id)} className="size-4 accent-[var(--color-brand)]" />
                 {p.name}
               </label>
@@ -42,9 +53,11 @@ export function ProductPicker({ brandId, products, selected }: { brandId: string
         </div>
       ))}
       <div className="flex items-center gap-3">
-        <Button type="submit" variant="secondary" disabled={pending}>Menüyü kaydet</Button>
+        <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Kaydediliyor…" : "Menüyü kaydet"}</Button>
         <Saved s={state} /><Err s={state} />
       </div>
+      </fieldset>
+      {pending && <span className="sr-only" role="status" aria-live="polite">Marka menüsü kaydediliyor.</span>}
     </form>
   );
 }

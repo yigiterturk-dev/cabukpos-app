@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { hqData, type HqData } from "@/lib/admin/hq";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { Card, Empty, PageHeader, Panel, TABLE_HEAD } from "@/components/ui";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 
 export const dynamic = "force-dynamic";
 
@@ -15,17 +16,48 @@ const last7 = () => { const n = new Date(); return { bas: iso(new Date(n.getTime
 function Table({ d, money }: { d: HqData; money: (k: number) => string }) {
   const pct = (v: number) => (d.total.sales ? `${Math.round((v / d.total.sales) * 100)}%` : "—");
   return (
-    <Card className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+    <>
+    <Card className="overflow-hidden lg:hidden">
+      <ul aria-label="Şube performansları" className="divide-y divide-line">
+        {d.branches.map((b) => (
+          <li key={b.storeId} className={`space-y-3 p-4 ${b.sales === 0 ? "text-muted" : ""}`}>
+            <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 break-words font-semibold text-ink">{b.name}</h3><span className="shrink-0 text-xs tabular text-muted">{pct(b.sales)} ciro payı</span></div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+              <div><dt className="text-xs text-muted">Ciro</dt><dd className="tabular font-medium">{money(b.sales)}</dd></div>
+              <div><dt className="text-xs text-muted">Satış</dt><dd className="tabular">{b.count}</dd></div>
+              <div><dt className="text-xs text-muted">Ortalama</dt><dd className="tabular">{money(b.avg)}</dd></div>
+              <div><dt className="text-xs text-muted">Kâr*</dt><dd className="tabular">{money(b.profit)}</dd></div>
+              <div><dt className="text-xs text-muted">İade</dt><dd className="tabular">{b.refunds ? money(b.refunds) : "—"}</dd></div>
+            </dl>
+            {b.noCost > 0 && <p className="text-xs text-muted">{b.noCost} satırın maliyeti yok; bu satırlar kâr hesabına dahil değil.</p>}
+          </li>
+        ))}
+      </ul>
+      <div className="space-y-2 border-t border-line bg-surface-2 p-4">
+        <h3 className="font-semibold">Konsolide</h3>
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+          <div><dt className="text-xs text-muted">Ciro</dt><dd className="tabular font-medium">{money(d.total.sales)}</dd></div>
+          <div><dt className="text-xs text-muted">Ciro payı</dt><dd className="tabular">100%</dd></div>
+          <div><dt className="text-xs text-muted">Satış</dt><dd className="tabular">{d.total.count}</dd></div>
+          <div><dt className="text-xs text-muted">Ortalama</dt><dd className="tabular">{money(d.total.avg)}</dd></div>
+          <div><dt className="text-xs text-muted">Kâr*</dt><dd className="tabular">{money(d.total.profit)}</dd></div>
+          <div><dt className="text-xs text-muted">İade</dt><dd className="tabular">{d.total.refunds ? money(d.total.refunds) : "—"}</dd></div>
+        </dl>
+      </div>
+      <p className="px-4 pb-3 pt-2 text-xs text-muted">* Kâr = ciro − satır maliyeti (donmuş alış maliyeti). Maliyeti olmayan satırlar kâr hesabına dahil değil.</p>
+    </Card>
+    <Card className="hidden p-0 lg:block">
+      <HorizontalScrollRegion label="Şube performansları, yatay kaydırılabilir" className="rounded-2xl">
+      <table aria-label="Şube performansları" className="w-full min-w-[720px] text-sm">
         <thead className={TABLE_HEAD}>
           <tr className="text-left text-xs uppercase tracking-wide text-muted">
-            <th className="px-4 py-2.5 font-medium">Şube</th>
-            <th className="px-4 py-2.5 font-medium text-right">Ciro</th>
-            <th className="px-4 py-2.5 font-medium text-right">Pay</th>
-            <th className="px-4 py-2.5 font-medium text-right">Satış</th>
-            <th className="px-4 py-2.5 font-medium text-right">Ortalama</th>
-            <th className="px-4 py-2.5 font-medium text-right">Kâr*</th>
-            <th className="px-4 py-2.5 font-medium text-right">İade</th>
+            <th scope="col" className="px-4 py-2.5 font-medium">Şube</th>
+            <th scope="col" className="px-4 py-2.5 font-medium text-right">Ciro</th>
+            <th scope="col" className="px-4 py-2.5 font-medium text-right">Pay</th>
+            <th scope="col" className="px-4 py-2.5 font-medium text-right">Satış</th>
+            <th scope="col" className="px-4 py-2.5 font-medium text-right">Ortalama</th>
+            <th scope="col" className="px-4 py-2.5 font-medium text-right">Kâr*</th>
+            <th scope="col" className="px-4 py-2.5 font-medium text-right">İade</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -36,7 +68,7 @@ function Table({ d, money }: { d: HqData; money: (k: number) => string }) {
               <td className="px-4 py-2.5 text-right tabular text-muted">{pct(b.sales)}</td>
               <td className="px-4 py-2.5 text-right tabular">{b.count}</td>
               <td className="px-4 py-2.5 text-right tabular">{money(b.avg)}</td>
-              <td className="px-4 py-2.5 text-right tabular">{money(b.profit)}{b.noCost > 0 && <span className="ml-1 text-xs text-muted" title="Maliyeti olmayan satır sayısı">({b.noCost}?)</span>}</td>
+              <td className="px-4 py-2.5 text-right tabular">{money(b.profit)}{b.noCost > 0 && <span className="ml-1 text-xs text-muted" title="Maliyeti olmayan satır sayısı">({b.noCost} maliyetsiz)</span>}</td>
               <td className="px-4 py-2.5 text-right tabular">{b.refunds ? money(b.refunds) : "—"}</td>
             </tr>
           ))}
@@ -51,8 +83,10 @@ function Table({ d, money }: { d: HqData; money: (k: number) => string }) {
           </tr>
         </tbody>
       </table>
-      <p className="px-4 pb-3 pt-2 text-xs text-muted">* Kâr = ciro − satır maliyeti (donmuş alış maliyeti). Maliyeti olmayan satırlar (n?) kârdan düşülmez.</p>
+      </HorizontalScrollRegion>
+      <p className="px-4 pb-3 pt-2 text-xs text-muted">* Kâr = ciro − satır maliyeti (donmuş alış maliyeti). Maliyeti olmayan satırlar kâr hesabına dahil değil.</p>
     </Card>
+    </>
   );
 }
 

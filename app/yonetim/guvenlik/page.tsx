@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { activeSessions, requireAdmin, sonGorulme, uaLabel } from "@/lib/auth/session";
 import { emailDogrulamaGonderAction } from "@/lib/auth/actions";
-import { Button } from "@/components/ui";
+import { EmailVerificationForm } from "@/components/admin/EmailVerificationPending";
 import { MfaAc, MfaKapat } from "@/components/admin/MfaForms";
 import { OturumKapatFormlari } from "@/components/admin/SessionForms";
 
@@ -22,9 +22,7 @@ export default async function GuvenlikPage() {
         <h2 className="mb-1 font-medium">E-posta doğrulama</h2>
         <p className="mb-4 text-sm text-muted" role="status">{a.emailVerified ? "E-postanız doğrulanmış." : "E-postanız doğrulanmadı — hesap kurtarma ve bildirimler için doğrulayın."}</p>
         {!a.emailVerified && (
-          <form action={emailDogrulamaGonderAction}>
-            <Button type="submit">Doğrulama e-postası gönder</Button>
-          </form>
+          <EmailVerificationForm action={emailDogrulamaGonderAction} />
         )}
       </section>
       <section className="rounded-[14px] border border-line bg-surface p-5">

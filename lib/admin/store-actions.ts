@@ -11,12 +11,13 @@ import { STORE_COOKIE } from "./store-scope";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const UUID = /^[0-9a-f-]{36}$/i;
+export type StoreFormState = { error?: string; field?: string };
 
-export async function createStore(form: FormData) {
+export async function createStore(_: StoreFormState, form: FormData): Promise<StoreFormState> {
   const a = await requireWriter();
   const name = text(form, "name").slice(0, 80);
   const address = text(form, "address").slice(0, 300) || null;
-  if (name.length < 2) redirect("/yonetim/subeler?hata=eksik");
+  if (name.length < 2) return { error: "Şube adı en az 2 karakter olmalı.", field: "name" };
   await withTenant(a.tenantId, async (tx) => {
     await tx.insert(schema.stores).values({ tenantId: a.tenantId, name, address });
     await audit(tx, a.tenantId, `user:${a.id}`, "store.created", { name });
@@ -25,12 +26,13 @@ export async function createStore(form: FormData) {
   redirect("/yonetim/subeler?ok=olusturuldu");
 }
 
-export async function updateStore(form: FormData) {
+export async function updateStore(_: StoreFormState, form: FormData): Promise<StoreFormState> {
   const a = await requireWriter();
   const storeId = text(form, "storeId");
   const name = text(form, "name").slice(0, 80);
   const address = text(form, "address").slice(0, 300) || null;
-  if (!UUID.test(storeId) || name.length < 2) redirect("/yonetim/subeler?hata=eksik");
+  if (!UUID.test(storeId)) return { error: "Şube bulunamadı; sayfayı yenileyip yeniden deneyin.", field: "name" };
+  if (name.length < 2) return { error: "Şube adı en az 2 karakter olmalı.", field: "name" };
   await withTenant(a.tenantId, async (tx) => {
     await tx.update(schema.stores).set({ name, address }).where(eq(schema.stores.id, storeId));
     await audit(tx, a.tenantId, `user:${a.id}`, "store.updated", { storeId, name });

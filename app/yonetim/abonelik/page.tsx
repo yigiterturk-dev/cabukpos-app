@@ -10,9 +10,12 @@ import { unitPrices, salesContact } from "@/lib/billing/plans";
 import { getBillingProvider } from "@/lib/billing/provider";
 import { paymentsOf, salesSincePayment, tenantUnits } from "@/lib/billing/service";
 import { removeStoredCard } from "@/lib/billing/renewal";
+import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
+import { CheckoutForm } from "@/components/admin/CheckoutPending";
+import { RefundRequestForm, RefundStatusForm } from "@/components/admin/RefundRequestForm";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { approveRefundAction, requestRefundAction, startCheckout, withdrawRefundAction } from "@/lib/billing/actions";
-import { Badge, buttonClass, Card, Field, Input, PageHeader, TABLE_HEAD } from "@/components/ui";
-import { Select } from "@/components/Select";
+import { Badge, buttonClass, Card, PageHeader, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 const day = (d: Date) => d.toLocaleDateString("tr-TR", { dateStyle: "long", timeZone: "Europe/Istanbul" });
@@ -36,7 +39,7 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
             <span className="font-medium">Kayıtlı kart:</span>
             <span className="tabular text-muted">{card.cardMark}</span>
             <span className="min-w-0 flex-1 break-words text-xs text-muted">Vade 3 gün kalınca bu kartla otomatik yenilenir.</span>
-            <form action={removeStoredCard.bind(null, a.tenantId)} className="ml-auto shrink-0"><button className={buttonClass("danger", "sm")}>Kayıtlı kartı sil</button></form>
+            <div className="ml-auto shrink-0"><ConfirmActionForm action={removeStoredCard.bind(null, a.tenantId)} label="Kayıtlı kartı sil" prompt="Kayıtlı kart silinirse otomatik abonelik yenilemesi durur. Devam etmek istiyor musunuz?" className={buttonClass("danger", "sm")} /></div>
           </div>
         </Card>
       )}
@@ -91,12 +94,9 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
                 </p>
               )}
               {provider && bd ? (
-                <form action={startCheckout}>
-                  <input type="hidden" name="period" value={p.key} />
-                  {provider.name === "paytr" && <input name="phone" type="tel" required minLength={10} placeholder="Cep telefonu (05…)" autoComplete="tel" className="mb-2 w-full rounded-lg border border-line px-3 py-2 text-sm" />}
-                  <button className={`${buttonClass("primary", "lg")} w-full`}>{p.label} öde</button>
+                <CheckoutForm action={startCheckout} label={`${p.label} öde`} period={p.key} phoneRequired={provider.name === "paytr"}>
                   <p className="mt-2 break-words text-xs text-muted">Ödeyerek <Link href="/yasal/mesafeli-satis" target="_blank" className="underline">Mesafeli satış sözleşmesi</Link>ni ve <Link href="/yasal/iade-iptal" target="_blank" className="underline">İptal ve iade</Link> koşullarını kabul edersiniz. Otomatik yenileme yoktur.</p>
-                </form>
+                </CheckoutForm>
               ) : <p className="text-sm text-muted">Online ödeme yakında.{contact ? ` Ödeme için: ${contact}` : ""}</p>}
             </Card>
           );
@@ -104,9 +104,39 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
         </div>
       </div>
       {pays.length > 0 && (
-        <Card className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[920px] text-sm">
-            <thead className={TABLE_HEAD}><tr>{["Tarih", "Dönem", "Tutar", "Birimler", "Durum", "Fatura", "Dönem sonu", "İşlem"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
+        <>
+        <Card className="mt-6 overflow-hidden lg:hidden">
+          <ul aria-label="Abonelik ödeme geçmişi" className="divide-y divide-line">
+            {pays.map(({ p, invoice }) => (
+              <li key={p.id} className="space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0"><p className="font-medium">{p.period === "yillik" ? "Yıllık abonelik" : "Aylık abonelik"}</p><p className="mt-1 text-sm text-muted">{day(p.createdAt)}</p></div>
+                  <p className="shrink-0 tabular-nums font-semibold">{formatTL(p.amount)}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={p.status === "iade" || p.status === "iade_talep" ? "warn" : p.status === "odendi" ? "ok" : p.status === "basarisiz" ? "bad" : "neutral"}>{STATUS[p.status] ?? p.status}</Badge>
+                  {p.refundedAt && <span className="text-xs text-muted">İade: {day(p.refundedAt)}</span>}
+                  {p.status === "iade_talep" && p.refundReason && <span className="text-xs text-muted">{REASON_LABEL[p.refundReason] ?? p.refundReason}</span>}
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                  <div><dt className="text-xs text-muted">Birimler</dt><dd>{p.stores > 0 || p.devices > 0 ? `${p.stores} şube · ${p.devices} terminal` : "—"}</dd></div>
+                  <div><dt className="text-xs text-muted">Dönem sonu</dt><dd>{p.periodEnd ? day(p.periodEnd) : "—"}</dd></div>
+                  <div><dt className="text-xs text-muted">Fatura</dt><dd>{invoice?.token ? invoice.status === "issued" ? <Link href={`/fatura/${invoice.token}`} aria-label={`Faturayı görüntüle: ${day(p.createdAt)}, ${formatTL(p.amount)}`} className="inline-flex min-h-11 items-center text-brand underline-offset-2 hover:underline">Görüntüle</Link> : <span className="text-muted">Hazırlanıyor</span> : "—"}</dd></div>
+                </dl>
+                {p.status === "odendi" && <Link href={`/yonetim/abonelik?id=${p.id}`} aria-label={`İade talebi: ${day(p.createdAt)}, ${formatTL(p.amount)}`} className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-brand underline-offset-2 outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">İade talebi</Link>}
+                {p.status === "iade_talep" && <div className="flex flex-wrap gap-2">
+                  <RefundStatusForm action={withdrawRefundAction} paymentId={p.id} label="Talebi çek" ariaLabel={`İade talebini çek: ${day(p.createdAt)}, ${formatTL(p.amount)}`} className="inline-flex min-h-11 items-center rounded-lg px-2.5 underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60" />
+                  {a.role === "sahip" && <RefundStatusForm action={approveRefundAction} paymentId={p.id} label="İade edildi" ariaLabel={`Ödemeyi iade edildi işaretle: ${day(p.createdAt)}, ${formatTL(p.amount)}`} className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60" />}
+                </div>}
+                {sp.id === p.id && p.status === "odendi" && <RefundRequestForm action={requestRefundAction} paymentId={p.id} hint={hint} compact />}
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card className="mt-6 hidden p-0 lg:block">
+          <HorizontalScrollRegion label="Abonelik ödeme geçmişi, yatay kaydırılabilir" className="rounded-2xl">
+          <table aria-label="Abonelik ödeme geçmişi" className="w-full min-w-[920px] text-sm">
+            <thead className={TABLE_HEAD}><tr>{["Tarih", "Dönem", "Tutar", "Birimler", "Durum", "Fatura", "Dönem sonu", "İşlem"].map((h) => <th scope="col" key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr></thead>
             <tbody className="divide-y divide-line">{pays.map(({ p, invoice }) => (
               <Fragment key={p.id}>
                 <tr>
@@ -119,41 +149,29 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
                     {p.refundedAt && <div className="mt-0.5 text-xs text-muted">{day(p.refundedAt)}</div>}
                     {p.status === "iade_talep" && p.refundReason && <div className="mt-0.5 text-xs text-muted">{REASON_LABEL[p.refundReason] ?? p.refundReason}</div>}
                   </td>
-                  <td className="px-4 py-2.5">{invoice?.token ? (invoice.status === "issued" ? <Link href={`/fatura/${invoice.token}`} className="underline" data-testid="invoice-link">Görüntüle</Link> : <span className="text-muted">Hazırlanıyor</span>) : "—"}</td>
+                  <td className="px-4 py-2.5">{invoice?.token ? (invoice.status === "issued" ? <Link href={`/fatura/${invoice.token}`} aria-label={`Faturayı görüntüle: ${day(p.createdAt)}, ${formatTL(p.amount)}`} className="underline" data-testid="invoice-link">Görüntüle</Link> : <span className="text-muted">Hazırlanıyor</span>) : "—"}</td>
                   <td className="px-4 py-2.5">{p.periodEnd ? day(p.periodEnd) : "—"}</td>
                   <td className="px-4 py-2.5">
-                    {p.status === "odendi" && <Link href={`/yonetim/abonelik?id=${p.id}`} className="underline">İade talebi</Link>}
+                    {p.status === "odendi" && <Link href={`/yonetim/abonelik?id=${p.id}`} aria-label={`İade talebi: ${day(p.createdAt)}, ${formatTL(p.amount)}`} className="underline">İade talebi</Link>}
                     {p.status === "iade_talep" && (
                       <div className="flex flex-wrap gap-3">
-                        <form action={withdrawRefundAction}><input type="hidden" name="id" value={p.id} /><button className="inline-flex min-h-10 items-center rounded-lg px-2.5 underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Talebi çek</button></form>
-                        {a.role === "sahip" && <form action={approveRefundAction}><input type="hidden" name="id" value={p.id} /><button className="inline-flex min-h-10 items-center rounded-lg px-2.5 text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">İade edildi</button></form>}
+                        <RefundStatusForm action={withdrawRefundAction} paymentId={p.id} label="Talebi çek" ariaLabel={`İade talebini çek: ${day(p.createdAt)}, ${formatTL(p.amount)}`} className="inline-flex min-h-11 items-center rounded-lg px-2.5 underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60" />
+                        {a.role === "sahip" && <RefundStatusForm action={approveRefundAction} paymentId={p.id} label="İade edildi" ariaLabel={`Ödemeyi iade edildi işaretle: ${day(p.createdAt)}, ${formatTL(p.amount)}`} className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60" />}
                       </div>
                     )}
                   </td>
                 </tr>
                 {sp.id === p.id && p.status === "odendi" && (
                   <tr><td colSpan={8} className="bg-surface-2 px-4 py-4">
-                    <form action={requestRefundAction} className="flex flex-wrap items-end gap-3">
-                      <input type="hidden" name="id" value={p.id} />
-                      <Field label="Neden">
-                        <Select name="reason" defaultValue="satissiz" options={[
-                          { value: "satissiz", label: "7 gün içinde satışsız dönem" },
-                          { value: "hatali", label: "Hatalı / mükerrer çekim" },
-                          { value: "diger", label: "Diğer" },
-                        ]} />
-                      </Field>
-                      <Field label="Not"><Input name="note" className="w-64" /></Field>
-                      <button className={buttonClass("primary")}>Talebi gönder</button>
-                      <span className="text-xs text-muted">
-                        {hint === true ? "Koşula uygun görünüyor: ödeme 7 gün içinde ve dönemde satış yok → tam iade istenebilir." : hint === false ? "Yayınlanan koşula göre başlamış dönemin bedeli iade edilmez; yalnız hatalı/mükerrer çekimde tam iade istenebilir." : ""}
-                      </span>
-                    </form>
+                    <RefundRequestForm action={requestRefundAction} paymentId={p.id} hint={hint} />
                   </td></tr>
                 )}
               </Fragment>
             ))}</tbody>
           </table>
+          </HorizontalScrollRegion>
         </Card>
+        </>
       )}
       <Card className="mt-6 p-5 text-sm text-ink-2">
         <h2 className="mb-1 font-semibold text-ink">İptal</h2>

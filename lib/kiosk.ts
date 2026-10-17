@@ -7,6 +7,7 @@ import { isVatRate, type Kurus } from "@/lib/core/money";
 import { sendByStation, type MappedProduct } from "@/lib/core/platform";
 import type { PayIntent, TabEv } from "@/lib/core/tab";
 import { upsertCustomer } from "@/lib/sync/apply";
+import { categoryStationForStore, loadStoreStationRoutes, productStationForStore } from "@/lib/core/station-routing";
 
 export type MenuItem = { id: string; name: string; price: Kurus; categoryId: string | null; kind: "adet" | "tartili" };
 export type MenuData = { tenant: string; vertical: "restoran" | "market"; store: string; categories: { id: string; name: string }[]; products: MenuItem[]; tables: { id: string; name: string }[] };
@@ -70,10 +71,12 @@ export async function kioskOrder(conn: KioskConn, input: {
     const P = schema.products, K = schema.categories;
     const ids = input.lines.map((l) => l.productId).filter((i) => /^[0-9a-f-]{36}$/i.test(i));
     if (!ids.length) return { ok: false as const, reason: "Sepet boş." };
-    const rows = await tx.select({ id: P.id, name: P.name, price: P.price, vatRate: P.vatRate, stationId: P.stationId, catStation: K.stationId })
+    const rows = await tx.select({ id: P.id, name: P.name, price: P.price, vatRate: P.vatRate, categoryId: P.categoryId, stationId: P.stationId, catStation: K.stationId })
       .from(P).leftJoin(K, eq(K.id, P.categoryId))
       .where(and(eq(P.tenantId, conn.tenantId), eq(P.active, true), eq(P.sellable, true), inArray(P.id, ids)));
-    const menu = new Map(rows.filter((p) => isVatRate(p.vatRate)).map((p) => [p.id, { id: p.id, name: p.name, vatRate: p.vatRate as MappedProduct["vatRate"], stationId: p.stationId ?? p.catStation ?? null, price: p.price }]));
+    const routes = await loadStoreStationRoutes(tx, conn.storeId);
+    const categoryStations = new Map(rows.filter((p) => p.categoryId).map((p) => [p.categoryId!, categoryStationForStore(p.categoryId!, p.catStation, routes)]));
+    const menu = new Map(rows.filter((p) => isVatRate(p.vatRate)).map((p) => [p.id, { id: p.id, name: p.name, vatRate: p.vatRate as MappedProduct["vatRate"], stationId: productStationForStore(p.id, p.stationId, p.categoryId ? categoryStations.get(p.categoryId) ?? null : null, routes), price: p.price }]));
     const { events, total } = kioskEvents(input.lines, menu, { name: input.name, phone: input.phone, note: input.note, payIntent: input.payIntent }, conn.autoAccept, () => crypto.randomUUID(), 20);
     if (!events.length || total <= 0) return { ok: false as const, reason: "Ürünler bulunamadı." };
     const tabId = crypto.randomUUID();

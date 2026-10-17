@@ -11,10 +11,10 @@ const shift = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + 
  * Son 5 haftanın günlük brüt cirosundan önümüzdeki 7 günü tahmin eder.
  * Satışsız günler 0 kabul edilir (standart sapma gerçekçi olsun diye boşluk doldurulur).
  */
-export async function demandForecast(tx: Tx, now = Date.now()): Promise<Forecast | null> {
+export async function demandForecast(tx: Tx, storeId?: string | null, now = Date.now()): Promise<Forecast | null> {
   const bit = istToday(now);
   const bas = shift(bit, -34);
-  const days = await dailyStatsData(tx, { bas, bit });
+  const days = await dailyStatsData(tx, { bas, bit }, storeId);
   const byDay = new Map(days.map((d) => [d.day, d]));
   const daily: DailyPoint[] = [];
   for (let d = bas; d <= bit; d = shift(d, 1)) {

@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "İptal ve iade · ÇabukPOS" };
 export default function IadeIptal() {
   return (
     <>
-      <h1>İptal ve iade koşulları</h1>
+      <h1 id="main-content" tabIndex={-1} className="rounded-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">İptal ve iade koşulları</h1>
       <h2>Deneme</h2>
       <p>14 günlük deneme ücretsizdir ve kart bilgisi istenmez. Deneme bitince ödeme yapılmazsa herhangi bir ücret doğmaz.</p>
 

@@ -64,16 +64,16 @@ export async function login(_: AuthState, form: FormData): Promise<AuthState> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   const values = { email };
-  if (!email || !password) return { error: "E-posta ve şifre gerekli.", values };
+  if (!email || !password) return { error: "E-posta ve şifre gerekli.", field: "credentials", values };
   const [e, i] = await Promise.all([hit(`e:${email}`), hit(`ip:${await clientIp()}`)]);
   if (e > 8 || i > 30) return { error: "Çok fazla deneme. 15 dakika sonra tekrar deneyin.", values };
   if (shouldLock(await hit(failKey(email)))) return { error: "Çok fazla başarısız deneme. Hesap 15 dakika kilitli; şifrenizi unuttuysanız yenileyin.", values };
   const [u] = await getDb().select().from(schema.users).where(eq(schema.users.email, email));
-  if (!u || !u.active || !(await bcrypt.compare(password, u.passwordHash))) return { error: "E-posta veya şifre hatalı.", values };
+  if (!u || !u.active || !(await bcrypt.compare(password, u.passwordHash))) return { error: "E-posta veya şifre hatalı.", field: "credentials", values };
   if (u.totpSecret) {
     const kod = String(form.get("kod") ?? "").trim();
-    if (!kod) return { error: "2FA kodu gerekli. Kimlik doğrulayıcı uygulamanızdaki 6 haneli kodu girin.", values };
-    if (!verifyTotp(u.totpSecret, kod)) return { error: "E-posta, şifre veya 2FA kodu hatalı.", values };
+    if (!kod) return { error: "2FA kodu gerekli. Kimlik doğrulayıcı uygulamanızdaki 6 haneli kodu girin.", field: "kod", values };
+    if (!verifyTotp(u.totpSecret, kod)) return { error: "E-posta, şifre veya 2FA kodu hatalı.", field: "kod", values };
   }
   await getDb().delete(schema.loginAttempts).where(inArray(schema.loginAttempts.key, [`e:${email}`, failKey(email)]));
   await setAdminSession(u.id, u.tenantId, u.tokenVersion);
@@ -175,7 +175,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export async function requestReset(_: AuthState, form: FormData): Promise<AuthState> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const values = { email };
-  if (!EMAIL.test(email)) return { error: "E-posta geçersiz.", values };
+  if (!EMAIL.test(email)) return { error: "E-posta geçersiz.", field: "email", values };
   if (!mailReady()) {
     const c = salesContact();
     return { error: `E-posta gönderimi şu an kapalı.${c ? ` Şifre yenilemek için: ${c}` : " Destekle iletişime geçin."}`, values };

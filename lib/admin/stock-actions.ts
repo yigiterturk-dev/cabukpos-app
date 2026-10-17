@@ -42,22 +42,25 @@ export async function addStockMove(productId: string, _: StockState, form: FormD
 
 export type CountState = { error?: string; field?: string; savedAt?: number };
 
-/** Yeni sayım: stok takipli ürünler için o anki beklenen seviye anlık görüntüsü. Açık oturum varsa hata. */
-export async function startStockCount(): Promise<void> {
+/** Yeni sayım: stok takipli ürünler için o anki beklenen seviye anlık görüntüsü. */
+export async function startStockCount(): Promise<CountState> {
   const a = await requireWriter();
-  await withTenant(a.tenantId, async (tx) => {
+  const err = await withTenant(a.tenantId, async (tx): Promise<CountState | null> => {
     const storeId = await scopedStoreId(tx, a.tenantId);
-    if (!storeId) return;
+    if (!storeId) return { error: "Sayım için önce bir şube oluşturun." };
     const [open] = await tx.select({ id: schema.stockCounts.id }).from(schema.stockCounts).where(and(eq(schema.stockCounts.storeId, storeId), eq(schema.stockCounts.status, "acik"))).limit(1);
-    if (open) return;
+    if (open) return { error: "Açık bir sayım oturumu zaten var; mevcut oturumu tamamlayın." };
     const rows = await stockLevels(tx, storeId);
-    if (rows.length === 0) return;
+    if (rows.length === 0) return { error: "Sayım başlatmak için stok takibi açık en az bir ürün gerekir." };
     const actor = `user:${a.id}`;
     const [c] = await tx.insert(schema.stockCounts).values({ tenantId: a.tenantId, storeId, openedBy: actor }).returning({ id: schema.stockCounts.id });
     await tx.insert(schema.stockCountLines).values(rows.map((r) => ({ tenantId: a.tenantId, countId: c.id, productId: r.id, expectedMilli: r.level })));
     await audit(tx, a.tenantId, actor, "count.start", { id: c.id, lines: rows.length });
+    return null;
   });
+  if (err) return err;
   revalidatePath("/yonetim/sayim");
+  return { savedAt: Date.now() };
 }
 
 /** Tek satır sayımı kaydet. */

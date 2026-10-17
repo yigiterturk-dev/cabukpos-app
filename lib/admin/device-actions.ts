@@ -1,12 +1,13 @@
 "use server";
 // Kasa cihazları: ekle (eşleme kodu), yeni kod (eski cihaz düşer), iptal. devices RLS dışı → her sorguda tenantId koşulu.
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { checkReauth } from "@/lib/auth/reauth";
 import { newPairingCode } from "@/lib/auth/tokens";
 import { audit } from "@/lib/audit";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 
 export type DeviceState = { error?: string; field?: string; code?: string; expiresAt?: string; deviceName?: string };
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -32,10 +33,11 @@ export async function createDevice(_: DeviceState, form: FormData): Promise<Devi
   const prefix = String(form.get("receiptPrefix") ?? "").trim().toUpperCase();
   if (name.length < 2 || name.length > 40) return { error: "Cihaz adı 2-40 karakter.", field: "name" };
   if (!/^[A-Z0-9]{1,4}$/.test(prefix)) return { error: "Fiş öneki 1-4 harf/rakam (ör. K1).", field: "receiptPrefix" };
-  const [store] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  if (!storeId) return { error: "Önce bir şube oluşturun." };
   const [dup] = await getDb().select({ id: schema.devices.id }).from(schema.devices).where(and(eq(schema.devices.tenantId, a.tenantId), eq(schema.devices.receiptPrefix, prefix)));
   if (dup) return { error: "Bu fiş öneki başka bir cihazda.", field: "receiptPrefix" };
-  const [d] = await getDb().insert(schema.devices).values({ tenantId: a.tenantId, storeId: store.id, name, receiptPrefix: prefix }).returning({ id: schema.devices.id });
+  const [d] = await getDb().insert(schema.devices).values({ tenantId: a.tenantId, storeId, name, receiptPrefix: prefix }).returning({ id: schema.devices.id });
   const c = await assignCode(a.tenantId, d.id);
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "device.create", { id: d.id, name, prefix }));
   revalidatePath("/yonetim/cihazlar");

@@ -34,8 +34,8 @@ export default async function Receteler({ searchParams }: { searchParams: Promis
   const initial = items.filter((i) => (sel ? i.productId === sel.id : opt ? i.optionId === opt.id : false)).map((i) => ({ ingredientId: i.ingredientId, qtyMilli: i.qtyMilli }));
 
   const link = (href: string, label: string, active: boolean, done: boolean) => (
-    <Link key={href} href={href} className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${active ? "bg-brand-soft font-medium text-brand" : "hover:bg-surface-2"}`}>
-      <span className="min-w-0 truncate" title={label}>{label}</span>{done && <span className="shrink-0 text-xs text-ok">reçeteli</span>}
+    <Link key={href} href={href} className={`flex min-h-11 items-center justify-between rounded-lg px-3 py-1.5 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${active ? "bg-brand-soft font-medium text-brand" : "hover:bg-surface-2"}`}>
+      <span className="min-w-0 break-words">{label}</span>{done && <span className="shrink-0 text-xs text-ok">reçeteli</span>}
     </Link>
   );
   return (

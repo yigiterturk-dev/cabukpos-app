@@ -10,14 +10,17 @@ import { messagingProvider, sendGrowthCampaignPage } from "@/lib/growth/messagin
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
+export type CampaignDraftState = { error?: string; field?: string };
 /** Sadece taslak oluşturur; hiçbir iletişim sağlayıcısına gönderim yapmaz. */
-export async function createCampaignDraft(form: FormData) {
+export async function createCampaignDraft(_: CampaignDraftState, form: FormData): Promise<CampaignDraftState> {
   const a = await requireWriter();
   if (a.vertical !== "restoran") redirect("/yonetim");
   const name = text(form, "name").slice(0, 80);
   const message = text(form, "message").slice(0, 500);
   const segment = text(form, "segment");
-  if (name.length < 2 || message.length < 5 || !isGrowthSegment(segment)) redirect("/yonetim/buyume?hata=eksik");
+  if (name.length < 2) return { error: "Kampanya adı en az 2 karakter olmalı.", field: "name" };
+  if (message.length < 5) return { error: "Mesaj taslağı en az 5 karakter olmalı.", field: "message" };
+  if (!isGrowthSegment(segment)) return { error: "Müşteri segmenti geçersiz; sayfayı yenileyip yeniden deneyin.", field: "segment" };
   await withTenant(a.tenantId, (tx) => createGrowthCampaignDraft(tx, { tenantId: a.tenantId, name, message, segment, actor: `user:${a.id}`, createdBy: a.id }));
   revalidatePath("/yonetim/buyume");
   redirect("/yonetim/buyume?olusturuldu=1");

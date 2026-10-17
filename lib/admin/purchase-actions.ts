@@ -6,6 +6,7 @@ import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { parseTL } from "@/lib/core/money";
+import { isValidCalendarDay } from "@/lib/core/report";
 import { parseQty, stockUnitOf } from "@/lib/core/stock";
 import { cancelPurchase as cancelTx, recordPurchase } from "./purchase";
 import { scopedStoreId } from "./store-scope";
@@ -16,7 +17,7 @@ const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const today = () => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
 
 function parseDate(s: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || Number.isNaN(Date.parse(s))) return null;
+  if (!isValidCalendarDay(s)) return null;
   return s <= today() && s >= "2020-01-01" ? s : null;
 }
 

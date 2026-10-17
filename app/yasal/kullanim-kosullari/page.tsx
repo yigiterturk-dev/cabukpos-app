@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Kullanım koşulları · ÇabukPOS" 
 export default function KullanimKosullari() {
   return (
     <>
-      <h1>Kullanım koşulları</h1>
+      <h1 id="main-content" tabIndex={-1} className="rounded-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kullanım koşulları</h1>
       <p>Bu koşullar ÇabukPOS bulut satış noktası hizmetinin (“Hizmet”) kullanımını düzenler. Hesap oluşturan işletme (“Kullanıcı”) bu koşulları kabul etmiş sayılır. Hizmeti sunan:</p>
       <SellerBlock />
 

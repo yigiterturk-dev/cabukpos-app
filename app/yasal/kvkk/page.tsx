@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "KVKK aydınlatma metni ve gizlilik �
 export default function Kvkk() {
   return (
     <>
-      <h1>KVKK aydınlatma metni ve gizlilik politikası</h1>
+      <h1 id="main-content" tabIndex={-1} className="rounded-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">KVKK aydınlatma metni ve gizlilik politikası</h1>
       <p>6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) md. 10 uyarınca, kişisel verilerinizin nasıl işlendiğini açıklarız. Veri sorumlusu:</p>
       <SellerBlock />
 

@@ -48,7 +48,19 @@ requiredSecret("AUTH_SECRET", "Oturum sırrı");
 requiredSecret("CRON_SECRET", "Cron sırrı");
 
 if (production) {
-  requiredUrl("AGENT_ALERT_WEBHOOK_URL", "Agent alarm webhook'u", true);
+  const webhook = process.env.AGENT_ALERT_WEBHOOK_URL?.trim();
+  const alertEmail = process.env.ALERT_EMAIL?.trim();
+  const emailFallbackReady = Boolean(
+    alertEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(alertEmail) &&
+    process.env.RESEND_API_KEY?.trim() && process.env.MAIL_FROM?.trim()
+  );
+  if (webhook) {
+    requiredUrl("AGENT_ALERT_WEBHOOK_URL", "Agent alarm webhook'u", true);
+  } else if (emailFallbackReady) {
+    checks.push({ ok: true, label: "Agent alarm kanalı", detail: "Resend e-posta yedeği hazır" });
+  } else {
+    checks.push({ ok: false, label: "Agent alarm kanalı", detail: "AGENT_ALERT_WEBHOOK_URL veya ALERT_EMAIL + RESEND_API_KEY + MAIL_FROM gerekli" });
+  }
   required("LEGAL_NAME", "Yasal unvan");
   required("LEGAL_ADDRESS", "Yasal adres");
   requiredEmail("LEGAL_EMAIL", "Yasal e-posta");

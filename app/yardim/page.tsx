@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalFooter } from "@/components/Legal";
 import { LogoMark } from "@/components/ui";
+import { SkipToContent } from "@/components/SkipToContent";
 import { HELP_TOPICS, type HelpIcon } from "@/lib/help";
 import {
   ArrowRight, BookOpen, Boxes, CloudOff, CreditCard, Keyboard, Receipt,
@@ -29,14 +30,15 @@ const ICONS: Record<HelpIcon, LucideIcon> = {
 export default function Yardim() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
+      <SkipToContent />
       <header className="flex flex-wrap items-center gap-3">
-        <Link href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
+          <Link href="/" className="inline-flex min-h-11 items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
         <Link href="/giris" className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-line px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Panele git<ArrowRight aria-hidden className="size-4" /></Link>
       </header>
 
       <section className="mt-8">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand"><CircleHelp aria-hidden className="size-4" />Yardım merkezi</p>
-        <h1 className="mt-2 font-display text-3xl font-bold text-ink">ÇabukPOS kullanım kılavuzu</h1>
+        <h1 id="main-content" tabIndex={-1} className="mt-2 rounded-sm font-display text-3xl font-bold text-ink outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">ÇabukPOS kullanım kılavuzu</h1>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-2">
           Kurulumdan gün sonuna, çevrimdışı satıştan mali belgelere kadar her adım. Aradığınızı aşağıdaki başlıklardan bulabilir; destek için
           <Link href="/yasal/iletisim" className="ml-1 font-medium text-brand underline">iletişim</Link> sayfasını kullanabilirsiniz.

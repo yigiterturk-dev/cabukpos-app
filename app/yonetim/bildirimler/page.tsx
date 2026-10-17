@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { asc } from "drizzle-orm";
-import { schema, withTenant } from "@/db";
+import { withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { bildirimler, type Bildirim } from "@/lib/admin/bildirim";
 import { Card, Empty, PageHeader } from "@/components/ui";
 
@@ -17,8 +17,8 @@ const gun = (at: string) => new Date(at).toLocaleDateString("tr-TR", { day: "num
 
 export default async function Bildirimler() {
   const a = await requireAdmin();
-  const [store] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(asc(schema.stores.createdAt)).limit(1));
-  const liste = store ? await bildirimler(a.tenantId, store.id) : [];
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const liste = storeId ? await bildirimler(a.tenantId, storeId) : [];
   const sirali = [...liste].sort((x, y) => {
     const oncelik = { bad: 0, warn: 1, info: 2 } as const;
     return oncelik[x.tone] - oncelik[y.tone] || new Date(y.at).getTime() - new Date(x.at).getTime();
@@ -35,7 +35,7 @@ export default async function Bildirimler() {
         <Empty>Her şey yolunda. Bekleyen bildirim yok.</Empty>
       ) : (
         <>
-          <div aria-label="Bildirim özeti" className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-3 text-sm">
+          <div role="group" aria-label="Bildirim özeti" className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-3 text-sm">
             <span className="mr-1 font-medium text-ink">Öncelik</span>
             <span className="rounded-full bg-bad-soft px-2.5 py-1 text-xs font-medium text-bad">{sayilar.bad} acil</span>
             <span className="rounded-full bg-warn-soft px-2.5 py-1 text-xs font-medium text-warn">{sayilar.warn} bekliyor</span>

@@ -5,6 +5,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { approveCampaign, sendCampaignPageAction } from "@/lib/admin/growth-actions";
+import { CampaignSendForm } from "@/components/admin/CampaignSendPending";
 import { campaignMetrics } from "@/lib/growth/metrics";
 import { marketingSmsEnabled } from "@/lib/growth/messaging";
 import { Badge, Card, PageHeader, buttonClass } from "@/components/ui";
@@ -41,18 +42,18 @@ export default async function CampaignDetail({ params, searchParams }: { params:
     <>
       <PageHeader title={campaign.name} desc={`Segment: ${campaign.segment} · Hedef: ${campaign.audienceCount} kişi`} actions={<Link href="/yonetim/buyume" className={buttonClass("secondary")}>← Büyüme Merkezi</Link>} />
       {one("gonderildi") !== undefined && (
-        <div data-testid="send-ok" className="mb-6 rounded-[14px] border border-ok/25 bg-ok-soft p-3 text-sm text-ok print:hidden">
+        <div data-testid="send-ok" role="status" aria-live="polite" className="mb-6 rounded-[14px] border border-ok/25 bg-ok-soft p-3 text-sm text-ok print:hidden">
           {one("gonderildi")} mesaj gönderildi{one("basarisiz") ? `, ${one("basarisiz")} başarısız` : ""}{Number(one("kalan")) > 0 ? ` · ${one("kalan")} kişi kaldı — tekrar Gönder ile sürdürün` : " · hedef liste tamamlandı"}.
         </div>
       )}
       {one("hata") && (
-        <div data-testid="send-error" className="mb-6 rounded-[14px] border border-bad/25 bg-bad-soft p-3 text-sm text-bad print:hidden">
+        <div data-testid="send-error" role="alert" aria-live="assertive" className="mb-6 rounded-[14px] border border-bad/25 bg-bad-soft p-3 text-sm text-bad print:hidden">
           <span className="break-words">{HATA[one("hata") ?? ""] ?? "Gönderim tamamlanamadı."}</span>
         </div>
       )}
       <Card className="mb-6 p-5"><div className="flex flex-wrap items-center gap-3"><span className="shrink-0"><Badge tone={campaign.approvedAt ? "ok" : "warn"}>{campaign.approvedAt ? "İşletme sahibi onayladı" : "Onay bekliyor"}</Badge></span><span className="min-w-0 flex-1 break-words text-sm text-muted">Onay olmadan hedef listesi açılmaz ve hiçbir mesaj gönderilemez.</span>{!campaign.approvedAt && a.role === "sahip" && <form action={approveCampaign} className="shrink-0"><input type="hidden" name="campaignId" value={campaign.id} /><button className={buttonClass("primary")}>Hedef kitleyi onayla</button></form>}
         {campaign.approvedAt && a.role === "sahip" && marketingSmsEnabled() && (
-          <form action={sendCampaignPageAction}><input type="hidden" name="campaignId" value={campaign.id} /><button className={buttonClass("primary")} data-testid="send-campaign">Gönder (SMS)</button></form>
+          <CampaignSendForm action={sendCampaignPageAction} campaignId={campaign.id} />
         )}
         {campaign.approvedAt && a.role === "sahip" && !marketingSmsEnabled() && <span className="text-xs text-muted">Gönderim için SMS hesabı bağlanınca “Gönder” burada görünür.</span>}
       </div><p className="mt-4 max-w-2xl break-words text-sm leading-6">{campaign.message}</p></Card>

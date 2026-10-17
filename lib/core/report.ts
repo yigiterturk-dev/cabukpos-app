@@ -22,13 +22,17 @@ export const REPORT_TABS: readonly { key: ReportTab; label: string; csv: boolean
 ];
 
 export const istToday = (now = Date.now(), offsetDays = 0) => new Date(now + IST + offsetDays * DAY).toISOString().slice(0, 10);
-const validDay = (d: string | undefined): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(`${d}T00:00:00Z`));
+export const isValidCalendarDay = (d: string | undefined): d is string => {
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  const parsed = new Date(`${d}T00:00:00Z`);
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === d;
+};
 const shiftDay = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
 export const dayCount = (r: Range) => Math.round((Date.parse(`${r.bit}T00:00:00Z`) - Date.parse(`${r.bas}T00:00:00Z`)) / DAY) + 1;
 
 /** Geçersiz → son 7 gün; ters sıra düzelir; 366 günden uzunsa başlangıç kısalır. */
 export function parseRange(bas?: string, bit?: string, now = Date.now()): Range {
-  if (!validDay(bas) || !validDay(bit)) return { bas: istToday(now, -6), bit: istToday(now) };
+  if (!isValidCalendarDay(bas) || !isValidCalendarDay(bit)) return { bas: istToday(now, -6), bit: istToday(now) };
   const [b, e] = bas <= bit ? [bas, bit] : [bit, bas];
   return dayCount({ bas: b, bit: e }) > MAX_DAYS ? { bas: shiftDay(e, -(MAX_DAYS - 1)), bit: e } : { bas: b, bit: e };
 }
@@ -186,7 +190,7 @@ export const toCsv = (head: string[], rows: (string | number | null)[][]) => `�
 export const API_MAX_DAYS = 92;
 /** Katı doğrulama (parseRange gibi düzeltmez): bozuk, ters ya da 92 günden uzun → null. */
 export function apiRange(from: string | null, to: string | null): Range | null {
-  if (!validDay(from ?? undefined) || !validDay(to ?? undefined) || from! > to!) return null;
+  if (!isValidCalendarDay(from ?? undefined) || !isValidCalendarDay(to ?? undefined) || from! > to!) return null;
   const r = { bas: from!, bit: to! };
   return dayCount(r) > API_MAX_DAYS ? null : r;
 }

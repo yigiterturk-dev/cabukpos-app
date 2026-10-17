@@ -1,13 +1,14 @@
-# ÇabukPOS açık raporu — 61 madde iş kuyruğu (2026-10-05 güncellendi)
+# ÇabukPOS açık raporu — 61 madde iş kuyruğu (2026-10-16 güncellendi)
 
 En iyi POS (Adisyo/Menulux/Square sınıfı) ile kıyas sonucu. **Kural:** yukarıdan aşağı,
 kendi alanına düşen ilk açık `[ ]`'i al → yap → commit → `[x]` + sha yaz → sıradakine geç.
 Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum: `[x]` bitti, `[~]` başlandı.
 
-**2026-10-05 durumu:** Kod tarafında açık madde kalmadı. `[~]` işaretli maddelerin
-tek kalanı **insan/iş tarafıdır** (gerçek entegratör hesabı, cihaz, canlı anahtar,
-mali müşavir/hukuk onayı). Kalan tek kod-dışı kalem **#31 (ERP/e-ticaret bağlantıları)**;
-satıcı hesabı ve hedef ürün seçilmeden sürücü yazılamaz. Açılış kanıt kapıları
+**2026-10-16 durumu:** Kod tarafında açık madde kalmadı. `[~]` işaretli maddelerin
+kalanı **insan/iş tarafıdır** (gerçek entegratör hesabı, cihaz, canlı anahtar,
+mali müşavir/hukuk onayı). Açık entegrasyon maddeleri #17, #28 ve #32 sağlayıcı
+hesabı/anahtarı gerektiriyor; #31 için ERP/e-ticaret hedef ürünü ve satıcı hesabı
+seçilmeden sürücü yazılamaz. Açılış kanıt kapıları
 `docs/LAUNCH-CHECKLIST.md` ve `docs/PILOT-REHEARSAL.md` içindedir.
 
 ## P0 — Satışa çıkış için zorunlu

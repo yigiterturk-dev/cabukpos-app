@@ -1,65 +1,63 @@
 import Link from "next/link";
-import { desc, eq, sql } from "drizzle-orm";
+import { asc, count, desc, eq, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { adjustPoints, saveLoyaltySettings } from "@/lib/admin/loyalty-actions";
+import { LoyaltySettingsForm, PointsAdjustForm } from "@/components/admin/LoyaltyFormsPending";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
-import { currencySymbol, formatPlain } from "@/lib/core/money";
-import { buttonClass, Card, Empty, Field, Input, PageHeader } from "@/components/ui";
+import { currencySymbol } from "@/lib/core/money";
+import { Card, Empty, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
+const PAGE_SIZE = 50;
+const eventLabel: Record<string, string> = { duzeltme: "Elle puan düzeltme", kazanma: "Puan kazanımı", harcama: "Puan harcama" };
 
-export default async function Sadakat({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; id?: string }> }) {
+export default async function Sadakat({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; id?: string; page?: string }> }) {
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
   const currency = await tenantCurrency(a.tenantId);
   const unit = currencySymbol(currency);
-  const { ok, hata, id } = await searchParams;
+  const { ok, hata, id, page } = await searchParams;
+  const requestedPage = Number(page);
+  const pageNo = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const S = schema.loyaltySettings, E = schema.loyaltyEvents, C = schema.customers;
-  const { settings, rows, events } = await withTenant(a.tenantId, async (tx) => {
+  const { settings, rows, events, total } = await withTenant(a.tenantId, async (tx) => {
     const [settings] = await tx.select().from(S).where(eq(S.tenantId, a.tenantId)).limit(1);
     const balance = sql<number>`coalesce(sum(${E.points}), 0)::int`;
-    const rows = await tx
+    const customersWithPoints = tx
       .select({ customerId: C.id, name: C.name, phone: C.phone, points: balance })
       .from(C)
       .leftJoin(E, eq(E.customerId, C.id))
       .groupBy(C.id, C.name, C.phone)
       .having(sql`coalesce(sum(${E.points}), 0) <> 0`)
-      .orderBy(desc(balance))
-      .limit(100);
+      .as("customers_with_points");
+    const [{ total }] = await tx.select({ total: count() }).from(customersWithPoints);
+    const safePage = Math.min(pageNo, Math.max(1, Math.ceil(total / PAGE_SIZE)));
+    const rows = await tx.select().from(customersWithPoints).orderBy(desc(customersWithPoints.points), asc(customersWithPoints.name)).limit(PAGE_SIZE).offset((safePage - 1) * PAGE_SIZE);
     const events = id
       ? await tx.select({ kind: E.kind, points: E.points, note: E.note, createdAt: E.createdAt }).from(E).where(eq(E.customerId, id)).orderBy(desc(E.createdAt)).limit(20)
       : [];
-    return { settings, rows, events };
+    return { settings, rows, events, total };
   });
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentPage = Math.min(pageNo, pageCount);
+  const firstItem = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const lastItem = Math.min(currentPage * PAGE_SIZE, total);
   return (
     <>
       <PageHeader title="Sadakat puanı" desc="Müşteri harcaması puan kazanır; puan, sonraki satışta indirim olarak harcanır. Satış anı kazanım/harcanma kasa güncellemesine bağlıdır." />
-      {ok && <div className="mb-6 rounded-[14px] border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">Kaydedildi.</div>}
-      {hata && <div className="mb-6 rounded-[14px] border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</div>}
+      {ok && <div role="status" aria-live="polite" className="mb-6 rounded-[14px] border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">Kaydedildi.</div>}
+      {hata && <div role="alert" aria-live="assertive" className="mb-6 rounded-[14px] border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</div>}
       <section aria-label="Puan programı ayarları" className="mb-8">
         <Card className="p-5">
-          <form action={saveLoyaltySettings} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
-            <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2 lg:col-span-4">
-              <input type="checkbox" name="enabled" defaultChecked={settings?.enabled ?? false} className="size-4 accent-brand" />
-              Puan programı açık
-            </label>
-            <Field label={`1 puan için gereken harcama (${unit})`} hint="Her bu kadar harcamaya 1 puan">
-              <Input name="kurusPerPoint" inputMode="decimal" defaultValue={settings?.kurusPerPoint != null ? formatPlain(settings.kurusPerPoint) : "100,00"} required />
-            </Field>
-            <Field label={`1 puanın indirimi (${unit})`} hint="Puan başına düşülecek tutar">
-              <Input name="kurusPerRedeem" inputMode="decimal" defaultValue={settings?.kurusPerRedeem != null ? formatPlain(settings.kurusPerRedeem) : "1,00"} required />
-            </Field>
-            <Field label="En az harcanabilir puan" hint="Bu puanın altında indirim yapılmaz">
-              <Input name="minRedeemPoints" inputMode="numeric" defaultValue={settings?.minRedeemPoints ?? 10} required />
-            </Field>
-            <button className={buttonClass("primary")}>Ayarları kaydet</button>
-          </form>
+          <LoyaltySettingsForm action={saveLoyaltySettings} settings={settings ?? null} unit={unit} />
         </Card>
       </section>
       {rows.length === 0 ? (
         <Empty>Puanı olan müşteri yok. Satışlarda puan kazanan müşteriler burada listelenir.</Empty>
       ) : (
+        <>
+        <p className="mb-3 text-sm text-muted">{firstItem}–{lastItem} / {total} puan bakiyesi olan müşteri</p>
         <Card className="divide-y divide-line">
           {rows.map((r) => (
             <div key={r.customerId} className="p-4">
@@ -67,32 +65,33 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
                 <span className="min-w-0 break-words font-medium">{r.name}</span>
                 <span className="shrink-0 tabular text-sm text-muted">{r.phone}</span>
                 <span className="ml-auto shrink-0 tabular font-semibold text-brand">{r.points} puan</span>
-                <Link href={id === r.customerId ? "/yonetim/sadakat" : `/yonetim/sadakat?id=${r.customerId}`} className="inline-flex min-h-10 shrink-0 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">{id === r.customerId ? "Kapat" : "Puan işlemi"}</Link>
+                <Link href={id === r.customerId ? `/yonetim/sadakat?page=${currentPage}` : `/yonetim/sadakat?page=${currentPage}&id=${r.customerId}`} className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">{id === r.customerId ? "Kapat" : "Puan işlemi"}</Link>
               </div>
               {id === r.customerId && (
                 <div className="mt-3">
-                  <form action={adjustPoints} className="mb-4 flex flex-wrap items-end gap-3">
-                    <input type="hidden" name="customerId" value={r.customerId} />
-                    <Field label="Puan ekle / düş (− ile)"><Input name="points" inputMode="numeric" className="w-32" required /></Field>
-                    <Field label="Not"><Input name="note" className="w-64" /></Field>
-                    <button className={buttonClass("primary")}>Uygula</button>
-                  </form>
-                  {events.length > 0 && (
-                    <ul className="space-y-1 text-sm text-ink-2">
+                  <PointsAdjustForm action={adjustPoints} customerId={r.customerId} />
+                  {events.length > 0 ? (
+                    <ul aria-label={`${r.name} puan hareketleri`} className="mt-2 space-y-2 text-sm text-ink-2">
                       {events.map((e, i) => (
                         <li key={i} className="flex flex-wrap gap-2">
-                          <span className="tabular w-20 text-muted">{e.createdAt.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" })}</span>
+                          <time className="tabular text-muted" dateTime={e.createdAt.toISOString()}>{e.createdAt.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })}</time>
                           <span className={e.points >= 0 ? "text-ok" : "text-bad"}>{e.points >= 0 ? "+" : ""}{e.points}</span>
-                          <span className="min-w-0 break-words">{e.kind}{e.note ? ` · ${e.note}` : ""}</span>
+                          <span className="min-w-0 break-words">{eventLabel[e.kind] ?? e.kind}{e.note ? ` · ${e.note}` : ""}</span>
                         </li>
                       ))}
                     </ul>
-                  )}
+                  ) : <p className="mt-2 text-sm text-muted">Henüz puan hareketi yok.</p>}
                 </div>
               )}
             </div>
           ))}
         </Card>
+        {pageCount > 1 && <nav aria-label="Sadakat müşterileri sayfaları" className="mt-4 flex items-center justify-between gap-3">
+          {currentPage > 1 ? <Link href={`/yonetim/sadakat?page=${currentPage - 1}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Önceki</Link> : <span />}
+          <span className="text-sm text-muted">Sayfa {currentPage} / {pageCount}</span>
+          {currentPage < pageCount ? <Link href={`/yonetim/sadakat?page=${currentPage + 1}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Sonraki</Link> : <span />}
+        </nav>}
+        </>
       )}
       <p className="mt-4 text-xs text-muted">1 puan şu an {money(settings?.kurusPerRedeem ?? 100)} indirim demek. Kasa güncellemesi gelene kadar puan yalnız buradan elle düzeltilebilir.</p>
     </>

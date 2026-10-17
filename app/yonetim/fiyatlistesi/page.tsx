@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { asc, desc, eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 import { ListForm, ItemForm, ListToggles, ItemDelete } from "@/components/admin/PriceListForms";
 import { Badge, Card, Empty, PageHeader, Panel } from "@/components/ui";
 import { moneyFormatter } from "@/lib/admin/currency";
@@ -14,6 +16,7 @@ const hm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${
 export default async function FiyatListesi() {
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
   const L = schema.priceLists, I = schema.priceListItems, P = schema.products, C = schema.categories;
   const [lists, items, prods, cats] = await withTenant(a.tenantId, (tx) =>
     Promise.all([
@@ -29,8 +32,8 @@ export default async function FiyatListesi() {
   return (
     <>
       <PageHeader title="Fiyat listeleri ve indirimler" desc="Belirli gün + saat aralığında geçerli liste. İki tür: ürün başı sabit fiyat (happy hour, öğle menüsü) ya da kapsama göre yüzde indirim (tüm ürünler veya seçili kategoriler). Kasa, satır eklenirken geçerli fiyatı kullanır; saat dışı taban fiyatla akar." />
-      <div className="mb-6"><Panel title="Liste / indirim ekle"><ListForm categories={categories} /></Panel></div>
-      {lists.length === 0 ? <Empty>Henüz liste yok. Örneğin &quot;Happy Hour %20 (tüm ürünler)&quot; ya da kategorili bir indirim ekleyin.</Empty> : (
+      <div className="mb-6"><Panel title="Liste / indirim ekle">{storeId ? <ListForm categories={categories} /> : <p className="text-sm text-muted">Fiyat listesi oluşturmak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</p>}</Panel></div>
+      {lists.length === 0 ? <Empty>{storeId ? <>Henüz liste yok. Örneğin &quot;Happy Hour %20 (tüm ürünler)&quot; ya da kategorili bir indirim ekleyin.</> : <>Şube oluşturduktan sonra ilk fiyat listenizi ekleyebilirsiniz.</>}</Empty> : (
         <div className="space-y-4">
           {lists.map((l) => {
             const mine = items.filter((i) => i.listId === l.id);
@@ -39,7 +42,7 @@ export default async function FiyatListesi() {
             return (
               <Card key={l.id} className="p-4">
                 <div className="flex min-w-0 flex-wrap items-center gap-3">
-                  <span title={l.name} className={`min-w-0 max-w-full truncate font-semibold ${l.active ? "" : "opacity-60"}`}>{l.name}</span>
+                  <span className={`min-w-0 max-w-full break-words font-semibold ${l.active ? "" : "opacity-60"}`}>{l.name}</span>
                   {yuzde ? <Badge tone="brand">Yüzde %{l.percent}</Badge> : <Badge>Ürün başı fiyat</Badge>}
                   <Badge>{l.days.length === 0 ? "Her gün" : l.days.map((d) => GUNLER[d]).join(" · ")}</Badge>
                   <span className="text-sm tabular text-muted">{hm(l.startMin)} – {hm(l.endMin)}{l.endMin <= l.startMin ? " (ertesi gün)" : ""}</span>
@@ -54,7 +57,7 @@ export default async function FiyatListesi() {
                       <div className="divide-y divide-line rounded-xl border border-line">
                         {mine.map((i) => (
                           <div key={i.id} className="flex min-w-0 flex-wrap items-center gap-3 p-3 text-sm">
-                            <span title={i.name} className="min-w-0 max-w-full flex-1 truncate font-medium">{i.name}</span>
+                            <span className="min-w-0 max-w-full flex-1 break-words font-medium">{i.name}</span>
                             <span className="tabular text-muted">taban {money(i.base)}</span>
                             <span className="tabular font-semibold text-ok">{money(i.price)}</span>
                             <div className="ml-auto shrink-0"><ItemDelete listId={l.id} id={i.id} /></div>

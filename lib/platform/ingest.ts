@@ -7,6 +7,7 @@ import { isVatRate } from "@/lib/core/money";
 import { sendByStation, toTabEvents, AUTO_PREP_MIN, type IncomingOrder, type MappedProduct } from "@/lib/core/platform";
 import type { TabEv } from "@/lib/core/tab";
 import { upsertCustomer } from "@/lib/sync/apply";
+import { categoryStationForStore, loadStoreStationRoutes, productStationForStore } from "@/lib/core/station-routing";
 import { notifyPlatform } from "./notify";
 import type { Conn } from "./types";
 
@@ -52,8 +53,10 @@ export async function ingestOrders(conn: Conn, orders: IncomingOrder[]): Promise
 /** Şubenin dış kod → ürün eşlemesi (istasyon: ürün ?? kategori). */
 async function codeMap(tx: Tx, conn: Conn): Promise<Map<string, MappedProduct>> {
   const C = schema.productPlatformCodes, P = schema.products, K = schema.categories;
-  const rows = await tx.select({ code: C.code, id: P.id, name: P.name, vatRate: P.vatRate, stationId: P.stationId, catStation: K.stationId })
+  const rows = await tx.select({ code: C.code, id: P.id, name: P.name, vatRate: P.vatRate, categoryId: P.categoryId, stationId: P.stationId, catStation: K.stationId })
     .from(C).innerJoin(P, eq(P.id, C.productId)).leftJoin(K, eq(K.id, P.categoryId))
     .where(and(eq(C.storeId, conn.storeId), eq(C.platform, conn.platform)));
-  return new Map(rows.filter((x) => isVatRate(x.vatRate)).map((x) => [x.code, { id: x.id, name: x.name, vatRate: x.vatRate as MappedProduct["vatRate"], stationId: x.stationId ?? x.catStation ?? null }]));
+  const routes = await loadStoreStationRoutes(tx, conn.storeId);
+  const categoryStations = new Map(rows.filter((x) => x.categoryId).map((x) => [x.categoryId!, categoryStationForStore(x.categoryId!, x.catStation, routes)]));
+  return new Map(rows.filter((x) => isVatRate(x.vatRate)).map((x) => [x.code, { id: x.id, name: x.name, vatRate: x.vatRate as MappedProduct["vatRate"], stationId: productStationForStore(x.id, x.stationId, x.categoryId ? categoryStations.get(x.categoryId) ?? null : null, routes) }]));
 }

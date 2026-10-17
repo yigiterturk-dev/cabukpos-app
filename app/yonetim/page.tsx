@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, count, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Bell, ChartColumn, CheckCircle2, Minus, Monitor, Package, Plus, TriangleAlert, UserPlus } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
@@ -13,6 +13,7 @@ import { moneyFormatter } from "@/lib/admin/currency";
 import { foldTabs } from "@/lib/core/tab";
 import { initialEvents } from "@/lib/tabs/stream";
 import { Badge, buttonClass, Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 
 export const dynamic = "force-dynamic";
 const CHANNEL: Record<string, string> = { kasa: "Kasa", masa: "Masa", paket: "Paket", platform: "Platform" };
@@ -45,11 +46,11 @@ export default async function Bugun() {
     const storeId = await scopedStoreId(tx, a.tenantId);
     const S = schema.sales;
     const recent = await tx.select({ id: S.id, receiptNo: S.receiptNo, channel: S.channel, status: S.status, total: S.total, at: S.createdAt, staff: schema.staff.name })
-      .from(S).innerJoin(schema.staff, eq(schema.staff.id, S.staffId)).where(inArray(S.status, ["kapandi", "iade"])).orderBy(desc(S.createdAt)).limit(8);
+      .from(S).innerJoin(schema.staff, eq(schema.staff.id, S.staffId)).where(and(inArray(S.status, ["kapandi", "iade"]), storeId ? eq(S.storeId, storeId) : sql`false`)).orderBy(desc(S.createdAt)).limit(8);
     const [productSeed, deviceSeed, staffSeed, saleSeed, reviewSales, reviewEvents, rejectedDocs, fiscalErrors, buyerInvoices] = await Promise.all([
-      tx.select({ id: schema.products.id }).from(schema.products).limit(1),
-      tx.select({ id: schema.devices.id }).from(schema.devices).limit(1),
-      tx.select({ id: schema.staff.id }).from(schema.staff).limit(1),
+      tx.select({ id: schema.products.id }).from(schema.products).where(and(eq(schema.products.active, true), eq(schema.products.sellable, true))).limit(1),
+      tx.select({ id: schema.devices.id }).from(schema.devices).where(and(eq(schema.devices.role, "kasa"), isNotNull(schema.devices.pairedAt), isNull(schema.devices.revokedAt))).limit(1),
+      tx.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.active, true)).limit(1),
       tx.select({ id: schema.sales.id }).from(schema.sales).limit(1),
       tx.select({ value: count() }).from(schema.sales).where(isNotNull(schema.sales.review)),
       tx.select({ value: count() }).from(schema.tabEvents).where(isNotNull(schema.tabEvents.review)),
@@ -62,8 +63,8 @@ export default async function Bugun() {
     const buyer = Number(buyerInvoices[0]?.value ?? 0);
     return {
       storeId,
-      sum: await summaryData(tx, { bas: today, bit: today }),
-      forecast: await demandForecast(tx),
+      sum: await summaryData(tx, { bas: today, bit: today }, storeId),
+      forecast: await demandForecast(tx, storeId),
       critical: storeId ? (await stockLevels(tx, storeId)).filter(isCriticalRow) : [],
       recent,
       setup: { product: productSeed.length > 0, device: deviceSeed.length > 0, staff: staffSeed.length > 0, sale: saleSeed.length > 0 },
@@ -74,12 +75,14 @@ export default async function Bugun() {
   const openTotal = open.reduce((t, x) => t + x.remaining, 0);
   const dateLabel = new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Istanbul" });
   const setupSteps = [
+    { label: "Şube oluştur", href: "/yonetim/subeler", done: Boolean(storeId), Icon: Package },
     { label: "Personel PIN'i oluştur", href: "/yonetim/personel", done: setup.staff, Icon: UserPlus },
     { label: "Ürün ekle veya CSV aktar", href: "/yonetim/urunler", done: setup.product, Icon: Plus },
     { label: "Kasa cihazını eşleştir", href: "/yonetim/cihazlar", done: setup.device, Icon: Monitor },
     { label: "Kasaya gir, vardiya aç ve ilk satışı yap", href: "/kasa", done: setup.sale, Icon: CheckCircle2 },
   ];
   const setupDone = setupSteps.filter((step) => step.done).length;
+  const nextSetupStep = setupSteps.find((step) => !step.done);
 
   return (
     <>
@@ -97,12 +100,12 @@ export default async function Bugun() {
         <Card className="mb-6 overflow-hidden border-brand-ring bg-brand-soft/30" data-testid="setup-guide">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-ring/70 px-5 py-4">
             <div className="min-w-0 flex-1">
-              <h2 className="break-words font-semibold">İlk kurulumu tamamlayın <span className="ml-1 text-sm font-normal text-muted">({setupDone}/4)</span></h2>
-              <p className="mt-1 break-words text-sm text-ink-2">İlk defa kullanıyorsanız sırayla ilerleyin: önce personel PIN’i, sonra ürünler, ardından kasa eşlemesi. Son adımda vardiya açıp ilk satışınızı yapın.</p>
+              <h2 className="break-words font-semibold">İlk kurulumu tamamlayın <span className="ml-1 text-sm font-normal text-muted">({setupDone}/{setupSteps.length})</span></h2>
+              <p className="mt-1 break-words text-sm text-ink-2">İlk defa kullanıyorsanız sırayla ilerleyin: önce şube, ardından personel PIN’i ve ürünler. Sonra kasa eşlemesi yapıp vardiya açarak ilk satışı gerçekleştirin.</p>
             </div>
-            <Link href="/kasa" className={`${buttonClass("primary", "lg")} shrink-0`}>Kasayı aç<ArrowRight aria-hidden className="size-4" /></Link>
+            <Link href={nextSetupStep?.href ?? "/kasa"} aria-label={nextSetupStep ? `Kuruluma devam et: ${nextSetupStep.label}` : "Kasayı aç"} className={`${buttonClass("primary", "lg")} shrink-0`}>Kuruluma devam et<ArrowRight aria-hidden className="size-4" /></Link>
           </div>
-          <div className="grid gap-px bg-brand-ring/60 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-px bg-brand-ring/60 sm:grid-cols-2 lg:grid-cols-5">
             {setupSteps.map(({ label, href, done, Icon }, index) => (
               <Link key={label} href={href} className="group flex items-center gap-3 bg-surface/75 px-5 py-4 outline-none transition hover:bg-surface focus-visible:ring-4 focus-visible:ring-brand-ring/60">
                 <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${done ? "bg-ok-soft text-ok" : "bg-brand-soft text-brand"}`}>
@@ -127,10 +130,10 @@ export default async function Bugun() {
                 <h2 className="font-semibold">Öncelik gerekenler <span className={attention.fiscal > 0 ? "text-bad" : "text-warn"}>({attention.total})</span></h2>
                 <Link href="/yonetim/bildirimler" className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-brand hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/20"><Bell aria-hidden className="size-3.5" />Tüm bildirimler<ArrowRight aria-hidden className="size-3.5" /></Link>
               </div>
-              <p className="mt-1 text-sm text-ink-2">Satış akışı devam eder; aşağıdaki kayıtları uygun olduğunuzda kontrol edin.</p>
+              <p className="mt-1 text-sm text-ink-2">İşletme genelindeki mali ve inceleme kayıtları. Satış akışı devam eder; aşağıdaki kayıtları uygun olduğunuzda kontrol edin.</p>
               <div className="mt-3 flex flex-wrap gap-2 text-sm">
                 {attention.review > 0 && <Link href="/yonetim/raporlar?sekme=inceleme" className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-warn hover:bg-warn-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-warn/20">İncelenecek ({attention.review})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
-                {attention.fiscal > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=error" className="inline-flex min-h-11 items-center rounded-lg border border-bad/30 bg-surface px-3 font-medium text-bad hover:bg-bad-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-bad/20">Mali belgeler ({attention.fiscal})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
+                {attention.fiscal > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=oncelik" className="inline-flex min-h-11 items-center rounded-lg border border-bad/30 bg-surface px-3 font-medium text-bad hover:bg-bad-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-bad/20">Mali belgeler ({attention.fiscal})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
                 {attention.buyer > 0 && <Link href="/yonetim/raporlar?sekme=inceleme" className="inline-flex min-h-11 items-center rounded-lg border border-brand/25 bg-surface px-3 font-medium text-brand hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/20">Alıcı iadeleri ({attention.buyer})<ArrowRight aria-hidden className="ml-1.5 size-4" /></Link>}
               </div>
             </div>
@@ -143,7 +146,7 @@ export default async function Bugun() {
         <Stat label="Ortalama sepet" value={sum.now.avg === null ? "—" : formatTL(sum.now.avg)} now={sum.now.avg ?? 0} before={sum.before.avg ?? 0} testId="today-avg" />
         {restoran && (
           <Card className="relative overflow-hidden border-brand-ring bg-brand-soft/30 p-5">
-            <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
+            <div className="absolute inset-x-0 top-0 h-1 bg-brand-action" />
             <div className="text-xs font-semibold uppercase tracking-[0.08em] text-brand">Açık adisyon</div>
             <div className="mt-2 text-[30px] font-semibold leading-none tracking-tight tabular" data-testid="today-open">{open.length}</div>
             <div className="mt-2 text-xs text-ink-2 tabular">{open.length ? `${formatTL(openTotal)} tahsil edilecek` : "şu an açık yok"}</div>
@@ -186,8 +189,17 @@ export default async function Bugun() {
             <Link href="/yonetim/raporlar?sekme=vardiyalar" className="inline-flex min-h-11 items-center gap-1 rounded px-1 text-sm text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Vardiyalar<ArrowRight aria-hidden className="size-3.5" /></Link>
           </div>
           {recent.length === 0 ? <div className="p-4"><Empty>Henüz satış yok. Kasadan ilk satışı yapınca burada görünür.</Empty></div> : (
-            <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
-              <thead className={TABLE_HEAD}><tr><th className="px-4 py-2.5 font-medium">Saat</th><th className="px-4 py-2.5 font-medium">Fiş</th><th className="px-4 py-2.5 font-medium">Kanal</th><th className="px-4 py-2.5 font-medium">Personel</th><th className="px-4 py-2.5 text-right font-medium">Tutar</th></tr></thead>
+            <>
+            <ul aria-label="Son satışlar" className="divide-y divide-line text-sm lg:hidden">
+              {recent.map((r) => (
+                <li key={r.id} className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono text-xs">Fiş {r.receiptNo}</p><p className="mt-1 break-words text-ink-2">{r.staff}</p></div><p className={`shrink-0 tabular font-semibold ${r.status === "iade" ? "text-bad" : ""}`}>{r.status === "iade" ? "−" : ""}{formatTL(r.total)}</p></div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted"><span>{CHANNEL[r.channel] ?? r.channel}{r.status === "iade" && <span className="ml-2"><Badge tone="bad">İade</Badge></span>}</span><time dateTime={r.at.toISOString()}>{istToday(r.at.getTime()) === today ? hm(r.at) : r.at.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Istanbul" })}</time></div>
+                </li>
+              ))}
+            </ul>
+            <HorizontalScrollRegion label="Son satışlar, yatay kaydırılabilir" className="hidden lg:block"><table aria-label="Son satışlar" className="w-full min-w-[640px] text-sm">
+              <thead className={TABLE_HEAD}><tr><th scope="col" className="px-4 py-2.5 font-medium">Saat</th><th scope="col" className="px-4 py-2.5 font-medium">Fiş</th><th scope="col" className="px-4 py-2.5 font-medium">Kanal</th><th scope="col" className="px-4 py-2.5 font-medium">Personel</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Tutar</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {recent.map((r) => (
                   <tr key={r.id} className="transition-colors hover:bg-surface-2">
@@ -199,7 +211,8 @@ export default async function Bugun() {
                   </tr>
                 ))}
               </tbody>
-            </table></div>
+            </table></HorizontalScrollRegion>
+            </>
           )}
         </Card>
 
@@ -209,11 +222,11 @@ export default async function Bugun() {
               <h2 className="flex items-center gap-2 font-semibold">{critical.length > 0 && <TriangleAlert aria-hidden className="size-4 text-bad" />}Kritik stok</h2>
               <Link href="/yonetim/stok?kritik=1" className="inline-flex min-h-11 items-center rounded px-1 text-sm text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Stok</Link>
             </div>
-            {critical.length === 0 ? <p className="px-4 py-3 text-sm text-muted">Sınırın altında ürün yok.</p> : (
+            {critical.length === 0 ? <p className="px-4 py-3 text-sm text-muted">{storeId ? "Sınırın altında ürün yok." : <>Kritik stok takibi için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</>}</p> : (
               <ul className="divide-y divide-line text-sm">
                 {critical.slice(0, 8).map((c) => (
                   <li key={c.id} className="flex min-w-0 items-baseline justify-between gap-3 px-4 py-2.5">
-                    <span className="min-w-0 truncate font-medium" title={c.name}>{c.name}</span>
+                    <span className="min-w-0 break-words font-medium">{c.name}</span>
                     <span className="shrink-0 tabular text-bad">{formatQty(c.level, c.unit)} <span className="text-xs text-muted">/ {formatQty(c.minStock!, c.unit)}</span></span>
                   </li>
                 ))}
@@ -226,7 +239,7 @@ export default async function Bugun() {
             {sum.channels.length === 0 ? <p className="px-4 py-3 text-sm text-muted">Bugün satış yok.</p> : (
               <ul className="divide-y divide-line text-sm">
                 {sum.channels.map((c) => (
-                  <li key={c.key} className="flex min-w-0 items-baseline justify-between gap-3 px-4 py-2.5"><span className="min-w-0 truncate" title={c.label}>{c.label} <span className="text-xs text-muted tabular">· {c.count} fiş</span></span><span className="shrink-0 font-medium tabular">{formatTL(c.gross)}</span></li>
+                  <li key={c.key} className="flex min-w-0 items-baseline justify-between gap-3 px-4 py-2.5"><span className="min-w-0 break-words">{c.label} <span className="text-xs text-muted tabular">· {c.count} fiş</span></span><span className="shrink-0 font-medium tabular">{formatTL(c.gross)}</span></li>
                 ))}
               </ul>
             )}

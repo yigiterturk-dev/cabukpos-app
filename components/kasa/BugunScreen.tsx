@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { kasaFmt } from "./kasa-format";
 import { summarizeShift } from "@/lib/core/shift";
+import { shownMethods } from "@/lib/core/payment";
 import { shiftSales } from "@/lib/offline/db";
 import { deliveryStatus, type TabState } from "@/lib/core/tab";
 import type { LocalSale, Meta } from "@/lib/offline/state";
@@ -19,28 +20,35 @@ export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalo
 }) {
   const { TL } = kasaFmt(meta);
   const shift = meta.shift;
-  const [sum, setSum] = useState<Summary | null>(null);
-  const [sales, setSales] = useState<LocalSale[]>([]);
+  const [loaded, setLoaded] = useState<{ shiftId: string; sum: Summary; sales: LocalSale[] } | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [summaryRetry, setSummaryRetry] = useState(0);
 
   useEffect(() => {
     if (!shift) return;
     let alive = true;
     void shiftSales(shift.id).then((s) => {
       if (!alive) return;
-      setSales(s);
-      setSum(summarizeShift(shift.openingCash, s, (meta.drops ?? []).map((d) => d.amount)));
-    });
+      setLoaded({ shiftId: shift.id, sales: s, sum: summarizeShift(shift.openingCash, s, (meta.drops ?? []).map((d) => d.amount)) });
+      setSummaryError(null);
+    }).catch(() => { if (alive) setSummaryError(shift.id); });
     return () => { alive = false; };
-  }, [shift, meta]);
+  }, [shift, meta, summaryRetry]);
 
+  const summary = shift && loaded?.shiftId === shift.id ? loaded : null;
+  const hasSummaryError = !!shift && summaryError === shift.id;
+  const paymentSummary = summary && shownMethods(summary.sum.byMethod)
+    .filter((m) => summary.sum.byMethod[m.value] !== 0)
+    .map((m) => `${m.label.toLocaleLowerCase("tr-TR")} ${TL(summary.sum.byMethod[m.value])}`)
+    .join(" · ");
   const open = [...tabs.values()].filter((t) => !t.closed);
   const ready = open.reduce((a, t) => a + t.tickets.filter((k) => k.status === "hazir").length, 0);
   const waiting = open.filter((t) => t.kind === "platform" && deliveryStatus(t) === "onay_bekliyor").length;
-  const recent = [...sales].reverse().slice(0, 5);
+  const recent = [...(summary?.sales ?? [])].reverse().slice(0, 5);
   const since = shift ? new Date(shift.openedAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }) : "";
 
   return (
-    <main className="mx-auto min-w-0 w-full max-w-5xl px-4 py-6">
+    <main id="kasa-content" tabIndex={-1} className="mx-auto min-w-0 w-full max-w-5xl px-4 py-6 outline-none">
       <div className="mb-5">
         <h1 className="font-display text-xl font-bold tracking-tight">Bugün</h1>
         <p className="mt-1 text-sm text-muted">
@@ -49,11 +57,15 @@ export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalo
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Ciro (KDV dahil)" value={sum ? TL(sum.gross) : "—"} tone="brand" icon={<Wallet />} hint={sum && sum.refundCount > 0 ? `${sum.refundCount} iade düşülmüş` : undefined} />
-        <StatCard label="Satış" value={sum ? `${sum.saleCount}` : "—"} tone="ok" icon={<Receipt />} hint={sum ? `nakit ${TL(sum.byMethod.nakit)} · kart ${TL(sum.byMethod.kart)}` : undefined} />
+        <StatCard label="Ciro (KDV dahil)" value={summary ? TL(summary.sum.gross) : "—"} tone="brand" icon={<Wallet />} hint={summary && summary.sum.refundCount > 0 ? `${summary.sum.refundCount} iade düşülmüş` : undefined} />
+        <StatCard label="Satış" value={summary ? `${summary.sum.saleCount}` : "—"} tone="ok" icon={<Receipt />} hint={paymentSummary ? `Ödemeler: ${paymentSummary}` : undefined} />
         <StatCard label="Açık adisyon" value={`${open.length}`} tone="info" icon={<Users />} hint={waiting > 0 ? `${waiting} onay bekliyor` : undefined} />
         <StatCard label="Hazır bekleyen" value={`${ready}`} tone={ready > 0 ? "warn" : "neutral"} icon={<ChefHat />} />
       </div>
+      {hasSummaryError ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warn/30 bg-warn-soft p-3 text-sm text-warn" role="alert">
+        <span>Vardiya özeti bu cihazdan okunamadı.</span>
+        <button type="button" onClick={() => { setSummaryError(null); setSummaryRetry((n) => n + 1); }} className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-ink outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yeniden yükle</button>
+      </div> : shift && !summary && <p className="sr-only" role="status" aria-live="polite">Vardiya özeti yükleniyor.</p>}
 
       <h2 className="mb-3 mt-7 font-display text-base font-bold tracking-tight">Hızlı geçiş</h2>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -84,7 +96,7 @@ export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalo
                 <span className="shrink-0 tabular font-medium">{s.receiptNo}</span>
                 <span className="shrink-0 text-muted">{new Date(s.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" })}</span>
                 {s.refund && <span className="shrink-0 rounded bg-bad-soft px-1.5 text-xs font-medium text-bad">iade</span>}
-                <span className="ml-auto shrink-0 tabular font-semibold">{TL(s.refund ? -s.total : s.total)}</span>
+                <span className="ml-auto shrink-0 tabular font-semibold">{TL(s.refund ? -(s.total - (s.discount ?? 0)) : s.total - (s.discount ?? 0))}</span>
               </li>
             ))}
           </ul>

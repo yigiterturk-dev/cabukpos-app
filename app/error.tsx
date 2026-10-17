@@ -14,10 +14,10 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
       </p>
       {error.digest ? <code className="rounded bg-surface-3 px-2 py-1 text-xs">{error.digest}</code> : null}
       <div className="flex flex-wrap justify-center gap-2">
-        <button onClick={retry} className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+        <button onClick={retry} className="min-h-11 rounded-lg bg-espresso px-4 py-2 text-sm font-medium text-white outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">
           Tekrar dene
         </button>
-        <Link href="/" className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink-2 outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">
+        <Link href="/" className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink-2 outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">
           Ana sayfaya dön
         </Link>
       </div>

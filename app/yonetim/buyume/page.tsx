@@ -10,6 +10,7 @@ import { salesContact } from "@/lib/billing/plans";
 import { GROWTH_SEGMENTS, isGrowthSegment, type GrowthSegment } from "@/lib/growth/segments";
 import { buildFeaturePack } from "@/lib/growth/feature-pack";
 import { advise } from "@/lib/growth/provider";
+import { CampaignDraftForm } from "@/components/admin/CampaignDraftPending";
 import { Badge, buttonClass, Card, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +62,7 @@ export default async function Buyume({ searchParams }: { searchParams: Promise<{
       />
       <Card className="mb-6 overflow-hidden border-brand/20 bg-gradient-to-br from-brand-soft via-white to-white p-6 md:p-8">
         <div className="max-w-2xl">
-          <div className="mb-3 grid size-11 place-items-center rounded-xl bg-brand text-white"><TrendingUp aria-hidden className="size-6" /></div>
+          <div className="mb-3 grid size-11 place-items-center rounded-xl bg-brand-action text-white"><TrendingUp aria-hidden className="size-6" /></div>
           <h2 className="break-words text-xl font-semibold tracking-tight">Daha çok tekrar siparişi, daha az boşa giden müşteri</h2>
           <p className="mt-2 max-w-xl break-words text-sm leading-6 text-ink-2">Büyüme Merkezi, ÇabukPOS’taki satış ve müşteri verisini aksiyona çevirir. Müşteri kaydını dışarı taşımadan segmentleri bulur, kampanyayı ölçer ve hangi teklifin işe yaradığını gösterir.</p>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -79,12 +80,7 @@ export default async function Buyume({ searchParams }: { searchParams: Promise<{
       <Card className="mt-6 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2"><div className="min-w-0 flex-1"><h2 className="break-words font-semibold">İlk kampanya taslağı</h2><p className="mt-1 break-words text-sm text-muted">Seçtiğin segment ve iletişim iznine göre hazırlanır.</p></div><span className="shrink-0"><Badge tone="warn">Gönderim kapalı</Badge></span></div>
         <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-          <form action={createCampaignDraft} className="grid gap-3 content-start md:grid-cols-[1fr_2fr_auto] lg:grid-cols-1">
-          <input type="hidden" name="segment" value={segment} />
-          <label className="text-sm"><span className="mb-1.5 block font-medium">Kampanya adı</span><input name="name" required minLength={2} maxLength={80} placeholder="30 gün geri kazanım" className="min-h-11 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-ink outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
-          <label className="text-sm"><span className="mb-1.5 block font-medium">Mesaj taslağı</span><input name="message" required minLength={5} maxLength={500} placeholder="Sizi özledik…" className="min-h-11 w-full rounded-[10px] border border-line bg-surface px-3 py-2 text-ink outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
-          <button className={buttonClass("primary")}>Taslağı kaydet</button>
-          </form>
+          <CampaignDraftForm action={createCampaignDraft} segment={segment} />
           <div className="rounded-xl border border-line bg-surface-2 p-4 text-sm">
             <div className="mb-3 flex flex-wrap gap-2">{Object.entries(GROWTH_SEGMENTS).map(([key, value]) => <a key={key} href={`/yonetim/buyume?segment=${key}`} className={`inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-xs ${segment === key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface text-ink-2 hover:bg-surface-3"}`}>{value.label}</a>)}</div>
             <div className="flex flex-wrap items-baseline justify-between gap-2"><b>Hedef önizleme</b><span className="text-muted">{GROWTH_SEGMENTS[segment].label} · {targetCount} kişi</span></div>

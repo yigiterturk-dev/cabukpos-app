@@ -24,11 +24,14 @@
   /* Mürekkep: espresso */
   --color-ink: #241f19;
   --color-ink-2: #5b5142;
-  --color-muted: #8b7f6d;
+  --color-muted: #716656;
 
   /* Marka: kor turuncu — sıcaklık, enerji, para hareketi */
-  --color-brand: #e05a10;
-  --color-brand-hover: #bf4408;
+  /* Text and filled controls share a WCAG AA-safe brand color on light surfaces. */
+  --color-brand: #bf4408;
+  --color-brand-hover: #a93f08;
+  --color-brand-action: #bf4408;
+  --color-brand-action-hover: #a93f08;
   --color-brand-soft: #fdf0e4;
   --color-brand-ring: #f8d8ba;
 
@@ -38,13 +41,17 @@
   --color-cream: #ece4d4;
   --color-cream-muted: #a2957f;
 
-  /* Anlam */
+  /* Anlam: metin ve yüzey çiftleri WCAG AA kontrastını korur. */
   --color-ok: #177245;
   --color-ok-soft: #e8f5ec;
-  --color-warn: #b45309;
+  --color-ok-action: #177245;
+  --color-ok-action-hover: #14663f;
+  --color-warn: #ad4b05;
   --color-warn-soft: #fdf6e3;
   --color-bad: #c03530;
   --color-bad-soft: #fdeeed;
+  --color-bad-action: #c03530;
+  --color-bad-action-hover: #a72d29;
   /* Bilgi/ durum (yolda, yerel ağ): sıcak palete karşıt serin mavi */
   --color-info: #2c6e9b;
   --color-info-soft: #e8f2f8;
@@ -103,6 +110,7 @@ body {
 /* İmleç: tüm etkin düğmeler elle işaret edilsin (dokunmatikte görünmez, masaüstünde doğru) */
 button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
 button:focus-visible, a:focus-visible, [role=tab]:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+#main-content:focus-visible, #kasa-content:focus-visible { outline: 2px solid var(--color-brand); outline-offset: -2px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -123,6 +131,14 @@ button:focus-visible, a:focus-visible, [role=tab]:focus-visible { outline: 2px s
 .legal li + li { margin-top: 0.25rem; }
 .legal a { color: var(--color-brand); text-decoration: underline; }
 
+/* Printable invoices intentionally stay on white paper even when the app theme is dark. */
+.print-paper {
+  color-scheme: light;
+  --color-ink: #241f19;
+  --color-ink-2: #5b5142;
+  --color-muted: #716656;
+}
+
 /* #46: koyu tema — espresso gecesinde sıcak turuncu. Tercih localStorage "tema": acik | koyu | sistem (varsayılan). */
 html.dark {
   color-scheme: dark;
@@ -134,17 +150,24 @@ html.dark {
   --color-line-strong: #4d4230;
   --color-ink: #ece4d4;
   --color-ink-2: #c7bba3;
-  --color-muted: #93866c;
+  --color-muted: #9c927c;
   --color-brand: #f2731f;
   --color-brand-hover: #ff8433;
+  /* Filled orange controls need a darker surface behind white labels. */
+  --color-brand-action: #ad4509;
+  --color-brand-action-hover: #a93f08;
   --color-brand-soft: #38230e;
   --color-brand-ring: #6b3c14;
   --color-ok: #3fc483;
   --color-ok-soft: #14291c;
+  --color-ok-action: #14663f;
+  --color-ok-action-hover: #0d5432;
   --color-warn: #e2a336;
   --color-warn-soft: #2e2308;
   --color-bad: #ff7263;
   --color-bad-soft: #331410;
+  --color-bad-action: #a72d29;
+  --color-bad-action-hover: #8f251f;
   --color-info: #7fbde0;
   --color-info-soft: #12262f;
   --shadow-rest: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);

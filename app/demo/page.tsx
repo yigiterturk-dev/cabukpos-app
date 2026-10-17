@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight, Bot, Mic, Sparkles, Utensils } from "lucide-react";
+import { SkipToContent } from "@/components/SkipToContent";
 
 export const metadata: Metadata = {
   title: "ÇabukPOS · Canlı Demolar",
-  description: "AI telefon/WhatsApp siparişi ve konuşarak yönet — kayıt olmadan canlı deneyin.",
+  description: "Demo menüsüyle sipariş akışını ve örnek satış/stok sorularını deneyin.",
 };
 
 const DEMOS = [
@@ -27,17 +28,18 @@ const DEMOS = [
 export default function DemoHub() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center px-4 py-12">
+      <SkipToContent />
       <nav className="mb-10 flex items-center justify-between gap-3" aria-label="ÇabukPOS bağlantıları">
-        <Link href="/" className="text-sm font-semibold text-ink-2 hover:text-ink">ÇabukPOS</Link>
+        <Link href="/" className="inline-flex min-h-11 items-center text-sm font-semibold text-ink-2 hover:text-ink">ÇabukPOS</Link>
         <div className="flex items-center gap-2">
-          <Link href="/kasa" className="inline-flex min-h-10 items-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink-2 outline-none hover:border-line-strong hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kasayı aç</Link>
-          <Link href="/giris" className="inline-flex min-h-10 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white outline-none hover:bg-brand-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yönetim paneli</Link>
+          <Link href="/kasa" className="inline-flex min-h-11 items-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink-2 outline-none hover:border-line-strong hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kasayı aç</Link>
+          <Link href="/giris" className="inline-flex min-h-11 items-center rounded-xl bg-brand-action px-3 text-sm font-semibold text-white outline-none hover:bg-brand-action-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yönetim paneli</Link>
         </div>
       </nav>
       <div className="mb-8 text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-ink-2"><Sparkles aria-hidden className="size-3.5 text-brand" />Kayıt yok · kurulum yok</span>
-        <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight">ÇabukPOS&apos;u canlı dene</h1>
-        <p className="mx-auto mt-2 max-w-lg text-muted">Piyasadaki diğer POS&apos;ların yapamadığı iki şey: yapay zekâyla sipariş almak ve işletmeyi konuşarak yönetmek. Mikrofonu aç, söyle, çalıştığını gör.</p>
+        <h1 id="main-content" tabIndex={-1} className="mt-4 rounded-sm font-display text-4xl font-extrabold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">ÇabukPOS&apos;u canlı dene</h1>
+        <p className="mx-auto mt-2 max-w-lg text-muted">Örnek menüyle sipariş akışını dene veya demo satış ve stok verilerine soru sor. Yazabilir ya da tarayıcın destekliyorsa mikrofonu kullanabilirsin.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

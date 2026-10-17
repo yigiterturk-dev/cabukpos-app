@@ -3,6 +3,7 @@ import { withTenant } from "@/db";
 import { getAdmin } from "@/lib/auth/session";
 import { reportCsv } from "@/lib/admin/report";
 import { parseRange } from "@/lib/core/report";
+import { scopedStoreId } from "@/lib/admin/store-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   const sekme = q.get("sekme") ?? "";
   const r = parseRange(q.get("bas") ?? undefined, q.get("bit") ?? undefined);
-  const body = await withTenant(a.tenantId, (tx) => reportCsv(tx, a.tenantId, sekme, r, q.get("kisi")));
+  const body = await withTenant(a.tenantId, async (tx) => reportCsv(tx, a.tenantId, sekme, r, q.get("kisi"), await scopedStoreId(tx, a.tenantId)));
   if (body === null) return new Response("Bilinmeyen rapor.", { status: 400 });
   return new Response(body, {
     headers: {

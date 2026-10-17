@@ -48,6 +48,26 @@ test("çok kelimeli ürün adı tek satır sayılır", () => {
   assert.equal(total("iki mercimek çorba ve çoban salata"), 28000);
 });
 
+test("aksansız ürün adları demo menüsüyle eşleşir", () => {
+  const r = parseOrder("bir kunefe ve iki coban salata", MENU);
+  assert.equal(r.lines.length, 2);
+  assert.equal(q("bir kunefe ve iki coban salata")["Künefe"], 1000);
+  assert.equal(q("bir kunefe ve iki coban salata")["Çoban Salata"], 2000);
+  assert.deepEqual(r.unmatched, []);
+});
+
+test("bir buçuk miktarı aksan normalizasyonunda korunur", () => {
+  const r = parseOrder("bir buçuk kilo baklava", MENU);
+  assert.equal(r.lines[0].qtyMilli, 1500);
+  assert.equal(r.total, 72000);
+});
+
+test("şu su ifadesi aksan normalizasyonunda iki ürün sayılmaz", () => {
+  const r = parseOrder("şu su", MENU);
+  assert.equal(q("şu su")["Su"], 1000);
+  assert.deepEqual(r.unmatched, []);
+});
+
 test("anlaşılmayan kelimeler raporlanır", () => {
   const r = parseOrder("iki bilinmeyen şey", MENU);
   assert.equal(r.lines.length, 0);

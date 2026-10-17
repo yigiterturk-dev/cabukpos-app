@@ -4,6 +4,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { deleteOptionGroup } from "@/lib/admin/salon-actions";
 import { OptionGroupForm } from "@/components/admin/SalonForms";
+import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { buttonClass, Card, Empty, PageHeader, Panel, SplitView } from "@/components/ui";
 
@@ -39,8 +40,8 @@ export default async function Secenekler({ searchParams }: { searchParams: Promi
                 <div className="mt-1 break-words text-sm text-ink-2">{g.options.map((o) => (o.delta ? `${o.name} (${o.delta > 0 ? "+" : "−"}${money(Math.abs(o.delta))})` : o.name)).join(" · ")}</div>
               </div>
               <div className="ml-auto flex shrink-0 flex-wrap gap-4 text-sm">
-                <Link href={`/yonetim/secenekler?duzenle=${g.id}`} className={buttonClass("secondary", "sm")}>Düzenle</Link>
-                <form action={deleteOptionGroup.bind(null, g.id)}><button className={buttonClass("danger", "sm")}>Sil</button></form>
+                <Link href={`/yonetim/secenekler?duzenle=${g.id}`} aria-label={`Düzenle: ${g.name}`} className={buttonClass("secondary", "sm")}>Düzenle</Link>
+                <ConfirmActionForm action={deleteOptionGroup.bind(null, g.id)} ariaLabel={`Sil: ${g.name}`} label="Sil" prompt={`“${g.name}” seçenek grubu silinecek. Bağlı ürün seçeneklerini etkileyebilir. Devam etmek istiyor musunuz?`} className={buttonClass("danger", "sm")} />
               </div>
             </div>
           ))}

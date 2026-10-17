@@ -1,10 +1,12 @@
 import { and, desc, eq, gt, sql } from "drizzle-orm";
+import Link from "next/link";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { stockUnitOf, countVariance, wasteSummary, formatQty, type CountLineCore } from "@/lib/core/stock";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { StartCountForm, CountLineForm, CloseCountForm, CancelCountForm } from "@/components/admin/CountForms";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { Badge, Card, Empty, PageHeader, Panel, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +31,7 @@ export default async function Sayim() {
     ]);
     return { open, lines, past, fires };
   });
-  if (!data) return <Empty>Şube yok.</Empty>;
+  if (!data) return <Empty>Sayım yapmak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</Empty>;
   const waste = wasteSummary(data.fires.map((f) => ({ productId: f.productId, name: f.name, unit: stockUnitOf(f), qtyMilli: f.qtyMilli, cost: f.cost })));
   const wasteTotal = waste.reduce((s, r) => s + (r.cost ?? 0), 0);
   const core = (r: (typeof data.lines)[number]): CountLineCore => ({ productId: r.productId, expectedMilli: r.expectedMilli, countedMilli: r.countedMilli });
@@ -49,9 +51,27 @@ export default async function Sayim() {
               <div className="ml-auto"><CancelCountForm countId={data.open.id} /></div>
             </div>
           </Card>
-          <Card className="overflow-x-auto">
-            <table className="w-full min-w-[680px] text-sm">
-              <thead className={TABLE_HEAD}><tr><th className="p-3 text-left">Ürün</th><th className="p-3 text-right">Beklenen</th><th className="p-3 text-right">Sapma</th><th className="p-3 text-left">Sayım</th></tr></thead>
+          <Card className="overflow-hidden lg:hidden">
+            <ul aria-label="Stok sayım kalemleri" className="divide-y divide-line">
+              {data.lines.map((r) => {
+                const v = countVariance(core(r));
+                return (
+                  <li key={r.id} className={`space-y-3 p-4 ${v != null && v !== 0 ? "bg-brand-soft/40" : ""}`}>
+                    <div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words font-medium">{r.name}</p>{r.countedMilli === null ? <Badge>Sayılmadı</Badge> : <Badge tone={v === 0 ? "ok" : "warn"}>{v === 0 ? "Eşleşti" : "Sapma var"}</Badge>}</div>
+                    <dl className="grid grid-cols-2 gap-3 text-sm">
+                      <div><dt className="text-xs text-muted">Beklenen</dt><dd className="tabular">{formatQty(r.expectedMilli, stockUnitOf(r))}</dd></div>
+                      <div><dt className="text-xs text-muted">Sapma</dt><dd className={`tabular ${v == null ? "text-muted" : v === 0 ? "text-ok" : "text-bad"}`}>{v == null ? "—" : `${v > 0 ? "+" : ""}${formatQty(v, stockUnitOf(r))}`}</dd></div>
+                    </dl>
+                    <CountLineForm countId={data.open.id} lineId={r.id} unit={stockUnitOf(r)} countedMilli={r.countedMilli} />
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+          <Card className="hidden p-0 lg:block">
+            <HorizontalScrollRegion label="Stok sayım kalemleri, yatay kaydırılabilir" className="rounded-2xl">
+            <table aria-label="Stok sayım kalemleri" className="w-full min-w-[680px] text-sm">
+              <thead className={TABLE_HEAD}><tr><th scope="col" className="p-3 text-left">Ürün</th><th scope="col" className="p-3 text-right">Beklenen</th><th scope="col" className="p-3 text-right">Sapma</th><th scope="col" className="p-3 text-left">Sayım</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {data.lines.map((r) => {
                   const v = countVariance(core(r));
@@ -60,12 +80,13 @@ export default async function Sayim() {
                       <td className="max-w-[20rem] p-3 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
                       <td className="p-3 text-right tabular">{formatQty(r.expectedMilli, stockUnitOf(r))}</td>
                       <td className={`p-3 text-right tabular ${v == null ? "text-muted" : v === 0 ? "text-ok" : "text-bad"}`}>{v == null ? "—" : `${v > 0 ? "+" : ""}${formatQty(v, stockUnitOf(r))}`}</td>
-                      <td className="p-3"><CountLineForm key={`${r.id}:${r.countedMilli ?? "x"}`} countId={data.open!.id} lineId={r.id} unit={stockUnitOf(r)} /></td>
+                      <td className="p-3"><CountLineForm countId={data.open!.id} lineId={r.id} unit={stockUnitOf(r)} countedMilli={r.countedMilli} /></td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+            </HorizontalScrollRegion>
           </Card>
           <Card className="p-4"><CloseCountForm countId={data.open.id} /></Card>
         </div>
@@ -74,7 +95,7 @@ export default async function Sayim() {
       )}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Panel title="Geçmiş oturumlar">
+        <Panel title="Son 8 kapanmış oturum">
           {data.past.length === 0 ? <Empty>Henüz kapanmış sayım yok.</Empty> : (
             <div className="divide-y divide-line text-sm">
               {data.past.map((p) => (
