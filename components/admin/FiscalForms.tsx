@@ -21,9 +21,17 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
 }) {
   const { state, pending, onSubmit } = useFormAction(saveFiscalSettings, {} as FiscalState);
   const formRef = useRef<HTMLFormElement>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
+  const [edited, setEdited] = useState(false);
+  const displayState = edited || pending ? ({} as FiscalState) : state;
   useEffect(() => {
     if (state.error && state.field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
   }, [state.error, state.field]);
+  useEffect(() => {
+    if (pending || !state.savedAt || state.error) return;
+    const frame = window.requestAnimationFrame(() => saveButtonRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [pending, state.error, state.savedAt]);
   const [modes, setModes] = useState<ChannelModes>(() => blockEarsiv
     ? Object.fromEntries(channels.map((c) => [c, "info"])) as ChannelModes
     : initial.modes);
@@ -31,13 +39,13 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
   const [okcProvider, setOkcProvider] = useState(okc?.provider ?? OKC_PROVIDERS[0].value);
   const okcCloud = OKC_PROVIDERS.find((p) => p.value === okcProvider)?.cloud ?? false;
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="space-y-5">
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><Field label="İşletme vergi no" hint="10 hane VKN ya da 11 hane TCKN (şahıs)"><Input name="taxId" disabled={pending} inputMode="numeric" maxLength={11} defaultValue={initial.taxId} {...errorProps(state, "taxId")} /></Field><Err s={state} f="taxId" /></div>
-        <div><Field label="Vergi dairesi"><Input name="taxOffice" disabled={pending} maxLength={80} defaultValue={initial.taxOffice} {...errorProps(state, "taxOffice")} /></Field><Err s={state} f="taxOffice" /></div>
+        <div><Field label="İşletme vergi no" hint="10 hane VKN ya da 11 hane TCKN (şahıs)"><Input name="taxId" disabled={pending} inputMode="numeric" maxLength={11} pattern="([0-9]{10}|[0-9]{11})" defaultValue={initial.taxId} {...errorProps(displayState, "taxId")} /></Field><Err s={displayState} f="taxId" /></div>
+        <div><Field label="Vergi dairesi" hint="e-Arşiv için gerekli · en fazla 80 karakter"><Input name="taxOffice" disabled={pending} maxLength={80} defaultValue={initial.taxOffice} {...errorProps(displayState, "taxOffice")} /></Field><Err s={displayState} f="taxOffice" /></div>
       </div>
-      <div><Field label="İşletme adresi (faturada satıcı adresi)"><Textarea name="address" disabled={pending} rows={2} maxLength={500} defaultValue={initial.address} {...errorProps(state, "address")} /></Field><Err s={state} f="address" /></div>
-      <div className="w-40"><Field label="Fatura serisi" hint="3 karakter, ör. CBP"><Input name="series" disabled={pending} maxLength={3} defaultValue={initial.series} className="font-mono uppercase" {...errorProps(state, "series")} /></Field><Err s={state} f="series" /></div>
+      <div><Field label="İşletme adresi (faturada satıcı adresi)" hint="En fazla 500 karakter"><Textarea name="address" disabled={pending} rows={2} maxLength={500} defaultValue={initial.address} {...errorProps(displayState, "address")} /></Field><Err s={displayState} f="address" /></div>
+      <div className="w-40"><Field label="Fatura serisi" hint="Tam 3 harf veya rakam, ör. CBP"><Input name="series" disabled={pending} maxLength={3} minLength={3} pattern="[A-Za-z0-9]{3}" defaultValue={initial.series} required className="font-mono uppercase" {...errorProps(displayState, "series")} /></Field><Err s={displayState} f="series" /></div>
       <div>
         <h3 className="mb-2 text-sm font-semibold">Kanal başına belge</h3>
         <p className="mb-3 text-sm text-muted">Bilgi fişi seçili kanalda da kasiyer satışta &quot;Fatura&quot; derse o satış e-Arşiv kesilir.</p>
@@ -48,7 +56,7 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
               <div className="flex gap-1">
                 {([["info", "Bilgi fişi"], ["earsiv", "e-Arşiv"]] as [DocMode, string][]).map(([v, l]) => (
                   <label key={v} className={`inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm outline-none transition focus-within:ring-4 focus-within:ring-brand-ring/60 ${modes[c] === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"} ${v === "earsiv" && blockEarsiv ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
-                    <input type="radio" name={`mode-${c}`} value={v} checked={modes[c] === v} required disabled={pending || (v === "earsiv" && blockEarsiv)} onChange={() => setModes((m) => ({ ...m, [c]: v }))} className="peer sr-only" />
+                    <input type="radio" name={`mode-${c}`} value={v} checked={modes[c] === v} required disabled={pending || (v === "earsiv" && blockEarsiv)} onChange={() => { setEdited(true); setModes((m) => ({ ...m, [c]: v })); }} className="peer sr-only" />
                     {l}
                   </label>
                 ))}
@@ -72,29 +80,29 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <div>
               <Field label="ÖKC sağlayıcısı">
-                <Select disabled={pending} name="okcProvider" defaultValue={okcProvider} onChange={setOkcProvider} options={OKC_PROVIDERS.map((p) => ({ value: p.value, label: p.label }))} {...errorProps(state, "okcProvider")} />
+                <Select disabled={pending} name="okcProvider" defaultValue={okcProvider} onChange={(value) => { setEdited(true); setOkcProvider(value); }} options={OKC_PROVIDERS.map((p) => ({ value: p.value, label: p.label }))} {...errorProps(displayState, "okcProvider")} />
               </Field>
-              <Err s={state} f="okcProvider" />
+              <Err s={displayState} f="okcProvider" />
             </div>
             <div>
               <Field label="Cihaz seri no" hint="ÖKC üzerine yazılı seri no, ör. TRA123456">
-                  <Input name="okcSerial" disabled={pending} defaultValue={okc?.serial ?? ""} maxLength={20} className="font-mono uppercase" {...errorProps(state, "okcSerial")} />
+                  <Input name="okcSerial" disabled={pending} defaultValue={okc?.serial ?? ""} maxLength={20} minLength={okcOn ? 3 : undefined} pattern={okcOn ? "[A-Za-z0-9-]{3,20}" : undefined} className="font-mono uppercase" {...errorProps(displayState, "okcSerial")} />
               </Field>
-              <Err s={state} f="okcSerial" />
+              <Err s={displayState} f="okcSerial" />
             </div>
             {okcCloud && (
               <>
                 <div className="sm:col-span-2">
-                  <Field label="Çözücü API adresi (BYOK)" hint="Kiracının kendi hesabı; sandbox ya da canlı kök adres">
-                    <Input name="okcApiUrl" disabled={pending} defaultValue={okc?.apiUrl ?? ""} placeholder="https://..." inputMode="url" {...errorProps(state, "okcApiUrl")} />
+                  <Field label="Çözücü API adresi (BYOK)" hint="Kiracının kendi hesabı; sandbox ya da canlı kök adres · en fazla 2.048 karakter">
+                    <Input name="okcApiUrl" disabled={pending} defaultValue={okc?.apiUrl ?? ""} placeholder="https://..." inputMode="url" maxLength={2048} required {...errorProps(displayState, "okcApiUrl")} />
                   </Field>
-                  <Err s={state} f="okcApiUrl" />
+                  <Err s={displayState} f="okcApiUrl" />
                 </div>
                 <div className="sm:col-span-2">
                   <Field label="API anahtarı" hint={okc?.hasKey ? "Kayıtlı (şifreli); değiştirmek için yenisini yazın" : "Çözücü hesabının API anahtarı, şifreli saklanır"}>
-                    <PasswordInput name="okcApiKey" disabled={pending} autoComplete="off" placeholder={okc?.hasKey ? "••••••••" : ""} {...errorProps(state, "okcApiKey")} />
+                    <PasswordInput name="okcApiKey" disabled={pending} autoComplete="off" minLength={8} placeholder={okc?.hasKey ? "••••••••" : ""} {...errorProps(displayState, "okcApiKey")} />
                   </Field>
-                  <Err s={state} f="okcApiKey" />
+                  <Err s={displayState} f="okcApiKey" />
                 </div>
               </>
             )}
@@ -102,10 +110,10 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
           </div>
         )}
       </div>
-      {state.error && !state.field && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
+      {displayState.error && !displayState.field && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
-        {state.savedAt && !state.error && <span className="text-sm text-ok" role="status">Kaydedildi.</span>}
+        <Button ref={saveButtonRef} type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
+        {state.savedAt && !edited && !pending && !state.error && <span className="text-sm text-ok" role="status">Kaydedildi.</span>}
       </div>
       {pending && <p className="sr-only" role="status" aria-live="polite">Mali belge ve ÖKC ayarları kaydediliyor.</p>}
     </form>
@@ -115,20 +123,36 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
 export function FiscalRowActions({ id, status, canMail, url }: { id: string; status: string; canMail: boolean; url: string }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<FiscalState | null>(null);
-  const run = (fn: () => Promise<FiscalState>) => start(async () => setMsg(await fn()));
+  const msgRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (pending || !msg) return;
+    const frame = window.requestAnimationFrame(() => msgRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [msg, pending]);
+  const run = (fn: () => Promise<FiscalState>) => start(async () => {
+    setMsg(null);
+    try { setMsg(await fn()); }
+    catch { setMsg({ error: "İşlem tamamlanamadı. Bağlantıyı kontrol edip tekrar deneyin." }); }
+  });
   return (
     <div className={`flex flex-wrap items-center gap-3 text-xs ${pending ? "opacity-60" : ""}`} aria-busy={pending}>
       {(status === "pending" || status === "error") && <button type="button" disabled={pending} aria-busy={pending || undefined} onClick={() => run(() => retryFiscal(id))} className="inline-flex min-h-11 items-center rounded-lg px-2.5 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{pending ? "Deneniyor…" : "Yeniden dene"}</button>}
       {status === "issued" && canMail && <button type="button" disabled={pending} aria-busy={pending || undefined} onClick={() => run(() => resendFiscalMail(id))} className="inline-flex min-h-11 items-center rounded-lg px-2.5 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{pending ? "Gönderiliyor…" : "E-postayı gönder"}</button>}
       {pending && <span className="sr-only" role="status" aria-live="polite">{status === "issued" ? "Mali belge e-postası gönderiliyor." : "Mali belge yeniden kesiliyor."}</span>}
       <a href={url} target="_blank" rel="noreferrer" className="rounded px-1 underline outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Sayfayı aç</a>
-      {msg && <span role={msg.error ? "alert" : "status"} aria-live={msg.error ? "assertive" : "polite"} className={`break-words ${msg.error ? "text-bad" : "text-ok"}`}>{msg.error ?? msg.info}</span>}
+      {msg && <span ref={msgRef} tabIndex={-1} role={msg.error ? "alert" : "status"} aria-live={msg.error ? "assertive" : "polite"} className={`break-words outline-none focus-visible:ring-4 ${msg.error ? "text-bad focus-visible:ring-bad/30" : "text-ok focus-visible:ring-ok/30"}`}>{msg.error ?? msg.info}</span>}
     </div>
   );
 }
 
 export function OkcZReportForm() {
   const { state, pending, onSubmit } = useFormAction(takeZReport, {} as FiscalState);
+  const infoRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (pending || !state.info) return;
+    const frame = window.requestAnimationFrame(() => infoRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [pending, state.info]);
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-3">
       <div>
@@ -140,7 +164,7 @@ export function OkcZReportForm() {
       </div>
       {pending && <p className="sr-only" role="status" aria-live="polite">Mali gün sonu Z raporu alınıyor.</p>}
       {state.error && <p className="w-full break-words text-sm text-bad" role="alert">{state.error}</p>}
-      {state.info && <p className="w-full text-sm text-ok" role="status">{state.info}</p>}
+      {state.info && <p ref={infoRef} tabIndex={-1} className="w-full text-sm text-ok outline-none focus-visible:ring-4 focus-visible:ring-ok/30" role="status" aria-live="polite">{state.info}</p>}
     </form>
   );
 }

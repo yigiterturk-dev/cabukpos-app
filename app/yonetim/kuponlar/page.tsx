@@ -4,6 +4,8 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { createCoupon, setCouponStatus } from "@/lib/admin/loyalty-actions";
 import { CouponCreateForm } from "@/components/admin/CouponCreatePending";
+import { PendingActionForm } from "@/components/admin/PendingActionForm";
+import { ActionResult } from "@/components/admin/ActionResult";
 import { Badge, buttonClass, Card, Input, PageHeader } from "@/components/ui";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 import { currencySymbol } from "@/lib/core/money";
@@ -39,15 +41,16 @@ export default async function Kuponlar({ searchParams }: { searchParams: Promise
   return (
     <>
       <PageHeader title="Kuponlar" desc="Kod, sepette indirime dönüşür: yüzde, sabit tutar ya da teslimat bedava. Kullanımlar satış anında kayda geçer; bir satışta bir kupon." />
-      {ok && <div role="status" aria-live="polite" className="mb-6 rounded-[14px] border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">Kaydedildi.</div>}
-      {hata && <div role="alert" aria-live="assertive" className="mb-6 rounded-[14px] border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</div>}
+      {ok && <ActionResult kind="success">Kaydedildi.</ActionResult>}
+      {hata && <ActionResult kind="error">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</ActionResult>}
       <section aria-label="Yeni kupon" className="mb-8">
         <Card className="p-5">
           <CouponCreateForm action={createCoupon} unit={unit} />
         </Card>
       </section>
-      <form className="mb-4 flex flex-wrap gap-2">
-        <Input name="q" defaultValue={term} placeholder="Kupon kodu ara" aria-label="Kupon kodu ara" className="min-w-48 flex-1 sm:max-w-sm" />
+      <form role="search" className="mb-4 flex flex-wrap gap-2">
+        <Input name="q" defaultValue={term} placeholder="Kupon kodu ara" aria-label="Kupon kodu ara" maxLength={40} className="min-w-48 flex-1 sm:max-w-sm" />
+        <span className="self-center text-xs text-muted">En fazla 40 karakter</span>
         <button className={buttonClass("secondary")}>Ara</button>
         {term && <Link href="/yonetim/kuponlar" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aramayı temizle</Link>}
       </form>
@@ -68,13 +71,12 @@ export default async function Kuponlar({ searchParams }: { searchParams: Promise
               <span className="shrink-0 tabular text-sm text-muted">
                 {c.usedCount}{c.usageLimit !== null ? ` / ${c.usageLimit}` : ""} kullanım
               </span>
-              <form action={setCouponStatus} className="ml-auto shrink-0">
+              <PendingActionForm action={setCouponStatus} label={c.status === "acik" ? "Kapat" : "Aç"} ariaLabel={`${c.status === "acik" ? "Kapat" : "Aç"} kupon: ${c.code}`} pendingStatus={`${c.code} kupon durumu kaydediliyor.`} formClassName="ml-auto shrink-0" buttonClassName="inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">
                 <input type="hidden" name="couponId" value={c.id} />
                 <input type="hidden" name="status" value={c.status === "acik" ? "kapali" : "acik"} />
                 <input type="hidden" name="q" value={term} />
                 <input type="hidden" name="page" value={currentPage} />
-                <button className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{c.status === "acik" ? "Kapat" : "Aç"}</button>
-              </form>
+              </PendingActionForm>
             </div>
           ))}
         </Card>

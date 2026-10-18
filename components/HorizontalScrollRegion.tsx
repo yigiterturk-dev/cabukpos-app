@@ -18,8 +18,19 @@ export function HorizontalScrollRegion({ label, children, className = "" }: {
     update();
     const observer = new ResizeObserver(update);
     observer.observe(node);
-    if (node.firstElementChild) observer.observe(node.firstElementChild);
-    return () => observer.disconnect();
+    for (const child of node.children) observer.observe(child);
+    const mutations = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const removed of record.removedNodes) if (removed instanceof Element) observer.unobserve(removed);
+        for (const added of record.addedNodes) if (added instanceof Element) observer.observe(added);
+      }
+      update();
+    });
+    mutations.observe(node, { childList: true });
+    return () => {
+      observer.disconnect();
+      mutations.disconnect();
+    };
   }, []);
 
   return (

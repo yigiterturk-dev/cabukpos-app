@@ -15,12 +15,14 @@ const int = (form: FormData, key: string) => {
   const n = Number(text(form, key));
   return Number.isSafeInteger(n) ? n : NaN;
 };
-const optionalDate = (form: FormData, key: string) => {
+const optionalDate = (form: FormData, key: string, endOfDay = false) => {
   const v = text(form, key);
   if (!v) return null;
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const d = new Date(`${v}T${endOfDay ? "23:59:59.999" : "00:00:00"}+03:00`);
+  return Number.isNaN(d.getTime()) || d.toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" }) !== v ? null : d;
 };
+const todayIstanbul = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
 
 // — Sadakat puanı —
 
@@ -75,11 +77,12 @@ export async function createGiftCard(_: GiftCardState, form: FormData): Promise<
   const initial = money(form, "initial");
   const rawCode = text(form, "code");
   const code = rawCode ? normalizeCouponCode(rawCode) : newGiftCardCode();
-  const expiresAt = optionalDate(form, "expiresAt");
+  const expiresAt = optionalDate(form, "expiresAt", true);
   const note = text(form, "note").slice(0, 200) || null;
   if (!code) return { error: "Kod 3–24 harf veya rakam olmalı.", field: "code" };
   if (!Number.isSafeInteger(initial) || initial < 100 || initial > 50_000_00) return { error: "Yüklenecek tutar 1,00–50.000,00 arasında olmalı.", field: "initial" };
   if (text(form, "expiresAt") && !expiresAt) return { error: "Son kullanma tarihi geçersiz.", field: "expiresAt" };
+  if (text(form, "expiresAt") && text(form, "expiresAt") < todayIstanbul()) return { error: "Son kullanma tarihi bugün veya daha ileri olmalı.", field: "expiresAt" };
   await withTenant(a.tenantId, async (tx) => {
     await tx.insert(schema.giftCards).values({ tenantId: a.tenantId, code, initialKurus: initial, balanceKurus: initial, expiresAt, note, createdBy: a.id });
     await audit(tx, a.tenantId, `user:${a.id}`, "giftcard.created", { code, initialKurus: initial });
@@ -136,7 +139,7 @@ export async function createCoupon(_: CouponCreateState, form: FormData): Promis
   const maxDiscountRaw = kind === "yuzde" ? text(form, "maxDiscount") : "";
   const maxDiscount = maxDiscountRaw ? money(form, "maxDiscount") : null;
   const startsAt = optionalDate(form, "startsAt");
-  const endsAt = optionalDate(form, "endsAt");
+  const endsAt = optionalDate(form, "endsAt", true);
   const usageLimit = text(form, "usageLimit") ? int(form, "usageLimit") : null;
   const perCustomerLimitRaw = text(form, "perCustomerLimit");
   const perCustomerLimit = perCustomerLimitRaw ? int(form, "perCustomerLimit") : 1;

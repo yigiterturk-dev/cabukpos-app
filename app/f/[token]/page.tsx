@@ -7,6 +7,7 @@ import { discountedVat } from "@/lib/core/cart";
 import { qtyText } from "@/lib/core/receipt";
 import { clientIp, hit } from "@/lib/ratelimit";
 import { PrintButton } from "@/components/PrintButton";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { docByToken } from "./doc";
 
 export const dynamic = "force-dynamic";
@@ -70,14 +71,14 @@ export default async function Fatura({ params }: { params: Promise<{ token: stri
               </dl>
             </li>)}
           </ul>
-          <div className="hidden overflow-x-auto lg:block print:block">
-          <table className="w-full border-y border-line">
+          <HorizontalScrollRegion label="Fatura kalemleri, yatay kaydırılabilir" className="hidden lg:block print:block">
+          <table aria-label="Fatura kalemleri" className="w-full border-y border-line">
             <thead className="text-left text-xs text-muted"><tr><th scope="col" className="py-2 font-medium">Mal / hizmet</th><th scope="col" className="text-right font-medium">Miktar</th><th scope="col" className="text-right font-medium">Birim fiyat</th><th scope="col" className="text-right font-medium">KDV</th><th scope="col" className="text-right font-medium">Tutar</th></tr></thead>
             <tbody className="tabular-nums">
               {d.lines.map((l, i) => <tr key={i} className="border-t border-line"><td className="py-1.5">{l.name}</td><td className="text-right">{qtyText(l.qtyMilli)}</td><td className="text-right">{formatTL(l.unitPrice)}</td><td className="text-right">%{l.vatRate}</td><td className="text-right">{formatTL(l.total)}</td></tr>)}
             </tbody>
           </table>
-          </div>
+          </HorizontalScrollRegion>
           <div className="ml-auto w-full max-w-xs space-y-1 tabular-nums">
             {discountedVat(d.sale.vat, d.sale.discount).map((v) => (
               <div key={v.rate} className="flex justify-between"><span className="text-muted">KDV %{v.rate} (matrah {formatTL(v.net)})</span><span>{formatTL(v.vat)}</span></div>

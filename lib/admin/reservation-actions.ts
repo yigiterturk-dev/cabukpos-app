@@ -39,13 +39,22 @@ export async function createReservation(_: ResState, form: FormData): Promise<Re
   return { savedAt: Date.now() };
 }
 
-export async function setReservationStatus(form: FormData): Promise<void> {
+export async function setReservationStatus(_: ResState, form: FormData): Promise<ResState> {
   const a = await requireWriter();
   const id = str(form, "id"), status = str(form, "status");
-  if (!UUID.test(id) || !(RES_STATUSES as readonly string[]).includes(status)) return;
-  await withTenant(a.tenantId, async (tx) => {
-    const r = await tx.update(schema.reservations).set({ status: status as ResStatus }).where(and(eq(schema.reservations.id, id))).returning({ id: schema.reservations.id });
-    if (r.length) await audit(tx, a.tenantId, `user:${a.id}`, "rezervasyon.durum", { id, status });
-  });
+  if (!UUID.test(id) || !(RES_STATUSES as readonly string[]).includes(status)) return { error: "Rezervasyon durumu güncellenemedi. Listeyi yenileyip tekrar deneyin." };
+  let updated = false;
+  try {
+    updated = await withTenant(a.tenantId, async (tx) => {
+      const r = await tx.update(schema.reservations).set({ status: status as ResStatus }).where(and(eq(schema.reservations.id, id))).returning({ id: schema.reservations.id });
+      if (!r.length) return false;
+      await audit(tx, a.tenantId, `user:${a.id}`, "rezervasyon.durum", { id, status });
+      return true;
+    });
+  } catch {
+    return { error: "Rezervasyon durumu kaydedilemedi. Bağlantıyı kontrol edip tekrar deneyin." };
+  }
+  if (!updated) return { error: "Rezervasyon bulunamadı. Listeyi yenileyip tekrar deneyin." };
   revalidatePath("/yonetim/rezervasyonlar");
+  return { savedAt: Date.now() };
 }

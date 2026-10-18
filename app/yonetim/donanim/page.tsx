@@ -61,7 +61,7 @@ export default async function Donanim() {
                   {r.lastSeenAt && <span className="min-w-0 break-words text-xs text-muted">Son görülme {dt(r.lastSeenAt)}{r.version ? ` · sürüm ${r.version}` : ""}{r.lanIp ? ` · ${r.lanIp}` : ""}</span>}
                   <div className="ml-auto flex shrink-0 flex-wrap items-start gap-4 text-sm">
                     <AgentPairButton action={newAgentPairing.bind(null, r.id)} />
-                    {!r.revokedAt && <RevokeForm action={revokeAgent.bind(null, r.id)} ariaLabel={`Ajanı iptal et: ${r.name}`} />}
+                    <RevokeForm action={revokeAgent.bind(null, r.id)} ariaLabel={`Ajanı iptal et: ${r.name}`} revoked={Boolean(r.revokedAt)} />
                   </div>
                 </div>
                 {r.status && (

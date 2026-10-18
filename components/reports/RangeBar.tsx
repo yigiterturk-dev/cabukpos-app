@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { dateRanges, type Range, type ReportTab } from "@/lib/core/report";
+import { dateRanges, istToday, type Range, type ReportTab } from "@/lib/core/report";
 import { PrintButton } from "@/components/admin/ReportMailCard";
 import { buttonClass } from "@/components/ui";
 
@@ -8,6 +8,7 @@ export const reportHref = (sekme: ReportTab, r?: Range, extra: Record<string, st
 
 /** Tarih aralığı: hazır aralıklar (bağlantı) + başlangıç/bitiş + CSV + Yazdır/PDF. */
 export function RangeBar({ sekme, range, csv, print = false, extra = {} }: { sekme: ReportTab; range: Range; csv: string | null; print?: boolean; extra?: Record<string, string | undefined> }) {
+  const today = istToday();
   return (
     <section className="mb-5 flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface-2/95 p-3 text-sm shadow-card backdrop-blur-sm lg:sticky lg:top-[4.5rem] lg:z-20 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between" aria-label="Rapor tarih aralığı">
       <div className="min-w-0 lg:flex-1">
@@ -20,13 +21,13 @@ export function RangeBar({ sekme, range, csv, print = false, extra = {} }: { sek
         </nav>
       </div>
       <div className="flex min-w-0 flex-col gap-3 lg:ml-auto lg:shrink-0 lg:flex-row lg:items-end">
-        <form className="flex min-w-0 flex-wrap items-end gap-2">
+        <form key={`${range.bas}-${range.bit}`} className="flex min-w-0 flex-wrap items-end gap-2">
           <input type="hidden" name="sekme" value={sekme} />
           {Object.entries(extra).map(([k, v]) => v && <input key={k} type="hidden" name={k} value={v} />)}
-          <label className="flex flex-col gap-1"><span className="text-xs text-muted">Başlangıç</span><input type="date" name="bas" defaultValue={range.bas} className="min-h-11 rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
-          <label className="flex flex-col gap-1"><span className="text-xs text-muted">Bitiş</span><input type="date" name="bit" defaultValue={range.bit} className="min-h-11 rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
+          <label className="flex flex-col gap-1"><span className="text-xs text-muted">Başlangıç</span><input type="date" name="bas" max={today} defaultValue={range.bas} className="min-h-11 rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
+          <label className="flex flex-col gap-1"><span className="text-xs text-muted">Bitiş</span><input type="date" name="bit" max={today} defaultValue={range.bit} className="min-h-11 rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /></label>
           <button type="submit" className={buttonClass("primary")}>Göster</button>
-          <p className="basis-full text-xs text-muted">Ters tarih aralığı otomatik sıralanır; 366 günü aşan aralık bitiş tarihinden geriye doğru kısaltılır.</p>
+          <p className="basis-full text-xs text-muted">Gelecek tarih seçilemez. Ters tarih aralığı otomatik sıralanır; 366 günü aşan aralık bitiş tarihinden geriye doğru kısaltılır.</p>
         </form>
         <span className="flex flex-wrap items-center gap-2">
           {print && <PrintButton />}

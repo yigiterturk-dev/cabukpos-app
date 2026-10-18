@@ -2,6 +2,7 @@
 import { formatReceipt, type Currency } from "@/lib/core/money";
 import { shownMethods } from "@/lib/core/payment";
 import type { summarizeShift } from "@/lib/core/shift";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 
 /** Bulutta (yönetim) loadShiftSummary, kasada yerel satışlardan üretilir. */
 export type ShiftReportData = {
@@ -55,19 +56,21 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
       {s.vat.length > 0 && (
         <section>
           <h2 className="mb-1 font-display text-base font-bold tracking-tight">KDV</h2>
-          <table className="w-full border-y border-line">
+          <HorizontalScrollRegion label="KDV dağılımı tablosu, yatay kaydırılabilir">
+          <table aria-label="KDV dağılımı" className="w-full border-y border-line">
             <thead className="text-left text-xs text-muted"><tr><th scope="col" className="py-1.5 font-medium">Oran</th><th scope="col" className="text-right font-medium">Matrah</th><th scope="col" className="text-right font-medium">KDV</th><th scope="col" className="text-right font-medium">Toplam</th></tr></thead>
             <tbody className="tabular-nums">
               {s.vat.map((v) => <tr key={v.rate} className="border-t border-line"><td className="py-1.5">%{v.rate}</td><td className="text-right">{TL(v.net)}</td><td className="text-right">{TL(v.vat)}</td><td className="text-right">{TL(v.gross)}</td></tr>)}
             </tbody>
           </table>
+          </HorizontalScrollRegion>
         </section>
       )}
       <section>
         <h2 className="mb-1 font-display text-base font-bold tracking-tight">Kasa</h2>
         <div className="divide-y divide-line border-y border-line">
           <Row label="Açılış nakdi" value={TL(shift.openingCash)} />
-          {s.dropped > 0 && <Row label="Seifeye alınan" value={`-${TL(s.dropped)}`} />}
+          {s.dropped > 0 && <Row label="Güvenli kasaya aktarılan" value={`-${TL(s.dropped)}`} />}
           <Row label="Beklenen kasa" value={TL(expected)} strong />
           {shift.countedCash !== null && <Row label="Sayılan nakit" value={TL(shift.countedCash)} />}
           {diff !== null && <Row label="Fark" value={signedTL(diff, data.currency)} strong tone={diff < 0 ? "bad" : diff > 0 ? "ok" : undefined} />}

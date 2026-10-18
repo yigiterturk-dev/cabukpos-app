@@ -54,11 +54,11 @@ export default function Yardim() {
         {HELP_TOPICS.map((t) => {
           const Icon = ICONS[t.icon];
           return (
-            <section key={t.id} id={t.id} className="scroll-mt-6 rounded-[18px] border border-line bg-surface p-5 shadow-card">
+            <section key={t.id} id={t.id} tabIndex={-1} aria-labelledby={`help-topic-${t.id}`} className="scroll-mt-6 rounded-[18px] border border-line bg-surface p-5 shadow-card outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/40">
               <div className="flex items-start gap-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><Icon aria-hidden className="size-5" /></span>
                 <div className="min-w-0">
-                  <h2 className="font-semibold text-ink">{t.title}</h2>
+                  <h2 id={`help-topic-${t.id}`} className="font-semibold text-ink">{t.title}</h2>
                   <p className="mt-0.5 text-sm text-muted">{t.summary}</p>
                 </div>
               </div>

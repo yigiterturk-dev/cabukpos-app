@@ -2,7 +2,8 @@ import Link from "next/link";
 import { withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { supplierStatement, suppliersWithBalance } from "@/lib/admin/purchase";
-import { moneyFormatter } from "@/lib/admin/currency";
+import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
+import { currencySymbol } from "@/lib/core/money";
 import { PaymentForm, SupplierForm } from "@/components/admin/PurchaseForms";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { Card, Empty, PageHeader, Panel, SplitView } from "@/components/ui";
@@ -14,6 +15,7 @@ const telHref = (phone: string) => "tel:" + (phone.trim().startsWith("+") ? "+" 
 export default async function Tedarikciler({ searchParams }: { searchParams: Promise<{ id?: string; duzenle?: string }> }) {
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
+  const currencyUnit = currencySymbol(await tenantCurrency(a.tenantId));
   const bal = (k: number) => (k > 0 ? `${money(k)} borç` : k < 0 ? `${money(-k)} alacak` : "—");
   const { id, duzenle } = await searchParams;
   const { sups, st } = await withTenant(a.tenantId, async (tx) => {
@@ -33,7 +35,7 @@ export default async function Tedarikciler({ searchParams }: { searchParams: Pro
             <h2 className="font-semibold">{sel.name}{sel.phone && <span className="ml-2 text-sm font-normal text-muted">{sel.phone}</span>}</h2>
             <div className="flex flex-wrap items-center gap-1 text-sm">Bakiye <b className={`tabular ${st.balance > 0 ? "text-warn" : st.balance < 0 ? "text-ok" : ""}`} data-testid="supplier-balance">{bal(st.balance)}</b><span aria-hidden>·</span><Link href={`/yonetim/tedarikciler?duzenle=${sel.id}`} className="inline-flex min-h-11 items-center rounded-lg px-2.5 underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">düzenle</Link><span aria-hidden>·</span><Link href="/yonetim/tedarikciler" className="inline-flex min-h-11 items-center rounded-lg px-2.5 underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">kapat</Link></div>
           </div>
-          <PaymentForm supplierId={sel.id} today={today()} />
+          <PaymentForm supplierId={sel.id} today={today()} currencyUnit={currencyUnit} />
           {st.rows.length === 0 ? <p className="mt-4 text-sm text-muted">Hareket yok.</p> : (
             <div className="mt-4 min-w-0">
             <table aria-label="Tedarikçi hesap hareketleri" className="w-full table-fixed text-sm">

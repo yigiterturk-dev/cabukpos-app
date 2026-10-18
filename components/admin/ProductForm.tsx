@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { saveCategory, saveProduct, type CatalogState } from "@/lib/admin/catalog-actions";
-import { formatTL } from "@/lib/core/money";
+import { formatPlain } from "@/lib/core/money";
 import { formatQty, type StockUnit } from "@/lib/core/stock";
 import { Select, type Option } from "@/components/Select";
 import { useFormAction } from "@/components/useFormAction";
@@ -18,7 +18,7 @@ export type ProductInitial = { id: string; name: string; price: number; vatRate:
 /** Restoran: ürüne bağlanabilecek istasyonlar ve seçenek grupları. */
 export type SalonChoices = { stations: Option[]; groups: Option[]; storeId: string | null };
 const FIELDS = ["name", "price", "vatRate", "categoryId", "barcodes", "kind", "plu", "unit", "cost", "minStock", "yieldMilli"];
-const tl = (k: number | null | undefined) => (k == null ? "" : formatTL(k).replace(" ₺", ""));
+const money = (k: number | null | undefined) => (k == null ? "" : formatPlain(k));
 const qty = (q: number | null | undefined, u: StockUnit) => (q == null ? "" : formatQty(q, u).replace(/ (kg|lt)$/, ""));
 
 function RadioCards<T extends string>({ name, value, set, items, label, error }: { name: string; value: T; set: (v: T) => void; items: readonly (readonly [T, string])[]; label: string; error?: boolean }) {
@@ -37,12 +37,12 @@ function RadioCards<T extends string>({ name, value, set, items, label, error }:
   );
 }
 
-function Fields({ s, initial, categories, salon, pending }: { s: CatalogState; initial?: ProductInitial; categories: Option[]; salon?: SalonChoices; pending: boolean }) {
+function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: CatalogState; initial?: ProductInitial; categories: Option[]; salon?: SalonChoices; pending: boolean; currencyUnit: string }) {
   const [vat, setVat] = useState(String(initial?.vatRate ?? 10));
   const [kind, setKind] = useState(initial?.kind ?? "adet");
   const [sellable, setSellable] = useState(initial?.sellable ?? true);
   const [unit, setUnit] = useState<StockUnit>(initial?.unit ?? "kg");
-  const [price, setPrice] = useState(initial ? formatTL(initial.price).replace(" ₺", "") : "");
+  const [price, setPrice] = useState(initial ? formatPlain(initial.price) : "");
   const [yieldMilli, setYieldMilli] = useState(qty(initial?.yieldMilli, initial?.unit ?? "kg"));
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [plu, setPlu] = useState(initial?.plu ?? "");
@@ -52,32 +52,34 @@ function Fields({ s, initial, categories, salon, pending }: { s: CatalogState; i
   const [optionGroupIds, setOptionGroupIds] = useState(initial?.optionGroupIds ?? []);
   const u: StockUnit = sellable ? (kind === "tartili" ? "kg" : "adet") : unit;
   const uLabel = u === "adet" ? "adet" : u;
+  const qtyMaxLength = u === "adet" ? 6 : 10;
+  const qtyFormatHint = u === "adet" ? "tam sayı · en fazla 999.999" : `en fazla 999.999,999 ${u} · 3 ondalık hane`;
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-      <div><Field label="Ürün adı"><Input name="name" defaultValue={initial?.name} required {...fieldErrorProps(s, "name")} /></Field><Err s={s} f="name" /></div>
+      <div><Field label="Ürün adı" hint="2–80 karakter"><Input name="name" defaultValue={initial?.name} maxLength={80} required {...fieldErrorProps(s, "name")} /></Field><Err s={s} f="name" /></div>
       <div>
         <RadioCards name="sellable" value={sellable ? "true" : "false"} set={(v) => setSellable(v === "true")} label="Kasada satılır" items={[["true", "Evet"], ["false", "Hayır (hammadde / ara ürün)"]]} />
       </div>
       {!sellable && (
         <>
           <div><RadioCards name="unit" value={unit} set={setUnit} label="Stok birimi" items={[["adet", "Adet"], ["kg", "Kg"], ["lt", "Litre"]]} error={s.field === "unit" && !!s.error} /><Err s={s} f="unit" /></div>
-          <div><Field label={`Parti miktarı (${uLabel})`} hint="Yalnız ara ürün: bir üretim partisi ne kadar çıkar"><Input name="yieldMilli" inputMode={u === "adet" ? "numeric" : "decimal"} value={yieldMilli} onChange={(e) => setYieldMilli(e.target.value)} {...fieldErrorProps(s, "yieldMilli")} /></Field><Err s={s} f="yieldMilli" /></div>
+          <div><Field label={`Parti miktarı (${uLabel})`} hint={`Bir üretim partisinin çıktısı · ${qtyFormatHint}`}><Input name="yieldMilli" inputMode={u === "adet" ? "numeric" : "decimal"} maxLength={qtyMaxLength} value={yieldMilli} onChange={(e) => setYieldMilli(e.target.value)} {...fieldErrorProps(s, "yieldMilli")} /></Field><Err s={s} f="yieldMilli" /></div>
         </>
       )}
-      <div><Field label={`Maliyet (${uLabel} başına, TL)`} hint="Alış fişi kaydedince kendiliğinden güncellenir"><Input name="cost" inputMode="decimal" defaultValue={tl(initial?.cost)} {...fieldErrorProps(s, "cost")} /></Field><Err s={s} f="cost" /></div>
-      <div><Field label={`Kritik stok sınırı (${uLabel})`} hint="Stok bu değere inince uyarı; boş = uyarı yok"><Input name="minStock" inputMode={u === "adet" ? "numeric" : "decimal"} defaultValue={qty(initial?.minStock, u)} {...fieldErrorProps(s, "minStock")} /></Field><Err s={s} f="minStock" /></div>
+      <div><Field label={`Maliyet (${uLabel} başına, ${currencyUnit})`} hint="Alış fişi kaydedince kendiliğinden güncellenir · en fazla 100.000,00"><Input name="cost" inputMode="decimal" maxLength={10} defaultValue={money(initial?.cost)} {...fieldErrorProps(s, "cost")} /></Field><Err s={s} f="cost" /></div>
+      <div><Field label={`Kritik stok sınırı (${uLabel})`} hint={`Stok bu değere inince uyarı; boş = uyarı yok · ${qtyFormatHint}`}><Input name="minStock" inputMode={u === "adet" ? "numeric" : "decimal"} maxLength={qtyMaxLength} defaultValue={qty(initial?.minStock, u)} {...fieldErrorProps(s, "minStock")} /></Field><Err s={s} f="minStock" /></div>
       {sellable && (<>
       <div>
         <RadioCards name="kind" value={kind} set={setKind} label="Tür" items={[["adet", "Adet"], ["tartili", "Tartılı (kg)"]]} error={s.field === "kind" && !!s.error} />
         <Err s={s} f="kind" />
       </div>
-      <div><Field label={kind === "tartili" ? "Kg fiyatı (KDV dahil)" : "Fiyat (KDV dahil)"} hint="ör. 25,00"><Input name="price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} required {...fieldErrorProps(s, "price")} /></Field><Err s={s} f="price" /></div>
+      <div><Field label={kind === "tartili" ? `Kg fiyatı (${currencyUnit}, KDV dahil)` : `Fiyat (${currencyUnit}, KDV dahil)`} hint={`1,00–100.000,00 ${currencyUnit}`}><Input name="price" inputMode="decimal" maxLength={10} value={price} onChange={(e) => setPrice(e.target.value)} required {...fieldErrorProps(s, "price")} /></Field><Err s={s} f="price" /></div>
       <div>
         <RadioCards name="vatRate" value={vat} set={setVat} label="KDV" items={[...["1", "10", "20"].map((r) => [r, `%${r}`] as const)]} error={s.field === "vatRate" && !!s.error} />
         <Err s={s} f="vatRate" />
       </div>
       <div><Field label="Kategori"><Select name="categoryId" disabled={pending} options={[{ value: "", label: "Kategorisiz" }, ...categories]} defaultValue={categoryId} onChange={setCategoryId} placeholder="Kategorisiz" {...fieldErrorProps(s, "categoryId")} /></Field><Err s={s} f="categoryId" /></div>
-      {kind === "tartili" ? <div><Field label="PLU" hint="Terazideki 5 haneli ürün kodu; etiketsiz tartımda boş"><Input name="plu" inputMode="numeric" maxLength={5} value={plu} onChange={(e) => setPlu(e.target.value)} {...fieldErrorProps(s, "plu")} /></Field><Err s={s} f="plu" /></div> : <div />}
+      {kind === "tartili" ? <div><Field label="PLU" hint="Terazideki 5 rakamlı ürün kodu; etiketsiz tartımda boş"><Input name="plu" inputMode="numeric" maxLength={5} pattern="[0-9]{5}" title="PLU 5 rakam olmalı." value={plu} onChange={(e) => setPlu(e.target.value)} {...fieldErrorProps(s, "plu")} /></Field><Err s={s} f="plu" /></div> : <div />}
       <div className="flex flex-col justify-end gap-2 text-sm">
         <label className="flex min-h-11 items-center gap-2"><input type="checkbox" name="trackStock" checked={trackStock} onChange={(e) => setTrackStock(e.target.checked)} className="size-4 accent-[var(--color-brand)]" />Stok takibi</label>
         <label className="flex min-h-11 items-center gap-2"><input type="checkbox" name="quick" checked={quick} onChange={(e) => setQuick(e.target.checked)} className="size-4 accent-[var(--color-brand)]" />Kasada hızlı tuş</label>
@@ -103,34 +105,44 @@ function Fields({ s, initial, categories, salon, pending }: { s: CatalogState; i
         </>
       )}
       </>)}
-      <div className="sm:col-span-2 lg:col-span-1"><Field label="Barkodlar" hint="Virgül ya da satırla ayırın; boş olabilir"><Textarea name="barcodes" rows={2} defaultValue={initial?.barcodes.join("\n")} {...fieldErrorProps(s, "barcodes")} /></Field><Err s={s} f="barcodes" /></div>
+      <div className="sm:col-span-2 lg:col-span-1"><Field label="Barkodlar" hint="Her barkod 3–14 rakam olmalı; virgül ya da satırla ayırın. Boş bırakılabilir."><Textarea name="barcodes" rows={2} defaultValue={initial?.barcodes.join("\n")} {...fieldErrorProps(s, "barcodes")} /></Field><Err s={s} f="barcodes" /></div>
     </div>
   );
 }
 
-export function ProductForm({ initial, categories, salon }: { initial?: ProductInitial; categories: Option[]; salon?: SalonChoices }) {
+export function ProductForm({ initial, categories, salon, currencyUnit }: { initial?: ProductInitial; categories: Option[]; salon?: SalonChoices; currencyUnit: string }) {
   const { state, pending, onSubmit } = useFormAction(saveProduct.bind(null, initial?.id ?? null), {} as CatalogState);
   const formRef = useRef<HTMLFormElement>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
+  const [edited, setEdited] = useState(false);
+  const isEditing = Boolean(initial);
+  const displayState = edited || pending ? {} as CatalogState : state;
   useEffect(() => {
     if (!state.error || !state.field) return;
     requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
   }, [state.error, state.field]);
   useEffect(() => {
-    if (!state.savedAt || state.error || initial) return;
-    requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('input[name="name"]')?.focus());
-  }, [initial, state.error, state.savedAt]);
+    if (pending || !state.savedAt || state.error) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (isEditing) saveButtonRef.current?.focus();
+      else formRef.current?.querySelector<HTMLElement>('input[name="name"]')?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isEditing, pending, state.error, state.savedAt]);
   return (
-    <form ref={formRef} onSubmit={onSubmit} aria-busy={pending} className="space-y-4">
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onClickCapture={(e) => {
+      if (e.target instanceof Element && e.target.closest('button[role="combobox"]')) setEdited(true);
+    }} onSubmit={(e) => { setEdited(false); onSubmit(e); }} aria-busy={pending} className="space-y-4">
       <fieldset disabled={pending} className="m-0 min-w-0 space-y-4 border-0 p-0 disabled:opacity-60">
         <legend className="sr-only">{initial ? "Ürünü düzenle" : "Yeni ürün"}</legend>
-        <Fields key={initial ? initial.id : state.savedAt ?? 0} s={state} initial={initial} categories={categories} salon={salon} pending={pending} />
-        {state.error && !FIELDS.includes(state.field ?? "") && <p className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
+        <Fields key={initial ? initial.id : state.savedAt ?? 0} s={displayState} initial={initial} categories={categories} salon={salon} pending={pending} currencyUnit={currencyUnit} />
+        {displayState.error && !FIELDS.includes(displayState.field ?? "") && <p className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}
       </fieldset>
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Ürünü kaydet"}</Button>
+        <Button ref={saveButtonRef} type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Ürünü kaydet"}</Button>
         {initial && <Link href="/yonetim/urunler" aria-disabled={pending || undefined} tabIndex={pending ? -1 : undefined} onClick={(e) => { if (pending) e.preventDefault(); }} className={`inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm text-muted outline-none hover:bg-surface-2 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${pending ? "pointer-events-none opacity-50" : ""}`}>Vazgeç</Link>}
         {pending && <span className="sr-only" role="status" aria-live="polite">Ürün kaydediliyor. Lütfen bekleyin.</span>}
-        {state.savedAt && !initial && <span className="text-sm text-ok" role="status">Kaydedildi.</span>}
+        {state.savedAt && !edited && !pending && !state.error && <span className="text-sm text-ok" role="status">Kaydedildi.</span>}
       </div>
     </form>
   );
@@ -139,15 +151,19 @@ export function ProductForm({ initial, categories, salon }: { initial?: ProductI
 export function CategoryForm() {
   const { state, pending, onSubmit } = useFormAction(saveCategory, {} as CatalogState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [edited, setEdited] = useState(false);
+  const displayState = edited || pending ? {} as CatalogState : state;
   useEffect(() => {
     if (!state.savedAt || state.error) return;
     requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('input[name="categoryName"]')?.focus());
   }, [state.error, state.savedAt]);
   return (
-    <form ref={formRef} onSubmit={onSubmit} aria-busy={pending} className="flex flex-wrap items-start gap-2">
-      <div><Input key={state.savedAt ?? 0} name="categoryName" placeholder="Yeni kategori" aria-label="Kategori adı" disabled={pending} className="w-48 disabled:cursor-wait disabled:opacity-50" /><Err s={state} f="categoryName" /></div>
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} aria-busy={pending} className="flex flex-wrap items-start gap-2">
+      <div><Input key={state.savedAt ?? 0} name="categoryName" placeholder="Yeni kategori" aria-label="Kategori adı" aria-invalid={displayState.field === "categoryName" && !!displayState.error || undefined} aria-describedby={`catalog-categoryName-hint${displayState.field === "categoryName" && displayState.error ? " catalog-categoryName-error" : ""}`} maxLength={40} minLength={2} pattern=".*\S.*" disabled={pending} required className="w-48 disabled:cursor-wait disabled:opacity-50" /><span id="catalog-categoryName-hint" className="mt-1 block text-xs text-muted">2–40 karakter</span><Err s={displayState} f="categoryName" /></div>
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Ekleniyor…" : "Kategori ekle"}</Button>
       {pending && <span className="sr-only" role="status" aria-live="polite">Kategori ekleniyor. Lütfen bekleyin.</span>}
+      {displayState.error && !displayState.field && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}
+      {state.savedAt && !edited && !pending && !state.error && <span className="text-sm text-ok" role="status">Kategori eklendi.</span>}
     </form>
   );
 }

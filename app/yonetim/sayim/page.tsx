@@ -6,14 +6,16 @@ import { scopedStoreId } from "@/lib/admin/store-scope";
 import { stockUnitOf, countVariance, wasteSummary, formatQty, type CountLineCore } from "@/lib/core/stock";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { StartCountForm, CountLineForm, CloseCountForm, CancelCountForm } from "@/components/admin/CountForms";
+import { ActionResult } from "@/components/admin/ActionResult";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { Badge, Card, Empty, PageHeader, Panel, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 const dt = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 
-export default async function Sayim() {
+export default async function Sayim({ searchParams }: { searchParams: Promise<{ count?: string }> }) {
   const a = await requireAdmin();
+  const { count: countResult } = await searchParams;
   const money = await moneyFormatter(a.tenantId);
   const C = schema.stockCounts, L = schema.stockCountLines, M = schema.stockMovements, P = schema.products;
   const data = await withTenant(a.tenantId, async (tx) => {
@@ -40,6 +42,8 @@ export default async function Sayim() {
   return (
     <>
       <PageHeader title="Sayım & zayi" desc="Çok ürünlü sayım oturumu: açılışta beklenen stok donar, satır satır sayarsınız, kapanışta sapmayı onaylayınca stok sayılan değere oturur. Alttaki panel son 30 günün fire (zayi) özetidir." />
+      {countResult === "started" && <ActionResult kind="success">Sayım oturumu başlatıldı; açık sayım tablosundan satırları sayabilirsiniz.</ActionResult>}
+      {countResult === "closed" && <ActionResult kind="success">Sayım oturumu kapatıldı.</ActionResult>}
       {data.open ? (
         <div className="space-y-4">
           <Card className="p-4">
@@ -62,7 +66,7 @@ export default async function Sayim() {
                       <div><dt className="text-xs text-muted">Beklenen</dt><dd className="tabular">{formatQty(r.expectedMilli, stockUnitOf(r))}</dd></div>
                       <div><dt className="text-xs text-muted">Sapma</dt><dd className={`tabular ${v == null ? "text-muted" : v === 0 ? "text-ok" : "text-bad"}`}>{v == null ? "—" : `${v > 0 ? "+" : ""}${formatQty(v, stockUnitOf(r))}`}</dd></div>
                     </dl>
-                    <CountLineForm countId={data.open.id} lineId={r.id} unit={stockUnitOf(r)} countedMilli={r.countedMilli} />
+                    <CountLineForm countId={data.open.id} lineId={r.id} productName={r.name} unit={stockUnitOf(r)} countedMilli={r.countedMilli} />
                   </li>
                 );
               })}
@@ -80,7 +84,7 @@ export default async function Sayim() {
                       <td className="max-w-[20rem] p-3 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
                       <td className="p-3 text-right tabular">{formatQty(r.expectedMilli, stockUnitOf(r))}</td>
                       <td className={`p-3 text-right tabular ${v == null ? "text-muted" : v === 0 ? "text-ok" : "text-bad"}`}>{v == null ? "—" : `${v > 0 ? "+" : ""}${formatQty(v, stockUnitOf(r))}`}</td>
-                      <td className="p-3"><CountLineForm countId={data.open!.id} lineId={r.id} unit={stockUnitOf(r)} countedMilli={r.countedMilli} /></td>
+                      <td className="p-3"><CountLineForm countId={data.open!.id} lineId={r.id} productName={r.name} unit={stockUnitOf(r)} countedMilli={r.countedMilli} /></td>
                     </tr>
                   );
                 })}

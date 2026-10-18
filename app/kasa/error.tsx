@@ -4,10 +4,11 @@ import { useEffect } from "react";
 export default function Error({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error(error);
+    document.getElementById("kasa-error-title")?.focus();
   }, [error]);
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-xl font-semibold">Kasa ekranı durdu</h1>
+      <h1 id="kasa-error-title" tabIndex={-1} className="text-xl font-semibold">Kasa ekranı durdu</h1>
       <p className="max-w-md text-sm text-muted">
         Beklenmeyen bir hata oluştu. Satılan fişler cihazda güvende; tekrar deneyin, sorun sürerse kayıt numarasını destekle paylaşın.
       </p>

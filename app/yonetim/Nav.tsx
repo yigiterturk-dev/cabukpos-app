@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { normalizeSearchText } from "@/lib/core/search";
 import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
@@ -80,7 +81,7 @@ function NavItem({ item, path, onSelect }: { item: Item; path: string; onSelect?
 }
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-muted/55">{children}</h2>;
+  return <h2 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-muted">{children}</h2>;
 }
 
 /** Sidebar menüsü: arama ile filtrele + gruplu liste. Masaüstü ve mobil çekmecede aynı. */
@@ -88,6 +89,7 @@ export function Nav({ vertical, onNavigate }: { vertical: "restoran" | "market";
   const path = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
+  const [matchNotice, setMatchNotice] = useState<{ query: string; text: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -111,8 +113,13 @@ export function Nav({ vertical, onNavigate }: { vertical: "restoran" | "market";
     () => groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.only || i.only === vertical) })).filter((g) => g.items.length),
     [vertical],
   );
-  const needle = q.trim().toLocaleLowerCase("tr");
-  const matches = needle ? visible.flatMap((g) => g.items).filter((i) => i.label.toLocaleLowerCase("tr").includes(needle)) : [];
+  const needle = normalizeSearchText(q.trim());
+  const matches = needle ? visible.flatMap((g) => g.items).filter((i) => normalizeSearchText(i.label).includes(needle)) : [];
+  useEffect(() => {
+    if (!needle) return;
+    const timer = window.setTimeout(() => setMatchNotice({ query: needle, text: matches.length === 0 ? "Menüde sonuç yok." : `${matches.length} menü sonucu bulundu.` }), 450);
+    return () => window.clearTimeout(timer);
+  }, [matches.length, needle]);
 
   return (
     <nav aria-label="Yönetim" className="space-y-1">
@@ -121,17 +128,18 @@ export function Nav({ vertical, onNavigate }: { vertical: "restoran" | "market";
         <input
           ref={searchRef}
           value={q}
+          maxLength={80}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Escape") { e.preventDefault(); setQ(""); e.currentTarget.blur(); }
-          else if (e.key === "Enter" && matches[0]) { e.preventDefault(); router.push(matches[0].href); setQ(""); e.currentTarget.blur(); onNavigate?.(); }
+            if (e.key === "Escape" && q) { e.preventDefault(); e.stopPropagation(); setQ(""); }
+            else if (e.key === "Enter" && matches[0]) { e.preventDefault(); router.push(matches[0].href); setQ(""); e.currentTarget.blur(); onNavigate?.(); }
           }}
           placeholder="Menüde ara"
           aria-label="Menüde ara"
           aria-keyshortcuts="Control+K Meta+K"
-          className="min-h-11 w-full rounded-xl border border-white/10 bg-white/[0.06] pl-9 pr-8 text-sm text-cream placeholder:text-cream-muted/60 outline-none transition focus:border-brand-ring/60 focus:bg-white/[0.09] focus:ring-4 focus:ring-brand-ring/25"
+          className="min-h-11 w-full rounded-xl border border-white/10 bg-white/[0.06] pl-9 pr-8 text-sm text-cream placeholder:text-cream-muted outline-none transition focus:border-brand-ring/60 focus:bg-white/[0.09] focus:ring-4 focus:ring-brand-ring/25"
         />
-        {!q && <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-medium text-cream-muted/65">⌘/Ctrl K</span>}
+        {!q && <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-white/10 px-1.5 py-0.5 text-[10px] font-medium text-cream-muted">⌘/Ctrl K</span>}
         {q && (
           <button type="button" aria-label="Aramayı temizle" onClick={() => { setQ(""); requestAnimationFrame(() => searchRef.current?.focus()); }} className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-lg text-cream-muted outline-none hover:bg-white/10 hover:text-cream focus-visible:ring-2 focus-visible:ring-brand-ring/60">
             <X aria-hidden className="size-4" />
@@ -140,12 +148,12 @@ export function Nav({ vertical, onNavigate }: { vertical: "restoran" | "market";
       </div>
 
       <p className="sr-only" role="status" aria-live="polite">
-        {needle ? (matches.length === 0 ? "Menüde sonuç yok." : `${matches.length} menü sonucu bulundu.`) : ""}
+        {matchNotice?.query === needle ? matchNotice.text : ""}
       </p>
 
       {needle ? (
         <ul className="space-y-0.5">
-          {matches.length === 0 && <li className="px-3 py-6 text-center text-sm text-cream-muted/70">Sonuç yok</li>}
+          {matches.length === 0 && <li className="px-3 py-6 text-center text-sm text-cream-muted">Sonuç yok</li>}
           {matches.map((i) => <li key={i.href}><NavItem item={i} path={path} onSelect={() => { setQ(""); onNavigate?.(); }} /></li>)}
         </ul>
       ) : (
@@ -177,6 +185,12 @@ export function MobileNav({ children }: { children: (onNavigate: () => void) => 
   const setOpen = (v: boolean) => setOpenAt(v ? path : null);
   const close = () => setOpenAt(null);
   useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 48rem)");
+    const closeOnDesktop = () => { if (desktop.matches) setOpenAt(null); };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
+  useEffect(() => {
     if (previousPath.current === path) return;
     previousPath.current = path;
     document.getElementById("main-content")?.focus();
@@ -201,7 +215,8 @@ export function MobileNav({ children }: { children: (onNavigate: () => void) => 
       return () => {
         document.body.style.overflow = previousOverflow;
         document.body.style.paddingRight = previousPaddingRight;
-        trigger?.focus();
+        if (trigger?.getClientRects().length && getComputedStyle(trigger).visibility === "visible") trigger.focus();
+        else document.getElementById("main-content")?.focus();
       };
     }
   }, [open]);

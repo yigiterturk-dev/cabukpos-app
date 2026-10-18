@@ -78,7 +78,7 @@ export async function savePriceItem(listId: string, _: PriceListState, form: For
   const productId = str(form, "productId");
   if (!UUID.test(productId)) return { error: "Ürün seçin.", field: "productId" };
   const price = str(form, "price") === "" ? null : parseTL(str(form, "price"));
-  if (price === null || price <= 0) return { error: "Fiyat geçersiz.", field: "price" };
+  if (price === null || price <= 0 || price > 2_147_483_647) return { error: "Fiyat 0'dan büyük ve en çok 21.474.836,47 olmalı.", field: "price" };
   const err = await withTenant(a.tenantId, async (tx) => {
     const [p] = await tx.select({ id: schema.products.id }).from(schema.products).where(eq(schema.products.id, productId));
     if (!p) return "Ürün bulunamadı.";

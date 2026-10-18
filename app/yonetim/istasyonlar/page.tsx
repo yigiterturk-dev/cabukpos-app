@@ -61,6 +61,7 @@ export default async function Istasyonlar() {
                 <span className="min-w-0 flex-1 break-words text-sm font-medium">{c.name}</span>
                 <CategoryStation
                   categoryId={c.id}
+                  categoryName={c.name}
                   value={categoryStationForStore(c.id, c.stationId, routes) ?? ""}
                   currentIsOtherBranch={!routes.categories.has(c.id) && !!c.stationId && !routes.stationIds.has(c.stationId)}
                   stations={stationOpts}

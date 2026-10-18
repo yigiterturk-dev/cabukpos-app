@@ -60,7 +60,7 @@ export const buyerSchema = z
   .object({
     taxId: z.string().trim().refine((s) => validateTaxId(s) !== null, "Geçersiz VKN/TCKN"),
     name: z.string().trim().min(1, "Ad/unvan gerekli").max(200),
-    email: z.string().trim().email("Geçersiz e-posta").optional().or(z.literal("").transform(() => undefined)),
+    email: z.string().trim().max(254, "E-posta en fazla 254 karakter olabilir").email("Geçersiz e-posta").optional().or(z.literal("").transform(() => undefined)),
     address: z.string().trim().max(500).optional(),
   })
   .superRefine((b, ctx) => {

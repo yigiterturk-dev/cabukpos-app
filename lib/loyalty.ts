@@ -1,5 +1,6 @@
 // lib/loyalty.ts — #33: Sadakat puanı + kupon hesapları. Saf fonksiyonlar; UI ve satış akışı ortak kullanır.
 import type { Kurus } from "./core/money";
+import { endOfStoredIstanbulDay } from "./core/date";
 
 export type CouponLike = {
   kind: "yuzde" | "tutar" | "teslimat";
@@ -18,7 +19,7 @@ export type CouponResult = { ok: true; discount: Kurus } | { ok: false; reason: 
 /** Kuponu aratınca sepette uygulanabilir mi? discount = ara toplamdan düşülecek kuruş (teslimatta 0). */
 export function couponCheck(c: CouponLike, subtotal: Kurus, now = new Date(), customerUsed = 0): CouponResult {
   if (c.startsAt && now < c.startsAt) return { ok: false, reason: "Kupon henüz başlamadı." };
-  if (c.endsAt && now > c.endsAt) return { ok: false, reason: "Kuponun süresi doldu." };
+  if (c.endsAt && now > endOfStoredIstanbulDay(c.endsAt)) return { ok: false, reason: "Kuponun süresi doldu." };
   if (c.usageLimit !== null && c.usedCount >= c.usageLimit) return { ok: false, reason: "Kupon kullanım limiti doldu." };
   if (customerUsed >= c.perCustomerLimit) return { ok: false, reason: "Bu kuponu kullanma hakkınız doldu." };
   if (subtotal < c.minSubtotal) return { ok: false, reason: "Bu kupon en az " + (c.minSubtotal / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺ sepet gerektirir." };
@@ -64,6 +65,7 @@ export function newGiftCardCode(): string {
 
 /** Kupon kodu normalize: boşluk sil, büyük harf; en az 3 en çok 24 karakter. */
 export function normalizeCouponCode(input: string): string | null {
+  if (input.length > 48) return null;
   const code = input.toUpperCase().replace(/[\s-]+/g, "");
   return code.length >= 3 && code.length <= 24 && /^[A-Z0-9]+$/.test(code) ? code : null;
 }

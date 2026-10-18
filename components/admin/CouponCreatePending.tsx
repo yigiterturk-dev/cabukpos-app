@@ -8,6 +8,8 @@ import type { CouponCreateState } from "@/lib/admin/loyalty-actions";
 
 function CouponFields({ unit, pending, state }: { unit: string; pending: boolean; state: CouponCreateState }) {
   const [kind, setKind] = useState<"yuzde" | "tutar" | "teslimat">("yuzde");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
   const invalid = (name: string) => state.field === name && state.error ? { "aria-invalid": true as const, "aria-describedby": "coupon-create-error" } : {};
   return (
     <>
@@ -22,15 +24,15 @@ function CouponFields({ unit, pending, state }: { unit: string; pending: boolean
         <Field label={kind === "yuzde" ? "İndirim yüzdesi" : "İndirim değeri"} hint={kind === "yuzde" ? "1–100%" : kind === "tutar" ? `1,00–50.000,00 ${unit}` : "Teslimat bedava kuponunda değer 0 olarak sabit."}>
           {kind === "teslimat"
             ? <Input name="value" value="0" readOnly className="bg-surface-2 text-muted" />
-            : <Input key={kind} name="value" inputMode={kind === "yuzde" ? "numeric" : "decimal"} placeholder={kind === "yuzde" ? "20" : "50,00"} pattern={kind === "yuzde" ? "[0-9]{1,3}" : undefined} maxLength={kind === "yuzde" ? 3 : undefined} required {...invalid("value")} />}
+            : <Input key={kind} name="value" inputMode={kind === "yuzde" ? "numeric" : "decimal"} placeholder={kind === "yuzde" ? "20" : "50,00"} pattern={kind === "yuzde" ? "[0-9]{1,3}" : undefined} maxLength={kind === "yuzde" ? 3 : 9} required {...invalid("value")} />}
         </Field>
-        <Field label={`Alt sınır (${unit})`} hint="Sepet en az bu kadar olmalı"><Input name="minSubtotal" inputMode="decimal" defaultValue="0" {...invalid("minSubtotal")} /></Field>
-        {kind === "yuzde" && <Field label={`Üst sınır (${unit})`} hint="Boş = sınırsız"><Input name="maxDiscount" inputMode="decimal" {...invalid("maxDiscount")} /></Field>}
-        <Field label="Başlangıç"><Input name="startsAt" type="date" {...invalid("startsAt")} /></Field>
-        <Field label="Bitiş"><Input name="endsAt" type="date" {...invalid("endsAt")} /></Field>
-        <Field label="Toplam kullanım limiti" hint="Boş = sınırsız"><Input name="usageLimit" type="number" step={1} min={1} {...invalid("usageLimit")} /></Field>
-        <Field label="Müşteri başına limit"><Input name="perCustomerLimit" type="number" step={1} min={1} max={2147483647} defaultValue="1" {...invalid("perCustomerLimit")} /></Field>
-        <div className="sm:col-span-2"><Field label="Not"><Input name="note" /></Field></div>
+        <Field label={`Alt sınır (${unit})`} hint="0–21.474.836,47"><Input name="minSubtotal" inputMode="decimal" maxLength={13} defaultValue="0" {...invalid("minSubtotal")} /></Field>
+        {kind === "yuzde" && <Field label={`Üst sınır (${unit})`} hint="Boş = sınırsız · en çok 21.474.836,47"><Input name="maxDiscount" inputMode="decimal" maxLength={13} {...invalid("maxDiscount")} /></Field>}
+        <Field label="Başlangıç" hint="İsteğe bağlı"><Input name="startsAt" type="date" value={startsAt} onChange={(e) => { const next = e.target.value; setStartsAt(next); if (endsAt && next && endsAt < next) setEndsAt(""); }} {...invalid("startsAt")} /></Field>
+        <Field label="Bitiş" hint="Seçilen gün sonuna kadar geçerli; başlangıçtan önce olamaz"><Input name="endsAt" type="date" min={startsAt || undefined} value={endsAt} onChange={(e) => setEndsAt(e.target.value)} {...invalid("endsAt")} /></Field>
+        <Field label="Toplam kullanım limiti" hint="1–2.147.483.647 · boş = sınırsız"><Input name="usageLimit" type="number" step={1} min={1} max={2147483647} {...invalid("usageLimit")} /></Field>
+        <Field label="Müşteri başına limit" hint="Boş = 1 · en çok 2.147.483.647"><Input name="perCustomerLimit" type="number" step={1} min={1} max={2147483647} defaultValue="1" {...invalid("perCustomerLimit")} /></Field>
+        <div className="sm:col-span-2"><Field label="Not" hint="İsteğe bağlı · en fazla 200 karakter"><Input name="note" maxLength={200} /></Field></div>
         <button type="submit" disabled={pending} aria-busy={pending || undefined} className={`${buttonClass("primary")} self-end disabled:cursor-wait disabled:opacity-60`}>{pending ? "Kupon oluşturuluyor…" : "Kupon oluştur"}</button>
       </fieldset>
       {pending && <span className="sr-only" role="status" aria-live="polite">Kupon oluşturuluyor.</span>}

@@ -10,7 +10,8 @@ export function parseTL(input: string): Kurus | null {
   if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
   if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
   const [int, frac = ""] = s.split(".");
-  return Number(int) * 100 + Number(frac.padEnd(2, "0"));
+  const amount = Number(int) * 100 + Number(frac.padEnd(2, "0"));
+  return Number.isSafeInteger(amount) ? amount : null;
 }
 
 /** Biçimli tutarı (sonekli de olur: "12,50 ₺", "12,50 USD", "₺12,50") kuruşa çözer; parseTL'nin para birimi duyarlısı. */

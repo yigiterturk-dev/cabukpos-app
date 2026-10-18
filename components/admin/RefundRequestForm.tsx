@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Select } from "@/components/Select";
 import { buttonClass, Field, Input } from "@/components/ui";
 import { useFormAction } from "@/components/useFormAction";
 import type { RefundRequestState } from "@/lib/billing/actions";
 
-function RefundRequestFields({ compact, hint, pending, state, errorId }: { compact: boolean; hint: boolean | null; pending: boolean; state: RefundRequestState; errorId: string }) {
+function RefundRequestFields({ compact, hint, pending, state, errorId, onEdit }: { compact: boolean; hint: boolean | null; pending: boolean; state: RefundRequestState; errorId: string; onEdit: () => void }) {
   return (
     <>
       <fieldset disabled={pending} aria-busy={pending} className={`m-0 min-w-0 border-0 p-0 ${compact ? "space-y-3" : "flex flex-wrap items-end gap-3"}`}>
@@ -17,9 +17,9 @@ function RefundRequestFields({ compact, hint, pending, state, errorId }: { compa
             { value: "satissiz", label: "7 gün içinde satışsız dönem" },
             { value: "hatali", label: "Hatalı / mükerrer çekim" },
             { value: "diger", label: "Diğer" },
-          ]} aria-invalid={state.field === "reason" || undefined} aria-describedby={state.field === "reason" ? errorId : undefined} />
+          ]} onChange={onEdit} aria-invalid={state.field === "reason" || undefined} aria-describedby={state.field === "reason" ? errorId : undefined} />
         </Field>
-        <Field label="Not"><Input name="note" className={compact ? undefined : "w-64"} /></Field>
+        <Field label="Not" hint="İsteğe bağlı · en fazla 300 karakter"><Input name="note" maxLength={300} className={compact ? undefined : "w-64"} /></Field>
         <button type="submit" disabled={pending} aria-busy={pending || undefined} className={`${buttonClass("primary")} disabled:cursor-wait disabled:opacity-60`}>
           {pending ? "Gönderiliyor…" : "Talebi gönder"}
         </button>
@@ -41,14 +41,16 @@ export function RefundRequestForm({ action, paymentId, hint, compact = false }: 
   const errorId = useId();
   const { state, pending, onSubmit } = useFormAction(action, {} as RefundRequestState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [edited, setEdited] = useState(false);
+  const displayState = edited || pending ? ({} as RefundRequestState) : state;
   useEffect(() => {
     if (!state.error || !state.field) return;
     requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
   }, [state.error, state.field]);
   return (
-    <form ref={formRef} onSubmit={onSubmit} aria-busy={pending} className={compact ? "space-y-3 rounded-xl bg-surface-2 p-3" : "flex flex-wrap items-end gap-3"}>
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} aria-busy={pending} className={compact ? "space-y-3 rounded-xl bg-surface-2 p-3" : "flex flex-wrap items-end gap-3"}>
       <input type="hidden" name="id" value={paymentId} />
-      <RefundRequestFields compact={compact} hint={hint} pending={pending} state={state} errorId={errorId} />
+      <RefundRequestFields compact={compact} hint={hint} pending={pending} state={displayState} errorId={errorId} onEdit={() => setEdited(true)} />
     </form>
   );
 }

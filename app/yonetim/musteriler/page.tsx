@@ -13,7 +13,8 @@ const PAGE_SIZE = 50;
 
 export default async function Musteriler({ searchParams }: { searchParams: Promise<{ q?: string; id?: string; page?: string }> }) {
   const a = await requireAdmin();
-  const { q = "", id, page } = await searchParams;
+  const { q: rawQuery = "", id, page } = await searchParams;
+  const q = rawQuery.slice(0, 80);
   const requestedPage = Number(page);
   const pageNo = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const C = schema.customers, A = schema.customerAddresses, Z = schema.deliveryZones;
@@ -61,8 +62,8 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
         ))}
       </section>
       {growth.dormant > 0 && <div className="mb-6 rounded-[14px] border border-brand/20 bg-brand-soft px-4 py-3 text-sm text-ink-2"><b>Bugünün satış fırsatı:</b> {growth.dormant} müşteriyi geri kazanma listesine al. İletişim izni bulunan hedef sayısı şu an <b>{growth.reachableDormant}</b>; kampanya gönderimi açıldığında yalnızca bu grup kullanılacak.</div>}
-      <form className="mb-6 flex flex-wrap gap-2"><Input name="q" defaultValue={q} placeholder="Ad ya da telefon" aria-label="Müşteri ara" className="min-w-48 flex-1 sm:max-w-sm" /><button className={buttonClass("secondary")}>Ara</button></form>
-      {rows.length === 0 ? <Empty>{q ? "Eşleşen müşteri yok." : "Henüz müşteri yok. İlk paket siparişiyle oluşur."}</Empty> : (
+      <form role="search" className="mb-6 flex flex-wrap gap-2"><Input name="q" defaultValue={q} maxLength={80} placeholder="Ad ya da telefon" aria-label="Müşteri ara" className="min-w-48 flex-1 sm:max-w-sm" /><button className={buttonClass("secondary")}>Ara</button></form>
+      {rows.length === 0 ? <Empty action={q.trim() ? <Link href="/yonetim/musteriler" className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 font-medium text-brand outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aramayı temizle</Link> : undefined}>{q ? "Eşleşen müşteri yok." : "Henüz müşteri yok. İlk paket siparişiyle oluşur."}</Empty> : (
         <>
         <p className="mb-3 text-sm text-muted">{firstItem}–{lastItem} / {filteredTotal} müşteri{q.trim() ? " eşleşmesi" : ""}</p>
         <Card className="divide-y divide-line">

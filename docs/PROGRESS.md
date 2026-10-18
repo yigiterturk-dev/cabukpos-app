@@ -1,5 +1,184 @@
 # İlerleme — ÇabukPOS
 
+- **Kiosk zaman aşımı sonrası çift sipariş riski:** İstek zaman aşımına düşüp kullanıcı yeniden gönderdiğinde sunucu ilk siparişi kaydetmiş ama yanıt kaybolmuş olabilirdi. Aynı sepet/ayrıntılar yeniden gönderilirken istek kimliği korunuyor; sunucu mevcut adisyonu idempotent döndürüyor. Sepet veya müşteri/ödeme/not bilgisi değişince yeni kimlik üretiliyor; mevcut platform siparişi kilidi ve benzersiz indeksinden yararlanıyor.
+
+- **Fiş SMS gönderiminde zaman aşımı:** SMS isteği yanıt vermeyince form “Gönderiliyor” durumunda kalıp tekrar denemeyi kilitliyordu. İstemci bekleme sınırı sağlayıcının 10 saniyelik sınırını pay bırakacak biçimde 12 saniye; süre aşımında mesajın ulaşmış olabileceği belirtiliyor, bağlantı hatasında form yeniden kullanılabiliyor.
+
+- **Kiosk siparişi gönderiminde zaman aşımı:** Menü siparişi yanıt vermeyen bağlantıda beklemeyi ve menüyü kilitlemeyi sürdürüyordu. İstek 8 saniyede zaman aşımına düşüyor; mevcut bağlantı hatası gösterilip sepet yeniden kullanılabilir hale geliyor.
+
+- **Giriş/kayıt ve yasal sayfalarda içerik atlama:** Ortak yerleşim ile sayfa başlığı aynı `main-content` kimliğini kullanıyordu. Atla bağlantısı ilk öğe olan odaklanamayan `<main>` öğesine gidip klavye odağını `body` üzerinde bırakıyordu. Tekil kimlik sayfa başlığında kaldı; bağlantı artık odaklanabilir başlığa ulaşıyor.
+
+- **Abonelikte ödeme seçeneklerine atlama:** “Ödeme seçenekleri” bağlantısı bölümü kaydırıyordu ama hedef kapsayıcı odak alamadığından klavye odağı eski konumda kalıyordu. Hedef artık başlığıyla adlandırılmış, odaklanabilir bir bölüm.
+
+- **Yardım başlıkları arasında atlama:** Başlık bağlantısı sayfayı doğru karta kaydırıyor, ancak hedef bölüm odaklanabilir olmadığı için klavye odağı `body` üzerinde kalıyordu. Yardım bölümleri artık kendi başlıklarıyla adlandırılmış ve programatik olarak odaklanabilir; atlamadan sonra kullanıcı doğru bölümde devam edebiliyor.
+
+- **Kasa başlangıç hatası geri bildirimi:** IndexedDB açılışı veya ilk eşitleme kurulumu hata verirse `meta`/durum null kalıp kasa süresiz “Kasa açılıyor” ekranında kalabiliyordu; asenkron hatalar yakalanmıyordu. Başlangıç hatası artık odaklanan başlık, depolama izni açıklaması ve yeniden deneme eylemi gösteriyor; ağ eşitleme hataları mevcut çevrimdışı akışını kullanmayı sürdürüyor.
+
+- **Ana sayfa mobil ürün görselinde yazdırma bildirimi:** Dar ekranda “Fiş yazdırıldı” rozeti, kasa maketinin çevrimdışı durum rozetinin üzerine biniyordu. Bildirim mobilde maketin üstünde kendi satırında, geniş ekranda ise mevcut yüzen konumunda kalıyor.
+
+- **Fiyat hesaplayıcısında yinelenen ekran okuyucu duyurusu:** Boş şube/terminal sayısı uyarısı hem kendi `role="status"` canlı bölgesiyle hem de tüm hesaplama sonucunu kapsayan atomik `aria-live` alanıyla duyuruluyordu. İçteki rol kaldırıldı; uyarı üst canlı bölgeden bir kez okunuyor.
+
+- **Hata ekranlarında klavye odağı:** Beklenmeyen hata sonrası genel, kasa ve kök hata ekranlarında klavye ve ekran okuyucu odağı yeni hata açıklamasına taşınmıyordu. Hata başlığı artık ekrana gelince odaklanıyor; yönetim panelindeki mevcut davranışla tutarlı.
+
+- **Fiyat listesi etkinlik düğmesi:** Listeyi aktifleştir/pasifleştir eylemi kayıt sürerken etkin kalıyor ve hangi liste üzerinde çalışıldığını bildirmiyordu. Düğme artık bekleme boyunca kilitli ve liste adıyla durumu duyuruyor.
+
+- **Test aboneliği ödeme sonucu düğmeleri:** Sandbox ödeme ekranında “Başarısız” ve “Ödemeyi onayla” düğmeleri sonuç kaydı/redirect sırasında etkin kalıyordu. Gönderimde ikisi de kilitleniyor, seçili eylem bekleme metni gösteriyor ve tek canlı bölge işlem durumunu duyuruyor.
+
+- **Kampanya hedef kitlesi onay eylemi:** Sahip onay düğmesi sunucu yönlendirmesi tamamlanana kadar tekrar etkin kalıyor ve bekleme durumunu bildirmiyordu. Artık tıklama sırasında kilitlenip kampanya adıyla onay işlemini duyuruyor; mesaj gönderimini açan eşik daha net.
+
+- **Ürün, bölge, marka ve kupon durum eylemleri:** Satışa aç/kapat, bölge/marka aktifleştir ve kupon aç/kapat düğmeleri sunucu kaydı sırasında kullanılabilir kalıyor, ekran okuyucuya bekleme bilgisi vermiyordu. Ortak form düğmeleri artık kilitlenip ilgili ürün/öğe adıyla bekleme duyuruyor; tüm liste görünümleri aynı davranışı kullanıyor.
+
+- **Platform webhook bilgisi kopyalama:** Entegrasyon adresi ve imza anahtarı uzun, satırdan satıra seçilip elle kopyalanması zor metinlerdi. İkisine ayrı “Kopyala” eylemi ve başarılı/başarısız panoya kopyalama geri bildirimi eklendi; mevcut secret test kancası korundu.
+
+- **2FA açma/kapatma sonrası güncel durum:** Başarı mesajı formu kaldırıyor ama güvenlik sayfasının açık/kapalı özeti eski kalıyordu. Başarılı işlem sunucu görünümünü yeniliyor; odak kalıcı 2FA başlığına taşınıp yeni durumu duyuruyor.
+
+- **Şifre yenileme isteği sonrası dönüş:** Başarılı e-posta isteğinde form kalkıp yalnızca mesaj kalıyordu; klavye odağı kayboluyor ve girişe dönüş bağlantısı sunulmuyordu. Sonuç şimdi odağı alıyor ve “Girişe dön” eylemini içeriyor; metin hesap varlığını açığa çıkarmayan mevcut ifadeyi koruyor.
+
+- **Personel durumu değiştirirken bekleme geri bildirimi:** Aktif/pasif düğmesi sunucu yanıtını beklerken kullanılabilir kalıyor ve kasıtlı çift tıklamayı engellemiyordu. İşlem artık düğmeyi kilitliyor, “Kaydediliyor” metnini gösteriyor ve ekran okuyucuya personel adını içeren bekleme durumunu duyuruyor.
+
+- **Cihaz, ajan ve anahtar iptalinden sonra odak:** İptal başarılı olduğunda parola onay formu yenilenen satırdan kaldırılıyordu; klavye odağı body’ye düşüyordu. İptal sonucu satırda kısa bir durum mesajıyla kalıyor ve odak kullanıcı başka yere geçmediyse bu mesaja taşınıyor.
+
+- **QR menü garson çağrısında bekleme sınırı:** Masadan gönderilen çağrı isteği yanıt vermediğinde “Çağırılıyor” durumu açık kalıyordu. İstek 8 saniyede bağlantı hatasına düşüyor; masa başına tek açık çağrı kuralı tekrar denemeyi güvenli tutuyor.
+
+- **Rezervasyon durumu sonucu ve klavye odağı:** “Onayla”, “Geldi”, “Gelmedi” ve “İptal” eylemlerinde durum değişince eski form düğmeleri yenileniyor veya tamamen kalkıyordu; kayıt hatası için de satır içi geri bildirim yoktu. Başarıyla kaldırılan düğmeden sonra odak sıradaki eyleme/duruma dönüyor, hata görünür olup odaklanıyor ve kullanıcı başka yere geçtiyse odak korunuyor.
+
+- **İstasyon kaydında genel hata görünürlüğü:** İstasyon eylemi şube kapsamı ya da kayıt uyuşmazlığında alan belirtmeyen hata döndürebiliyordu; form yalnız alan hatalarını gösterdiği için bu hata kullanıcıya görünmüyordu. Genel hata artık formda görünür ve `useFormAction` odağı açıklamaya taşıyor.
+
+- **İade fişi aramasında ağ zaman aşımı:** Bulut fişi sorgusu için süre sınırı yoktu; yavaş veya kopuk bağlantıda kasa arama ekranı süresiz “Sorgulanıyor” durumunda kalabilirdi. Bulut sorguları 8 saniyede sonlanıp mevcut tekrar denenebilir hata akışına düşüyor; mali belge ayrıntısı zenginleştirmesi de aynı sınırla bekliyor.
+
+- **Ödeme ekranında müşteri avantajı ağ sınırı:** Müşteri, kupon ve hediye kartı kontrolleri yanıt vermeyen bağlantıda ödeme formunu ve “Vazgeç” dışındaki akışı kilitli tutabiliyordu. Üç doğrulama da 8 saniyelik ağ sınırı kullanıyor; timeout mevcut bağlantı hatası geri bildirimine düşüp kilidi kaldırıyor.
+
+- **Salon çağrı panosunda takılı ağ istekleri:** 8 saniyede bir çalışan çağrı sorgusu zaman aşımına sahip değildi; yavaş yanıtlar sonraki poll’larla üst üste binebilir, “Geldim” eylemi de sonsuza kadar bekleyebilirdi. Poll 6,5 saniyede, çağrıyı kapatma isteği 8 saniyede kesilip bir sonraki döngüye ya da mevcut hata/tekrar akışına geçiyor.
+
+- **Salon çağrısı kapatılınca odak:** “Geldim” başarılı olunca çağrı kartı DOM’dan kalkıyor ve klavye odağı kayboluyordu. Odak body’ye düşmüşse sıradaki çağrı düğmesine, son çağrı kapandıysa Salon başlığına taşınıyor; kullanıcı başka yere geçmişse odağı çalmıyor.
+
+- **Zarf sorgusu sonucu odağı:** Sorgu tamamlanınca sonuç canlı bölgeyle duyuruluyordu ancak klavye odağı yalnızca `body` üzerinde kaldıysa geri alınıyordu. Başarı ve hata mesajı artık işlem sonrası odaklanabilir hedef oluyor.
+
+- **Mali belge satır işlemi ve Z raporu sonucu:** Yeniden kesme/e-posta ve Z raporu sonuçları gösteriliyordu ancak bekleme düğmeleri kapatılıp açılınca klavye odağı kayboluyordu; satır işlemlerindeki beklenmeyen hatalar da yakalanmıyordu. Sonuç artık odaklanıp duyuruluyor, beklenmeyen satır hatası kullanıcıya açıklanıyor.
+
+- **Kategori istasyonu alan adı ve hata toparlama:** Her kategori satırındaki listbox aynı erişilebilir ada sahipti; atama hatasında da seçim yerel olarak kalıp geri alınmıyordu. Kategori adı artık kontrolün erişilebilir adında; başarı duyuruluyor, hata görünür/odaklanır oluyor ve seçim sunucudaki değere sıfırlanıyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Stok sayımı başlangıç/kapanış sonucu:** Sayım açıldığında başlangıç formu, kapanınca da onay formu yeni sayfa durumuyla kaldırılıyordu; başarı sonucu kullanıcıya ulaşmıyordu. Başarılı işlemler sayım sayfasına odaklanan bir durum bildirimiyle dönüyor; doğrulama hataları formda kalıyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Sayım, reçete ve ajan donanımı kayıt odağı:** Sayım satırı, reçete ve ajan donanımı kaydedilince başarı duyurulsa da işlem düğmesi/alanı devre dışı durumdan döndüğünde klavye odağı korunmuyordu. Sayım satırı miktar alanına, diğer iki akış kendi kaydet düğmesine dönüyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Tek seferlik entegrasyon anahtarı oluşturma odağı:** Yeni anahtar oluşturulunca yalnız o anda gösterilen değer ekrana geliyordu fakat klavye odağı sonuç/kopyalama eylemine geçmiyordu. Panel açıldığında “Kopyala” düğmesi odaklanıyor; mevcut kopyalama başarı/hata geri bildirimi korunuyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Mali ve salon ayarı düzenleme odağı:** Mali ayar, istasyon, seçenek grubu ve cihaz rolü kayıtlarında başarı mesajı görünse de düzenleme sonrası odağın geri döndüğü bir hedef yoktu. Başarıda mevcut kaydet düğmesine, yeni istasyon/seçenek grubu akışında yeni ad alanına odaklanıyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Tedarikçi kaydı ve ödemesinde sonuç odağı:** Tedarikçi düzenlemesinde başarı mesajı görünmüyor; ödeme kaydında mesaj görünse de işlem düğmesi yeniden açılınca odak kayboluyordu. Düzenleme artık onaylanıp düğmeye odaklanıyor; yeni tedarikçi akışında ad alanına, ödeme kaydında eylem düğmesine dönülüyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Personel düzenleme kaydı odağı:** Mevcut personelin rolü/PIN’i kaydedilince başarı mesajı görünüyordu ama kilitlenip açılan eylem düğmesine odak dönmüyordu. Düzenleme sonrası “Personeli kaydet” düğmesi odaklanıyor; yeni personel eklemede sonraki ad için ad alanına geçiş korunuyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Ürün düzenleme kaydı geri bildirimi:** Mevcut ürünü düzenlerken başarılı kayıt için görünür onay yoktu ve disabled alanlar tekrar açıldığında odak dönmüyordu. Artık her başarılı kayıtta onay görünür; düzenleme düğmeye, yeni ürün akışı sonraki ürün adı alanına odaklanıyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Yönetim formlarında kayıt odağı:** Marka, marka menüsü, mevcut teslimat bölgesi ve müşteri kaydında düğme işlem sırasında devre dışı kalıyor, başarı mesajı gelse de klavye odağı geri dönmüyordu. Başarıda ilgili kaydet düğmesi odaklanıyor; yeni teslimat bölgesi ekleme akışında sonraki giriş alanına dönüş korunuyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Yönetim yönlendirme sonuçlarında odak:** Kupon, şube, sadakat ve hediye kartı işlemlerinden sonra sunucu sonucu banner gösteriyordu ama klavye odağı yeni bağlama gitmiyordu. Ortak sonuç bileşeni başarı/hata banner’ını görünür odak halkasıyla odaklıyor ve canlı bölge olarak duyuruyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+- **Kampanya ve abonelik sonucu odağı:** Kampanya taslağı, ödeme, iade ve abonelik kilit/telefon sonuçları yönlendirmeyle gösteriliyor ancak odağı almıyordu. Başarı/hata sonuçları artık kendi erişilebilir duyuru rolüyle odağı devralıyor; önceki kart/uyarı sınıfları korunuyor. `npm run qa:static`, `git diff --check` ve `next build --webpack` geçti.
+
+- **Cihaz/ajan eşleme kodu sonucu odağı:** Yeni kasa cihazı veya ajan eşleme kodu üretildikten sonra sonuç gösteriliyor ama odak kilidi açılmış düğmede kalıyordu. Başarıda tek kullanımlık kod paneli, genel hatada hata metni odağı alıyor; panel görünür odak halkası ve canlı durum duyurusu taşıyor.
+
+- **Platform işlemi sonucunda odak:** Deneme siparişi gönderme ve katalog gönderme formları sonucu ekran okuyucuya duyuruyordu ancak işlem sonunda klavye odağı düğmeye dönmüyordu. Başarı veya hata sonrası düğme tekrar odaklanıyor; işlem mantığı değişmedi. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Kampanya SMS yönlendirme sonucunda odak:** Gönderim eylemi sonuçla aynı sayfaya yönlendiriyor ve mesajı canlı bölgede gösteriyordu, fakat klavye odağı yeni sonuç bağlamına geçmiyordu. Başarı/hata mesajı artık yüklenince odağı alıyor ve odak halkası gösteriyor.
+- **e-Fatura zarf sorgusu sonucu:** “Şimdi sorgula” düğmesi bekleme sırasında devre dışı oluyor; tamamlanınca odak kayboluyor ve sonuç mesajı görünmüyordu. Başarı/hata sonucu artık bildirilip odak düğmeye dönüyor.
+- **E-posta doğrulama sonucu:** Doğrulama e-postası formu gönderim sırasında bekleme duyurusu yapıyor, sonrasında başarılı/başarısız sonucu göstermiyordu; sunucu eylemi de yapılandırma, hız sınırı ve gönderim hatalarını sessizce yutuyordu. Artık eylem açık sonuç dönüyor, form iletiyor ve başarıda odak gönder düğmesine dönüyor.
+- **Para birimi ve dil kaydında odak:** Bu ayarların seçim/düğmeleri kayıt süresince `disabled` oluyor, işlem bitince odak kaybolabiliyordu. Başarıdan sonra para birimi formu Kaydet düğmesine, dil ayarı etkin dile dönüyor; dil kaydı için durum bildirimi ve bekleme duyurusu eklendi.
+- **PIN hatası ve kilit bitişinde odak:** Yanlış PIN girilince PIN temizleniyor, işlem düğmesi pasifleşiyor ve keypad odağı düşebiliyordu; geçici kilit bitince de otomatik dönüş yoktu. Hata sonrası odak ilk rakama, kilit kalkınca da yalnız odak boşta kalmışsa ilk rakama dönüyor.
+- **Özel seçim alanında görünür doğrulama hatası:** `Select` kullanan formlar hatalı alanı `aria-invalid` ile işaretlese de düğmenin çerçevesi ve odağı normal marka renginde kalıyordu. Hata halinde artık kırmızı çerçeve/halkayla, normal durumda marka odağıyla gösteriliyor.
+- **İade miktarı sınırında klavye odağı:** Kalem miktarı sıfıra veya fiş üst sınırına gelince basılan +/− düğmesi `disabled` olup klavye odağını düşürebiliyordu. Klavye/yardımcı teknolojiyle sınır değerine ulaşınca odak aynı satırdaki kullanılabilir karşıt düğmeye geçiyor; fare etkileşiminde odak yeri zorla değişmiyor.
+- **Sipariş durumunda otomatik yenileme odağı:** Arka plan yenilemesi “Şimdi güncelle” düğmesini `disabled` yapıyor ve kullanıcı düğmedeyse odağını düşürebiliyordu. Otomatik yenileme artık bu düğmeyi kilitlemiyor; kullanıcı manuel yenilemeyi başlatırsa işlem durumu duyuruluyor ve bitince odak düğmeye dönüyor.
+- **Salon ürün aramasında Enter ile ekleme:** Barkod/isim araması yalnız ürünleri filtreliyor, tek sonuçta bile tekrar dokunma gerektiriyordu. Enter artık tam barkod eşleşmesini veya tek ürün sonucunu ekliyor; birden fazla sonuçta otomatik seçim yapmıyor. Klavye kısayolları ekran okuyucu açıklamasına eklendi.
+- **Salon adisyonu ana işlemlerinde klavye odağı:** Ürün ekleme, mutfağa gönderme, hazır siparişi teslim edildi işaretleme ve hesap isteği sırasında düğmeler geçici `disabled` oluyordu; odak kaybolabiliyordu. İşlem sonrası odak kullanılabilir düğmeye, düğme durum değiştirip kapanmışsa adisyon başlığına dönüyor; kullanıcı başka yere geçtiyse odak korunuyor.
+- **Özel seçim listesinde aksansız klavye araması:** Seçim listesi seçenekleri Türkçe aksanlı karşılaştırıyordu; “c” yazınca “Çay” bulunmuyordu. Klavye typeahead artık ürün aramasıyla aynı Türkçe normalizasyonunu kullanıyor; gezinme ve seçme davranışı aynı.
+- **Salon indirimi alanında geçersizlik ve klavye odağı:** Yüzde alanı geçersizken “Onayla” pasifleşiyordu ancak alan `aria-invalid` almıyor, açıklama görsel hata durumuna geçmiyordu; gerekçede de tek karakter girilince eksik uzunluk belirtilmiyordu. Yüzde/tutar ve yazılmış kısa gerekçe artık işaretlenip açıklamayla vurgulanıyor; henüz dokunulmamış boş alan baştan hatalı gösterilmiyor. Alanlar belirgin klavye odağı gösteriyor.
+- **Kurye işlemi başarıyla bitince odağın korunması:** “Yola çıktım” düğmesi işlem sırasında devre dışı oluyor; başarılı işlem sonrası klavye odağı kaybolabiliyordu. Başarıda düğme hâlâ kullanılabiliyorsa odak geri dönüyor, sipariş/modal kapanıp düğme kalktıysa kurye başlığına geçiyor; ekran okuyucu başarı duyurusu sürüyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Mutfak bileti hazır olunca klavye odağı:** Bilet “Hazır” sütununa taşınınca kart farklı listede yeniden oluşturuluyor ve odak kayboluyordu. İşlem başarıyla tamamlanırsa odak taşınan etkin karta, aksi halde sıradaki etkin bilete ya da Mutfak başlığına dönüyor; kullanıcı başka yere geçtiyse odak çalınmıyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Salon ürün aramasında POS kısayolları:** Yeni arama alanına fareyle gidilebiliyordu; klavye ve kasa kullanımındaki F2/Escape alışkanlığı eksikti. F2 aramaya odaklanıp metni seçiyor, Escape arama alanındayken sorguyu temizliyor; temizleme düğmesi de odağı alana geri veriyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Ürün aramasında Türkçe aksan toleransı:** Hem salon hem satış ekranı isimleri birebir aksanlı yazımda arıyordu; “cig kofte” yazımı “Çiğ köfte”yi bulamıyordu. Paylaşılan normalizasyon Türkçe harfleri aksansız eşleştiriyor; barkod eşleşmesi de korunuyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Salon adisyonunda ürün bulma:** Ürün ızgarası yalnız kategori filtresi sunuyordu; uzun menüde ada/barkoda göre arama yapılamıyordu. Arama, kategoriyle birlikte çalışıyor; eşleşme yoksa açıklama ve filtreleri sıfırlama eylemi gösteriliyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Masaüstü ana sayfa içi bağlantılarda gezinme odağı:** Navigasyon/hero bağlantıları hedef bölüme kaydırıyor ama klavye odağı bağlantıda kalıyordu; içerik bağlamı değiştiği duyurulmuyordu. Özellik, fiyat ve SSS bağlantıları artık hedef bölüm başlığına odağı taşıyor; event handler'ı Client Component'e alarak ana sayfanın Server Component sınırını koruyor.
+- **Ana sayfada klavye odağı görünürlüğü:** Üst navigasyon, fiyatlandırma bağlantısı ve SSS açılır başlıkları için belirgin odak stili yoktu; klavyeyle gezen kullanıcı odak konumunu kaçırabilirdi. Bu bağlantı ve özet satırlarına tutarlı görünür odak halkası eklendi. `npm run qa:static` ve `git diff --check` temiz.
+- **Platform siparişinde satır kalkınca klavye odağı:** Onay/red tamamlanınca sipariş bekleyenler listesinden çıkabiliyor ve odak DOM'dan kopuyordu. İşlem sonrası odak artık sabit “Canlı paket hattı” başlığına taşınıyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Rapor e-posta ayarlarında işlem odağı:** Ayar kaydetme formu ve “Şimdi dene” düğmesi istek sırasında disabled oluyor, tamamlanınca klavye odağı düşüyordu. Başarılı kaydetme sonrası Kaydet, test e-postası sonucu geldikten sonra Şimdi dene düğmesi yeniden odaklanıyor; hata alan odağını ortak form yöneticisi koruyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Müşteri avantajı doğrularken klavye odağı:** Müşteri, kupon veya hediye kartı isteğinde ödeme formunun `fieldset` alanları geçici olarak disabled oluyordu; yanıt gelince odak kaybolabiliyordu. Artık başlatan doğrulama düğmesine geri dönüyor; düğme kullanılamazsa sonuç bildirimini odak hedefi yapıyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Erişim anahtarı kopyalama sonrası odak:** Panoya kopyalama sırasında düğme disabled oluyordu; kopyalama tamamlanınca ya da hata verince klavye odağı kaybolabiliyordu. Sonuçta tekrar etkinleşen düğme odaklanıyor; hata durumundaki “Tekrar dene” adı klavyeyle yeniden erişilebilir. `npm run qa:static` ve `git diff --check` temiz.
+- **Raf etiketi yazdırma sonrası odak:** “Basıldı olarak işaretle” async işlem boyunca devre dışı kalıyor, tamamlanınca klavye odağı kaybolabiliyordu. Başarı ve hata sonrası odak yeniden kullanılabilir eyleme dönüyor; eylem artık kullanılamıyorsa hata metni yedek hedef. `npm run qa:static` ve `git diff --check` temiz.
+- **Platform ayarı kaydedilince klavye odağı:** Otomatik kabul/Aktif anahtarı değişince checkbox istek süresince disabled oluyordu; cevap geldikten sonra klavye kullanıcısı önceki noktayı kaybediyordu. Başarılı kayıtta odağı son değiştirilen anahtara döndürüyor; hatada da aynı alanı ya da erişilebilir hata mesajını odaklıyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Kiosk siparişi hatasında yeniden deneme odağı:** Kiosk sipariş gönder düğmesi istek sırasında `disabled` oluyordu; sunucu/ağ hatasında yeniden etkinleşse de klavye odağı kaybolabiliyordu. Yalnız sipariş gönderim hatasında, gönder düğmesi açılınca odak geri dönüyor; sepet sınırı gibi düzenleme uyarıları odağı zorla değiştirmiyor. `npm run qa:static` ve `git diff --check` temiz.
+- **Döndürme sırasında yönetim menüsü kilidi:** Mobil çekmece açıkken ekran md genişliğine çevrilirse çekmece `md:hidden` ile görünmez oluyor ama React açık kalıp gövde kaydırmasını kilitli tutabiliyordu. Masaüstü breakpoint'ine geçiş artık çekmeceyi kapatıyor; gizlenmiş menü düğmesine değil ana içeriğe odak dönüyor. `npm run qa:static` ve `git diff --check` temiz.
+
+- **Seçim listesinden kaldırılan kayıt:** Özel `Select` seçenekler güncellendikten sonra artık listede olmayan ID'yi gizli forma gönderebiliyor; garson çağrısında görünen alan boşken eski masa ID'si yine kullanılabilirdi. Geçersiz seçim artık boş seçim gibi gösterilir ve gizli alanda boş gönderilir; değişiklik bildirimi otomatik tetiklenmez. Garson çağrısı da yalnız hâlâ var olan masa için etkin. Yükleme sırasındaki geçici boş liste korunuyor. `npm run qa:static` ve `git diff --check` temiz.
+
+- **Mobil klavyede seçim listesi konumu:** Özel seçim listesi açılırken kullanılabilir alanı `window.innerHeight` ile sınırlıyordu; sanal klavyeyle küçülen visual viewport hesaba katılmıyordu. Açılır liste artık viewport ofseti ve yüksekliğini kapsayıcı sınırlarıyla kesiştiriyor; viewport kayıp/büyüdüğünde yön ve maksimum yüksekliği güncelliyor, kalan alandan büyük bir minimum yükseklik dayatmıyor. `npm run qa:static` ve `git diff --check` temiz.
+
+- **Diyalog odak tuzağında gizli kontroller:** Ortak diyalog odak sırası `offsetParent` ile görünürlüğü ölçüyordu; bu yöntem görünür olmayan `visibility:hidden` veya `aria-hidden` içindeki kontrolleri dışlamıyor, gizli input'u da aday bırakıyordu. Açılış odağı ve Tab döngüsü artık ekranda görünür, etkin kontrollerle sınırlı; kapanışta gizlenmiş tetikleyici yerine ana içerik odağı kullanılıyor. `npm run qa:static` ve `git diff --check` temiz.
+
+- **Mobil klavyede diyalog işlemleri:** Ortak diyalog gövdesi kayabiliyordu ancak sabit üst/alt çerçevesi layout viewport'a bağlıydı; telefon klavyesi açıkken başlık veya sabit işlem düğmeleri örtülebilirdi. Diyalog artık `visualViewport` yüksekliği ve ofsetini izleyip görünür alana ortalanıyor; görünür yükseklik değişmediğinde gereksiz render yapmıyor. `npm run qa:static` ve `git diff --check` temiz.
+
+- **Dinamik yatay kaydırma bölgeleri:** Ortak erişilebilir kaydırma bileşeni yalnız ilk içeriğin boyutunu izliyordu; sonra yüklenen ya da güncellenen diğer öğeler taşma oluştursa klavye odağı açılmayabilirdi. Artık tüm doğrudan öğeleri ölçüyor, öğe ekleme/çıkarma ve boyut değişiminde taşmayı yeniliyor, kaldırılan öğeleri gözlemden çıkarıyor. `npm run qa:static` ve `git diff --check` temiz.
+
+- **Kasa yatay seçim şeritleri klavye erişimi:** Satış ve adisyon ürün kategorileri, salon bölgeleri ve açık adisyon seçimi dar alanda yatay taşıyabiliyordu ama klavye kullanıcısı şeridi kaydıramıyordu. Satış şeridi taşınca odaklanabilir oluyor; diğer üç şerit ortak erişilebilir kaydırma bölgesini kullanıyor. İçerik sığdığında gereksiz odak durağı oluşmuyor. `npm run qa:static` ve `git diff --check` temiz.
+
+- **Mobil kiosk sepetinde sanal klavye alanı:** Sabit sepet yalnız layout viewport yüksekliğinin %80'iyle sınırlıydı; telefon/isim alanına dokununca görsel viewport küçülse bile panel düğme ve son alanları klavyenin arkasında bırakabilirdi. Sepet artık `visualViewport` boyutu/konumunu izleyip görünür alan içinde kalıyor ve menü alt boşluğunu bu konuma göre hesaplıyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Vardiya raporu KDV tablosu:** Kasa ve yönetimde ortak kullanılan KDV tablosunun adı yoktu; uzun tutarlar dar alanda taşarsa kaydırma kapsayıcısı klavyeyle odaklanamıyordu. Tablo artık “KDV dağılımı” olarak adlandırılıyor ve yalnız taşma varsa odaklanan kaydırma bölgesinde. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Garson çağrısını kapatma hatasında odak:** “Geldim” isteği başarısız olunca düğme busy sırasında devre dışı kalıyor, hata sonrası odak dönmüyordu. Çağrı sürüyorsa düğme yeniden odaklanıyor; eşzamanlı olarak kart kaldırılmışsa hata mesajı yedek hedef oluyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Gün sonu kapanışında kayıt hatası odağı:** Tutar doğrulama hatası sayım alanına odaklanıyordu; ancak kapanış kaydı başarısız olduğunda işlem sırasında kilitlenen düğme açılınca odak geri gelmiyordu. Sunucu/yerel kayıt hatasında odak “Gün sonunu kapat” düğmesine dönüyor; tutar doğrulama hatası alan odağını koruyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Paket panosu işlem hatalarında retry odağı:** Kabul, red, kurye atama/kaldırma veya iptal sırasında işlem düğmesi devre dışı kalıyordu; sunucu hatasında modal açık kalsa da odak kaybolabiliyordu. Artık başarısızlıktan sonra son eylem düğmesi yeniden odaklanıyor; PIN adımında düğme artık etkin değilse ilgili hata metni yedek hedef oluyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **SMS fişi hata sonrası odak:** SMS gönderimi başarısız olduğunda alan/düğme işlem sırasında kilitlenip açılıyordu ama klavye odağı geri gelmiyordu. Hata sonrası geçerli numarada “Gönder” düğmesi, geçersiz numarada telefon alanı odaklanıyor; başarılı gönderimdeki mevcut onay odağı korunuyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Kasa para formunda kayıt hatası sonrası retry:** Para ekleme/çıkarma ya da vardiya açma isteği başarısız olunca alanlar tekrar açılıyor ancak odak kayboluyordu. Geçerli girişle işlem hatasında odak yeniden eylem düğmesine dönüyor; tutar doğrulama hataları tutar alanını odaklamaya devam ediyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Kurye akışında hata sonrası retry odağı:** “Yola çıktım” veya teslim/ödeme yöntemi isteği başarısız olduğunda işlem düğmesi busy sırasında devre dışı kalıyor, hata sonrası klavye odağı geri gelmiyordu. Hata görünür ve işlem bitmişse son eylem düğmesi yeniden odaklanıyor; düğme yoksa ilgili hata mesajına gidiliyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **İade arama/kayıt hatasında odak:** Sunucu fiş aramasını reddederse arama alanı, iade kaydı başarısızsa onay eylemi yeniden odaklanmıyordu; istek sırasında odaklanan kontroller kilitleniyor veya müdür PIN görünümü kapanıyordu. Hata ekranda kaldığında fiş alanı ya da iade onayı tekrar odaklanıyor; biçim hatası da aynı odak akışını kullanıyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Paket siparişi kayıt hatasında odak:** Alan doğrulaması hatalı girişi odaklıyordu; fakat paket kaydı ağ/işlem hatasıyla dönünce form kontrolleri kilitten çıkmasına rağmen odak kayboluyordu. Alan hatası yoksa istek tamamlandığında odak “Siparişe geç” düğmesine dönüyor; assertive hata mesajı da tekrar deneme eylemiyle birlikte kalıyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Kasada satış hatası sonrası odak:** Satış isteği hata verirse ödeme alanları ve gönder düğmesi işlem boyunca `disabled` kaldığı için klavye odağı kaybolabiliyordu. İstek tamamlanıp hata görünür olduğunda odak “Satışı tamamla” düğmesine dönüyor; kullanıcı mesajı duyup aynı ekrandan tekrar deneyebiliyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Garson çağrısı sonrası odak:** Başarılı gönderim sırasında ve sonrasında düğmenin `disabled` olması klavye odağını kaldırabiliyordu. Düğme masa seçilene kadar gerçek disabled kalıyor; gönderim/başarı durumunda odaklanabilir kalıp `aria-disabled` ile durumu bildiriyor. Tekrar çağrı mevcut `call()` korumasıyla yine engelleniyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Kiosk sepetinde öğe silme odağı:** Sepetteki son adedi silince odak, ürünü ekleyen düğmeye dönüyordu; ürün filtre/kategori değişiminden sonra DOM'da yoksa odak kayboluyordu. Artık önce aynı ürünün düğmesi, sonra ilk kullanılabilir ürün düğmesi, son olarak sepet bölgesi odaklanıyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Özet raporunda dar tablolar:** Satış kanalı ve ödeme yöntemi tabloları min-width nedeniyle dar rapor sütununda yatay taşıyabiliyor; kapsayıcı klavyeyle odaklanamıyor ve tablo adı yoktu. İki tablo da yalnız taşma varsa odaklanan, adlandırılmış `HorizontalScrollRegion` kullanıyor; tablo adları da eklendi. `npm run qa:static` ve `git diff --check` geçti.
+
+- **e-Arşiv ve iade belgelerinde yatay tablolar:** Kamuya açık iki fatura ve yönetimdeki iade tutanağında geniş tablo taşarsa kaydırma alanı klavyeyle odaklanamıyordu; ekran okuyucu için de bölge adı yoktu. Tablolar artık yalnızca gerçek taşmada adlandırılmış/odaklanabilir kaydırma bölgesi olur, fatura tabloları ayrıca erişilebilir ad taşır. Mobil liste ve yazdırma görünürlüğü korunur. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Mali belge sekmelerinin seçili durumu:** Ayarlar/Belgeler/Muhasebe sekmeleri görsel olarak seçili görünüyordu ama etkin sekme yardımcı teknolojilere aktarılmıyordu. Etkin bağlantı artık `aria-current="page"` bildiriyor; alt belge filtresindeki mevcut durum bildirimiyle eşleşiyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Kasada sadakat/kupon yeniden doğrulaması:** Müşteri araması başarısız olduğunda eski müşteri ve puan kullanımı ekranda kalabiliyordu; istek başarısızsa müşteri/puan seçimi temizleniyor. Müşteri bağlı kupon, müşteri değiştiğinde ya da doğrulama başarısız olduğunda kaldırılıyor. Kupon yeniden uygulanırken eski indirim hemen düşürülüyor; ağ hatasında geçersiz/eski indirim satışa taşınmıyor. `npm run qa:static` ve `git diff --check` geçti.
+
+- **Otomatik yenileme anahtarının adı:** Düğmenin erişilebilir adı sabitti ama görünen eylem metni değişiyordu; sesle kontrol ve ekrandaki etiket eşleşmiyordu. Düğme artık sabit “Otomatik yenileme” adı kullanıyor, açık/kapalı durumunu `aria-pressed` ve yanındaki durum metniyle gösteriyor.
+
+- **Paylaşılan diyaloglarda kaybolan tetikleyici:** Bir işlem diyalog içinden tetikleyici düğmeyi DOM’dan kaldırınca (ör. satır silme veya siparişin sütun değiştirmesi) kapanışta odak boşta kalıyordu. Diyalog artık yalnızca hâlâ kullanılabilir tetikleyiciye dönüyor; o yoksa ana içeriğe odak veriyor.
+
+- **Paket panosunda işlem sonrası odak:** Kabul/red, kurye atama ve iptal sonrası diyalog tetikleyicisi kart başka sütuna taşınırken DOM’dan kalkabiliyor, odağı da kaybettiriyordu. İşlem tamamlanınca odak aynı siparişin güncel kartına; kart görünmüyorsa pano başlığına dönüyor.
+
+- **Sipariş durumunda otomatik yenileme anahtarı:** Yenileme/duraklatma düğmesi eylem metnini değiştiriyordu ama açık/kapalı durumunu programatik belirtmiyordu. Sabit erişilebilir ad ve `aria-pressed` ile durum ekran okuyucuya da aktarılıyor.
+
+- **Müşteri sipariş durumu yenilemesi:** Açık sipariş sayfası arka planda olsa da 20 saniyede bir veri yeniliyordu ve kullanıcı sekmeye dönünce son durumu beklemek zorundaydı. Arka plan yenilemesi atlanıyor; sekme görünür olunca durum hemen çekiliyor. Görünürlük olayı timer ile çakışırsa senkron kilit ikinci isteği engelliyor.
+
+- **Paket panosunda tekrarlanan canlı duyurular:** Aynı metinli işlem başarıları doğrudan canlı bölgeye yeniden yazılıyordu; metin değişmediğinde ekran okuyucu ikinci olayı atlayabiliyordu. Duyuru bölgeyi boşaltıp sonraki karede mesajı yazar; bu arada daha yeni mesaj geldiyse eski duyurunun üzerine yazmaz.
+
+- **İade fişi arama alanı:** Fiş numarası yalnızca placeholder ve ekran okuyucu etiketinde görünüyordu. Kalıcı görünür etiket ekledim; örnek fiş formatı placeholder’da kaldı.
+
+- **PIN ekranında Enter tuşu:** Küresel PIN kısayolu odaklanmış keypad veya vazgeç düğmesindeki Enter tuşunu da yakalayıp PIN’i gönderiyordu. Enter artık odaklı düğmenin yerel eylemine bırakılıyor; keypad tuşu çalışıyor, form gönderme ise Gir düğmesinin doğal submit davranışıyla gerçekleşiyor.
+
+- **Kasada bahşiş alanı etiketi:** Bahşiş başlığı görsel olarak alanın yanında olsa da etiket input’a bağlı değildi; artık etiket tıklanınca alan odaklanıyor, ekran okuyucu ilişkisi kuruluyor ve önizlemede iki kasa örneği açıldığında etiketler çakışmıyor.
+
+- **Menü siparişinde müşteri bilgileri:** Ad, telefon ve not alanları yalnızca placeholder ile tanımlıydı; değer yazılınca alanın amacı görünmez hale geliyordu. Üç alana da kalıcı görünür etiket ekledim, telefon ve not için örnek giriş biçimleri sundum.
+
+- **Ürün, müşteri ve stok aramalarında boş sonuçtan çıkış:** Eşleşme bulunmayınca sorgu kalıyor, sonuç bölümünde kurtarma eylemi yoktu. Ürün sayfası tür sekmesini, stok sayfası kritik stok filtresini koruyarak aramayı temizleyebiliyor; müşteri sayfası listeye dönüyor.
+
+- **Özel seçim listelerinde klavye gezinmesi:** Ok tuşları etkin seçeneği değiştirirken uzun listede bu seçenek görünür alanın dışında kalabiliyordu; liste artık etkin seçeneğe kayıyor. Enter/Boşluk ile açarken de gezinme seçili değerden başlıyor.
+
 - **Yönetim paneli mali belge uyarısı:** Ana sayfadaki işlem bekleyen belge sayısı hem `error` hem `cancel_rejected` kayıtlarını içeriyordu, ancak bağlantı yalnızca hata belgelerini açıyordu. Mali belgelerde iki durumu birlikte gösteren “İşlem gerekli” filtresi ekledim ve uyarıyı bu filtreye bağladım.
 
 - **Mali belgelerde boş filtre sonucu:** Filtrede belge yokken tek eylem mali ayarlara götürüyordu. Artık seçili filtre varsa tek tıkla tüm belgelere dönülüyor; ayar bağlantısı yalnızca gerçekten belge bulunmayan genel durumda gösteriliyor.
@@ -904,3 +1083,272 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - **Demo dikte durum mesajı:** Sesle alınan soru loga gönderildikten sonra eski “Gönder düğmesine bas” status mesajı kalıyordu. İki demoda da soru gönderilince ses durumu temizleniyor; log cevabı güncel durumu gösteriyor. `npm run qa:static` ve `git diff --check` temiz.
 
 - **Demo dikte ve telefon simülasyonu çakışması:** Eski sesli dikte yönlendirmesi gönderimden sonra status alanında kalabiliyordu; ayrıca mikrofon dinlerken telefon simülasyonunu başlatmak iki ayrı sipariş oluşturabilirdi. Gönderimde eski dikte statusu temizleniyor; telefon simülasyonu dinleme boyunca, ses düğmesi de görüşme simülasyonu sırasında devre dışı ve handlerlar aynı kilidi uyguluyor. `npm run qa:static` ve `git diff --check` temiz.
+
+- **Kiosk siparişinde belirsiz ağ sonucu:** Zaman aşımında sunucu siparişi kaydetmiş ama yanıt ulaşmamış olabilir. Aynı sepet `requestId` ile idempotent tekrar gönderilebilsin diye belirsiz sonuçta menü ve sipariş ayrıntıları kilitleniyor; müşteri aynı siparişi tekrar göndererek mevcut kaydı buluyor veya ilk isteği güvenle tamamlıyor. Sunucu 4xx yanıtı kesin ret olarak ele alınıp düzenleme kilidi kaldırılıyor.
+
+- **Fiş SMS’inde belirsiz gönderim sonucu:** Sağlayıcı SMS’i gönderdikten sonra yanıt kaybolursa doğrudan tekrar denemek çift SMS oluşturabilirdi. Zaman aşımı/ağ/5xx sonrası alıcı alanı ve gönderim kilitleniyor; kullanıcı teslimatı kontrol ettiğini onaylayınca aynı numaraya yeniden deneyebiliyor. Başka numaraya geçiş ayrı bir açık eylem; eski alıcıya ulaşma uyarısı sonraki gönderim boyunca ve başarı mesajında korunuyor. Hata sonrası odak önce kontrol düğmesine, ardından gönderime taşınıyor.
+
+- **Yeni satışta SMS form state’inin sıfırlanması:** Son satış kartı aynı bileşen örneğini koruduğundan yeni `saleId` ile eski SMS “gönderildi” veya belirsiz durumu yeni fişe taşınabilirdi. Form artık satış kimliğiyle anahtarlanıyor ve her fiş için temiz state açıyor.
+
+- **Kasa ürün aramasında ekran okuyucu duyuruları:** Canlı ürün sayısı arama her güncellendiğinde anında duyurulabiliyordu; hızlı yazarken gereksiz tekrar oluşturuyordu. İlk ürün sayısı ilk render’da kalıyor, sorgu/kategori değişiminden sonra güncel sayı 450 ms bekleyip kısaltılmış arama terimiyle duyuruluyor; tarama hataları anlık kalıyor.
+
+- **Kasa kategori şeridinin erişilebilir adı:** Bölge, yatay taşma yokken de “diğer kategoriler için kaydırın” diyordu. Ad artık kaydırma talimatını yalnızca gerçek taşma varsa içeriyor; gerçek taşmada bölge odaklanabilir kalıyor.
+
+- **Yönetim menüsünde aksansız arama:** Menü araması Türkçe harfleri birebir karşılaştırdığı için “sube” yazımı “Şubeler” sonucunu bulamıyordu. Arama artık ürün ve seçim listeleriyle aynı Türkçe aksan normalizasyonunu kullanıyor.
+
+- **Yönetim menüsü arama duyuruları:** Ekran okuyucuya sunulan sonuç sayısı her tuş vuruşunda güncelleniyordu. Duyuru artık sorgu değişiminden 450 ms sonra güncelleniyor; sonuç listesi görsel olarak anlık filtrelenmeye devam ediyor.
+
+- **Yönetim menüsü aramasında Escape:** Sorguyu temizlerken arama odağı da kayboluyor, mobil çekmece aynı tuşla hemen kapanıyordu. Dolu aramada Escape artık sorguyu temizleyip odağı koruyor; sorgu boşken Escape çekmeceyi kapatma davranışına ulaşabiliyor.
+
+- **Seçim listesinde aynı harfle gezinme:** Typeahead aynı harfi art arda basınca harfleri birleştirip eşleşmeyi kaybediyordu. Tekrarlanan harf artık sonraki aynı başlangıçlı seçeneğe geçiyor; farklı harfler normal önek araması olarak birleşiyor.
+
+- **Seçim listesi kapanınca kalan typeahead:** Liste kapatıldıktan hemen sonra tekrar açılan arama önceki harf tamponunu kullanabiliyordu. Açık liste kapandığında arama tamponu ve zamanlayıcı artık sıfırlanıyor.
+
+- **Giriş/kayıt hatalarında klavye odağı:** Auth action alan hatası döndürdüğünde kayıt/giriş/şifre formları hata metnini duyuruyor fakat odağı kontrole taşımıyordu; kayıt türü radyoları da geçersizliği işaretlemiyordu. Action sonrası ilk geçersiz alan, alan belirtilmeyen genel hatalarda hata açıklaması odaklanıyor.
+
+- **Gönderim sırasında parola görünürlüğü düğmesi:** Form beklerken parola alanı kilitleniyor ama görünür/gizle düğmesi etkin kalıyordu. Kontrol artık alan devre dışıyken kendisi de devre dışı ve görsel olarak pasif.
+
+- **Kasada müşteri avantajı kod alanları:** Müşteri telefonu, kupon ve hediye kartı alanlarının amacı placeholder metnine bağlıydı; girişten sonra görünür etiket kalmıyordu. Üçüne de sürekli görünen etiket ekledim, doğrulama düğmeleri alanlarla aynı satırda kaldı.
+
+- **Müşteri avantajı sonucu görünmezken odak:** Müşteri/kupon/hediye kartı isteği sürerken panel kapatılabiliyor, sonuç mesajı gizli kalıyor ve odak gizli eyleme dönmeye çalışıyordu. İstek boyunca panel aç/kapa düğmesi devre dışı; sonuç görünürken eylem odağı geri alınabiliyor.
+
+- **Hediye kartı tekrar kontrolünde eski bakiyenin kullanılması:** Önceki doğrulama başarılı olduktan sonra yeniden kontrol ağ hatasıyla sonuçlanırsa eski bakiye satış toplamında kalabiliyordu. Her kontrol başlangıcında eski doğrulama kaldırılıyor; ağ hatası ödeme hesabını doğrulanmamış bakiyeden koruyor ve kod tekrar denenebilir durumda kalıyor.
+
+- **Masa adisyonunda ürün araması duyuruları:** Ekran okuyucuya sonuç sayısı her tuş vuruşunda anında okunuyordu. Liste görsel olarak anlık filtrelenmeye devam ediyor; sorgu veya kategori değişiminden 450 ms sonra terim ve eşleşme sayısı bir kez duyuruluyor.
+
+- **İndirim kaldırma gerekçesi yardım metni:** “İndirimi kaldır” işleminde gerekçe boş bırakılabiliyordu fakat alan her zaman en az iki karakter zorunluymuş gibi anlatıyordu. Yardım metni artık bu seçenekte gerekçenin isteğe bağlı olduğunu, girilirse iki karakter gerektiğini belirtiyor.
+
+- **İndirim türü değişince eski sayının yeniden yorumlanması:** Yüzde ve tutar seçenekleri aynı giriş değerini paylaşıyordu; türü değiştirmek girilmiş sayıyı yeni birimde sessizce kullanabiliyordu. Tür değişiminde değer temizleniyor, kasiyerin yeni birime göre tekrar girmesi gerekiyor.
+
+- **Masa adisyonu işlem hatasında modal odağı:** İşlem sırasında odaktaki düğme kilitlenip istek hata verdiğinde modal açık kalıyor, odak belge gövdesine düşebiliyordu. Hata görünürken odak modal içindeki ilk kullanılabilir kontrole dönüyor; geçerli odak zaten içerideyse yerinden alınmıyor.
+
+- **Karma ödemede fazla tutar uyarısı:** Hesap doğrulaması hediye kartını da nakit dışı ödemeye katıyor, fakat hata metni yalnızca kart ve yemek kartından söz ediyordu. Mesaj artık nakit dışındaki tüm ödeme tutarlarını kapsıyor.
+
+- **Satış arama kısayollarının ekran okuyucu açıklaması:** F2 ve Enter bilgisi görsel olarak görünüyordu ancak arama alanının `aria-describedby` metninde yalnızca adet biçimi vardı. Alan odağında artık arama/barkod kısayolları ile miktar biçimi birlikte açıklanıyor; görsel yardım metni aynı kaldı.
+
+- **Mutfak biletinde hazır sonrası klavye odağı:** Bilet hazır olunca düğme devre dışı kalıyordu; odak kurtarma koşulu bilet DOM’da kalmasını, odağın da yerinde kaldığı şeklinde yorumlayıp erken çıkıyordu. Odak belge gövdesine düşerse veya kaynak düğme odaklıyken devre dışı kalırsa sonraki kullanılabilir bilete, yoksa Mutfak başlığına gidiyor.
+
+- **Kurye harita bağlantısı adı:** Her teslimat kartında harita bağlantısının erişilebilir adı yalnızca “Harita” idi; bağlantı listesinde hangi siparişe ait oldukları ayırt edilemiyordu. Ad artık müşteri ve bölge/adres bilgisini içeriyor.
+
+- **Paket siparişi iptal gerekçesi doğrulaması:** İptal düğmesi iki karakterden kısa gerekçede devre dışı kalıyor ancak kural açıklanmıyordu. Alan artık iki karakter şartını bildiriyor; kısa girişte hata stili ve `aria-invalid` de devreye giriyor.
+
+- **Kilometre ücreti sınırı açıklaması:** Paket formu 0–100 km aralığı gösteriyordu; doğrulama ise sıfırı geçersiz sayıyordu. Yardım ve hata metinleri artık 0'dan büyük, en fazla 100 km kuralını açıkça belirtiyor.
+
+- **PWA kurulum penceresi hatası:** Tarayıcının kurulum isteği reddedilirse promise hatası yakalanmıyor, kullanıcı da neden kurulum düğmesinin kaybolduğunu göremiyordu. İstek sırasında düğme kilitleniyor; hata halinde görünür ve ekran okuyucuya duyurulan tarayıcı menüsü yönlendirmesi gösteriliyor.
+
+- **Güvenli kasa aktarımı metinleri:** Kasa düğmesi, aktarım formu ve vardiya raporu “Seife/Seifeye” diyordu; ifade Türkçe kullanıcıya işlemin yönünü anlatmıyordu. Metinler artık nakdin güvenli kasaya aktarıldığını tutarlı biçimde belirtiyor.
+
+- **Bölünmüş hesapta tutar duyurusu:** Ürün seçerek veya eşit parçayla ödeme tutarı değiştiğinde ekran okuyucu yalnızca odaktaki seçim düğmesini duyuruyor, yeni toplamı söylemiyordu. Seçim toplamı veya eşit bölmedeki parça numarası ve tutarı artık canlı bölgeden bildiriliyor.
+
+- **Bugün özeti yeniden yükleme odağı:** Hata sonrası “Yeniden yükle” düğmesi istek başlayınca kaldırılıyor ve klavye odağı boşa düşebiliyordu. Yeniden yükleme başladığında odak artık ekran başlığına geçiyor.
+
+- **Ürün/kategori adı uzunluk sınırı:** Sunucu ürün adını 80, kategori adını 40 karakterle sınırlıyordu; alanlar bu üst sınırları uygulamıyor ve kategori sınırını açıklamıyordu. Girişler artık maksimum uzunluğu önlüyor, ürün ve kategori alanları 2–80 / 2–40 kuralını gösteriyor.
+
+- **Sayım kapanış notu sınırı:** Sunucu notu 200 karakterde kesiyor, form ise daha uzun metin girilmesine izin verip kesilen kısmı belirtmiyordu. Giriş artık 200 karakterle sınırlı ve sınır alanın yanında yazıyor.
+
+- **Mal alımında boş kalemle kayıt denemesi:** Form ilk açıldığında boş satıra rağmen kaydet düğmesi etkin ve toplam 0 görünüyordu; sunucu bunu reddediyordu. Artık en az bir geçerli kalem ve tamamlanmış dolu satırlar olmadan kaydetme kapalı, toplam beklenirken alanlarda ne yapılacağı açıklanıyor.
+
+- **Alış/tedarikçi metin uzunluğu sınırları:** Sunucu belge no, tedarikçi adı/telefonu ve notları belirli uzunluklarda saklıyordu; formlar metni sessizce kesebiliyordu. Alanlar artık sunucu sınırını uygulatıyor ve ilgili uzunluk kuralını gösteriyor.
+
+- **Şube adı/adres sınırları:** Sunucu şube adını 80, adresi 300 karaktere kesiyordu; oluşturma ve düzenleme alanlarında bu sınırlar yoktu. Her iki form da artık uzunluğu sınırlar ve kullanıcıya limiti açıklar.
+
+- **Stok, üretim, sadakat ve müşteri notu sınırları:** Sunucu bu notları 200 (müşteri notunda 300) karakterde kesiyordu. İlgili girişler artık aynı üst sınırları uygular ve limitleri formda açıklar.
+
+- **Kupon ve hediye kartı notları:** Bu iki formun sunucu işlemi notu 200 karakterle sınırlıyordu, giriş alanları ise bunu belirtmiyordu. Her ikisinde de yazma sınırı ve açıklama eklendi.
+
+- **Abonelik iade talebi notu:** Sunucu iade açıklamasını 300 karakterde sınırlarken alan sınırı göstermiyordu. Form artık aynı sınırı uygular ve kullanıcıya bildirir.
+
+- **Seçim listesi içinde Escape:** Listbox içindeki Escape olayı üst diyaloğun global dinleyicisine de ulaşıyor ve hem listeyi hem diyaloğu kapatabiliyordu. Liste açıkken Escape artık önce yalnızca listeyi kapatıyor; liste kapalıyken diyalog Escape ile kapanmaya devam ediyor.
+
+- **Mobil satışta sepet kısayolu odağı:** “Sepete git” kısayolu toplam alanı görünür olunca kaldırılıyor; odağı kısayolda olan klavye kullanıcısı belge gövdesine düşebiliyordu. Tıklama artık görünür sepet toplamını programlı odak hedefi yapıyor.
+
+- **İade müdür onayından vazgeçme odağı:** PIN onay görünümünden çıkınca fiş arama alanına dönüş odağı tanımlı değildi; otomatik odak kapalı açılışlarda odak boşa düşebilirdi. Vazgeçme artık fiş numarası alanını odaklıyor.
+
+- **Rezervasyon kişi sayısı doğrulaması:** Kişi alanı metin türünde olduğu için yazılmış `min`/`max` nitelikleri tarayıcı tarafından uygulanmıyordu. Alan artık tam sayı türünde ve 1–99 sınırı açıklanıyor; 300 karakterlik not limiti de görünür hale getirildi.
+
+- **PIN kilidinde klavye odağı:** Son yanlış denemede PIN düğmeleri devre dışı kalıyor; odaklı düğme devre dışı kalınca odak belge gövdesine düşebiliyordu. Kilit başladığında odak artık görünür bekleme açıklamasına gidiyor ve odak göstergesi beliriyor.
+
+- **Kupon arama uzunluğu:** Liste sorgusu sunucuda 40 karakterle sınırlandırılmıştı, arama alanında ise üst sınır yoktu. Giriş artık 40 karakterde duruyor ve limit görünür şekilde açıklanıyor.
+
+- **Fiyat listesi para birimi ve ad sınırı:** Sabit fiyat alanı her işletmede TL gösteriyordu; fiyat listesi başka para birimiyle çalışan kiracılarda yanıltıcıydı. Alan artık işletmenin para birimi simgesini ve örnek biçimi gösteriyor. Liste adı da sunucunun 60 karakter sınırını formda uygular ve açıklar.
+
+- **Paket formunda servis saati yarışı:** Bölge form açıkken kapanırsa genel hata odağı devre dışı “Siparişe geç” düğmesine gönderiliyordu. Düğme kullanılamıyorsa odak artık hata açıklamasına gidiyor.
+
+- **Paket siparişinde alan kapasitesi:** Sipariş olay şeması ad/adres/tarif/not için sırasıyla 120/500/300/300 karakter kabul ederken form 100/300/200/200’de sınırlıyordu. Alanlar artık şema üst sınırlarına uyuyor ve sınırlar açıkça yazıyor; telefon alanı da biçimlendirilmiş numaralar için 24 karakterle sınırlandı.
+
+- **Yönetim adı/kod sınırları:** Personel, cihaz, ajan, salon/istasyon/seçenek grubu, teslimat bölgesi/müşterisi ve platform ürün kodu alanları sunucu uzunluk sınırlarını forma yansıtmıyordu. Girişler artık ilgili 40/60/120 karakter sınırlarını uygular ve açıklar.
+
+- **Teslimat bölgesi ücret para birimi:** Paket ücreti, asgari tutar ve kilometre ücreti her işletmede TL etiketi taşıyor, kayıtlı tutarlar da ₺ biçiminde gösteriliyordu. Alan etiketleri artık işletme para birimi simgesini kullanıyor; düzenleme değerleri yerel sayı biçiminde sembolsüz gösteriliyor.
+
+- **Ürün fiyatı ve maliyet para birimi:** Ürün düzenlemede satış fiyatı simgesizdi, maliyet ise her zaman TL olarak etiketleniyordu. Form artık satış ve maliyet alanlarında işletmenin para birimini belirtiyor; kayıtlı değerleri mevcut tutarla aynı yerel biçimde açıyor.
+
+- **Restoran seçenek fiyat farkı birimi:** Seçenek grupları listede kiracı para birimiyle görünürken düzenleme açıklaması tutarların hangi birimde girileceğini söylemiyordu. Form artık farkların işletme para biriminde olduğunu ve satırda birim yazılmaması gerektiğini belirtiyor.
+
+- **Salon ilk kurulum masa sayısı:** İlk kurulumdaki masa sayısı alanı sunucunun 1–80 kuralını formda uygulamıyor ve sınırı açıklamıyordu; bölüm adları da yazılınca görünen etiketlerini kaybediyordu. Alanlar artık kalıcı etiketli, bölüm adı zorunlu ve masa sayısı 1–80 aralığında tam sayı olarak doğrulanıyor.
+
+- **Kupon tarih aralığı:** Sunucu bitiş tarihi başlangıçtan önceyse kaydı reddediyordu, fakat form bunu ancak gönderimden sonra bildiriyordu. Başlangıç tarihi ilerletilince uyumsuz bitiş sıfırlanıyor; bitiş seçicisi başlangıçtan önceki günleri engelliyor.
+
+- **Hediye kartı ve kupon son günü:** Tarih girdileri UTC gece yarısı olarak kaydedildiği için seçilen son günün başında kart/kupon geçersizleşebiliyordu. Yeni kayıtlar bitişi İstanbul gün sonuna alıyor; eski gece yarısı kayıtları da sorguda gün sonu olarak yorumlanıyor. Hediye kartı formu geçmiş tarih seçimini ve sunucu tarafı kaydını engelliyor.
+
+- **Teslimat saati penceresi:** Başlangıç veya bitiş tek başına kaydedilebiliyor, ancak çalışma saati denetimi bu alanlardan biri boşsa bölgeyi her zaman açık sayıyordu. Yönetim artık iki saatin birlikte girilmesini ya da ikisinin de boş bırakılmasını istiyor ve kuralı formda açıklıyor.
+
+- **Stok hareketi miktar sınırı:** Stok miktarı ayrıştırıcısı adet için 6, kg/litre için 6 tam ve 3 ondalık hane kabul ediyor; form bu sınırı uygulamıyor ve anlatmıyordu. Giriş uzunluğu artık sınırlı, sayım/fire türüne göre sıfır kuralı ve hassasiyet kullanıcıya gösteriliyor.
+
+- **Alış kalemi miktar/fiyat sınırları:** Alışta miktar ayrıştırıcısı stokla aynı hane kurallarını, birim fiyat da 100.000,00 üst sınırını kullanıyordu; satır formunda bu sınırlar görünmüyor ve uzun girişler ancak gönderimde reddediliyordu. Miktar ve fiyat alanları artık uzunluğu sınırlar ve ilgili birimle kabul edilen aralığı satırın yanında açıklar.
+
+- **Ürün stok ve fiyat sınırları:** Ürün formundaki fiyat/maliyet ayrıştırıcısı 100.000,00; stok ve parti miktarı ayrıştırıcısı ise birim başına 6 tam ve 3 ondalık hane kabul ediyordu. Alanlar artık aynı uzunlukları uygular ve sınırları formda açıklar.
+
+- **Hediye kartı tutar girişi:** Kart oluşturma ve bakiye yükleme 50.000,00 üstünü reddediyordu, fakat alanlar sınırsız uzunlukta giriş kabul ediyordu. Açıklamadaki aralığa uygun olarak iki alan da artık uzun girişi durduruyor.
+
+- **Tedarikçi ödeme tutarı:** Tedarikçiye yapılan ödeme alanı para birimini ve sunucunun 1.000.000,00 üst sınırını göstermiyordu. Form artık işletme simgesini belirtip tutar uzunluğunu sınırlandırıyor.
+
+- **Teslimat ücreti tutar güvenliği:** Bölge ücretleri 32 bit kuruş sütunlarına yazılıyordu ancak yönetim formu ve eyleminde üst sınır yoktu; aşırı değerler veritabanı hatasına yol açabilirdi. Ücretler artık sütun sınırında doğrulanıyor, form aralığı gösterip aşırı uzun girişi durduruyor. Ortak para ayrıştırıcısı da güvenli tamsayı dışındaki sonuçları reddediyor.
+
+- **Kupon ve liste fiyatı üst sınırları:** Kupon alt/üst tutarları 32 bit kuruşla, sabit kupon değeri 50.000,00 ile sınırlıydı; liste fiyatı içinse sütun üst sınırı doğrulanmıyordu. Formlar artık ilgili aralık ve giriş uzunluğunu belirtip uygular; liste fiyatı da veritabanı sınırında doğrulanır.
+
+- **Seçenek fiyat farkı üst sınırı:** Restoran seçenek fiyat farkı 32 bit kuruş sütununa yazılırken ayrıştırıcı bu üst sınırı denetlemiyordu. Aşırı farklar artık kayıt öncesi anlaşılır hata veriyor ve alan yardımında sınır açıklanıyor.
+
+- **Kasa nakit tutar girişi:** Güvenli kasaya aktarım, vardiya açılış ve gün sonu sayımı 1.000.000 üst sınırını zaten doğruluyordu; tutar alanları ise sınırsız uzunluktaydı. Bu alanlar artık yerel biçimli üst sınır tutarını yazmaya yetecek uzunlukta kalıyor.
+
+- **Satış ödeme tutarı eşitleme sınırı:** Eşitleme belgesi tek bir ödeme yönteminde 1.000.000 üst sınırı kabul ediyordu; kasa formu daha büyük tutarı geçerli sayıp çevrimdışı kaydedebiliyor, ardından eşitleme tarafından reddedilebiliyordu. Nakit, kart ve yemek kartı alanları artık bu sınırı satıştan önce doğruluyor ve açık hata duyuruyor.
+
+- **Ağ terazisi yapılandırması:** Terazi portu sunucuda 1–65.535 tam sayı aralığındaydı, fakat girişte yalnızca sayısal klavye ipucu vardı. Alan artık yerel tarayıcı doğrulamasını ve görünür aralık yardımını kullanıyor; ana makine alanı da 100 karakter sınırını uygular.
+
+- **Yazıcı yapılandırma uzunlukları:** Ajan yapılandırmasında yazıcı adı (40) ve adresi (200 karakter) sunucu şemasında sınırlıydı, form bunları uygulamıyordu. Alanlar artık bu sınırları formda gösterip giriş uzunluğunu kısıtlıyor.
+
+- **Fiş logosu görsel belleği:** PNG dönüştürücü 4096×4096 piksele kadar görsel açabiliyordu; 16 megapiksel kaynaklar tarayıcıda çok yüksek geçici bellek kullanabiliyordu. Dönüştürme artık 2 megapiksel ve 20 MB üst sınırını uygular; dosya boyutu yüklemeden önce kontrol edilir ve aralık formda açıklanır.
+
+- **Ürün CSV aktarımı dosya sınırı:** Eylem 1 MB metin kontrolünü ancak bütün dosyayı belleğe aldıktan sonra yapıyordu. Artık yükleme boyutunu okumadan önce reddediyor; form 1 MB ve 500 ürün sınırlarını önceden bildiriyor.
+
+- **CSV boyutu için anlık geri bildirim:** 1 MB üstü dosya sunucuda reddediliyordu ancak kullanıcı dosyayı seçtikten sonra bunu ancak gönderim yanıtında görüyordu. Dosya seçilir seçilmez alan hatayı duyuruyor ve geçersiz dosyayla gönderim düğmesini kapatıyor.
+
+- **Kilometre bazlı paket ücreti duyurusu:** Mesafe girildikçe ücret ekranda hesaplanıyordu; ekran okuyucu kullanıcısı yeni toplamı değişiklikte duymuyordu. Ücret satırı artık tek parça ve kibar canlı duyuruyla güncelleniyor.
+
+- **Kasada müşteri arama telefonu:** Sadakat sorgusu Türkiye numarasını normalleştiriyor ancak kasadaki alan ve API uzun sorguları sınırlamıyordu. Giriş ve sorgu artık 24 karakterle sınırlı; boşluklu/ülke kodlu numaralar için yeterli uzunluk korunuyor.
+
+- **Kasada kupon ve kart kodu girişi:** Kod normalleştiricisi 3–24 alfasayısal karakter kabul edip boşluk/tireleri siliyordu, ancak iki kasa alanı da sınırsız girişe izin veriyordu. Alanlar 48 ham karakterle sınırlı (24 karakter ile araya ayraç koymaya yeterli); yardım metni kabul edilen kod biçimini açıklıyor ve ortak normalleştirici API/eylem tarafında da aşırı uzun ham girdiyi reddediyor.
+
+- **Sadakat puanı girişi:** Kullanılabilir puan bakiyesi PostgreSQL tamsayısı olmasına rağmen kasa alanı uzun girdi kabul ediyor ve yalnız 4rem genişliğindeydi. Giriş 10 hanede duruyor, alan da 10 haneli bakiyeyi görünür tutacak şekilde genişletildi.
+
+- **Kupon toplam kullanım limiti:** Sunucu toplam kupon kullanımı için 32 bit tamsayı üst sınırını doğruluyordu, fakat formda bu üst sınır yoktu. Alan artık HTML sayısal doğrulamasında aynı üst sınırı gösterip uygular; sınırsız kullanım için boş bırakılabileceği de açık.
+
+- **Sadakat tutar sınırları:** Puan kazanma eşiği ve puan indirimi yönetim alanları sunucunun 100.000,00 üst sınırını göstermiyor, uzun girişleri durdurmuyordu. İki alan artık aynı para birimiyle üst sınırı gösterip 10 karakterde duruyor.
+
+- **Seçenek grubu adet sınırları:** Grup için en az/en çok adetleri 0–30 ve 1–30 aralığında doğrulanıyordu, ama sayısal girişler tarayıcıya sınır bildirmiyor ve metin kabul ediyordu. Alanlar artık tam sayı türü, yerel aralık ve bağımlılık yardımını kullanıyor.
+
+- **Masa indirim girişi:** İndirim onay penceresinde yüzde 1–100, tutar ise en çok 1.000.000,00 ile sınırlandırılmıştı; girdi uzunluğu ve yüzde klavye ipucu bu sınırlara uymuyordu. Yüzde alanı 3 hane/sayısal klavyeye, tutar alanı yerel biçime yetecek 12 haneye geçti.
+
+- **Abonelik ödeme telefonu:** PayTR ödeme formu telefon için en az 10 karakter istiyor ancak uzunluğu sınırlamıyordu; eylem de ham girdiyi sağlayıcıya göndermeden önce sınırlamıyordu. Form ve sunucu artık 24 karakterle sınırlıyor; Türkiye numarasının boşluklu biçimi için alan bırakılıyor.
+
+- **2FA kurulum kodu:** TOTP doğrulayıcısı 6 rakam bekliyor, fakat kurulum alanı uzun girdi ve harf kabul edebiliyordu. Alan artık 6 karakter ve yalnız rakamı tarayıcıda doğruluyor; mobil klavye ipucu sayısal.
+
+- **Yönetim menü arama uzunluğu:** Menü etiketleri sabit ve kısa olmasına rağmen filtre alanı sınırsız metinle her yazımda arama yapıyordu. Arama sorgusu artık 80 karakterle sınırlı; yapıştırma kaynaklı gereksiz büyük aramaları engelliyor.
+
+- **Personel PIN alanı:** Sunucu yeni PIN için 4–6 rakam istiyor, form yalnız 6 karakter üst sınırını uyguluyordu. Artık 4 hane altı ve rakam dışı giriş formdan önce durduruluyor; mevcut PIN'i değiştirmeden boş bırakma davranışı korunuyor.
+
+- **Marka adı ve adres sınırları:** Marka adı sunucuda uzunluk sınırlaması olmadan, adres ise en çok 40 karakterle doğrulanıyordu; form iki alanın da sınırını göstermiyordu. Marka adı artık 1–80 karakter, adres 2–40 karakter sınırını formda gösterip sunucuda uygular.
+
+- **Sadakat puan aralıklarının açıklanması:** Harcanabilir puan eşiği ve müşteri puan düzeltmesi alanlarında tarayıcı min/max sınırları vardı ancak görünür açıklamada bu aralıklar yoktu. Form artık geçerli değer aralığını ve sıfır değerinin düzeltmede kullanılamayacağını açıkça belirtiyor.
+
+- **Kasa ürün arama uzunluğu:** Katalog ürün adı en fazla 80 karakter, barkod 14 hane olmasına rağmen yeni satış ve adisyon araması sınırsız metin kabul ediyordu. İki arama alanı da 80 karakterle sınırlandı; ürün adları ve barkodlar için yeterli uzunluk korunurken yanlışlıkla yapıştırılan dev metinler arama döngülerini şişirmiyor.
+
+- **Fiş SMS alıcı numarası:** Telefon normalleştiricisi yalnızca 10–12 rakamlı Türkiye numaralarını kabul ediyor, ancak fiş SMS alanı sınırsız metin alıyordu. Paket siparişindeki numara alanıyla aynı 24 karakter sınırı uygulandı; boşluklu ve ülke kodlu girişlere alan bırakıldı.
+
+- **Fatura alıcısı e-posta uzunluğu:** Fatura bilgisi şeması ad ve adresi sınırlarken e-posta uzunluğu sınırsızdı; kasadaki e-posta alanı da daha veri gönderilmeden uzun girdiyi durdurmuyordu. Ortak alıcı doğrulaması ve alan artık 254 karakter sınırını uygular, hata mesajı da uzunluğu açıklar.
+
+- **Hesap açma ve oturum alan sınırları:** Kayıt formunda işletme adı sunucuda 80, şifre doğrulamasında 200 karakterle sınırlıydı; ad soyad ve e-posta sınırları tutarlı değildi, giriş ve parola sıfırlama alanları da sınırsızdı. Formlar bu sınırları artık gösterip uyguluyor; sunucu kayıt, giriş ve sıfırlama e-postasında aynı e-posta/şifre sınırlarını denetliyor.
+
+- **Mali cihaz API adresi:** Bulut ÖKC bağlantı adresi metin sütununa sınırsız yazılabiliyor ve yönetim alanında uzunluk sınırı yoktu. Form ve kayıt eylemi şimdi 2.048 karakterle sınırlandırıyor; adresi kopyalayıp yapıştırırken kontrolsüz uzun veri kaydedilemiyor.
+
+- **Tartılı satış ve iade kg alanları:** Ortak kg ayrıştırıcısı 1–4 tam ve en fazla 3 ondalık hane (en çok 8 karakter) kabul ediyor; satış tartımı ve tartılı iade alanları bu uzunluğu uygulamıyordu. İki giriş de artık ayrıştırıcının kabul ettiği en uzun biçimde duruyor.
+
+- **Tartım tutarı erişilebilirliği:** Kg girildikçe ürün tutarı görsel olarak hesaplanıyordu ancak etiketi yoktu ve ekran okuyucuya güncellenen fiyat bildirilmiyordu. Fiyat artık “Satır tutarı” olarak adlandırılmış, başlangıçta tireyle gösteriliyor ve erişilebilir canlı alan olarak duyuruluyor.
+
+- **Yönetim menüsü metin kontrastı:** Koyu menüde krem metnin %55–70 opaklık varyantları espresso zeminde yaklaşık 2,7:1–3,5:1 kontrast veriyordu; bölüm başlıkları, arama ipucu ve boş sonuç mesajı küçük metin için yetersizdi. Bu metinler artık tam krem-muted rengini kullanıyor (zeminde yaklaşık 5,7:1).
+
+- **Adisyon ürün listesi boş durumu:** Ürün araması ve kategorisi boş sonuç verdiğinde mesajda “adet ürünü” yazıyor, Türkçede miktar/adet bilgisiyle karışıyordu. Mesajlar artık arama eşleşmesi ya da kategoride ürün bulunmadığını doğrudan söylüyor.
+
+- **Fatura formunda nihai tüketici kısayolu:** Klavye ile fatura alanlarını dolduran kullanıcı, “Nihai tüketici” düğmesine geldiğinde görünür odak halkası alamıyordu. Düğmeye tutarlı odak göstergesi eklendi.
+
+- **Müşteri arama sınırı ve semantiği:** Müşteri araması ürün/stok aramalarından farklı olarak sınırlandırılmamıştı ve arama formu semantik `search` rolünü taşımıyordu. Alan ve URL'den gelen sorgu 80 karakterle sınırlandı; form ekran okuyucu arama bölgesi olarak tanımlandı.
+
+- **Yasal sayfa bağlantılarında klavye odağı:** Ortak yasal altbilgideki bağlantılar klavyeyle erişilebiliyordu ancak görünür odak stili tanımlı değildi. Bağlantılara belirgin odak halkası eklendi.
+
+- **Giriş, yasal ve etiket sayfası bağlantı odağı:** Giriş ekranındaki marka/kılavuz bağlantıları, yasal sayfa marka bağlantısı, raf etiketi sekmeleri ve seçenek düzenleme iptali klavyede belirgin odak göstermiyordu. Bu bağlantılara görünür odak halkaları ve tutarlı dokunma yüksekliği eklendi; etiket filtresi ayrıca adlandırılmış gezinme bölgesi ve etkin bağlantı durumunu duyuruyor.
+
+- **Ürün ve stok yönetimi arama sınırları:** Ürün adı en çok 80 karakter, barkod 14 hane olmasına rağmen ürün kataloğu ve stok listesi aramaları uzunluk sınırlamıyordu. Her iki form ve doğrudan URL sorgusu da 80 karakterle sınırlandı.
+
+- **Kupon arama semantiği:** Kupon kodu alanının erişilebilir adı vardı ancak form arama bölgesi olarak işaretli değildi. Form artık ekran okuyucuların arama landmark'ı olarak tanıyacağı `search` rolünü taşıyor.
+
+- **Müşteri büyüme segmentleri:** Segment filtreleri bağlantı olarak çalışıyordu ancak ekran okuyucuya gruplu gezinme ve seçili segment bilgisini vermiyordu; odak halkası da görünür değildi. Filtreler adlandırılmış gezinme bölgesine alındı, etkin seçim `aria-current` ile işaretlendi ve klavye odağı görünür hale getirildi.
+
+- **İade fiş numarası uzunluğu:** Fiş doğrulayıcı en fazla 15 karakterli `ÖNEK-000001-123` biçimini kabul ediyor, iade alanıysa uzunluğu kısıtlamıyordu. Alan doğrulayıcının üst sınırını uygular; hatalı uzun yapıştırmalar gereksiz sorgu isteği başlatmaz.
+
+- **Rapor tarih aralığı alanlarının senkronu:** Hazır tarih aralığı bağlantısı raporu değiştirirken özel tarih alanları `defaultValue` kullandığı için istemci gezinmesinde ekranda eski değer kalabilirdi. Form artık sunucudan gelen aralık değişince yeniden oluşturulur; görünen tarih ve rapor aralığı aynı kalır.
+
+- **Seçenek grubu girdi sınırları:** Sunucu her grupta en fazla 30 seçenek ve seçenek başına 60 karakter kabul ediyordu, ama çok satırlı alan bu kuralları göstermiyor ve sınırsız metin alıyordu. Form bu sınırları açıklar ve 2.400 karaktere kadar geçerli seçenek listesini kabul eder.
+
+- **Barkod biçimi açıklaması:** Ürün kaydı barkodları 3–14 rakamla sınırlı doğruluyordu; form yalnız ayırıcı biçimini söylüyordu. İpucu artık rakam ve uzunluk koşulunu da kaydetmeden önce bildiriyor.
+
+- **Masa adları toplu ekleme ipucu:** Sunucu tek işlemde en fazla 200, her biri en fazla 20 karakterli masa adı kabul ediyor ve `M1-M12` aralığını destekliyordu; alan yalnızca örnek gösteriyordu. Format ve iki üst sınır artık görünür, hata oluşunca aynı açıklamayla birlikte okunuyor.
+
+- **Rezervasyon saat dilimi açıklaması:** Rezervasyon saati sunucuda Türkiye yerel saatinden UTC anına çevriliyor; formun “Saat” etiketi saat dilimini belirtmiyordu. Alan artık kayıt saatinin Türkiye saatine göre olduğunu açıklıyor.
+
+- **Kupon müşteri başına kullanım sınırı:** Form `1–2.147.483.647` aralığını tarayıcıda uyguluyor ve boş değeri sunucuda `1` sayıyordu, ancak bu davranışı açıklamıyordu. İpucu artık aralığı ve varsayılanı netleştiriyor.
+
+- **Yönetim formlarında gizli karakter sınırları:** Entegrasyon/ajans adı (2–40), rezervasyon adı (1–120), vergi dairesi (80) ve işletme adresi (500) için form ya üst sınırı göstermiyor ya da e-Arşiv gerekliliğini açıklamıyordu. İpuçları doğrulama kurallarını kaydetmeden önce görünür kılıyor.
+- **Fiyat listesi zamanlama ipuçları:** Form artık gün seçimi boş bırakıldığında listenin her gün uygulanacağını, saatlerin cihazın yerel saatini izlediğini ve erken bitiş saatinin gece yarısını aşacağını açıklıyor. Bu davranış `formDays` ve `listActiveAt` ile doğrulandı.
+- **Alış ve tedarikçi ödeme tarihleri:** İki tarih alanı da ileri tarihi engelliyor; bu sınır artık alan ipucunda da görünür. Sunucu `parseDate` ile ileri tarihi reddediyor, form `max={today}` ile seçim öncesi kısıtlıyor.
+- **Alış kalemi erişilebilir duyurusu:** Kalem ekleme ve silme işlemleri artık ekran okuyucuya yeni kalem sayısını duyuruyor; silme sonrası odak mevcut “Kalem ekle” düğmesine dönüyor.
+- **Alış kalemi klavye akışı:** “Kalem ekle” ile yeni satır oluşturulunca odak yeni satırın ürün seçimine taşınıyor; Tab sırası artık yeni satırı atlamıyor. Satır ekleme duyurusu korunuyor.
+- **Kasa ürün kartı fiyat doğruluğu:** Ürün ızgarası temel fiyatı gösterirken sepete ekleme aktif zamanlı fiyat listesini uyguluyordu. Kartlar artık sepete uygulanacak anlık fiyatı gösteriyor; farklıysa normal fiyatı da açıkça belirtiyor. İki fiyat da kartta sığsın diye satır yüksekliği artırıldı.
+- **Şubeye özel fiyat listesi kasada uygulanmıyordu:** Katalog endpoint'i doğru şube listelerini süzüyordu, ancak şube kimliğini de istemciye taşıyınca `SaleScreen`'in `storeId` vermeyen efektif fiyat hesabı bu listeleri eliyordu. Şubeye göre kapsam sunucuda zaten belirlendiğinden, cihaz kataloğunda kapsam çözümlenmiş olarak aktarılıyor; ürün kartı ve sepete ekleme aynı aktif fiyatı kullanıyor.
+- **Çakışan fiyat listesi önceliği:** Yönetim açıklaması, birden fazla etkin liste aynı ürüne ve saate uyduğunda yukarıdaki ilk listenin uygulanacağını belirtiyor. Bu sıra `effectivePrice` ilk eşleşmede döner ve ekran sorgusu aynı `sort` sırasını kullanır.
+- **Kasa e-Arşiv alıcı bilgileri:** VKN/TCKN alanı boşken de 10/11 haneli kurala dair ipucu gösteriyor; ad/unvan ve adres alanları zorunluluk ile uzunluk sınırını önceden belirtiyor. İpuçları `buyerSchema` ile aynı 200/500 karakter ve VKN adresi kurallarını izliyor.
+- **PIN girişinde eski hatayı temizleme:** Tuş takımı, klavye rakamları ve silme tuşu yeni PIN girişini başlattığında önceki hata uyarısı kalkıyor; yanlış giriş mesajı düzeltilen deneme sırasında ekranda kalmıyor.
+- **Sayım satırı erişilebilirliği ve sınırlar:** Tekrarlanan sayım alanlarının ekran okuyucu adı artık ürün adını içeriyor. Adet alanı 6, ağırlık/hacim 10 karakterle sınırlandı; 0 ve birim hassasiyet aralığı ipucunda gösteriliyor. Kurallar `parseQty` ile eşleşiyor.
+- **Sayımda kayıt geri bildirimi:** Sayım miktarı düzenlenince eski “Kaydedildi” bildirimi ve önceki alan doğrulama uyarısı hemen gizleniyor; yeni sunucu yanıtı gelince güncel başarı ya da hata tekrar gösteriliyor.
+- **Reçete miktarı alanları:** Her miktar alanının erişilebilir adı şimdi satırdaki malzemeyi ve birimini içeriyor. Görünür ipucu ve karakter sınırı `parseRecipeQty` ile eşleşiyor: adet için en çok 4 tam ve 3 ondalık hane; g/ml için en çok 6 tam hane.
+- **CSV aktarım geri bildirimi:** Yeni dosya seçildiğinde önceki aktarım başarısı veya sunucu hatası gizleniyor; yeni gönderim sırasında eski sonuç gösterilmiyor. Sonuç, yeni deneme tamamlandığında güncelleniyor.
+- **Ürün formunda eski başarı/hata mesajı:** Form alanı düzenlenince önceki sunucu hatası ve “Kaydedildi” mesajı gizleniyor. Yeni gönderim sırasında da eski yanıt saklanıp sunucunun güncel yanıtı bekleniyor; özel combobox seçimleri düzenleme olarak algılanıyor.
+- **Donanım ayarlarında bayat kayıt durumu:** Yazıcı, terazi, fiş logosu veya otomatik yazdırma ayarı değişince eski “Kaydedildi” mesajı ve sunucu hatası gizleniyor. Gönderim sırasında eski yanıt saklanıp yeni sunucu yanıtı gösteriliyor.
+- **Personel formu genel hata ve eski sonuç:** Alana bağlanmayan sunucu hataları (ör. personel kaydı bulunamadı) artık formda gösteriliyor. Rol, ad, PIN veya şifre değiştirildiğinde önceki hata/başarı gizlenip güncel kayıt yanıtı bekleniyor.
+- **Üretim parti sayısı:** Alan artık zorunlu; 4 tam + 3 ondalık hane sınırı ve 0'dan büyük olma kuralı formda açıklanıp tarayıcıda sınırlandırılıyor. Nokta/virgül girişi, `produce` sunucu doğrulamasıyla eşleşiyor.
+- **Kategori ekleme erişilebilirliği ve onayı:** Kategori adı artık 2 karakterden az gönderilemez; alan hatası `aria-invalid`/`aria-describedby` ile bağlandı. Başarılı ekleme sonrası onay gösteriliyor ve yeni giriş başlayınca eski hata/onay gizleniyor.
+- **Reçete düzenleme geri bildirimi:** Satır ekleme/silme, içerik seçimi veya miktar düzenlenince önceki başarı ve doğrulama mesajı gizleniyor; yeni kaydetme yanıtı bekleniyor.
+- **Stok hareketi/fire geri bildirimi:** Sayım/fire türü veya alanlar değişince önceki kaydetme sonucu ve hata temizleniyor; yeni gönderim sırasında eski mesaj gizli kalıp güncel yanıt gösteriliyor.
+- **Üretim formu eski kayıt onayı:** Ara ürün/parti/not değişince “stok ve maliyet güncellendi” onayı ve önceki hata gizleniyor. Yeniden gönderimde yeni sonuç gösteriliyor; ürün seçimi ve serbest girişler de düzenleme olarak izleniyor.
+- **Tedarikçi formu eski sonuç durumu:** Tedarikçi bilgilerinden biri düzenlenince önceki “Kaydedildi” mesajı ve doğrulama hataları gizleniyor; yeni gönderimin sonucu bekleniyor.
+- **Tedarikçi ödeme formu eski sonuç durumu:** Tutar, tarih veya ödeme şekli değişince önceki başarı/hata mesajı gizleniyor; ödeme kaydı sürerken eski yanıt görünmüyor.
+- **Alış formu eski sunucu yanıtı:** Ürün, miktar/fiyat, tedarikçi, tarih, not veya satır sayısı değişince eski doğrulama hatası ve başarı bildirimi gizleniyor; yeni gönderim sırasında eski sonuç görünmüyor.
+- **Fiyat listesi formlarında güncel geri bildirim:** Liste alanları veya özel tür/ürün seçimi değişince önceki kayıt mesajı ve doğrulama uyarıları gizleniyor; yeni gönderim tamamlanana kadar eski yanıt gösterilmiyor.
+- **Rezervasyon ekleme geri bildirimi:** Yeni rezervasyon alanları veya masa seçimi değişince önceki “Eklendi”/hata mesajı kalkıyor; kayıt sürerken eski yanıt gösterilmiyor.
+- **İade talebi formu eski hata durumu:** Neden veya not değişince önceki sunucu hatası gizleniyor; yeniden gönderim devam ederken eski yanıt görünmüyor.
+- **E-posta rapor ayarı eski sonuç durumu:** Günlük/haftalık/aylık tercih değişince eski kayıt onayı veya hata gizleniyor; yeni kayıt sürerken eski sonuç gösterilmiyor.
+- **Oturum güvenlik formları güncel hata durumu:** Şifre alanı değiştirildiğinde önceki doğrulama hatası ve işlem onayı gizleniyor; yeni istek sürerken eski yanıt gösterilmiyor.
+- **Kampanya taslak formu güncel hata durumu:** Ad veya mesaj düzenlenince önceki sunucu hatası gizleniyor; yeni kayıt sürerken eski hata görünmüyor.
+- **Sadakat ayarları ve puan düzeltme hataları:** Her iki formda alan değişince önceki sunucu hatası saklanıyor; yeni istek sürerken eski yanıt görünmüyor.
+- **Tartım penceresi doğrulama ipucu:** Ağırlık alanı artık `parseKg` ile aynı 0–1000 kg ve üç ondalık sınırını açıklıyor. Elle giriş başlayınca eski terazi okuma hatası temizleniyor.
+- **Teslimat yönetimi güncel form yanıtı:** Bölge ve müşteri bilgileri düzenlenince önceki kayıt onayı/hatası gizleniyor; platform seçimi değişince eski bağlantı sonucu kalkıyor.
+- **Salon kurulumu ve masa/istasyon formları:** Bölge/masa/istasyon bilgisi veya yazıcı seçimi değişince eski doğrulama ya da kayıt sonucu gizleniyor; salon kurulumunda satır ekleme/silme de düzenleme sayılıyor.
+- **Cihaz mutfak istasyonu taslağı:** Rol seçimi değişip tekrar mutfağa dönünce istasyon seçimleri artık korunuyor. Seçim değişiklikleri sırasında eski kayıt onayı/hatası da gizleniyor; seçenek grubu formunda aynı güncel geri bildirim davranışı var.
+- **Cihaz rolü mobil yerleşimi:** Uzun rol etiketleri dar ekranda tek satırı taşırmıyor; rol düğmeleri alana göre birden fazla satıra sarılıyor.
+- **Marka menüsü ve para birimi geri bildirimi:** Ürün seçimleri ya da yeni para birimi seçilince önceki başarı/hata mesajı gizleniyor; yeni kayıt tamamlanmadan eski sonuç gösterilmiyor.
+- **Şube ekleme/düzenleme hataları:** Ad veya adres değişikliğinden sonra önceki sunucu hatası gizleniyor; kayıt sürerken eski yanıt ekranda tutulmuyor.
+- **Platform ürün eşleştirme ve aktarım geri bildirimi:** Kod/ürün seçimi değişince eski eşleştirme hatası veya onayı gizleniyor. Deneme siparişi ve katalog aktarımında yeni istek sürerken önceki işlem sonucu saklanıyor.
+- **Mali ayarlarda ön doğrulama:** Fatura serisi artık sunucudaki 3 harf/rakam zorunluluğunu tarayıcıda da uygular; VKN/TCKN uzunluğu, ÖKC seri no, bulut API adresi ve yeni API anahtarı için alan sınırları forma işlendi. Ayar değişince önceki sunucu yanıtı gizleniyor.
+- **2FA ve entegrasyon anahtarı hataları:** Kod/şifre veya anahtar adı düzenlenirken önceki sunucu hatası gizleniyor; yeni deneme sürerken eski hata görünmüyor. Entegrasyon adı için sunucudaki 2 karakter alt sınırı tarayıcıda da uygulanıyor.
+- **Rapor tarih aralığı:** Başlangıç ve bitiş alanları İstanbul'daki bugünden ileri tarih seçtirmiyor; form açıklaması bu sınırı belirtiyor.
+- **Paket servis km ücreti:** Mesafe alanı ve ücret önizlemesi artık yalnızca 0–100 km arası, en fazla iki ondalıklı nokta/virgül girişini kabul ediyor; bilimsel gösterim gibi beklenmedik biçimler reddediliyor.
+- **Paket servis adres/bölge değişiminde mesafe:** Kayıtlı adres veya ücret tarifesi değişince önceki adrese ait km değeri temizleniyor; yeni km tarifesi için eski mesafe yanlışlıkla kullanılmıyor.
+- **Paket servis adres düzenlemesinde eski bölgeyi temizleme:** Kayıtlı adres metni değişince önceki kayıtla ilişkili bölge ve km seçimi de sıfırlanıyor; güncel adres için teslimat alanı yeniden seçiliyor.
+- **Adisyon tutar indirimi alt sınırı:** Sıfır tutarlı indirim onayı engelleniyor; giriş artık sıfırdan büyük ve üst sınırın altında olmalı.
+- **Hediye kartı kodu form ipucu:** Elle girilen kod için 3–24 karakter sınırı ve boşluk/tire normalizasyonu formda açıklanıyor; 48 karakterlik ham giriş sınırı sunucudaki normalizasyon limitiyle aynı.
+- **Kiosk sipariş formu eski sunucu hatası:** Sipariş yanıtındaki hata, müşteri/ödeme/not alanlarından biri düzenlenince temizleniyor; yeni değer girildikten sonra eski hata ve gönder düğmesine zorlanan odak kalmıyor.
+- **Paket siparişi ad-soyad ipucu:** Görünür alan ipucu 1 karakter derken kayıt doğrulaması en az 2 karakter istiyordu; form açıklaması gerçek sınır olan 2–120 karakterle eşitlendi.
+- **Tartılı ürün PLU ön doğrulaması:** PLU sunucuda tam 5 rakam şartı taşıyordu ama form harf/kısa kodu göndermeye bırakıyordu. Alan artık doluysa beş rakam koşulunu tarayıcıda da uygular ve ipucunu netleştirir; boş bırakma seçeneği korunur.
+- **Alış ve tedarikçi ödemesinde kuruş hassasiyeti:** Sunucu en fazla iki ondalık hane kabul ediyordu; birim fiyat ve ödeme tutarı ipuçları artık bu hassasiyeti de belirtiyor.
+- **Mutfak istasyon filtresi ve bilet duyuruları:** Önceki durum yalnız görünür biletleri izlediği için filtre değişince mevcut biletler yanlışlıkla “Yeni bilet” diye okunabiliyordu. Duyuru karşılaştırmasının tabanı artık filtre bağımsız tüm adisyon biletlerini kapsıyor.
+- **Kasa satış satırı miktar sınırı:** Bulut satış belgesi satır başına en fazla 1.000 adet/kg kabul ederken tekrarlı ekleme ve sepet artırma bu sınırı aşabiliyordu. Kasa artık aşan ürün eklemesini açıklayıcı uyarıyla durduruyor, adet satırında üst sınıra ulaşınca artırmayı devre dışı bırakıyor; arayüz ve eşitleme doğrulaması aynı paylaşılan sınır sabitini kullanıyor.
+- **Teslimat bölgesi ücret hassasiyeti:** Paket ücreti, asgari tutar ve km başı ücret sunucuda en fazla iki ondalıkla çözümleniyordu; form ipuçları artık tüm üç tutar alanında bu kuruş sınırını açıkça belirtiyor.
+- **Sadakat ayarlarında tutar hassasiyeti:** Puan kazanma eşiği ve puan başı indirim tutarı sunucuda en çok iki ondalık kabul ediyor; iki alanın ipucu bu sınırı artık belirtiyor.

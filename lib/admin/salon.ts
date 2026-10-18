@@ -25,6 +25,7 @@ export function parseOptionLines(text: string): { name: string; delta: number }[
     if (m) {
       const k = parseTL(m[3]);
       if (k === null) return `Fark okunamadı: ${raw}`;
+      if (k > 2_147_483_647) return `Fiyat farkı en çok 21.474.836,47 olabilir: ${raw}`;
       delta = m[2] === "-" ? -k : k;
     }
     if (name.length < 1 || name.length > 60) return `Seçenek adı 1-60 karakter: ${raw}`;

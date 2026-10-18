@@ -8,6 +8,7 @@ import { saasSeller } from "@/lib/billing/invoice";
 import { formatTL, splitVat } from "@/lib/core/money";
 import { clientIp, hit } from "@/lib/ratelimit";
 import { PrintButton } from "@/components/PrintButton";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Abonelik faturası — ÇabukPOS", robots: { index: false, follow: false } };
@@ -73,14 +74,14 @@ export default async function AbonelikFatura({ params }: { params: Promise<{ tok
             <div><dt className="text-xs text-muted">KDV</dt><dd>%20</dd></div>
             <div><dt className="text-xs text-muted">Tutar</dt><dd className="font-medium tabular-nums">{formatTL(d.payment.amount)}</dd></div>
           </dl>
-          <div className="hidden overflow-x-auto lg:block print:block">
-          <table className="w-full border-y border-line">
+          <HorizontalScrollRegion label="Fatura kalemleri, yatay kaydırılabilir" className="hidden lg:block print:block">
+          <table aria-label="Fatura kalemleri" className="w-full border-y border-line">
             <thead className="text-left text-xs text-muted"><tr><th scope="col" className="py-2 font-medium">Mal / hizmet</th><th scope="col" className="text-right font-medium">Miktar</th><th scope="col" className="text-right font-medium">Birim fiyat</th><th scope="col" className="text-right font-medium">KDV</th><th scope="col" className="text-right font-medium">Tutar</th></tr></thead>
             <tbody className="tabular-nums">
               <tr className="border-t border-line"><td className="py-1.5">ÇabukPOS aboneliği ({period})</td><td className="text-right">1</td><td className="text-right">{formatTL(d.payment.amount)}</td><td className="text-right">%20</td><td className="text-right">{formatTL(d.payment.amount)}</td></tr>
             </tbody>
           </table>
-          </div>
+          </HorizontalScrollRegion>
           <div className="ml-auto w-full max-w-xs space-y-1 tabular-nums">
             <div className="flex justify-between"><span className="text-muted">KDV %20 (matrah {formatTL(netOf(d.payment.amount))})</span><span>{formatTL(d.payment.amount - netOf(d.payment.amount))}</span></div>
             <div className="flex justify-between border-t border-line pt-1 text-base font-bold"><span>Genel toplam</span><span>{formatTL(d.payment.amount)}</span></div>

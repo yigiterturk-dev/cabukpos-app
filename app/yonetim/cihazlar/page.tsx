@@ -38,7 +38,7 @@ export default async function Cihazlar() {
               {d.lastSeenAt && <span className="min-w-0 break-words text-xs text-muted">Son görülme {dt(d.lastSeenAt)}</span>}
               <div className="ml-auto flex shrink-0 flex-wrap items-start gap-4 text-sm">
                 <NewPairingButton action={newPairing.bind(null, d.id)} />
-                {!d.revokedAt && <RevokeForm action={revokeDevice.bind(null, d.id)} ariaLabel={`Cihazı iptal et: ${d.name}`} />}
+                <RevokeForm action={revokeDevice.bind(null, d.id)} ariaLabel={`Cihazı iptal et: ${d.name}`} revoked={Boolean(d.revokedAt)} />
               </div>
               {restoran && !d.revokedAt && <div className="w-full"><DeviceRoleForm deviceId={d.id} role={d.role} stations={d.stations} stationOptions={stationRows.filter((s) => s.storeId === d.storeId).map((s) => ({ value: s.id, label: s.name }))} hasUnavailableStations={d.stations.some((id) => !stationRows.some((s) => s.id === id))} /></div>}
             </div>

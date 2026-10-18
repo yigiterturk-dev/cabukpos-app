@@ -46,7 +46,7 @@ export function PriceCalculator({ prices }: { prices: Record<BillingPeriod, Unit
       </div>
       <div aria-live="polite" aria-atomic="true" className="mt-6 border-t border-line pt-5">
         {!countsReady ? (
-          <p id="price-calculator-count-error" className="text-sm text-warn" role="status">Hesaplama için şube ve kasa/terminal sayısını girin; her değer en az 1 olmalı.</p>
+          <p id="price-calculator-count-error" className="text-sm text-warn">Hesaplama için şube ve kasa/terminal sayısını girin; her değer en az 1 olmalı.</p>
         ) : bd ? (
           <>
             <div className="text-sm text-muted">

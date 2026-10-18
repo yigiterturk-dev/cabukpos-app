@@ -1,7 +1,7 @@
 "use client";
 // "Bugün" özet ekranı: vardiyanın canlı özeti (ciro, satış, açık adisyon, hazır bekleyen) + hızlı geçiş karoları.
 // Gating değildir: kasada varsayılan ekran hâlâ satış/salon; burası isteğe bağlı bir segment.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { kasaFmt } from "./kasa-format";
 import { summarizeShift } from "@/lib/core/shift";
 import { shownMethods } from "@/lib/core/payment";
@@ -23,6 +23,7 @@ export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalo
   const [loaded, setLoaded] = useState<{ shiftId: string; sum: Summary; sales: LocalSale[] } | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [summaryRetry, setSummaryRetry] = useState(0);
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     if (!shift) return;
@@ -50,7 +51,7 @@ export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalo
   return (
     <main id="kasa-content" tabIndex={-1} className="mx-auto min-w-0 w-full max-w-5xl px-4 py-6 outline-none">
       <div className="mb-5">
-        <h1 className="font-display text-xl font-bold tracking-tight">Bugün</h1>
+        <h1 ref={headingRef} tabIndex={-1} className="rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Bugün</h1>
         <p className="mt-1 text-sm text-muted">
           {meta.device?.tenantName} · {meta.device?.name}{shift && ` · vardiya ${since}'de açıldı`}
         </p>
@@ -64,7 +65,7 @@ export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalo
       </div>
       {hasSummaryError ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warn/30 bg-warn-soft p-3 text-sm text-warn" role="alert">
         <span>Vardiya özeti bu cihazdan okunamadı.</span>
-        <button type="button" onClick={() => { setSummaryError(null); setSummaryRetry((n) => n + 1); }} className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-ink outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yeniden yükle</button>
+        <button type="button" onClick={() => { setSummaryError(null); setSummaryRetry((n) => n + 1); requestAnimationFrame(() => headingRef.current?.focus()); }} className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-ink outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yeniden yükle</button>
       </div> : shift && !summary && <p className="sr-only" role="status" aria-live="polite">Vardiya özeti yükleniyor.</p>}
 
       <h2 className="mb-3 mt-7 font-display text-base font-bold tracking-tight">Hızlı geçiş</h2>

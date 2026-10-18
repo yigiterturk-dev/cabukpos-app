@@ -38,7 +38,9 @@ export function KitchenScreen({ meta, tabs, now, add, loaded = true }: { meta: M
   }, [tabs, filter, now]);
   useEffect(() => {
     if (!loaded) return;
-    const current = new Map(items.map(({ t }) => [t.id, t.status]));
+    // Keep the baseline independent of the station filter so an existing ticket
+    // becoming visible after a filter change is not announced as a new order.
+    const current = new Map([...tabs.values()].flatMap((tab) => tab.tickets.map((ticket) => [ticket.id, ticket.status] as const)));
     const previous = previousRef.current;
     if (previous) {
       const changes: string[] = [];
@@ -59,25 +61,35 @@ export function KitchenScreen({ meta, tabs, now, add, loaded = true }: { meta: M
       }
     }
     previousRef.current = current;
-  }, [loaded, items, tables]);
-  const next = async (tab: TabState, t: Ticket) => {
+  }, [loaded, items, tabs, tables]);
+  const next = async (tab: TabState, t: Ticket, source: HTMLButtonElement) => {
     if (t.status === "hazir" || busyRef.current.has(t.id)) return;
     busyRef.current.add(t.id);
     setBusy(new Set(busyRef.current));
     setActionError(null);
+    let completed = false;
     try {
       await add([{ tabId: tab.id, tableId: tab.tableId, staffId: null, ev: { type: "kitchen", ticketId: t.id, status: t.status === "yeni" ? "hazirlaniyor" : "hazir" } }]);
+      completed = true;
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Mutfak durumu güncellenemedi. Tekrar deneyin.");
     } finally {
       busyRef.current.delete(t.id);
       setBusy(new Set(busyRef.current));
+      if (completed) requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (document.activeElement !== document.body && !(document.activeElement === source && source.disabled)) return;
+        const updated = document.querySelector<HTMLButtonElement>(`button[data-ticket="${t.id}"]`);
+        const target = updated && !updated.disabled
+          ? updated
+          : document.querySelector<HTMLButtonElement>('button[data-ticket]:not(:disabled)');
+        (target ?? document.getElementById("kitchen-heading"))?.focus();
+      }));
     }
   };
   const card = ({ tab, t }: { tab: TabState; t: Ticket }) => {
     const mins = minutesSince(t.at, now);
     return (
-      <button key={t.id} type="button" disabled={t.status === "hazir"} aria-disabled={busy.has(t.id) || undefined} aria-busy={busy.has(t.id) || undefined} onClick={() => void next(tab, t)} data-ticket={t.id} data-status={t.status}
+      <button key={t.id} type="button" disabled={t.status === "hazir"} aria-disabled={busy.has(t.id) || undefined} aria-busy={busy.has(t.id) || undefined} onClick={(event) => void next(tab, t, event.currentTarget)} data-ticket={t.id} data-status={t.status}
         className={`press flex min-w-0 flex-col overflow-hidden rounded-2xl border-2 bg-surface text-left shadow-card outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none ${busy.has(t.id) ? "cursor-wait opacity-70" : ""} ${t.status === "hazir" ? "border-ok" : t.status === "hazirlaniyor" ? "border-warn" : mins >= 15 ? "border-bad" : "border-line"}`}>
         <span className={`flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 px-3.5 py-2.5 ${t.status === "hazir" ? "bg-ok-soft" : t.status === "hazirlaniyor" ? "bg-warn-soft" : mins >= 15 ? "bg-bad-soft" : "bg-surface-2"}`}>
           <span className="basis-full break-words font-display text-2xl font-extrabold tracking-tight">{tabLabel(tab, tables, PLATFORM_NAMES)}</span>
@@ -109,7 +121,7 @@ export function KitchenScreen({ meta, tabs, now, add, loaded = true }: { meta: M
       <p ref={announcementRef} className="sr-only" role="status" aria-live="polite" aria-atomic="true" />
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl font-bold tracking-tight">Mutfak</h1>
+          <h1 id="kitchen-heading" tabIndex={-1} className="rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Mutfak</h1>
           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted"><span>{open.length} bekleyen · {ready.length} hazır</span>{late > 0 && <span className="rounded-full bg-bad-soft px-2 py-0.5 text-xs font-medium text-bad">{late} geciken</span>}</div>
         </div>
         {filter.length > 0 && <span className="text-xs text-muted">İstasyon filtresi aktif</span>}

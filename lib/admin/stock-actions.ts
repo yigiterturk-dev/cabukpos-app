@@ -3,6 +3,7 @@
 // #51 sayım oturumu: açılışta anlık görüntü, satır satır sayım, kapanışta sapma onayıyla mutlak sayım hareketi.
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
@@ -60,7 +61,7 @@ export async function startStockCount(): Promise<CountState> {
   });
   if (err) return err;
   revalidatePath("/yonetim/sayim");
-  return { savedAt: Date.now() };
+  redirect("/yonetim/sayim?count=started");
 }
 
 /** Tek satır sayımı kaydet. */
@@ -104,7 +105,7 @@ export async function closeStockCount(countId: string, _: CountState, form: Form
   if (err) return err;
   revalidatePath("/yonetim/sayim");
   revalidatePath("/yonetim/stok");
-  return { savedAt: Date.now() };
+  redirect("/yonetim/sayim?count=closed");
 }
 
 /** Açık oturumu iptal: hiçbir hareket yazılmaz, satırlarla birlikte silinir. */

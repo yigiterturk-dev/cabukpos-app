@@ -4,7 +4,7 @@ import { getDb, schema } from "@/db";
 import { activeSessions, requireAdmin, sonGorulme, uaLabel } from "@/lib/auth/session";
 import { emailDogrulamaGonderAction } from "@/lib/auth/actions";
 import { EmailVerificationForm } from "@/components/admin/EmailVerificationPending";
-import { MfaAc, MfaKapat } from "@/components/admin/MfaForms";
+import { MfaSection } from "@/components/admin/MfaForms";
 import { OturumKapatFormlari } from "@/components/admin/SessionForms";
 
 export default async function GuvenlikPage() {
@@ -25,13 +25,7 @@ export default async function GuvenlikPage() {
           <EmailVerificationForm action={emailDogrulamaGonderAction} />
         )}
       </section>
-      <section className="rounded-[14px] border border-line bg-surface p-5">
-        <h2 className="mb-1 font-medium">İki adımlı doğrulama (2FA)</h2>
-        <p className="mb-4 text-sm text-muted" role="status">
-          {acik ? "Açık — girişte kimlik doğrulayıcı kodu isteniyor." : "Kapalı — şifreniz tek başına yeterli."}
-        </p>
-        {acik ? <MfaKapat /> : <MfaAc />}
-      </section>
+      <MfaSection enabled={acik} />
       <section className="rounded-[14px] border border-line bg-surface p-5" data-testid="sessions">
         <h2 className="mb-1 font-medium">Aktif oturumlar</h2>
         <p className="mb-4 text-sm text-muted">Hesabınızın açık kaldığı cihazlar. Şüpheli bir oturum görürseniz şifrenizi değiştirin.</p>

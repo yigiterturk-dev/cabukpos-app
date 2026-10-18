@@ -22,18 +22,18 @@ export function InvoiceForm({ initial, onSave, onCancel, disabled = false }: { i
       <fieldset disabled={disabled} className="m-0 min-w-0 space-y-3 border-0 p-0">
       <div className="flex items-center justify-between">
         <h3 id="invoice-form-title" className="text-sm font-semibold">Fatura (e-Arşiv)</h3>
-        <button type="button" onClick={() => setV((x) => ({ ...x, taxId: NIHAI_TUKETICI.taxId, name: NIHAI_TUKETICI.name, address: "" }))} className="inline-flex min-h-12 items-center text-sm text-brand underline">Nihai tüketici</button>
+        <button type="button" onClick={() => setV((x) => ({ ...x, taxId: NIHAI_TUKETICI.taxId, name: NIHAI_TUKETICI.name, address: "" }))} className="inline-flex min-h-12 items-center rounded px-1 text-sm text-brand underline outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Nihai tüketici</button>
       </div>
       {touched && !r.success && <p className="text-sm text-bad" role="alert">Bilgileri kontrol edin. Hatalı alanlar işaretlendi.</p>}
-      <Field label="VKN / TCKN" hint={kind === "vkn" ? "Vergi kimlik no (şirket)" : kind === "tckn" ? "T.C. kimlik no" : undefined}>
+      <Field label="VKN / TCKN" hint={`10 haneli VKN ya da 11 haneli geçerli TCKN${kind === "vkn" ? " · vergi kimlik no (şirket)" : kind === "tckn" ? " · T.C. kimlik no" : ""}`}>
         <Input id="buyer-taxId" name="buyer-taxId" inputMode="numeric" maxLength={11} value={v.taxId} onChange={set("taxId")} autoComplete="off" autoFocus required aria-invalid={Boolean(err("taxId"))} aria-describedby={err("taxId") ? "buyer-taxId-error" : undefined} />
       </Field>
       {err("taxId") && <p id="buyer-taxId-error" className="text-xs text-bad">{err("taxId")}</p>}
-      <Field label={kind === "vkn" ? "Unvan" : "Ad soyad"}><Input id="buyer-name" name="buyer-name" value={v.name} onChange={set("name")} maxLength={200} required aria-invalid={Boolean(err("name"))} aria-describedby={err("name") ? "buyer-name-error" : undefined} /></Field>
+      <Field label={kind === "vkn" ? "Unvan" : "Ad soyad"} hint="Zorunlu · en fazla 200 karakter"><Input id="buyer-name" name="buyer-name" value={v.name} onChange={set("name")} maxLength={200} required aria-invalid={Boolean(err("name"))} aria-describedby={err("name") ? "buyer-name-error" : undefined} /></Field>
       {err("name") && <p id="buyer-name-error" className="text-xs text-bad">{err("name")}</p>}
-      <Field label="E-posta" hint="Fatura bağlantısı gönderilir (isteğe bağlı)"><Input id="buyer-email" name="buyer-email" type="email" value={v.email} onChange={set("email")} aria-invalid={Boolean(err("email"))} aria-describedby={err("email") ? "buyer-email-error" : undefined} /></Field>
+      <Field label="E-posta" hint="Fatura bağlantısı gönderilir (isteğe bağlı) · en fazla 254 karakter"><Input id="buyer-email" name="buyer-email" type="email" maxLength={254} value={v.email} onChange={set("email")} aria-invalid={Boolean(err("email"))} aria-describedby={err("email") ? "buyer-email-error" : undefined} /></Field>
       {err("email") && <p id="buyer-email-error" className="text-xs text-bad">{err("email")}</p>}
-      <Field label={kind === "vkn" ? "Adres (zorunlu)" : "Adres"}><Textarea id="buyer-address" name="buyer-address" rows={2} value={v.address} onChange={set("address")} maxLength={500} required={kind === "vkn"} aria-invalid={Boolean(err("address"))} aria-describedby={err("address") ? "buyer-address-error" : undefined} /></Field>
+      <Field label={kind === "vkn" ? "Adres (zorunlu)" : "Adres"} hint="VKN'de zorunlu · en fazla 500 karakter"><Textarea id="buyer-address" name="buyer-address" rows={2} value={v.address} onChange={set("address")} maxLength={500} required={kind === "vkn"} aria-invalid={Boolean(err("address"))} aria-describedby={err("address") ? "buyer-address-error" : undefined} /></Field>
       {err("address") && <p id="buyer-address-error" className="text-xs text-bad">{err("address")}</p>}
       <div className="flex gap-2">
         <Button type="button" variant="secondary" onClick={onCancel} className="min-h-12 flex-1">Faturasız</Button>

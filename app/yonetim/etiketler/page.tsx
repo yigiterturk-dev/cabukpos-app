@@ -17,15 +17,15 @@ export default async function Etiketler({ searchParams }: { searchParams: Promis
   );
   const due = prods.filter((p) => !p.labelPrintedAt || p.labelPrintedAt < p.priceChangedAt);
   const list = (all ? prods : due).map((p) => ({ id: p.id, name: p.name, price: p.price, kind: p.kind, plu: p.plu, barcode: p.barcodes[0] ?? null }));
-  const tab = (on: boolean) => `rounded-full border px-4 py-1.5 text-sm ${on ? "border-brand bg-brand-soft text-brand" : "border-line"}`;
+  const tab = (on: boolean) => `inline-flex min-h-11 items-center rounded-full border px-4 py-1.5 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${on ? "border-brand bg-brand-soft text-brand" : "border-line"}`;
   return (
     <>
       <div className="print:hidden">
         <PageHeader title="Raf etiketi" desc="A4 etiket kâğıdına 3×8 (70×37 mm). Fiyatı değişen ürünler burada birikir; bastıktan sonra işaretleyin." />
-        <div className="mb-4 flex gap-2">
-          <Link href="/yonetim/etiketler" className={tab(!all)}>Fiyatı değişenler ({due.length})</Link>
-          <Link href="/yonetim/etiketler?tum=1" className={tab(all)}>Tüm ürünler ({prods.length})</Link>
-        </div>
+        <nav aria-label="Raf etiketi ürünleri" className="mb-4 flex flex-wrap gap-2">
+          <Link href="/yonetim/etiketler" aria-current={!all ? "page" : undefined} className={tab(!all)}>Fiyatı değişenler ({due.length})</Link>
+          <Link href="/yonetim/etiketler?tum=1" aria-current={all ? "page" : undefined} className={tab(all)}>Tüm ürünler ({prods.length})</Link>
+        </nav>
       </div>
       {list.length === 0 ? <Empty>Basılacak etiket yok.</Empty> : <LabelSheet key={list.map((l) => l.id).join()} items={list} currency={await tenantCurrency(a.tenantId)} />}
     </>

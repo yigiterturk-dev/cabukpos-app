@@ -1,7 +1,7 @@
 "use client";
 // Yeni paket: telefon → müşteri defteri (/api/musteri; çevrimdışı → boş form) → adres + bölge + ödeme niyeti → adisyon açılır.
 // Olaylar: open{kind:paket} + order + (bölge ücreti varsa) ücret satırı + (tekrarla seçildiyse) eski satırlar yeni kimlikle.
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { kasaFmt } from "./kasa-format";
 import { feeLine, formatPhone, normalizePhone, PAY_INTENTS, zoneFee, zoneOpenAt } from "@/lib/core/delivery";
 import type { PayIntent } from "@/lib/core/tab";
@@ -17,12 +17,14 @@ const EMPTY: CustomerLookup = { customer: null, addresses: [], recent: [] };
 export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPhone = true }: { meta: Meta; staffId: string; add: (list: NewTabEvent[]) => Promise<unknown>; onCreated: (tabId: string) => void; onBack: () => void; autoFocusPhone?: boolean }) {
   const mainProps = useKasaMainProps();
   const { TL } = kasaFmt(meta);
+  const createButtonId = useId();
   const [phoneInput, setPhoneInput] = useState("");
   const phoneRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLTextAreaElement>(null);
   const zoneRef = useRef<HTMLFieldSetElement>(null);
   const kmRef = useRef<HTMLInputElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const creatingRef = useRef(false);
   const [phone, setPhone] = useState<string | null>(null);
   const [found, setFound] = useState<CustomerLookup | null>(null);
@@ -40,12 +42,23 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
   const [intent, setIntent] = useState<PayIntent>("nakit");
   const [note, setNote] = useState("");
   const [repeat, setRepeat] = useState<string | null>(null);
+  useEffect(() => {
+    if (!error || errorField || busy) return;
+    const frame = window.requestAnimationFrame(() => {
+      const button = document.getElementById(createButtonId);
+      if (button && !button.matches(":disabled")) button.focus();
+      else errorRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [busy, createButtonId, error, errorField]);
   const zones = meta.catalog.deliveryZones ?? [];
   const noOpenZones = zones.length > 0 && !zones.some((zone) => zoneOpenAt(zone));
   const selectedRepeat = found?.recent.find((r) => r.tabId === repeat);
   const skippedRepeatLines = selectedRepeat?.lines.filter((line) => line.productId && !meta.catalog.products.some((product) => product.id === line.productId)).length ?? 0;
-  const parsedKm = km.trim() ? Number(km.trim().replace(",", ".")) : NaN;
+  const kmText = km.trim();
+  const parsedKm = /^\d{1,3}(?:[.,]\d{1,2})?$/.test(kmText) ? Number(kmText.replace(",", ".")) : NaN;
   const validKm = Number.isFinite(parsedKm) && parsedKm > 0 && parsedKm <= 100 ? parsedKm : null;
+  const kmInvalid = kmText !== "" && validKm === null;
   const clearError = () => { setError(null); setErrorField(null); };
   const validationError = (field: NonNullable<typeof errorField>, message: string) => {
     setError(message);
@@ -81,7 +94,14 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
     const a = r.addresses[0];
     if (a) pickAddress(a);
   };
-  const pickAddress = (a: CustomerLookup["addresses"][number]) => { clearError(); setAddrId(a.id); setAddress(a.address); setDirections(a.directions ?? ""); setZoneId(a.zoneId); };
+  const pickAddress = (a: CustomerLookup["addresses"][number]) => {
+    clearError();
+    if (addrId !== a.id || zoneId !== a.zoneId) setKm("");
+    setAddrId(a.id);
+    setAddress(a.address);
+    setDirections(a.directions ?? "");
+    setZoneId(a.zoneId);
+  };
 
   const create = async () => {
     if (creatingRef.current) return;
@@ -96,7 +116,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
     if (zones.length && !zoneId) return validationError("zone", "Bölge seçin.");
     const zone = zones.find((z) => z.id === zoneId) ?? null;
     if (zone && !zoneOpenAt(zone)) return validationError("zone", `${zone.name} bu saatte servis dışında.`);
-    if (zone?.perKm && validKm === null) return validationError("km", "Mesafe 0-100 km arasında olmalı.");
+    if (zone?.perKm && validKm === null) return validationError("km", "Mesafe 0'dan büyük ve en fazla 100 km olmalı.");
     const kmN = zone?.perKm ? validKm : null;
     clearError();
     creatingRef.current = true;
@@ -127,7 +147,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
       <button type="button" disabled={busy !== null} onClick={onBack} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-wait disabled:opacity-50 -ml-3 mb-4">← Paket</button>
       <h1 className="mb-5 font-display text-2xl font-bold tracking-tight">Yeni paket sipariş</h1>
       <form noValidate onSubmit={lookup} aria-busy={busy === "lookup"} className="flex flex-wrap items-end gap-2">
-        <div className="min-w-[12rem] flex-1"><Field label="Telefon" hint="Zorunlu · ör. 0532 123 45 67"><Input ref={phoneRef} id="delivery-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" autoFocus={autoFocusPhone} disabled={busy !== null} value={phoneInput} onChange={(e) => { setPhoneInput(e.target.value); setFound(null); clearError(); }} aria-invalid={errorField === "phone" || undefined} aria-describedby={errorField === "phone" ? "delivery-error" : undefined} placeholder="0532 123 45 67" required className="text-lg" /></Field></div>
+        <div className="min-w-[12rem] flex-1"><Field label="Telefon" hint="Zorunlu · Türkiye numarası, ör. 0532 123 45 67"><Input ref={phoneRef} id="delivery-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" autoFocus={autoFocusPhone} disabled={busy !== null} value={phoneInput} onChange={(e) => { setPhoneInput(e.target.value); setFound(null); clearError(); }} aria-invalid={errorField === "phone" || undefined} aria-describedby={errorField === "phone" ? "delivery-error" : undefined} placeholder="0532 123 45 67" maxLength={24} required className="text-lg" /></Field></div>
         <Button type="submit" disabled={busy !== null} variant={found ? "ghost" : "primary"} className="min-h-12 shrink-0">{busy === "lookup" ? "Aranıyor…" : "Müşteriyi bul"}</Button>
       </form>
       {busy === "lookup" && <p className="sr-only" role="status" aria-live="polite">Telefon numarasıyla müşteri aranıyor.</p>}
@@ -141,7 +161,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
           <p className="text-sm text-muted" data-testid="customer-status" role="status" aria-live="polite" aria-atomic="true">
             {found.customer ? `Kayıtlı müşteri · ${formatPhone(phone)}` : lookupFailed ? "Müşteri kaydı alınamadı; bilgileri elle girin." : offline ? "Bağlantı yok: müşteri defterine bakılamadı, bilgileri elle girin." : "Yeni müşteri"}
           </p>
-          <Field label="Ad soyad" hint="Zorunlu"><Input ref={nameRef} id="delivery-name" name="name" autoComplete="name" value={name} onChange={(e) => { setName(e.target.value); clearError(); }} aria-invalid={errorField === "name" || undefined} aria-describedby={errorField === "name" ? "delivery-error" : undefined} maxLength={100} required /></Field>
+          <Field label="Ad soyad" hint="Zorunlu · 2–120 karakter"><Input ref={nameRef} id="delivery-name" name="name" autoComplete="name" value={name} onChange={(e) => { setName(e.target.value); clearError(); }} aria-invalid={errorField === "name" || undefined} aria-describedby={errorField === "name" ? "delivery-error" : undefined} maxLength={120} required /></Field>
           {found.addresses.length > 0 && (
             <fieldset className="m-0 border-0 p-0">
               <legend className="mb-1.5 text-sm font-medium">Kayıtlı adresler</legend>
@@ -159,8 +179,8 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
               </div>
             </fieldset>
           )}
-          <Field label="Adres" hint="Zorunlu"><Textarea ref={addressRef} id="delivery-address" value={address} onChange={(e) => { setAddress(e.target.value); setAddrId(null); clearError(); }} aria-invalid={errorField === "address" || undefined} aria-describedby={errorField === "address" ? "delivery-error" : undefined} maxLength={300} rows={2} required className="resize-y" /></Field>
-          <Field label="Adres tarifi" hint="İsteğe bağlı (ör. yeşil kapı, 3. kat)"><Input value={directions} onChange={(e) => { setDirections(e.target.value); clearError(); }} maxLength={200} /></Field>
+          <Field label="Adres" hint="Zorunlu · 5–500 karakter"><Textarea ref={addressRef} id="delivery-address" value={address} onChange={(e) => { setAddress(e.target.value); setAddrId(null); setZoneId(null); setKm(""); clearError(); }} aria-invalid={errorField === "address" || undefined} aria-describedby={errorField === "address" ? "delivery-error" : undefined} maxLength={500} rows={2} required className="resize-y" /></Field>
+          <Field label="Adres tarifi" hint="İsteğe bağlı · en fazla 300 karakter (ör. yeşil kapı, 3. kat)"><Input value={directions} onChange={(e) => { setDirections(e.target.value); clearError(); }} maxLength={300} /></Field>
           {zones.length > 0 && (
             <fieldset ref={zoneRef} tabIndex={-1} aria-describedby={errorField === "zone" ? "delivery-error" : undefined} className="m-0 border-0 p-0 outline-none focus-within:ring-4 focus-within:ring-brand-ring/60">
               <legend className="mb-1.5 text-sm font-medium">Bölge · zorunlu</legend>
@@ -169,7 +189,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
                   const open = zoneOpenAt(z);
                   return (
                     <label key={z.id} className={`${pill(zoneId === z.id)} inline-flex cursor-pointer items-center focus-within:ring-4 focus-within:ring-brand-ring/60 ${open ? "" : "cursor-not-allowed opacity-50"}`}>
-                      <input type="radio" name="delivery-zone" value={z.id} checked={zoneId === z.id} disabled={!open} required={open} onChange={() => { clearError(); setZoneId(z.id); if (z.perKm == null) setKm(""); }} aria-describedby={errorField === "zone" ? "delivery-error" : undefined} className="peer sr-only" />
+                      <input type="radio" name="delivery-zone" value={z.id} checked={zoneId === z.id} disabled={!open} required={open} onChange={() => { clearError(); setZoneId(z.id); setKm(""); }} aria-describedby={errorField === "zone" ? "delivery-error" : undefined} className="peer sr-only" />
                       {z.name} <span className="text-xs text-muted">{z.fee || z.perKm ? `+${TL(zoneFee(z, null))}${z.perKm ? ` + ${TL(z.perKm)}/km` : ""}` : "ücretsiz"}{z.minOrder ? ` · asgari ${TL(z.minOrder)}` : ""}{!open ? " · servis dışı" : ""}</span>
                     </label>
                   );
@@ -180,8 +200,8 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
                 if (!z?.perKm) return null;
                 return (
                   <div className="mt-2 flex flex-wrap items-end gap-3">
-                    <div className="w-28"><Field label="Mesafe (km)" hint="Zorunlu · 0-100 km"><Input ref={kmRef} id="delivery-km" value={km} onChange={(e) => { setKm(e.target.value); clearError(); }} aria-invalid={errorField === "km" || undefined} aria-describedby={errorField === "km" ? "delivery-error" : undefined} inputMode="decimal" maxLength={6} placeholder="3,5" required /></Field></div>
-                    <span className="pb-3 text-sm text-muted">Ücret: <b className="tabular text-ink">{validKm === null ? "Mesafeyi girin (0-100 km)" : TL(zoneFee(z, validKm))}</b></span>
+                    <div className="w-28"><Field label="Mesafe (km)" hint="Zorunlu · 0'dan büyük, en fazla 100 km · en çok 2 ondalık"><Input ref={kmRef} id="delivery-km" value={km} onChange={(e) => { setKm(e.target.value); clearError(); }} aria-invalid={errorField === "km" || kmInvalid || undefined} aria-describedby={errorField === "km" ? "delivery-error" : undefined} inputMode="decimal" maxLength={6} pattern="[0-9]{1,3}([.,][0-9]{1,2})?" placeholder="3,5" required /></Field></div>
+                    <span className="pb-3 text-sm text-muted" aria-live="polite" aria-atomic="true">Ücret: <b className="tabular text-ink">{validKm === null ? "0–100 km · en çok 2 ondalık girin" : TL(zoneFee(z, validKm))}</b></span>
                   </div>
                 );
               })()}
@@ -199,7 +219,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
               ))}
             </div>
           </fieldset>
-          <Field label="Sipariş notu" hint="İsteğe bağlı (ör. zili çalmayın)"><Input value={note} onChange={(e) => { setNote(e.target.value); clearError(); }} maxLength={200} /></Field>
+          <Field label="Sipariş notu" hint="İsteğe bağlı · en fazla 300 karakter (ör. zili çalmayın)"><Input value={note} onChange={(e) => { setNote(e.target.value); clearError(); }} maxLength={300} /></Field>
           {found.recent.length > 0 && (
             <div role="group" aria-label="Son siparişler">
               <div className="mb-1.5 text-sm font-medium">Son siparişler</div>
@@ -216,8 +236,8 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
               </p>}
             </div>
           )}
-          {error && <p id="delivery-error" className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
-            <Button type="submit" disabled={busy !== null || noOpenZones} className="min-h-14 w-full text-base">{busy === "create" ? "Sipariş oluşturuluyor…" : noOpenZones ? "Şu an servis yok" : "Siparişe geç"}</Button>
+          {error && <p ref={errorRef} id="delivery-error" tabIndex={-1} className="break-words text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
+            <Button id={createButtonId} type="submit" disabled={busy !== null || noOpenZones} className="min-h-14 w-full text-base">{busy === "create" ? "Sipariş oluşturuluyor…" : noOpenZones ? "Şu an servis yok" : "Siparişe geç"}</Button>
           </fieldset>
         </form>
       )}

@@ -87,7 +87,9 @@ function priceListCatalog(device: { tenantId: string; storeId: string }) {
         .from(L).where(and(eq(L.active, true), or(isNull(L.storeId), eq(L.storeId, device.storeId)))).orderBy(asc(L.sort), asc(L.name)),
       tx.select({ listId: I.listId, productId: I.productId, price: I.price }).from(I),
     ]);
-    return lists.map((l) => ({ ...l, items: items.filter((i) => i.listId === l.id).map(({ productId, price }) => ({ productId, price })) }));
+    // Katalog yalnızca bu cihazın şubesine uygulanabilir listeleri içerir;
+    // kasada tekrar şube filtresi uygulanmaması için kapsamı burada çöz.
+    return lists.map((l) => ({ ...l, storeId: null, items: items.filter((i) => i.listId === l.id).map(({ productId, price }) => ({ productId, price })) }));
   });
 }
 

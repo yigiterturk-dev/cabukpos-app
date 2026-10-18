@@ -81,9 +81,9 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
     <>
       <PageHeader title="Mali belge" desc="Bilgi fişi ya da e-Arşiv fatura. Kesilemeyen belgeler otomatik yeniden denenir; tam iade edilen faturalar iptal edilir, kısmi iadede iade tutanağı düzenlenir." />
       <div className="-mx-1 mb-5 flex flex-wrap items-center gap-2 px-1">
-        <Link href="/yonetim/mali" className={seg(tab === "ayarlar")}>Ayarlar</Link>
-        <Link href="/yonetim/mali?sekme=belgeler" className={seg(tab === "belgeler")}>Belgeler</Link>
-        <Link href="/yonetim/mali?sekme=muhasebe" className={seg(tab === "muhasebe")}>Muhasebe</Link>
+        <Link href="/yonetim/mali" aria-current={tab === "ayarlar" ? "page" : undefined} className={seg(tab === "ayarlar")}>Ayarlar</Link>
+        <Link href="/yonetim/mali?sekme=belgeler" aria-current={tab === "belgeler" ? "page" : undefined} className={seg(tab === "belgeler")}>Belgeler</Link>
+        <Link href="/yonetim/mali?sekme=muhasebe" aria-current={tab === "muhasebe" ? "page" : undefined} className={seg(tab === "muhasebe")}>Muhasebe</Link>
         {n("error") > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=error"><Badge tone="bad">{n("error")} hata</Badge></Link>}
         {n("cancel_rejected") > 0 && <Link href="/yonetim/mali?sekme=belgeler&durum=cancel_rejected"><Badge tone="warn">{n("cancel_rejected")} iptal reddedildi</Badge></Link>}
       </div>

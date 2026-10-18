@@ -3,6 +3,7 @@ import { splitVat, type Kurus, type VatRate } from "./money";
 
 export type CartProduct = { id: string; name: string; price: Kurus; vatRate: VatRate };
 export type CartLine = { productId: string; name: string; unitPrice: Kurus; vatRate: VatRate; qtyMilli: number; discount?: Kurus };
+export const MAX_CART_LINE_QTY_MILLI = 1_000_000;
 /** Satış satırı: sepet satırı ya da serbest satır (M6: paket ücreti, eşlenmeyen platform ürünü; ürünsüz). */
 export type AnyLine = Omit<CartLine, "productId"> & { productId: string | null };
 export type VatLine = { rate: VatRate; gross: Kurus; net: Kurus; vat: Kurus };

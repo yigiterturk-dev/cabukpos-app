@@ -18,7 +18,8 @@ const MOVE_PAGE_SIZE = 50;
 export default async function Stok({ searchParams }: { searchParams: Promise<{ urun?: string; q?: string; kritik?: string; mvPage?: string }> }) {
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
-  const { urun, q = "", kritik, mvPage } = await searchParams;
+  const { urun, q: rawQuery = "", kritik, mvPage } = await searchParams;
+  const q = rawQuery.slice(0, 80);
   const requestedMovePage = Number(mvPage);
   const movePageNo = Number.isSafeInteger(requestedMovePage) && requestedMovePage > 0 ? requestedMovePage : 1;
   const M = schema.stockMovements;
@@ -76,14 +77,14 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
         list={<>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <form className="flex min-w-48 flex-1 items-end gap-2 sm:max-w-sm" role="search">
-          <div className="min-w-0 flex-1"><Input name="q" defaultValue={q} placeholder="Ürün ara" aria-label="Stokta ürün ara" />{kritik && <input type="hidden" name="kritik" value="1" />}</div>
+          <div className="min-w-0 flex-1"><Input name="q" defaultValue={q} maxLength={80} placeholder="Ürün ara" aria-label="Stokta ürün ara" />{kritik && <input type="hidden" name="kritik" value="1" />}</div>
           <button type="submit" className={buttonClass("secondary")}>Ara</button>
         </form>
         <Link href={kritik ? "/yonetim/stok" : "/yonetim/stok?kritik=1"} aria-current={kritik ? "page" : undefined} className={`inline-flex min-h-11 items-center rounded-[10px] border px-3 py-2 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${kritik ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:bg-surface-2"}`}>Yalnız kritikler ({critical})</Link>
         <span className="text-xs text-muted">{shown.length} ürün gösteriliyor</span>
         {sel && <span className="ml-auto shrink-0 text-sm text-muted">Stok değeri <b className="tabular text-ink" data-testid="stock-value">{money(value)}</b></span>}
       </div>
-      {shown.length === 0 ? <Empty>{!storeId ? <>Stok listesini görüntülemek için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</> : needle ? (kritik ? "Bu aramayla eşleşen kritik stok yok." : "Aramayla eşleşen stoklu ürün yok.") : kritik ? "Kritik stok yok." : "Stok takipli ürün yok."}</Empty> : (
+      {shown.length === 0 ? <Empty action={storeId && needle ? <Link href={kritik ? "/yonetim/stok?kritik=1" : "/yonetim/stok"} className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 font-medium text-brand outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aramayı temizle</Link> : undefined}>{!storeId ? <>Stok listesini görüntülemek için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</> : needle ? (kritik ? "Bu aramayla eşleşen kritik stok yok." : "Aramayla eşleşen stoklu ürün yok.") : kritik ? "Kritik stok yok." : "Stok takipli ürün yok."}</Empty> : (
         <>
         <Card className="overflow-hidden lg:hidden">
           <ul aria-label="Stok durumu" className="divide-y divide-line">

@@ -16,7 +16,7 @@ export async function createBrand(_: BrandState, f: FormData): Promise<BrandStat
   const a = await requireWriter();
   const name = str(f, "name");
   const slug = str(f, "slug") || slugify(name);
-  if (!name) return { error: "Marka adı gerekli.", field: "name" };
+  if (name.length < 1 || name.length > 80) return { error: "Marka adı 1–80 karakter olmalı.", field: "name" };
   if (!isBrandSlug(slug)) return { error: "Adres 2–40 karakter: küçük harf, rakam, tire.", field: "slug" };
   try {
     const id = await withTenant(a.tenantId, async (tx) => {
@@ -40,7 +40,7 @@ export async function saveBrand(id: string, _: BrandState, f: FormData): Promise
   if (!UUID.test(id)) return { error: "Marka bulunamadı." };
   const name = str(f, "name");
   const slug = str(f, "slug") || slugify(name);
-  if (!name) return { error: "Marka adı gerekli.", field: "name" };
+  if (name.length < 1 || name.length > 80) return { error: "Marka adı 1–80 karakter olmalı.", field: "name" };
   if (!isBrandSlug(slug)) return { error: "Adres 2–40 karakter: küçük harf, rakam, tire.", field: "slug" };
   try {
     await withTenant(a.tenantId, async (tx) => {

@@ -12,26 +12,33 @@ export function StartCountForm({ disabled }: { disabled?: boolean }) {
     <Button type="submit" disabled={disabled || pending} aria-busy={pending || undefined}>{pending ? "Sayım başlatılıyor…" : "Sayım başlat"}</Button>
     {pending && <span className="sr-only" role="status" aria-live="polite">Yeni stok sayımı başlatılıyor.</span>}
     {state.error && <p className="mt-2 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
-    {state.savedAt && <p className="mt-2 text-sm text-ok" role="status" aria-live="polite">Sayım oturumu başlatıldı.</p>}
   </form>;
 }
 
-export function CountLineForm({ countId, lineId, unit, countedMilli }: { countId: string; lineId: string; unit: string; countedMilli: number | null }) {
+export function CountLineForm({ countId, lineId, productName, unit, countedMilli }: { countId: string; lineId: string; productName: string; unit: string; countedMilli: number | null }) {
   const { state, pending, onSubmit } = useFormAction(setCountedLine.bind(null, countId, lineId), {} as CountState);
   const qtyErrorId = useId();
   const qtyRef = useRef<HTMLInputElement>(null);
+  const [edited, setEdited] = useState(false);
   useEffect(() => {
     if (state.field !== "qty" || !state.error) return;
     requestAnimationFrame(() => qtyRef.current?.focus());
   }, [state.error, state.field]);
+  useEffect(() => {
+    if (pending || !state.savedAt || state.error) return;
+    const frame = window.requestAnimationFrame(() => qtyRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [pending, state.error, state.savedAt]);
   const countedValue = countedMilli === null ? "" : unit === "adet" ? String(countedMilli / 1000) : (countedMilli / 1000).toFixed(3);
+  const qtyHint = unit === "adet" ? "0 dahil · tam sayı · en fazla 999.999" : `0 dahil · en fazla 999.999,999 ${unit} · en çok 3 ondalık`;
+  const showQtyError = state.field === "qty" && !!state.error && !edited && !pending;
   return (
-    <form onSubmit={onSubmit} aria-busy={pending} className="flex flex-wrap items-end gap-2">
-      <div className="w-32"><Field label="Sayılan" hint={unit}><Input ref={qtyRef} name="qty" inputMode={unit === "adet" ? "numeric" : "decimal"} defaultValue={countedValue} disabled={pending} required className="disabled:cursor-wait disabled:opacity-50" aria-invalid={state.field === "qty" && !!state.error || undefined} aria-describedby={state.field === "qty" && state.error ? qtyErrorId : undefined} /></Field></div>
+    <form onSubmit={(e) => { setEdited(false); onSubmit(e); }} aria-busy={pending} className="flex flex-wrap items-end gap-2">
+      <div className="w-32"><Field label="Sayılan" hint={qtyHint}><Input ref={qtyRef} name="qty" inputMode={unit === "adet" ? "numeric" : "decimal"} maxLength={unit === "adet" ? 6 : 10} defaultValue={countedValue} disabled={pending} required aria-label={`Sayılan miktar: ${productName}`} onChange={() => setEdited(true)} className="disabled:cursor-wait disabled:opacity-50" aria-invalid={showQtyError || undefined} aria-describedby={showQtyError ? qtyErrorId : undefined} /></Field></div>
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
       {pending && <span className="sr-only" role="status" aria-live="polite">Sayılan miktar kaydediliyor. Lütfen bekleyin.</span>}
-      {state.error && !state.field ? <span className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span> : state.savedAt ? <span className="shrink-0 text-sm text-ok" role="status">Kaydedildi.</span> : null}
-      {state.error && state.field === "qty" ? <span id={qtyErrorId} className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span> : null}
+      {state.error && !state.field && !pending ? <span className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span> : state.savedAt && !edited && !pending ? <span className="shrink-0 text-sm text-ok" role="status">Kaydedildi.</span> : null}
+      {showQtyError ? <span id={qtyErrorId} className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span> : null}
     </form>
   );
 }
@@ -51,7 +58,7 @@ export function CloseCountForm({ countId }: { countId: string }) {
         <span>Sapmaları onaylıyorum: kapanışta sayılan ürünler için <b>sayım hareketi</b> yazılır, stok sayılan değere oturur. Sayılmayan ürünlere dokunulmaz.</span>
       </label>
       <div className="flex flex-wrap items-end gap-3">
-        <div className="w-72"><Field label="Not (isteğe bağlı)"><Input name="note" placeholder="ör. yılbaşı sayımı" disabled={pending} className="disabled:cursor-wait disabled:opacity-50" /></Field></div>
+        <div className="w-72"><Field label="Not (isteğe bağlı)" hint="En fazla 200 karakter"><Input name="note" placeholder="ör. yılbaşı sayımı" maxLength={200} disabled={pending} className="disabled:cursor-wait disabled:opacity-50" /></Field></div>
         <Button type="submit" disabled={pending || !confirmed}>{pending ? "Kapatılıyor…" : "Sayımı kapat"}</Button>
       </div>
       {pending && <p className="sr-only" role="status" aria-live="polite">Sayım kapatılıyor. Stok hareketleri kaydediliyor.</p>}

@@ -18,6 +18,7 @@ import { scopedStoreId } from "@/lib/admin/store-scope";
 
 export type DeliveryState = { error?: string; field?: string; savedAt?: number; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_KURUS = 2_147_483_647;
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 async function firstStore(tenantId: string) {
@@ -44,17 +45,18 @@ export async function saveZone(id: string | null, _: DeliveryState, form: FormDa
   const name = str(form, "name");
   if (name.length < 1 || name.length > 60) return { error: "Bölge adı 1-60 karakter.", field: "name" };
   const fee = money(str(form, "fee"));
-  if (fee === null) return { error: "Ücret geçersiz.", field: "fee" };
+  if (fee === null || fee > MAX_KURUS) return { error: "Ücret geçersiz; 0–21.474.836,47 arasında olmalı.", field: "fee" };
   const minOrder = money(str(form, "minOrder"));
-  if (minOrder === null) return { error: "Asgari tutar geçersiz.", field: "minOrder" };
+  if (minOrder === null || minOrder > MAX_KURUS) return { error: "Asgari tutar geçersiz; 0–21.474.836,47 arasında olmalı.", field: "minOrder" };
   // #52: mesafe + servis penceresi (boş = özelliği kullanma). Boş string meşru "yok" değeridir; yalnız DOLU ama çözümlenemeyen girdi hatalıdır.
   const perKmRaw = str(form, "perKm");
   const perKm = perKmRaw === "" ? null : parseTL(perKmRaw);
-  if (perKmRaw !== "" && perKm === null) return { error: "Km başı ücret geçersiz.", field: "perKm" };
+  if (perKmRaw !== "" && (perKm === null || perKm > MAX_KURUS)) return { error: "Km başı ücret geçersiz; 0–21.474.836,47 arasında olmalı.", field: "perKm" };
   const startMin = parseWindow(str(form, "start"));
   if (startMin === undefined) return { error: "Başlangıç saati geçersiz.", field: "start" };
   const endMin = parseWindow(str(form, "end"));
   if (endMin === undefined) return { error: "Bitiş saati geçersiz.", field: "end" };
+  if ((startMin === null) !== (endMin === null)) return { error: "Saat aralığı için başlangıç ve bitişi birlikte girin ya da ikisini de boş bırakın.", field: startMin === null ? "start" : "end" };
   if (startMin !== null && endMin !== null && startMin === endMin) return { error: "Başlangıç ve bitiş aynı olamaz.", field: "end" };
   if (id && !UUID.test(id)) return { error: "Bölge bulunamadı." };
   let storeId: string;

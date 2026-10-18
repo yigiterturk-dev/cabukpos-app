@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Bot, Box, ChartColumn, Check, Printer, Receipt, Router, Sparkles, TabletSmartphone, Users, Utensils, WifiOff, type LucideIcon } from "lucide-react";
+import { HashLink } from "@/components/HashLink";
 import { LegalFooter } from "@/components/Legal";
 import { MobileSiteNav } from "@/components/MobileSiteNav";
 import { SkipToContent } from "@/components/SkipToContent";
@@ -43,6 +44,7 @@ function KasaMock() {
   const lines: [string, string, string][] = [["Adana Dürüm", "2", "360,00"], ["Ayran", "2", "60,00"], ["Künefe", "1", "140,00"]];
   return (
     <div aria-hidden className="relative mx-auto w-full max-w-md select-none">
+      <div className="mb-2 ml-auto w-fit rounded-xl bg-ok-action px-3 py-2 text-xs font-medium text-white shadow-pop sm:absolute sm:right-0 sm:-top-4 sm:mb-0 xl:-right-6">Fiş yazdırıldı</div>
       <div className="rounded-2xl border border-line bg-surface p-4 shadow-pop">
         <div className="mb-3 flex items-center justify-between text-xs">
           <span className="font-semibold">Masa 4 · Salon</span>
@@ -62,7 +64,6 @@ function KasaMock() {
         <div className="font-semibold">Mutfak · Izgara</div>
         <div className="text-muted">2 × Adana Dürüm · 4 dk</div>
       </div>
-      <div className="absolute right-0 -top-4 rounded-xl bg-ok-action px-3 py-2 text-xs font-medium text-white shadow-pop xl:-right-6">Fiş yazdırıldı</div>
     </div>
   );
 }
@@ -74,13 +75,13 @@ export default function Home() {
       <SkipToContent />
       <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-3 sm:gap-6 sm:px-4">
-          <Link href="/" className="inline-flex min-h-11 items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
+          <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-sm font-semibold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60"><LogoMark size="sm" />ÇabukPOS</Link>
           <nav aria-label="Ana" className="hidden gap-5 text-sm text-ink-2 md:flex">
-            <a href="#ozellikler" className="hover:text-ink">Özellikler</a>
-            <a href="#fiyat" className="hover:text-ink">Fiyat</a>
-            <a href="#sss" className="hover:text-ink">Sorular</a>
-            <Link href="/demo" className="hover:text-ink">Canlı demo</Link>
-            <Link href="/yardim" className="hover:text-ink">Yardım</Link>
+            <HashLink href="#ozellikler" className="rounded-sm outline-none hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">Özellikler</HashLink>
+            <HashLink href="#fiyat" className="rounded-sm outline-none hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">Fiyat</HashLink>
+            <HashLink href="#sss" className="rounded-sm outline-none hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">Sorular</HashLink>
+            <Link href="/demo" className="rounded-sm outline-none hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">Canlı demo</Link>
+            <Link href="/yardim" className="rounded-sm outline-none hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yardım</Link>
           </nav>
           <MobileSiteNav />
           <div className="ml-auto flex items-center gap-2 text-sm">
@@ -101,7 +102,7 @@ export default function Home() {
             <p className="mt-5 max-w-xl text-lg text-ink-2">Masa, mutfak, paket servis, barkod ve terazi; stok, reçete ve raporlar. Tablette, bilgisayarda ya da POS cihazında, birkaç dakikalık kurulumla.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link data-cta="hero-signup" href="/kayit" className={buttonClass("primary", "lg")}>14 gün ücretsiz deneyin</Link>
-              <a href="#ozellikler" className={buttonClass("secondary", "lg")}>Neler var?</a>
+              <HashLink href="#ozellikler" className={buttonClass("secondary", "lg")}>Neler var?</HashLink>
             </div>
             <p className="mt-4 text-sm text-muted">
               Randevulu bir hizmet işletmesi misiniz?{" "}
@@ -195,7 +196,7 @@ export default function Home() {
             ))}
           </div>
           <p className="mt-4 text-sm text-muted">Deneme bitince ödeme yapmazsanız ücret doğmaz. Ayrıntı: <Link href="/yasal/iade-iptal" className="underline">İptal ve iade</Link>.</p>
-          <Link href="/fiyatlandirma" className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-brand hover:underline">Şube ve terminal sayınıza göre hesaplayın →</Link>
+          <Link href="/fiyatlandirma" className="mt-4 inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Şube ve terminal sayınıza göre hesaplayın →</Link>
         </section>
 
         <section id="sss" className="border-t border-line bg-surface-2">
@@ -204,7 +205,7 @@ export default function Home() {
             <div className="mt-8 divide-y divide-line rounded-2xl border border-line bg-surface">
               {FAQ.map((f) => (
                 <details key={f.q} className="group px-6 py-4">
-                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 font-medium">{f.q}<span className="text-muted transition-transform group-open:rotate-45" aria-hidden>+</span></summary>
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{f.q}<span className="text-muted transition-transform group-open:rotate-45" aria-hidden>+</span></summary>
                   <p className="mt-2 text-ink-2">{f.a}</p>
                 </details>
               ))}

@@ -11,6 +11,7 @@ import { getBillingProvider } from "@/lib/billing/provider";
 import { paymentsOf, salesSincePayment, tenantUnits } from "@/lib/billing/service";
 import { removeStoredCard } from "@/lib/billing/renewal";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
+import { ActionResult } from "@/components/admin/ActionResult";
 import { CheckoutForm } from "@/components/admin/CheckoutPending";
 import { RefundRequestForm, RefundStatusForm } from "@/components/admin/RefundRequestForm";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
@@ -43,15 +44,15 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
           </div>
         </Card>
       )}
-      {sp.kilit && b.locked && <Card className="mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad" role="alert">Abonelik sona erdiği için değişiklik yapılamıyor. Ödeme yapınca yönetim hemen açılır.</Card>}
-      {sp.sonuc === "ok" && <Card className="mb-4 border-ok/25 bg-ok-soft p-4 text-sm text-ok" role="status">Ödeme alındı, teşekkürler.</Card>}
-      {sp.sonuc === "isleniyor" && <Card className="mb-4 border-warn/30 bg-warn-soft p-4 text-sm text-warn" role="status">Ödeme işleniyor; banka onayı gelince abonelik birkaç saniye içinde uzar. Sayfayı yenileyebilirsin.</Card>}
-      {sp.sonuc === "telefon" && <Card className="mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad" role="alert">Kartla ödeme için geçerli bir cep telefonu gir.</Card>}
-      {sp.sonuc === "hata" && <Card className="mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad" role="alert">Ödeme tamamlanamadı. Tekrar deneyebilirsin.</Card>}
-      {sp.iade === "talep" && <Card className="mb-4 border-ok/25 bg-ok-soft p-4 text-sm text-ok" role="status">İade talebin kaydedildi. Onaylanınca ödeme yapılan karta, ödeme kuruluşu aracılığıyla döner (2–10 iş günü).</Card>}
-      {sp.iade === "ceklildi" && <Card className="mb-4 p-4 text-sm text-muted" role="status">İade talebi çekildi.</Card>}
-      {sp.iade === "onaylandi" && <Card className="mb-4 border-ok/25 bg-ok-soft p-4 text-sm text-ok" role="status">İade işlendi olarak işaretlendi.</Card>}
-      {sp.iade === "hata" && <Card className="mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad" role="alert">İade işlemi tamamlanamadı.</Card>}
+      {sp.kilit && b.locked && <ActionResult kind="error" className="min-w-0 rounded-2xl border border-line bg-surface shadow-rest transition-shadow mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad">Abonelik sona erdiği için değişiklik yapılamıyor. Ödeme yapınca yönetim hemen açılır.</ActionResult>}
+      {sp.sonuc === "ok" && <ActionResult kind="success" className="min-w-0 rounded-2xl border border-line bg-surface shadow-rest transition-shadow mb-4 border-ok/25 bg-ok-soft p-4 text-sm text-ok">Ödeme alındı, teşekkürler.</ActionResult>}
+      {sp.sonuc === "isleniyor" && <ActionResult kind="success" className="min-w-0 rounded-2xl border border-line bg-surface shadow-rest transition-shadow mb-4 border-warn/30 bg-warn-soft p-4 text-sm text-warn">Ödeme işleniyor; banka onayı gelince abonelik birkaç saniye içinde uzar. Sayfayı yenileyebilirsin.</ActionResult>}
+      {sp.sonuc === "telefon" && <ActionResult kind="error" className="min-w-0 rounded-2xl border border-line bg-surface shadow-rest transition-shadow mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad">Kartla ödeme için geçerli bir cep telefonu gir.</ActionResult>}
+      {sp.sonuc === "hata" && <ActionResult kind="error" className="min-w-0 rounded-2xl border border-line bg-surface shadow-rest transition-shadow mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad">Ödeme tamamlanamadı. Tekrar deneyebilirsin.</ActionResult>}
+      {sp.iade === "talep" && <ActionResult kind="success" className="min-w-0 rounded-2xl border border-line bg-surface shadow-rest transition-shadow mb-4 border-ok/25 bg-ok-soft p-4 text-sm text-ok">İade talebin kaydedildi. Onaylanınca ödeme yapılan karta, ödeme kuruluşu aracılığıyla döner (2–10 iş günü).</ActionResult>}
+      {sp.iade === "ceklildi" && <ActionResult kind="success" className="min-w-0 rounded-2xl border border-line bg-surface shadow-rest transition-shadow mb-4 p-4 text-sm text-muted">İade talebi çekildi.</ActionResult>}
+      {sp.iade === "onaylandi" && <ActionResult kind="success" className="min-w-0 rounded-2xl border border-line bg-surface shadow-rest transition-shadow mb-4 border-ok/25 bg-ok-soft p-4 text-sm text-ok">İade işlendi olarak işaretlendi.</ActionResult>}
+      {sp.iade === "hata" && <ActionResult kind="error" className="min-w-0 rounded-2xl border border-line bg-surface shadow-rest transition-shadow mb-4 border-bad/25 bg-bad-soft p-4 text-sm text-bad">İade işlemi tamamlanamadı.</ActionResult>}
       <Card className={`mb-6 overflow-hidden ${b.locked ? "border-bad/30" : b.warn ? "border-warn/35" : "border-ok/25"}`}>
         <div className="flex flex-wrap items-start gap-3 p-4">
           <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${b.locked ? "bg-bad-soft text-bad" : b.warn ? "bg-warn-soft text-warn" : "bg-ok-soft text-ok"}`}>
@@ -72,10 +73,10 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
           </Link>
         </div>
       </Card>
-      <div id="odeme" className="scroll-mt-6">
+      <section id="odeme" tabIndex={-1} aria-labelledby="payment-options-heading" className="scroll-mt-6 rounded-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/40">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="font-semibold">Ödeme seçenekleri</h2>
+            <h2 id="payment-options-heading" className="font-semibold">Ödeme seçenekleri</h2>
             <p className="mt-0.5 text-sm text-muted">Şube ve terminal sayınıza göre hesaplanan dönem ücretleri.</p>
           </div>
         </div>
@@ -102,7 +103,7 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
           );
         })}
         </div>
-      </div>
+      </section>
       {pays.length > 0 && (
         <>
         <Card className="mt-6 overflow-hidden lg:hidden">

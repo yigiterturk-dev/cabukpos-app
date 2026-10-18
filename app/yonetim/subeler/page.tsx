@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { cookies } from "next/headers";
 import { createStore, switchStore, updateStore } from "@/lib/admin/store-actions";
 import { StoreCreateForm, StoreSwitchForm, StoreUpdateForm } from "@/components/admin/StoreFormsPending";
+import { ActionResult } from "@/components/admin/ActionResult";
 import { STORE_COOKIE } from "@/lib/admin/store-scope";
 import { Badge, Card, PageHeader } from "@/components/ui";
 
@@ -27,8 +28,8 @@ export default async function Subeler({ searchParams }: { searchParams: Promise<
   return (
     <>
       <PageHeader title="Şubeler" desc="Stok, rapor ve bugün ekranı seçili şubeye bakar. Kasalar şubeye cihaz eşlemesiyle bağlanır; geçiş yalnız yönetim panelini etkiler." />
-      {ok && <div role="status" aria-live="polite" className="mb-6 rounded-[14px] border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">Kaydedildi.</div>}
-      {hata && <div role="alert" aria-live="assertive" className="mb-6 rounded-[14px] border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</div>}
+      {ok && <ActionResult kind="success">Kaydedildi.</ActionResult>}
+      {hata && <ActionResult kind="error">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</ActionResult>}
       {rows.length === 0 ? (
         <Card className="mb-8 p-8 text-center text-sm text-muted">Henüz şube yok. Aşağıdan ilk şubeyi oluşturun.</Card>
       ) : (

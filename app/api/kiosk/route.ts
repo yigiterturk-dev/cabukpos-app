@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({
   storeId: z.string().regex(/^[0-9a-f-]{36}$/i),
   secret: z.string().min(8).max(200),
+  requestId: z.string().uuid().optional(),
   name: z.string().trim().min(1).max(60).default("Kiosk müşterisi"),
   phone: z.string().trim().max(20).default(""),
   note: z.string().trim().max(300).nullable().default(null),

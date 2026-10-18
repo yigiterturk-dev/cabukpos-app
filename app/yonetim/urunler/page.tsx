@@ -4,12 +4,14 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { deleteCategory, setProductActive } from "@/lib/admin/catalog-actions";
 import { scopedStoreId } from "@/lib/admin/store-scope";
-import { moneyFormatter } from "@/lib/admin/currency";
+import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
+import { currencySymbol } from "@/lib/core/money";
 import { stockUnitOf } from "@/lib/core/stock";
 import { categoryStationForStore, loadStoreStationRoutes, productStationForStore } from "@/lib/core/station-routing";
 import { CategoryForm, ProductForm } from "@/components/admin/ProductForm";
 import { ProductImportForm } from "@/components/admin/ProductImportForm";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
+import { PendingActionForm } from "@/components/admin/PendingActionForm";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { Plus } from "lucide-react";
 import { Badge, buttonClass, Card, Empty, Input, PageHeader, Panel, SplitView, TABLE_HEAD } from "@/components/ui";
@@ -19,7 +21,9 @@ export const dynamic = "force-dynamic";
 export default async function Urunler({ searchParams }: { searchParams: Promise<{ duzenle?: string; tur?: string; q?: string }> }) {
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
-  const { duzenle, tur, q = "" } = await searchParams;
+  const currencyUnit = currencySymbol(await tenantCurrency(a.tenantId));
+  const { duzenle, tur, q: rawQuery = "" } = await searchParams;
+  const q = rawQuery.slice(0, 80);
   const raw = tur === "hammadde";
   const restoran = a.vertical === "restoran";
   const storeId = restoran ? await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId)) : null;
@@ -53,7 +57,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
         <div className="space-y-4">
           <ProductImportForm />
           <Panel title={editing ? `Düzenle: ${editing.name}` : "Ürün ekle"} tone={editing ? "edit" : undefined}>
-            <ProductForm key={editing?.id ?? "yeni"} categories={options} salon={salon} initial={productInitial} />
+            <ProductForm key={editing?.id ?? "yeni"} categories={options} salon={salon} initial={productInitial} currencyUnit={currencyUnit} />
           </Panel>
           <Panel title="Kategoriler" desc="Kasadaki sekmeler. Ürünü olan kategori silinince ürünler kategorisiz kalır.">
             {cats.length > 0 && (
@@ -72,7 +76,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
       } list={<>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <form className="flex min-w-48 flex-1 items-end gap-2 sm:max-w-sm" role="search">
-          <div className="min-w-0 flex-1"><Input name="q" defaultValue={q} placeholder="Ürün veya barkod ara" aria-label="Ürün veya barkod ara" />{tur && <input type="hidden" name="tur" value={tur} />}</div>
+          <div className="min-w-0 flex-1"><Input name="q" defaultValue={q} maxLength={80} placeholder="Ürün veya barkod ara" aria-label="Ürün veya barkod ara" />{tur && <input type="hidden" name="tur" value={tur} />}</div>
           <button type="submit" className={buttonClass("secondary")}>Ara</button>
         </form>
         <span className="text-xs text-muted">{shown.length} ürün</span>
@@ -83,7 +87,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
         </nav>
       </div>
       {shown.length === 0 ? (
-        <Empty>{q.trim() ? `“${q.trim()}” ile eşleşen ürün yok.` : raw ? "Hammadde yok. Formda “Kasada satılır: Hayır” seçin." : "Henüz ürün yok."}</Empty>
+        <Empty action={q.trim() ? <Link href={raw ? "/yonetim/urunler?tur=hammadde" : "/yonetim/urunler"} className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 font-medium text-brand outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aramayı temizle</Link> : undefined}>{q.trim() ? `“${q.trim()}” ile eşleşen ürün yok.` : raw ? "Hammadde yok. Formda “Kasada satılır: Hayır” seçin." : "Henüz ürün yok."}</Empty>
       ) : (
         <>
         <Card className="overflow-hidden lg:hidden">
@@ -107,7 +111,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
                 </dl>
                 <div className="flex flex-wrap items-center gap-1 border-t border-line pt-2">
                   <Link href={`/yonetim/urunler?duzenle=${p.id}${tur ? `&tur=${tur}` : ""}${querySuffix}`} aria-label={`Düzenle: ${p.name}`} className="inline-flex min-h-11 items-center rounded-lg px-3 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
-                  <form action={setProductActive.bind(null, p.id, !p.active)}><button aria-label={`${p.active ? "Satıştan kaldır" : "Satışa aç"}: ${p.name}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{p.active ? "Satıştan kaldır" : "Satışa aç"}</button></form>
+                  <PendingActionForm action={setProductActive.bind(null, p.id, !p.active)} label={p.active ? "Satıştan kaldır" : "Satışa aç"} pendingLabel="Kaydediliyor…" ariaLabel={`${p.active ? "Satıştan kaldır" : "Satışa aç"}: ${p.name}`} pendingStatus={`${p.name} ürününün satış durumu kaydediliyor.`} buttonClassName="inline-flex min-h-11 items-center rounded-lg px-3 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" />
                 </div>
               </li>
             ))}
@@ -131,9 +135,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
                   <td className="px-4 py-2.5">{p.active ? <Badge tone="ok">{p.sellable ? "Satışta" : "Aktif"}</Badge> : <Badge>Kapalı</Badge>}</td>
                   <td className={`sticky right-0 whitespace-nowrap px-4 py-2.5 text-right shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.35)] ${p.id === duzenle ? "bg-brand-soft/90" : "bg-surface"}`}>
                     <Link href={`/yonetim/urunler?duzenle=${p.id}${tur ? `&tur=${tur}` : ""}${querySuffix}`} aria-label={`Düzenle: ${p.name}`} className="mr-1 inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
-                    <form action={setProductActive.bind(null, p.id, !p.active)} className="inline">
-                      <button aria-label={`${p.active ? "Satıştan kaldır" : "Satışa aç"}: ${p.name}`} className="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{p.active ? "Satıştan kaldır" : "Satışa aç"}</button>
-                    </form>
+                    <PendingActionForm action={setProductActive.bind(null, p.id, !p.active)} label={p.active ? "Satıştan kaldır" : "Satışa aç"} pendingLabel="Kaydediliyor…" ariaLabel={`${p.active ? "Satıştan kaldır" : "Satışa aç"}: ${p.name}`} pendingStatus={`${p.name} ürününün satış durumu kaydediliyor.`} formClassName="inline" buttonClassName="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" />
                   </td>
                 </tr>
               ))}

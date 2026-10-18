@@ -1,6 +1,6 @@
 "use client";
 // A4'e 3×8 raf etiketi (70×37 mm). Ekranda seçim listesi, baskıda yalnız seçili etiketler.
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { markLabelsPrinted } from "@/lib/admin/label-actions";
 import { ean13Modules } from "@/lib/core/ean13";
 import { formatMoney, type Currency } from "@/lib/core/money";
@@ -26,6 +26,17 @@ export function LabelSheet({ items, currency = "TRY" }: { items: LabelItem[]; cu
   const [pending, start] = useTransition();
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const markButtonRef = useRef<HTMLButtonElement>(null);
+  const errorRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (pending || (!done && !error)) return;
+    const frame = window.requestAnimationFrame(() => {
+      const button = markButtonRef.current;
+      if (button?.isConnected && !button.disabled) button.focus();
+      else if (error) errorRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [done, error, pending]);
   const chosen = items.filter((i) => sel.has(i.id));
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   return (
@@ -34,7 +45,7 @@ export function LabelSheet({ items, currency = "TRY" }: { items: LabelItem[]; cu
       <div className="print:hidden" aria-busy={pending}>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Button onClick={() => window.print()} disabled={!chosen.length}>Yazdır ({chosen.length})</Button>
-          <Button variant="secondary" disabled={!chosen.length || pending} onClick={() => start(async () => {
+          <Button ref={markButtonRef} variant="secondary" disabled={!chosen.length || pending} onClick={() => start(async () => {
             setError(null); setDone(false);
             try { await markLabelsPrinted(chosen.map((c) => c.id)); setDone(true); }
             catch { setError("Etiketler basıldı olarak işaretlenemedi. Tekrar deneyin."); }
@@ -42,7 +53,7 @@ export function LabelSheet({ items, currency = "TRY" }: { items: LabelItem[]; cu
           <button type="button" disabled={pending} onClick={() => setSel(new Set(items.map((i) => i.id)))} className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm underline outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50">Tümünü seç</button>
           <button type="button" disabled={pending} onClick={() => setSel(new Set())} className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm underline outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50">Hiçbiri</button>
           {done && <span className="text-sm text-ok" role="status" aria-live="polite">Etiketler basıldı olarak işaretlendi.</span>}
-          {error && <span className="text-sm text-bad" role="alert" aria-live="assertive">{error}</span>}
+          {error && <span ref={errorRef} tabIndex={-1} className="text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</span>}
         </div>
         <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
           {items.map((i) => (

@@ -1,6 +1,7 @@
 "use client";
 // Native <select> yerine erişilebilir listbox. Form için gizli input yazar.
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { normalizeSearchText } from "@/lib/core/search";
 
 export type Option = { value: string; label: string };
 
@@ -41,9 +42,29 @@ export function Select({
   const ref = useRef<HTMLDivElement>(null);
   const typeahead = useRef("");
   const typeaheadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listboxRef = useRef<HTMLUListElement>(null);
   const id = useId();
-  const selected = options.find((o) => o.value === value);
+  const invalidSelection = Boolean(value && options.length > 0 && !options.some((option) => option.value === value));
+  const effectiveValue = invalidSelection ? "" : value;
+  const selected = options.find((o) => o.value === effectiveValue);
   useEffect(() => () => { if (typeaheadTimer.current) clearTimeout(typeaheadTimer.current); }, []);
+  useEffect(() => {
+    if (open) return;
+    typeahead.current = "";
+    if (typeaheadTimer.current) clearTimeout(typeaheadTimer.current);
+    typeaheadTimer.current = null;
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const listbox = listboxRef.current;
+    const option = listbox?.querySelector<HTMLElement>(`[data-option-index="${active}"]`);
+    if (!listbox || !option) return;
+    if (option.offsetTop < listbox.scrollTop) listbox.scrollTop = option.offsetTop;
+    else if (option.offsetTop + option.offsetHeight > listbox.scrollTop + listbox.clientHeight) {
+      listbox.scrollTop = option.offsetTop + option.offsetHeight - listbox.clientHeight;
+    }
+  }, [active, open]);
 
   // Mirror native <select> behavior when a successful server action resets its form.
   useEffect(() => {
@@ -85,7 +106,9 @@ export function Select({
       const button = ref.current?.querySelector<HTMLElement>('button[role="combobox"]');
       if (!button) return;
       const trigger = button.getBoundingClientRect();
-      let top = 0, bottom = window.innerHeight;
+      const viewport = window.visualViewport;
+      let top = viewport?.offsetTop ?? 0;
+      let bottom = top + (viewport?.height ?? window.innerHeight);
       for (let parent = button.parentElement; parent; parent = parent.parentElement) {
         const overflowY = window.getComputedStyle(parent).overflowY;
         if (["auto", "scroll", "hidden", "clip"].includes(overflowY)) {
@@ -99,14 +122,18 @@ export function Select({
       const desired = Math.min(256, options.length * 44 + 8);
       const upward = below < desired && above > below;
       setDropUp(upward);
-      setMenuMaxHeight(Math.max(44, Math.min(256, upward ? above : below)));
+      setMenuMaxHeight(Math.max(1, Math.min(256, upward ? above : below)));
     };
     place();
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
+    window.visualViewport?.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("scroll", place);
     return () => {
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
+      window.visualViewport?.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("scroll", place);
     };
   }, [open, options.length, unavailable]);
 
@@ -123,7 +150,7 @@ export function Select({
       e.preventDefault();
       if (!open) {
         setOpen(true);
-        setActive(Math.max(0, options.findIndex((o) => o.value === value)));
+        setActive(Math.max(0, options.findIndex((o) => o.value === effectiveValue)));
         return;
       }
       setActive((a) => (a + (e.key === "ArrowDown" ? 1 : -1) + options.length) % options.length);
@@ -134,17 +161,29 @@ export function Select({
     } else if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       if (open && options[active]) pick(options[active].value);
-      else setOpen(true);
-    } else if (e.key === "Escape") setOpen(false);
+      else {
+        setActive(Math.max(0, options.findIndex((o) => o.value === effectiveValue)));
+        setOpen(true);
+      }
+    } else if (e.key === "Escape" && open) {
+      // Let Escape dismiss the listbox first; a surrounding dialog may also
+      // listen for Escape globally and should stay open for this keypress.
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+    }
     else if (e.key === "Tab") setOpen(false);
     else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.trim()) {
-      const needle = `${typeahead.current}${e.key}`.toLocaleLowerCase("tr");
+      const character = normalizeSearchText(e.key);
+      const previous = typeahead.current;
+      const cycling = previous.length > 0 && [...previous].every((part) => part === character);
+      const needle = cycling ? character : normalizeSearchText(`${previous}${e.key}`);
       typeahead.current = needle;
       if (typeaheadTimer.current) clearTimeout(typeaheadTimer.current);
       typeaheadTimer.current = setTimeout(() => { typeahead.current = ""; }, 700);
-      const start = options.findIndex((o) => o.value === value);
+      const start = cycling ? active : options.findIndex((o) => o.value === effectiveValue);
       const ordered = [...options.slice(start + 1), ...options.slice(0, start + 1)];
-      const match = ordered.find((o) => o.label.toLocaleLowerCase("tr").startsWith(needle));
+      const match = ordered.find((o) => normalizeSearchText(o.label).startsWith(needle));
       if (match) {
         e.preventDefault();
         setActive(options.indexOf(match));
@@ -155,7 +194,7 @@ export function Select({
 
   return (
     <div ref={ref} className="relative">
-      {name && <input type="hidden" name={name} value={value} disabled={unavailable} />}
+      {name && <input type="hidden" name={name} value={effectiveValue} disabled={unavailable} />}
       <button
         id={controlId}
         type="button"
@@ -170,27 +209,28 @@ export function Select({
         aria-activedescendant={open && !unavailable && options[active] ? `${id}-option-${active}` : undefined}
         onClick={() => setOpen((o) => {
           if (unavailable) return false;
-          if (!o) setActive(Math.max(0, options.findIndex((option) => option.value === value)));
+          if (!o) setActive(Math.max(0, options.findIndex((option) => option.value === effectiveValue)));
           return !o;
         })}
         onKeyDown={onKey}
-        className="flex min-h-11 w-full items-center justify-between rounded-lg border border-line bg-surface px-3 py-2 text-left text-base outline-none focus:border-brand focus:ring-2 focus:ring-brand-ring disabled:cursor-not-allowed disabled:opacity-50 lg:text-sm"
+        className={`flex min-h-11 w-full items-center justify-between rounded-lg border bg-surface px-3 py-2 text-left text-base outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 lg:text-sm ${invalid ? "border-bad focus:border-bad focus:ring-bad/40" : "border-line focus:border-brand focus:ring-brand-ring"}`}
       >
         <span title={selected?.label ?? (options.length ? placeholder : "Seçenek yok")} className={`min-w-0 truncate ${selected ? "" : "text-muted"}`}>{selected?.label ?? (options.length ? placeholder : "Seçenek yok")}</span>
         <span aria-hidden className="text-muted">▾</span>
       </button>
       {open && !unavailable && (
-        <ul id={id} role="listbox" style={{ maxHeight: menuMaxHeight }} className={`absolute z-30 w-full overflow-auto rounded-lg border border-line bg-surface py-1 shadow-lg ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
+        <ul ref={listboxRef} id={id} role="listbox" style={{ maxHeight: menuMaxHeight }} className={`absolute z-30 w-full overflow-auto rounded-lg border border-line bg-surface py-1 shadow-lg ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
           {options.map((o, i) => (
             <li
               key={o.value}
               id={`${id}-option-${i}`}
+              data-option-index={i}
               role="option"
-              aria-selected={o.value === value}
+              aria-selected={o.value === effectiveValue}
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => pick(o.value)}
-              className={`flex min-h-11 cursor-pointer items-center px-3 py-2 text-base lg:text-sm ${i === active ? "bg-surface-2" : ""} ${o.value === value ? "font-medium text-brand" : ""}`}
+              className={`flex min-h-11 cursor-pointer items-center px-3 py-2 text-base lg:text-sm ${i === active ? "bg-surface-2" : ""} ${o.value === effectiveValue ? "font-medium text-brand" : ""}`}
             >
               {o.label}
             </li>

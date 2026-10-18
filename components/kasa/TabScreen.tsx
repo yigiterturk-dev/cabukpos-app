@@ -1,12 +1,14 @@
 "use client";
 // Masa adisyonu: ürün ızgarası (seçenek penceresi), adisyon satırları, mutfağa gönder, taşı, ikram/indirim/iptal (müdür onayı), hesap.
 // Her dokunuş bir adisyon olayıdır (yerel + giden kutusu) → çökmede kaybolmaz, diğer cihazlara akışla gider.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { parseMoney, type Currency } from "@/lib/core/money";
 import { currencyUnit, kasaFmt } from "./kasa-format";
 import { optionsText, validateOptions, type OptionGroup } from "@/lib/core/options";
 import { qtyText } from "@/lib/core/receipt";
 import { lineGross, mergeCandidates, mergeableLines, openTabsByTable, type TabLine, type TabState } from "@/lib/core/tab";
+import { normalizeSearchText } from "@/lib/core/search";
 import { sendByStation } from "@/lib/core/platform";
 import { FEE_NAME, formatPhone, intentLabel, zoneCheck } from "@/lib/core/delivery";
 import type { NewTabEvent } from "@/lib/offline/tabs";
@@ -86,8 +88,12 @@ function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose, 
   const pct = Number(value), amt = parseMoney(value);
   const d = !discount ? undefined : kind === "kaldir" ? { percent: null, amount: null } : kind === "yuzde" ? { percent: Number.isInteger(pct) && pct >= 1 && pct <= 100 ? pct : NaN, amount: null } : { percent: null, amount: amt ?? NaN };
   const valid = reason.trim().length >= 2 || kind === "kaldir" && discount;
-  const amountInvalid = discount && kind === "tutar" && (amt === null || amt > 100_000_000);
-  const dValid = !d || (d.percent === null || !Number.isNaN(d.percent)) && !amountInvalid && (d.amount === null || !Number.isNaN(d.amount));
+  const reasonInvalid = reason.trim().length > 0 && reason.trim().length < 2;
+  const discountValueInvalid = Boolean(discount && kind !== "kaldir" && (kind === "yuzde"
+    ? !Number.isInteger(pct) || pct < 1 || pct > 100
+    : amt === null || amt <= 0 || amt > 100_000_000));
+  const discountValueError = discountValueInvalid && value.trim().length > 0;
+  const dValid = !d || (d.percent === null || !Number.isNaN(d.percent)) && !discountValueInvalid && (d.amount === null || !Number.isNaN(d.amount));
   const next = () => (waiter.role === "mudur" ? onOk(null, reason.trim(), d) : setStep("pin"));
   return (
     <Modal label={title} onClose={onClose} closeDisabled={busy}>
@@ -99,18 +105,18 @@ function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose, 
                 <legend className="sr-only">İndirim türü</legend>
                 {([["yuzde", "Yüzde"], ["tutar", `Tutar (${currencyUnit(meta.device?.currency)})`], ["kaldir", "İndirimi kaldır"]] as const).map(([k, l]) => (
                   <label key={k} className={`inline-flex min-h-12 cursor-pointer items-center rounded-lg border px-3 py-2 text-sm outline-none transition focus-within:ring-4 focus-within:ring-brand-ring/60 ${kind === k ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>
-                    <input type="radio" name="discount-kind" value={k} checked={kind === k} onChange={() => setKind(k)} className="peer sr-only" />
+                    <input type="radio" name="discount-kind" value={k} checked={kind === k} onChange={() => { setKind(k); setValue(""); }} className="peer sr-only" />
                     {l}
                   </label>
                 ))}
               </fieldset>
               {kind !== "kaldir" && <>
-                <input aria-label={kind === "yuzde" ? "İndirim yüzdesi" : "İndirim tutarı"} aria-describedby="approval-discount-hint" aria-invalid={amountInvalid || undefined} inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder={kind === "yuzde" ? "1–100" : "0,00"} className={`tabular min-h-12 w-full rounded-lg border px-3 py-2 text-right ${amountInvalid ? "border-bad focus:ring-4 focus:ring-bad/30" : "border-line"}`} />
-                <p id="approval-discount-hint" className={`mt-1 text-xs ${amountInvalid ? "text-bad" : "text-muted"}`}>{kind === "yuzde" ? "1–100 arasında tam sayı girin." : `İndirim tutarını ${currencyUnit(meta.device?.currency)} biçiminde girin (ör. 25,00); üst sınır 1.000.000.`}</p>
+                <input aria-label={kind === "yuzde" ? "İndirim yüzdesi" : "İndirim tutarı"} aria-describedby="approval-discount-hint" aria-invalid={discountValueError || undefined} inputMode={kind === "yuzde" ? "numeric" : "decimal"} maxLength={kind === "yuzde" ? 3 : 12} value={value} onChange={(e) => setValue(e.target.value)} placeholder={kind === "yuzde" ? "1–100" : "0,00"} className={`tabular min-h-12 w-full rounded-lg border bg-surface px-3 py-2 text-right outline-none focus-visible:ring-4 ${discountValueError ? "border-bad focus-visible:ring-bad/30" : "border-line focus-visible:border-brand focus-visible:ring-brand-ring/60"}`} />
+                <p id="approval-discount-hint" className={`mt-1 text-xs ${discountValueError ? "text-bad" : "text-muted"}`}>{kind === "yuzde" ? "1–100 arasında tam sayı girin." : `0'dan büyük indirim tutarını ${currencyUnit(meta.device?.currency)} biçiminde girin (ör. 25,00); üst sınır 1.000.000.`}</p>
               </>}
             </div>
           )}
-          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder="Ör. müşteri talebi" aria-describedby="approval-reason-hint" className="min-h-12 w-full rounded-[10px] border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" /><span id="approval-reason-hint" className="mt-1 block text-xs text-muted">En az 2 karakter girin; onay kaydında saklanır.</span></label>
+          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder="Ör. müşteri talebi" aria-invalid={reasonInvalid || undefined} aria-describedby="approval-reason-hint" className={`min-h-12 w-full rounded-[10px] border bg-surface px-3 py-2 outline-none focus:ring-4 ${reasonInvalid ? "border-bad focus:ring-bad/30" : "border-line focus:border-brand focus:ring-brand-ring/50"}`} /><span id="approval-reason-hint" className={`mt-1 block text-xs ${reasonInvalid ? "text-bad" : "text-muted"}`}>{discount && kind === "kaldir" ? "İndirimi kaldırırken gerekçe isteğe bağlıdır; girerseniz en az 2 karakter olmalı." : "En az 2 karakter girin; onay kaydında saklanır."}</span></label>
           {waiter.role !== "mudur" && <p className="mb-3 text-sm text-muted">Müdür onayı gerekir.</p>}
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
@@ -147,6 +153,9 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   const tab = tabs.find((t) => t.id === pick) ?? tabs[0] ?? null;
   const tabId = tab?.id ?? newTabId;
   const [cat, setCat] = useState<string | null>(null);
+  const [productQuery, setProductQuery] = useState("");
+  const [productSearchAnnouncement, setProductSearchAnnouncement] = useState<{ key: string; text: string } | null>(null);
+  const productSearchRef = useRef<HTMLInputElement>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -155,9 +164,37 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   const cats = meta.catalog.categories;
   const groups = meta.catalog.optionGroups ?? [];
   const tables = meta.catalog.tables ?? [];
-  const products = meta.catalog.products.filter((p) => p.kind === "adet" && (cat === null || p.categoryId === cat));
+  const productNeedle = normalizeSearchText(productQuery.trim());
+  const products = meta.catalog.products.filter((p) => p.kind === "adet"
+    && (cat === null || p.categoryId === cat)
+    && (!productNeedle || normalizeSearchText(p.name).includes(productNeedle) || p.barcodes.some((barcode) => barcode.includes(productQuery.trim()))));
+  const searchAnnouncementKey = `${productQuery}\u0000${cat ?? ""}\u0000${products.length}`;
+  useEffect(() => {
+    const query = productQuery.trim();
+    if (!query) return;
+    const timeout = window.setTimeout(() => {
+      const term = query.length > 40 ? `${query.slice(0, 40)}…` : query;
+      setProductSearchAnnouncement({ key: searchAnnouncementKey, text: `${term}: ${products.length ? `${products.length} ürün bulundu.` : "Eşleşen ürün yok."}` });
+    }, 450);
+    return () => window.clearTimeout(timeout);
+  }, [productQuery, cat, products.length, searchAnnouncementKey]);
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if (dialog) return;
+      if (event.key === "F2") {
+        event.preventDefault();
+        productSearchRef.current?.focus();
+        productSearchRef.current?.select();
+      } else if (event.key === "Escape" && document.activeElement === productSearchRef.current && productQuery) {
+        event.preventDefault();
+        setProductQuery("");
+      }
+    };
+    window.addEventListener("keydown", onShortcut);
+    return () => window.removeEventListener("keydown", onShortcut);
+  }, [dialog, productQuery]);
   const ev = (e: NewTabEvent["ev"], approvedBy: string | null = null): NewTabEvent => ({ tabId, tableId: table?.id ?? null, staffId: waiter.id, approvedBy, ev: e });
-  const run = async (list: NewTabEvent[]) => {
+  const run = async (list: NewTabEvent[], returnFocusTo?: HTMLButtonElement) => {
     if (busyRef.current) return false;
     busyRef.current = true;
     setBusy(true);
@@ -189,26 +226,45 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
     } finally {
       busyRef.current = false;
       setBusy(false);
+      if (returnFocusTo) requestAnimationFrame(() => {
+        if (document.activeElement !== document.body) return;
+        const target = returnFocusTo.isConnected && !returnFocusTo.disabled
+          ? returnFocusTo
+          : document.getElementById("tab-heading");
+        target?.focus();
+      });
     }
   };
 
-  const addLine = (p: KasaProduct, unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number) =>
-    run([...(tab ? [] : [ev({ type: "open", guests: 0 })]), ev({ type: "add", lineId: crypto.randomUUID(), productId: p.id, name: p.name, unitPrice, vatRate: p.vatRate, qtyMilli, options, note, stationId: p.stationId ?? null })]);
-  const tapProduct = (p: KasaProduct) => {
+  useEffect(() => {
+    if (!actionError || !dialog) return;
+    const frame = window.requestAnimationFrame(() => {
+      const panel = document.querySelector<HTMLElement>("[role=dialog]");
+      if (!panel) return;
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && panel.contains(active) && !active.matches(":disabled")) return;
+      panel.querySelector<HTMLElement>('button:not(:disabled):not([aria-label="Pencereyi kapat"]), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [actionError, dialog]);
+
+  const addLine = (p: KasaProduct, unitPrice: number, options: { id: string; name: string; delta: number }[], note: string | null, qtyMilli: number, returnFocusTo?: HTMLButtonElement) =>
+    run([...(tab ? [] : [ev({ type: "open", guests: 0 })]), ev({ type: "add", lineId: crypto.randomUUID(), productId: p.id, name: p.name, unitPrice, vatRate: p.vatRate, qtyMilli, options, note, stationId: p.stationId ?? null })], returnFocusTo);
+  const tapProduct = (p: KasaProduct, source?: HTMLButtonElement) => {
     const gs = (p.optionGroupIds ?? []).map((id) => groups.find((g) => g.id === id)).filter((g): g is OptionGroup => Boolean(g));
     if (gs.length) setDialog({ k: "options", product: p });
-    else void addLine(p, p.price, [], null, 1000);
+    else void addLine(p, p.price, [], null, 1000, source);
   };
 
   const live = tab?.lines.filter((l) => !l.voided) ?? [];
   const inTab = new Map<string, number>();
   for (const line of live) if (line.productId) inTab.set(line.productId, (inTab.get(line.productId) ?? 0) + line.qtyMilli);
   const unsent = live.filter((l) => !l.sent && l.productId !== null);
-  const send = () => {
+  const send = (source: HTMLButtonElement) => {
     const first = tab && tab.tickets.length === 0;
     // Serbest satır (paket ücreti) mutfağa gitmez
     const lines = unsent.filter((l) => l.productId !== null);
-    void run(sendByStation(lines, () => crypto.randomUUID()).map((s) => ev(s))).then((ok) => { if (ok && first && tab) onFirstSend?.(tab); });
+    void run(sendByStation(lines, () => crypto.randomUUID()).map((s) => ev(s)), source).then((ok) => { if (ok && first && tab) onFirstSend?.(tab); });
   };
   const order = tab?.order ?? null;
   const zone = order?.zoneId ? meta.catalog.deliveryZones?.find((z) => z.id === order.zoneId) ?? null : null;
@@ -221,13 +277,30 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
     <div {...mainProps} className="grid min-h-0 min-w-0 flex-1 outline-none md:overflow-hidden md:grid-cols-[minmax(0,1fr)_24rem]">
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{actionNotice}</p>
       <section className="min-w-0 p-4 md:min-h-0 md:overflow-y-auto">
-        <div role="group" aria-label="Ürün kategorisi" className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+        <div className="mb-3 flex min-w-0 items-center gap-2">
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Ürün adı veya barkod ara</span>
+            <input ref={productSearchRef} type="search" maxLength={80} value={productQuery} onChange={(event) => setProductQuery(event.target.value)} onKeyDown={(event) => {
+              if (event.key !== "Enter" || busy || dialog || !productQuery.trim()) return;
+              const exactBarcode = products.find((product) => product.barcodes.includes(productQuery.trim()));
+              const match = exactBarcode ?? (products.length === 1 ? products[0] : null);
+              if (!match) return;
+              event.preventDefault();
+              tapProduct(match);
+              setProductQuery("");
+            }} placeholder="Ürün adı veya barkod ara" autoComplete="off" aria-describedby="tab-product-search-help" className="min-h-12 w-full rounded-xl border border-line bg-surface px-3 text-sm outline-none placeholder:text-muted focus:border-brand focus-visible:ring-4 focus-visible:ring-brand-ring/60" />
+          </label>
+          <span id="tab-product-search-help" className="sr-only">F2 aramaya gider. Tek ürün eşleşirken Enter ürünü ekler. Escape aramayı temizler.</span>
+          {productQuery && <button type="button" onClick={() => { setProductQuery(""); productSearchRef.current?.focus(); }} className={btn}>Temizle</button>}
+        </div>
+        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{productQuery.trim() && productSearchAnnouncement?.key === searchAnnouncementKey ? productSearchAnnouncement.text : ""}</p>
+        <HorizontalScrollRegion label="Ürün kategorileri, yatay kaydırılabilir" className="-mx-1 mb-3 flex gap-2 px-1 pb-1">
           <button type="button" aria-pressed={cat === null} onClick={() => setCat(null)} className={chip(cat === null)}>Tümü</button>
           {cats.map((c) => <button key={c.id} type="button" aria-pressed={cat === c.id} title={c.name} onClick={() => setCat(c.id)} className={chip(cat === c.id)}><span aria-hidden className={`size-2.5 rounded-full ${categoryTone(c.id).dot}`} />{c.name}</button>)}
-        </div>
+        </HorizontalScrollRegion>
         <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
           {products.map((p) => (
-            <button key={p.id} type="button" disabled={busy} onClick={() => tapProduct(p)} className={`press relative flex min-w-0 min-h-24 flex-col overflow-hidden rounded-2xl border bg-surface p-3.5 pt-4 text-left shadow-card outline-none hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50 ${inTab.has(p.id) ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
+            <button key={p.id} type="button" disabled={busy} onClick={(event) => tapProduct(p, event.currentTarget)} className={`press relative flex min-w-0 min-h-24 flex-col overflow-hidden rounded-2xl border bg-surface p-3.5 pt-4 text-left shadow-card outline-none hover:border-line-strong focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50 ${inTab.has(p.id) ? "border-brand ring-2 ring-brand-ring" : "border-line"}`}>
               <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${categoryTone(p.categoryId).stripe}`} />
               <span className="line-clamp-2 min-w-0 font-display font-semibold leading-snug" title={p.name}>{p.name}</span>
               <span className="tabular mt-auto pt-2 text-sm font-medium text-ink-2">{TL(p.price)}{p.optionGroupIds?.length ? " ⋯" : ""}</span>
@@ -235,17 +308,21 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             </button>
           ))}
         </div>
+        {products.length === 0 && <div className="mt-3 rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
+          <p>{productNeedle ? "Bu aramayla eşleşen ürün yok." : "Bu kategoride ürün yok."}</p>
+          {(productQuery || cat) && <button type="button" onClick={() => { setProductQuery(""); setCat(null); }} className={`${btn} mt-3`}>Aramayı ve kategoriyi temizle</button>}
+        </div>}
       </section>
 
       <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-line bg-surface">
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
         <button type="button" onClick={onBack} className="press inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 -ml-2">← {table ? "Salon" : "Paket"}</button>
-          <h2 className="min-w-0 flex-1 truncate font-display text-xl font-bold tracking-tight" title={title}>{title}</h2>
+          <h2 id="tab-heading" tabIndex={-1} className="min-w-0 flex-1 truncate rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" title={title}>{title}</h2>
           {tab && <span className="shrink-0 text-sm text-muted">{minutesSince(tab.openedAt, now)} dk</span>}
           {tabs.length > 1 && (
-            <div role="group" aria-label="Adisyon seçimi" className="order-last flex w-full max-w-full shrink-0 gap-1 overflow-x-auto sm:order-none sm:ml-auto sm:w-auto sm:max-w-[45%]">
+            <HorizontalScrollRegion label="Adisyon seçimi, yatay kaydırılabilir" className="order-last flex w-full max-w-full shrink-0 gap-1 sm:order-none sm:ml-auto sm:w-auto sm:max-w-[45%]">
               {tabs.map((t, i) => <button key={t.id} type="button" disabled={busy} aria-pressed={t.id === tabId} onClick={() => setPick(t.id)} className={`inline-flex min-h-12 shrink-0 items-center rounded px-2 py-1 text-xs outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50 ${t.id === tabId ? "bg-brand-action text-white" : "border border-line bg-surface"}`}>Adisyon {i + 1}</button>)}
-            </div>
+            </HorizontalScrollRegion>
           )}
         </div>
         {order && (
@@ -289,18 +366,18 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             {tab.remaining === 0 && live.length > 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli) && (
               <button type="button" disabled={busy} onClick={() => void run([ev({ type: "close", reason: "ödenecek tutar yok" })]).then((ok) => { if (ok) onBack(); })} className={`w-full ${strong}`}>{busy ? "Kapatılıyor…" : "Masayı kapat"}</button>
             )}
-            {ready.length > 0 && <button type="button" disabled={busy} onClick={() => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })))} className="press min-h-12 w-full rounded-[10px] bg-ok-action text-sm font-medium text-white shadow-card outline-none hover:bg-ok-action-hover focus-visible:ring-4 focus-visible:ring-ok/30 disabled:pointer-events-none disabled:opacity-40">{busy ? "Güncelleniyor…" : "Hazır — teslim edildi"}</button>}
+            {ready.length > 0 && <button type="button" disabled={busy} onClick={(event) => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })), event.currentTarget)} className="press min-h-12 w-full rounded-[10px] bg-ok-action text-sm font-medium text-white shadow-card outline-none hover:bg-ok-action-hover focus-visible:ring-4 focus-visible:ring-ok/30 disabled:pointer-events-none disabled:opacity-40">{busy ? "Güncelleniyor…" : "Hazır — teslim edildi"}</button>}
             <div className="grid grid-cols-2 gap-2">
               {table && <button type="button" disabled={busy} onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>}
               {table && <button type="button" disabled={busy} onClick={() => setDialog({ k: "merge" })} className={btn}>Birleştir</button>}
               <button type="button" disabled={busy} onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by)] })} className={btn}>İndirim</button>
-              {!canPay && table && <button type="button" disabled={busy || tab.billRequested} onClick={() => void run([ev({ type: "bill" })])} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
+              {!canPay && table && <button type="button" disabled={busy || tab.billRequested} onClick={(event) => void run([ev({ type: "bill" })], event.currentTarget)} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
               {canPay && <button type="button" disabled={busy || (tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli))} onClick={() => onBill(tab.id)} className={`${btn} font-medium`}>Hesap</button>}
             </div>
           </div>
         )}
         <div className="shrink-0 border-t border-line bg-surface-2 p-3 pt-0">
-          <button type="button" disabled={!unsent.length || busy} onClick={send} className={`min-h-14 w-full text-lg ${primary}`}>{busy ? "Gönderiliyor…" : "Mutfağa gönder"}{!busy && unsent.length ? ` (${unsent.length})` : ""}</button>
+          <button type="button" disabled={!unsent.length || busy} onClick={(event) => send(event.currentTarget)} className={`min-h-14 w-full text-lg ${primary}`}>{busy ? "Gönderiliyor…" : "Mutfağa gönder"}{!busy && unsent.length ? ` (${unsent.length})` : ""}</button>
         </div>
       </aside>
 

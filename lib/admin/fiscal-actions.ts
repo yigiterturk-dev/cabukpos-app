@@ -43,6 +43,7 @@ export async function saveFiscalSettings(_: FiscalState, form: FormData): Promis
   const okcCloud = OKC_PROVIDERS.find((p) => p.value === okcProvider)?.cloud ?? false;
   const okcApiUrl = str(form, "okcApiUrl");
   const okcApiKey = str(form, "okcApiKey");
+  if (okcOn && okcCloud && okcApiUrl.length > 2048) return { error: "Çözücü API adresi en çok 2.048 karakter olabilir.", field: "okcApiUrl" };
   if (okcOn && okcCloud && !okcApiUrl) return { error: "Bulut ÖKC için API adresi gerekli (ör. https://sandbox...).", field: "okcApiUrl" };
   if (okcOn && okcCloud && okcApiKey && okcApiKey.length < 8) return { error: "API anahtarı çok kısa görünüyor.", field: "okcApiKey" };
   const encKey = okcOn && okcCloud && okcApiKey ? encryptCardToken(okcApiKey) : undefined;

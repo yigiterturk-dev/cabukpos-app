@@ -41,6 +41,7 @@ export function kioskEvents(
   autoAccept: boolean,
   newId: () => string,
   prepMin: number,
+  externalId?: string,
 ): { events: TabEv[]; total: Kurus } {
   const adds: Extract<TabEv, { type: "add" }>[] = [];
   let total: Kurus = 0;
@@ -53,7 +54,7 @@ export function kioskEvents(
   if (!adds.length) return { events: [], total: 0 };
   const events: TabEv[] = [
     { type: "open", guests: 0, kind: "platform" },
-    { type: "order", customerId: null, name: info.name, phone: info.phone, address: "", directions: null, zoneId: null, note: info.note, payIntent: info.payIntent, promisedAt: null, source: { platform: "kiosk", externalId: "k-" + newId(), deadline: null } },
+    { type: "order", customerId: null, name: info.name, phone: info.phone, address: "", directions: null, zoneId: null, note: info.note, payIntent: info.payIntent, promisedAt: null, source: { platform: "kiosk", externalId: externalId ?? "k-" + newId(), deadline: null } },
     ...adds,
   ];
   if (autoAccept) events.push({ type: "accept", prepMin }, ...sendByStation(adds, newId));
@@ -64,10 +65,16 @@ export type KioskResult = { ok: true; tabId: string } | { ok: false; reason: str
 
 /** Siparişi tab olayları olarak yazar; kasiyer hattına düşer. */
 export async function kioskOrder(conn: KioskConn, input: {
+  requestId?: string;
   name: string; phone: string; note: string | null; payIntent: "nakit" | "kart" | "yemek_karti" | "online";
   lines: { productId: string; qtyMilli: number; note: string | null }[];
 }): Promise<KioskResult> {
   return withTenant(conn.tenantId, async (tx) => {
+    const E = schema.tabEvents;
+    const externalId = `k-${input.requestId ?? crypto.randomUUID()}`;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${conn.storeId}:${externalId}`}))`);
+    const [duplicate] = await tx.select({ tabId: E.tabId }).from(E).where(and(eq(E.storeId, conn.storeId), eq(E.type, "order"), sql`${E.payload}->'source'->>'externalId' = ${externalId}`)).limit(1);
+    if (duplicate) return { ok: true as const, tabId: duplicate.tabId };
     const P = schema.products, K = schema.categories;
     const ids = input.lines.map((l) => l.productId).filter((i) => /^[0-9a-f-]{36}$/i.test(i));
     if (!ids.length) return { ok: false as const, reason: "Sepet boş." };
@@ -77,7 +84,7 @@ export async function kioskOrder(conn: KioskConn, input: {
     const routes = await loadStoreStationRoutes(tx, conn.storeId);
     const categoryStations = new Map(rows.filter((p) => p.categoryId).map((p) => [p.categoryId!, categoryStationForStore(p.categoryId!, p.catStation, routes)]));
     const menu = new Map(rows.filter((p) => isVatRate(p.vatRate)).map((p) => [p.id, { id: p.id, name: p.name, vatRate: p.vatRate as MappedProduct["vatRate"], stationId: productStationForStore(p.id, p.stationId, p.categoryId ? categoryStations.get(p.categoryId) ?? null : null, routes), price: p.price }]));
-    const { events, total } = kioskEvents(input.lines, menu, { name: input.name, phone: input.phone, note: input.note, payIntent: input.payIntent }, conn.autoAccept, () => crypto.randomUUID(), 20);
+    const { events, total } = kioskEvents(input.lines, menu, { name: input.name, phone: input.phone, note: input.note, payIntent: input.payIntent }, conn.autoAccept, () => crypto.randomUUID(), 20, externalId);
     if (!events.length || total <= 0) return { ok: false as const, reason: "Ürünler bulunamadı." };
     const tabId = crypto.randomUUID();
     const base = Date.now();

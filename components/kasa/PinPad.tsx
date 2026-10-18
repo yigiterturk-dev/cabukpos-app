@@ -22,7 +22,15 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
   const locked = meta.pinLockUntil > now;
   const wasLockedRef = useRef<boolean | null>(null);
   const lockStatusRef = useRef<HTMLParagraphElement>(null);
+  const lockMessageRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => { if (autoFocusFirst) firstKeyRef.current?.focus(); }, [autoFocusFirst]);
+  useEffect(() => {
+    if (!error || busy || locked || document.activeElement !== document.body) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (document.activeElement === document.body) firstKeyRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [busy, error, locked]);
   useEffect(() => {
     if (!locked) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -30,14 +38,19 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
   }, [locked]);
   useEffect(() => {
     let message = "";
+    const unlocked = wasLockedRef.current === true && !locked;
     if (wasLockedRef.current === null) {
       if (locked) message = "PIN girişi geçici olarak kilitli. Ekrandaki süre dolunca yeniden deneyebilirsiniz.";
     } else if (wasLockedRef.current && !locked) message = "PIN kilidi kalktı. Yeniden deneyebilirsiniz.";
     else if (!wasLockedRef.current && locked) message = "PIN girişi geçici olarak kilitli. Ekrandaki süre dolunca yeniden deneyebilirsiniz.";
     wasLockedRef.current = locked;
     if (message && lockStatusRef.current) lockStatusRef.current.textContent = message;
+    const active = document.activeElement;
+    if (locked && (active === document.body || active instanceof HTMLButtonElement && active.disabled)) lockMessageRef.current?.focus();
+    if (unlocked && document.activeElement === document.body) firstKeyRef.current?.focus();
   }, [locked]);
-  const key = (d: string) => setPin((p) => (p.length < 6 ? p + d : p));
+  const key = (d: string) => { setError(null); setPin((p) => (p.length < 6 ? p + d : p)); };
+  const erase = () => { setError(null); setPin((p) => p.slice(0, -1)); };
   const submit = useCallback(async () => {
     if (submitRef.current || busy || locked || pin.length < 4) return;
     if (previewOnly) {
@@ -87,8 +100,10 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
         if (!locked && !busy) key(e.key);
       } else if (e.key === "Backspace") {
         e.preventDefault();
-        if (!locked && !busy) setPin((p) => p.slice(0, -1));
+        if (!locked && !busy) erase();
       } else if (e.key === "Enter") {
+        // Let focused keypad and dialog buttons keep their native Enter action.
+        if (e.target instanceof HTMLElement && e.target.closest('button, a, [role="button"]')) return;
         e.preventDefault();
         if (!locked && !busy) void submit();
       }
@@ -106,12 +121,12 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
         {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
           <button key={d} ref={d === "1" ? firstKeyRef : undefined} type="button" disabled={busy || locked} onClick={() => key(d)} className={KEY}>{d}</button>
         ))}
-        <button type="button" aria-label="Sil" disabled={busy || locked} onClick={() => setPin((p) => p.slice(0, -1))} className="press grid h-20 place-items-center rounded-2xl text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-not-allowed disabled:opacity-40"><Delete aria-hidden className="size-7" /></button>
+        <button type="button" aria-label="Sil" disabled={busy || locked} onClick={erase} className="press grid h-20 place-items-center rounded-2xl text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-not-allowed disabled:opacity-40"><Delete aria-hidden className="size-7" /></button>
         <button type="button" disabled={busy || locked} onClick={() => key("0")} className={KEY}>0</button>
       <button type="submit" disabled={busy || locked || pin.length < 4} className="press h-20 rounded-2xl bg-brand-action text-xl font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40">{working ? "İşleniyor…" : busy ? "Kontrol ediliyor…" : "Gir"}</button>
       </div>
       {locked && <>
-        <p aria-live="off" className="mt-4 break-words text-center text-sm text-bad">Çok fazla yanlış deneme. {Math.ceil((meta.pinLockUntil - now) / 1000)} sn sonra tekrar deneyin.</p>
+        <p ref={lockMessageRef} tabIndex={-1} aria-live="off" className="mt-4 break-words text-center text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30">Çok fazla yanlış deneme. {Math.ceil((meta.pinLockUntil - now) / 1000)} sn sonra tekrar deneyin.</p>
       </>}
       <p ref={lockStatusRef} className="sr-only" role="status" aria-live="polite" aria-atomic="true" />
       {error && !locked && <p className="mt-4 break-words text-center text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}

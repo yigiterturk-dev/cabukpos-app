@@ -1,7 +1,7 @@
 "use client";
 // Kurye ekranı (kuryenin kendi telefonu): üzerine atanan paketler, toplu "Yola çıktım", "Teslim ettim" (tahsilat yöntemi) → satış + delivered.
 // Üzerindeki nakit = teslim edilen nakit siparişler; "Hesap kapat" kasiyer/müdür PIN'iyle gün sonuna gider (KasaApp).
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { kasaFmt } from "./kasa-format";
 import { deliveryStatus, type PayIntent, type TabState } from "@/lib/core/tab";
 import { istToday } from "@/lib/core/report";
@@ -35,6 +35,26 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
   const [deliver, setDeliver] = useState<TabState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const lastActionButtonRef = useRef<HTMLButtonElement | null>(null);
+  const actionErrorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!error || busy) return;
+    const frame = window.requestAnimationFrame(() => {
+      const retry = lastActionButtonRef.current;
+      if (retry?.isConnected && !retry.disabled) retry.focus();
+      else actionErrorRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [busy, error]);
+  useEffect(() => {
+    if (!notice || busy) return;
+    const frame = window.requestAnimationFrame(() => {
+      const action = lastActionButtonRef.current;
+      if (action?.isConnected && !action.disabled) action.focus();
+      else document.getElementById("courier-heading")?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [busy, notice]);
   const zones = meta.catalog.deliveryZones ?? [];
   const todayStart = Date.parse(`${istToday(now)}T00:00:00+03:00`);
   const mine = [...tabs.values()].filter((t) => t.kind === "paket" && t.delivery.courierId === courier.id && !t.delivery.cancelled);
@@ -61,10 +81,10 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
   return (
     <div {...mainProps} className="mx-auto w-full max-w-lg px-4 py-5 outline-none">
       <div className="mb-4 flex items-center gap-3">
-        <h1 className="min-w-0 break-words font-display text-xl font-bold tracking-tight">Siparişlerim <span className="tabular text-muted">({active.length})</span></h1>
-        {waiting.length > 0 && <button type="button" disabled={busy !== null} aria-busy={busy === "out" || undefined} onClick={() => void out()} className={`ml-auto shrink-0 ${strong}`}>{busy === "out" ? "Yola çıkış kaydediliyor…" : `Yola çıktım (${waiting.length})`}</button>}
+        <h1 id="courier-heading" tabIndex={-1} className="min-w-0 break-words rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Siparişlerim <span className="tabular text-muted">({active.length})</span></h1>
+        {waiting.length > 0 && <button type="button" disabled={busy !== null} aria-busy={busy === "out" || undefined} onClick={(e) => { lastActionButtonRef.current = e.currentTarget; void out(); }} className={`ml-auto shrink-0 ${strong}`}>{busy === "out" ? "Yola çıkış kaydediliyor…" : `Yola çıktım (${waiting.length})`}</button>}
       </div>
-      {error && !deliver && <p className="mb-3 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+      {error && !deliver && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
       {busy && <p className="sr-only" role="status" aria-live="polite">{busy === "out" ? "Siparişlerin yola çıkışı kaydediliyor." : "Teslimat ve ödeme kaydediliyor."}</p>}
       {notice && <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{notice}</p>}
       <ul className="space-y-3">
@@ -91,7 +111,7 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
                 {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {addr && <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" className={btn}>Harita</a>}
+                {addr && <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" aria-label={`Haritada aç: ${o?.name ?? "Paket"}, ${zone?.name ?? o?.address ?? "adres"}`} className={btn}>Harita</a>}
                 {phone && o?.phone && <a href={phone} className={btn}>Ara {formatPhone(o.phone)}</a>}
                 {t.delivery.outAt && <button type="button" disabled={busy !== null} onClick={() => { setError(null); setDeliver(t); }} className={`ml-auto ${strong}`}>Teslim ettim</button>}
               </div>
@@ -114,10 +134,10 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
         <Modal label="Nasıl ödendi?" onClose={() => setDeliver(null)} closeDisabled={busy !== null}>
           <p className="mb-3 text-sm">{deliver.order?.name} · <span className="tabular font-semibold">{TL(deliver.remaining)}</span></p>
           {deliver.order?.payIntent && <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">Sipariş tercihi: <b className="text-ink">{intentLabel(deliver.order.payIntent)}</b>. Lütfen teslimde gerçekte tahsil edilen yöntemi seçin.</p>}
-          {error && <p className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
+          {error && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
           <div className="grid grid-cols-2 gap-2">
             {PAY_INTENTS.map((p) => (
-              <button key={p.value} type="button" disabled={busy !== null} onClick={() => void run("deliver", () => onDeliver(deliver, p.value), `Teslimat ${p.label.toLocaleLowerCase("tr-TR")} olarak kaydedildi.`)}
+              <button key={p.value} type="button" disabled={busy !== null} onClick={(e) => { lastActionButtonRef.current = e.currentTarget; void run("deliver", () => onDeliver(deliver, p.value), `Teslimat ${p.label.toLocaleLowerCase("tr-TR")} olarak kaydedildi.`); }}
                 className={`${btn} ${deliver.order?.payIntent === p.value ? "border-brand font-medium text-brand" : ""}`}>{busy === "deliver" ? "Teslimat kaydediliyor…" : p.label}</button>
             ))}
           </div>

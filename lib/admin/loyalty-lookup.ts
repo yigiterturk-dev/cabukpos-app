@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { couponCheck, type CouponLike } from "@/lib/loyalty";
 import { normalizePhone } from "@/lib/core/delivery";
+import { endOfStoredIstanbulDay } from "@/lib/core/date";
 
 export type CustomerLoyalty = { customerId: string; name: string; points: number; enabled: boolean; kurusPerPoint: number; kurusPerRedeem: number; minRedeemPoints: number };
 
@@ -41,7 +42,7 @@ export async function giftCardBalance(tenantId: string, code: string): Promise<{
   return withTenant(tenantId, async (tx) => {
     const [card] = await tx.select().from(schema.giftCards).where(and(eq(schema.giftCards.code, code), eq(schema.giftCards.status, "aktif"))).limit(1);
     if (!card) return { ok: false as const, reason: "Hediye kartı bulunamadı." };
-    if (card.expiresAt && card.expiresAt.getTime() < Date.now()) return { ok: false as const, reason: "Hediye kartının süresi doldu." };
+    if (card.expiresAt && endOfStoredIstanbulDay(card.expiresAt).getTime() < Date.now()) return { ok: false as const, reason: "Hediye kartının süresi doldu." };
     return { ok: true as const, balance: card.balanceKurus };
   });
 }

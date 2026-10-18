@@ -1,6 +1,7 @@
 import { pctChange } from "@/lib/core/report";
 import type { summaryData } from "@/lib/admin/report";
 import { Card, Empty, TABLE_HEAD } from "@/components/ui";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 
 type Data = Awaited<ReturnType<typeof summaryData>>;
@@ -32,18 +33,18 @@ export function SummaryTab({ d, money }: { d: Data; money: (k: number) => string
           <h2 className="mb-2 font-semibold">Satış kanalı</h2>
           {d.channels.length ? <ul className="divide-y divide-line text-sm">{d.channels.map((c) => <li key={c.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 py-2"><span className="min-w-0 break-words font-medium">{c.label}</span><span className="text-right tabular-nums">{money(c.gross)}</span><span className="text-xs text-muted">Fiş</span><span className="text-right text-xs tabular-nums text-muted">{c.count}</span></li>)}</ul> : <p className="text-sm text-muted">Kanal verisi yok.</p>}
         </Card>
-        <Card className="hidden overflow-x-auto lg:block"><table className="w-full min-w-[420px] text-sm">
+        <Card className="hidden p-0 lg:block"><HorizontalScrollRegion label="Satış kanalı tablosu, yatay kaydırılabilir" className="rounded-2xl"><table aria-label="Satış kanalı" className="w-full min-w-[420px] text-sm">
           <thead className={TABLE_HEAD}><tr><th scope="col" className="px-4 py-2.5 font-medium">Kanal</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Fiş</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Brüt</th></tr></thead>
           <tbody className="divide-y divide-line">{d.channels.map((c) => <tr key={c.key} className="transition-colors hover:bg-surface-2"><td className="px-4 py-2.5">{c.label}</td><td className="px-4 py-2.5 text-right tabular-nums">{c.count}</td><td className="px-4 py-2.5 text-right tabular-nums">{money(c.gross)}</td></tr>)}</tbody>
-        </table></Card>
+        </table></HorizontalScrollRegion></Card>
         <Card className="p-4 lg:hidden">
           <h2 className="mb-2 font-semibold">Ödeme yöntemi</h2>
           {d.methods.length ? <ul className="divide-y divide-line text-sm">{d.methods.map((m) => <li key={m.key} className="flex min-w-0 items-center justify-between gap-3 py-2"><span className="min-w-0 break-words font-medium">{m.label}</span><span className="shrink-0 tabular-nums">{money(m.amount)}</span></li>)}</ul> : <p className="text-sm text-muted">Ödeme verisi yok.</p>}
         </Card>
-        <Card className="hidden overflow-x-auto lg:block"><table className="w-full min-w-[320px] text-sm">
+        <Card className="hidden p-0 lg:block"><HorizontalScrollRegion label="Ödeme yöntemi tablosu, yatay kaydırılabilir" className="rounded-2xl"><table aria-label="Ödeme yöntemi" className="w-full min-w-[320px] text-sm">
           <thead className={TABLE_HEAD}><tr><th scope="col" className="px-4 py-2.5 font-medium">Ödeme</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Tutar</th></tr></thead>
           <tbody className="divide-y divide-line">{d.methods.map((m) => <tr key={m.key} className="transition-colors hover:bg-surface-2"><td className="px-4 py-2.5">{m.label}</td><td className="px-4 py-2.5 text-right tabular-nums">{money(m.amount)}</td></tr>)}</tbody>
-        </table></Card>
+        </table></HorizontalScrollRegion></Card>
       </div>
     </div>
   );

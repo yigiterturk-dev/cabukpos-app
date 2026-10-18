@@ -10,6 +10,7 @@ import { qtyText } from "@/lib/core/receipt";
 import { buyerKindOf, refundNote } from "@/lib/core/refundNote";
 import { PrintButton } from "@/components/PrintButton";
 import { Card, PageHeader } from "@/components/ui";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -61,14 +62,14 @@ export default async function IadeBelgesi({ params }: { params: Promise<{ id: st
                 </li>
               ))}
             </ul>
-            <div className="hidden overflow-x-auto lg:block print:block">
+            <HorizontalScrollRegion label="İade ürün kalemleri, yatay kaydırılabilir" className="hidden lg:block print:block">
             <table aria-label="İade ürün kalemleri" className="w-full min-w-[36rem] text-sm">
               <thead className="border-b border-line text-left text-xs text-muted"><tr><th scope="col" className="py-2 font-medium">Ürün</th><th scope="col" className="py-2 text-right font-medium">Miktar</th><th scope="col" className="py-2 text-right font-medium">Birim fiyat</th><th scope="col" className="py-2 text-right font-medium">KDV</th><th scope="col" className="py-2 text-right font-medium">Tutar</th></tr></thead>
               <tbody className="divide-y divide-line">{data.lines.map((l, i) => (
                 <tr key={i}><td className="py-2">{l.name}</td><td className="py-2 text-right tabular-nums">{qtyText(l.qtyMilli)}</td><td className="py-2 text-right tabular-nums">{money(l.unitPrice)}</td><td className="py-2 text-right">%{l.vatRate}</td><td className="py-2 text-right tabular-nums">{money(l.total)}</td></tr>
               ))}</tbody>
             </table>
-            </div>
+            </HorizontalScrollRegion>
             </div>
             <div className="mt-3 space-y-0.5 border-t border-line pt-3 text-sm">
               {data.vat.map((v) => <div key={v.rate} className="flex justify-between text-muted"><span>KDV %{v.rate} · matrah {money(v.net)}</span><span className="tabular-nums">{money(v.vat)}</span></div>)}

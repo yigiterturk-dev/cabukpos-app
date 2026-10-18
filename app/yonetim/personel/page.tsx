@@ -2,8 +2,7 @@ import Link from "next/link";
 import { asc, desc } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
-import { setStaffActive } from "@/lib/admin/staff-actions";
-import { StaffForm } from "@/components/admin/StaffDeviceForms";
+import { StaffActiveForm, StaffForm } from "@/components/admin/StaffDeviceForms";
 import { Badge, Card, Empty, PageHeader, Panel, SplitView, TABLE_HEAD } from "@/components/ui";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 
@@ -36,7 +35,7 @@ export default async function Personel({ searchParams }: { searchParams: Promise
                 </div>
                 <div className="flex flex-wrap items-center gap-1 border-t border-line pt-2">
                   <Link href={`/yonetim/personel?duzenle=${r.id}`} aria-label={`Düzenle: ${r.name}`} className="inline-flex min-h-11 items-center rounded-lg px-3 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
-                  <form action={setStaffActive.bind(null, r.id, !r.active)}><button aria-label={`${r.active ? "Pasifleştir" : "Aktifleştir"}: ${r.name}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{r.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
+                  <StaffActiveForm id={r.id} active={r.active} name={r.name} className="inline-flex" />
                 </div>
               </li>
             ))}
@@ -54,7 +53,7 @@ export default async function Personel({ searchParams }: { searchParams: Promise
                   <td className="px-4 py-2.5">{r.active ? <Badge tone="ok">Aktif</Badge> : <Badge>Pasif</Badge>}</td>
                   <td className={`sticky right-0 whitespace-nowrap px-4 py-2.5 text-right shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.35)] ${r.id === duzenle ? "bg-brand-soft/90" : "bg-surface"}`}>
                     <Link href={`/yonetim/personel?duzenle=${r.id}`} aria-label={`Düzenle: ${r.name}`} className="mr-1 inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
-                    <form action={setStaffActive.bind(null, r.id, !r.active)} className="inline"><button aria-label={`${r.active ? "Pasifleştir" : "Aktifleştir"}: ${r.name}`} className="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{r.active ? "Pasifleştir" : "Aktifleştir"}</button></form>
+                    <StaffActiveForm id={r.id} active={r.active} name={r.name} className="inline" />
                   </td>
                 </tr>
               ))}

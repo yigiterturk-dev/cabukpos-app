@@ -17,9 +17,10 @@ export async function startCheckout(_: CheckoutState, form: FormData): Promise<C
   const a = await requireAdmin();
   const period: BillingPeriod = form.get("period") === "yillik" ? "yillik" : "aylik";
   const provider = getBillingProvider(), units = await tenantUnits(a.tenantId), amount = planPriceFor(period, units);
-  const phone = String(form.get("phone") ?? "").replace(/[^\d+]/g, "");
+  const rawPhone = String(form.get("phone") ?? "");
+  const phone = rawPhone.replace(/[^\d+]/g, "");
   if (!provider || !amount) return { error: "Ödeme şu anda başlatılamadı. Biraz sonra tekrar deneyin." };
-  if (provider.name === "paytr" && phone.replace(/\D/g, "").length < 10) return { error: "Geçerli bir cep telefonu girin.", field: "phone" };
+  if (provider.name === "paytr" && (rawPhone.length > 24 || phone.replace(/\D/g, "").length < 10)) return { error: "Geçerli bir cep telefonu girin (en fazla 24 karakter).", field: "phone" };
   const p = await createPayment(a.tenantId, provider.name, period, amount, units);
   const t = await tenantBilling(a.tenantId);
   let url: string;

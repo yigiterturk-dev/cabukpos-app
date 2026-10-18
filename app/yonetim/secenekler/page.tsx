@@ -6,6 +6,8 @@ import { deleteOptionGroup } from "@/lib/admin/salon-actions";
 import { OptionGroupForm } from "@/components/admin/SalonForms";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { moneyFormatter } from "@/lib/admin/currency";
+import { tenantCurrency } from "@/lib/admin/currency";
+import { currencySymbol } from "@/lib/core/money";
 import { buttonClass, Card, Empty, PageHeader, Panel, SplitView } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +16,7 @@ const rule = (min: number, max: number) => (min === 0 ? `isteğe bağlı, en ço
 export default async function Secenekler({ searchParams }: { searchParams: Promise<{ duzenle?: string }> }) {
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
+  const currencyUnit = currencySymbol(await tenantCurrency(a.tenantId));
   const { duzenle } = await searchParams;
   const [groups, opts] = await withTenant(a.tenantId, (tx) => Promise.all([
     tx.select().from(schema.optionGroups).orderBy(asc(schema.optionGroups.sort), asc(schema.optionGroups.name)),
@@ -26,8 +29,8 @@ export default async function Secenekler({ searchParams }: { searchParams: Promi
       <PageHeader title="Seçenekler" desc="Pişirme derecesi, ekstralar, porsiyon. Grubu ürün formundan ürüne bağlayın; kasada ürüne dokununca sorulur." />
       <SplitView
         panel={
-          <Panel title={editing ? `Düzenle: ${editing.name}` : "Seçenek grubu ekle"} tone={editing ? "edit" : undefined} action={editing && <Link href="/yonetim/secenekler" className="text-sm text-muted hover:text-ink hover:underline">Vazgeç</Link>}>
-            <OptionGroupForm key={editing?.id ?? "yeni"} initial={editing && { id: editing.id, name: editing.name, min: editing.min, max: editing.max, options: editing.options.map((o) => ({ name: o.name, delta: o.delta })) }} />
+          <Panel title={editing ? `Düzenle: ${editing.name}` : "Seçenek grubu ekle"} tone={editing ? "edit" : undefined} action={editing && <Link href="/yonetim/secenekler" className="inline-flex min-h-11 items-center rounded px-2 text-sm text-muted outline-none hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Vazgeç</Link>}>
+            <OptionGroupForm key={editing?.id ?? "yeni"} currencyUnit={currencyUnit} initial={editing && { id: editing.id, name: editing.name, min: editing.min, max: editing.max, options: editing.options.map((o) => ({ name: o.name, delta: o.delta })) }} />
           </Panel>
         }
         list={<>

@@ -28,8 +28,8 @@ export default async function Entegrasyonlar() {
               <span className="font-mono text-sm text-muted">{k.prefix}…</span>
               {k.revokedAt ? <Badge tone="bad">İptal</Badge> : <Badge tone="ok">Etkin</Badge>}
               <span className="text-xs text-muted">Oluşturma {dt(k.createdAt)}{k.lastUsedAt ? ` · son kullanım ${dt(k.lastUsedAt)}` : " · hiç kullanılmadı"}</span>
-              {owner && !k.revokedAt && (
-                <div className="ml-auto"><RevokeForm action={revokeIntegrationKey.bind(null, k.id)} ariaLabel={`Entegrasyon anahtarını iptal et: ${k.name}`} /></div>
+              {owner && (
+                <div className="ml-auto"><RevokeForm action={revokeIntegrationKey.bind(null, k.id)} ariaLabel={`Entegrasyon anahtarını iptal et: ${k.name}`} revoked={Boolean(k.revokedAt)} /></div>
               )}
             </div>
           ))}

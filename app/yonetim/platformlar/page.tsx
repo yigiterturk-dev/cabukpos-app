@@ -12,6 +12,7 @@ import { foldTabs, type TabState } from "@/lib/core/tab";
 import { initialEvents } from "@/lib/tabs/stream";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { CodeForm, ConnectionForm, ConnectionToggles, PushCatalogButton, TestOrderButton } from "@/components/admin/DeliveryForms";
+import { WebhookCredentials } from "@/components/admin/WebhookCredentials";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { PlatformOrderAction } from "@/components/admin/PlatformOrderAction";
 import { Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
@@ -45,7 +46,7 @@ function PaketHatti({ acik, teslim, money }: { acik: TabState[]; teslim: number;
   return (
     <Card className="mb-6 p-5" data-testid="paket-hatti">
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h2 className="font-semibold">Canlı paket hattı</h2>
+        <h2 id="platform-orders-heading" tabIndex={-1} className="font-semibold">Canlı paket hattı</h2>
         {teslim > 0 && <span className="text-sm text-muted">bugün {teslim} teslim</span>}
         <a href="/yonetim/platformlar" className="ml-auto inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yenile</a>
       </div>
@@ -181,10 +182,7 @@ export default async function Platformlar() {
             </div>
           ) : (
           <>
-          <div className="space-y-1 text-sm">
-            <div>Webhook adresi: <code className="break-all rounded bg-surface-2 px-1">{`${origin}/api/platform/${c.platform}/webhook?t=${c.webhookToken}`}</code></div>
-            <div>İmza anahtarı (HMAC-SHA256, <code>x-signature</code>): <code className="break-all rounded bg-surface-2 px-1" data-testid="webhook-secret">{c.webhookSecret}</code></div>
-          </div>
+          <WebhookCredentials url={`${origin}/api/platform/${c.platform}/webhook?t=${c.webhookToken}`} secret={c.webhookSecret} />
           {c.platform === "mock" && <TestOrderButton connectionId={c.id} />}
           {c.platform !== "kiosk" && <PushCatalogButton connectionId={c.id} />}
           <div>

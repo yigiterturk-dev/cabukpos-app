@@ -83,6 +83,7 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
         })}
       </ul>
       {part.some((l) => l.discount > 0) && <p className="mb-2 text-right text-sm">İndirim −{TL(part.reduce((a, l) => a + l.discount, 0))}</p>}
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{mode === "sec" ? `Seçilen kalemler için ödenecek tutar: ${TL(t.total)}.` : mode === "esit" ? `${parts} kişiye eşit bölme, ${done + 1}. parça: ${TL(t.total)}.` : ""}</p>
       <button type="button" disabled={t.total <= 0} onClick={() => setPaying(true)} className="press h-16 w-full rounded-2xl bg-brand-action text-xl font-semibold text-white shadow-card outline-none hover:bg-brand-action-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">Öde {TL(t.total)}</button>
       {paid.length > 0 && <p className="mt-3 break-words text-center text-sm text-muted" role="status" aria-live="polite" aria-atomic="true">Ödeme kaydedildi. Fiş: {paid.map((p) => p.receiptNo).join(", ")}.</p>}
       {paying && (

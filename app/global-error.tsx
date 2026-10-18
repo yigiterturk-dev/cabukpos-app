@@ -5,12 +5,13 @@ import { useEffect } from "react";
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error(error);
+    document.getElementById("global-error-title")?.focus();
   }, [error]);
   return (
     <html lang="tr">
       <body style={{ fontFamily: "system-ui, sans-serif", margin: 0, minHeight: "100svh", display: "grid", placeItems: "center" }}>
         <div style={{ textAlign: "center", padding: 24 }}>
-          <h1 style={{ fontSize: 20, marginBottom: 8 }}>Bir sorun oluştu</h1>
+          <h1 id="global-error-title" tabIndex={-1} style={{ fontSize: 20, marginBottom: 8 }}>Bir sorun oluştu</h1>
           <p style={{ color: "#555", fontSize: 14 }}>Uygulama beklenmeyen bir hatayla karşılaştı.</p>
           {error.digest ? (
             <p>

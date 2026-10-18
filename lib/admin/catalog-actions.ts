@@ -105,6 +105,7 @@ export async function importProducts(_: ProductImportState, form: FormData): Pro
   const a = await requireWriter();
   const upload = form.get("file");
   if (!upload || typeof upload !== "object" || !("text" in upload) || typeof upload.text !== "function") return { error: "Bir CSV dosyası seçin." };
+  if (!("size" in upload) || typeof upload.size !== "number" || upload.size > 1_000_000) return { error: "CSV dosyası en fazla 1 MB olabilir." };
   const text = await (upload as { text: () => Promise<string> }).text();
   if (text.length > 1_000_000) return { error: "CSV dosyası en fazla 1 MB olabilir." };
   const parsed = parseProductCsv(text);

@@ -1,17 +1,24 @@
 "use client";
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState, type SetStateAction } from "react";
 import { createAgent, saveAgentConfig, type AgentState } from "@/lib/admin/agent-actions";
 import { PRINTER_ROLES, TRANSPORTS, type AgentConfig, type LogoConfig, type PrinterConfig } from "@/lib/agent/config";
 import { fromBase64 } from "@/lib/core/escpos";
-import { pngToLogo } from "@/lib/core/png";
+import { MAX_LOGO_PNG_BYTES, pngToLogo } from "@/lib/core/png";
 import { useFormAction } from "@/components/useFormAction";
 import { Select } from "@/components/Select";
 import { Button, Field, Input } from "@/components/ui";
 
 function CodeBox({ s }: { s: AgentState }) {
-  if (!s.code) return s.error && !s.field ? <p className="mt-2 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null;
+  const codeRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!s.code && !s.error) return;
+    const frame = window.requestAnimationFrame(() => (codeRef.current ?? errorRef.current)?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [s.code, s.error]);
+  if (!s.code) return s.error && !s.field ? <p ref={errorRef} tabIndex={-1} className="mt-2 break-words text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{s.error}</p> : null;
   return (
-    <div className="mt-4 rounded-xl border border-brand bg-brand-soft p-4">
+    <div ref={codeRef} tabIndex={-1} className="mt-4 rounded-xl border border-brand bg-brand-soft p-4 outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" role="status" aria-live="polite">
       <div className="text-sm">{s.agentName} için eşleme kodu</div>
       <div data-testid="agent-code" className="mt-1 font-mono text-3xl font-bold tracking-[0.3em] text-brand">{s.code}</div>
       <p className="mt-2 text-sm text-ink-2">
@@ -31,7 +38,7 @@ export function AgentCreateForm() {
   return (
     <form ref={formRef} onSubmit={onSubmit} aria-busy={pending}>
       <div className="flex flex-wrap items-start gap-3">
-        <div><Field label="Bilgisayar adı"><Input key={state.code ?? "agent-name"} name="name" placeholder="Kasa PC" required disabled={pending} aria-invalid={state.field === "name" && !!state.error || undefined} aria-describedby={state.field === "name" && state.error ? "agent-name-error" : undefined} /></Field>{state.field === "name" && <p id="agent-name-error" className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}</div>
+        <div><Field label="Bilgisayar adı" hint="2–40 karakter"><Input key={state.code ?? "agent-name"} name="name" maxLength={40} placeholder="Kasa PC" required disabled={pending} aria-invalid={state.field === "name" && !!state.error || undefined} aria-describedby={state.field === "name" && state.error ? "agent-name-error" : undefined} /></Field>{state.field === "name" && <p id="agent-name-error" className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}</div>
         <Button type="submit" disabled={pending} className="mt-6">{pending ? "Ekleniyor…" : "Ajan ekle"}</Button>
       </div>
       <CodeBox s={state} />
@@ -86,16 +93,26 @@ function Seg<T extends string | number>({ value, options, onChange, label, disab
 
 export function AgentConfigForm({ agentId, initial }: { agentId: string; initial: AgentConfig }) {
   const { state, pending, onSubmit } = useFormAction(saveAgentConfig.bind(null, agentId), {} as AgentState);
-  const [c, setC] = useState<AgentConfig>(initial);
+  const [c, setConfig] = useState<AgentConfig>(initial);
+  const [edited, setEdited] = useState(false);
+  const setC = (next: SetStateAction<AgentConfig>) => { setEdited(true); setConfig(next); };
   const setP = (i: number, patch: Partial<PrinterConfig>) => setC({ ...c, printers: c.printers.map((p, j) => (j === i ? { ...p, ...patch } : patch.drawer ? { ...p, drawer: false } : p)) });
   const nextN = () => { let n = 1; while (c.printers.some((p) => p.id === `p${n}`)) n++; return n; };
   const sc = c.scale;
   const [logoErr, setLogoErr] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
   const addPrinterRef = useRef<HTMLButtonElement>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (pending || logoBusy || !state.savedAt || state.error) return;
+    const frame = window.requestAnimationFrame(() => saveButtonRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [pending, logoBusy, state.error, state.savedAt]);
   const onLogo = async (f: File | undefined) => {
+    setEdited(true);
     setLogoErr(null);
     if (!f) return;
+    if (f.size > MAX_LOGO_PNG_BYTES) { setLogoErr("PNG dosyası en fazla 20 MB olabilir."); return; }
     setLogoBusy(true);
     try {
       const bytes = new Uint8Array(await f.arrayBuffer());
@@ -106,7 +123,7 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
     finally { setLogoBusy(false); }
   };
   return (
-    <form onSubmit={onSubmit} className="space-y-5" data-testid={`agent-config-${agentId}`}>
+    <form onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="space-y-5" data-testid={`agent-config-${agentId}`}>
       <input type="hidden" name="config" value={JSON.stringify(c)} />
       <p className="sr-only" role="status" aria-live="polite">{logoBusy ? "Logo hazırlanıyor." : pending ? "Donanım ayarları kaydediliyor." : ""}</p>
       <fieldset disabled={pending || logoBusy} aria-busy={pending || logoBusy} className="space-y-5">
@@ -114,10 +131,10 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
         {c.printers.map((p, i) => (
           <div key={p.id} className="rounded-xl border border-line p-4" data-testid={`printer-${p.id}`}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Yazıcı adı"><Input value={p.name} onChange={(e) => setP(i, { name: e.target.value })} /></Field>
+              <Field label="Yazıcı adı" hint="1–40 karakter"><Input maxLength={40} pattern=".*\S.*" required value={p.name} onChange={(e) => setP(i, { name: e.target.value })} /></Field>
               <div><div className="mb-1.5 text-sm font-medium">Görev</div><Seg label="Görev" value={p.role} options={PRINTER_ROLES} onChange={(v) => setP(i, { role: v })} disabled={pending || logoBusy} /></div>
               <Field label="Bağlantı"><Select disabled={pending || logoBusy} options={TRANSPORTS.map((t) => ({ value: t.value, label: t.label }))} defaultValue={p.transport} onChange={(v) => setP(i, { transport: v as PrinterConfig["transport"] })} /></Field>
-              <Field label="Yazıcı adresi" hint={TRANSPORTS.find((t) => t.value === p.transport)?.hint}><Input value={p.address} onChange={(e) => setP(i, { address: e.target.value })} required /></Field>
+              <Field label="Yazıcı adresi" hint={`${TRANSPORTS.find((t) => t.value === p.transport)?.hint ?? ""} · en fazla 200 karakter`}><Input maxLength={200} pattern=".*\S.*" value={p.address} onChange={(e) => setP(i, { address: e.target.value })} required /></Field>
               <div><div className="mb-1.5 text-sm font-medium">Kâğıt</div><Seg label="Kâğıt" value={p.width} options={[{ value: 80, label: "80 mm" }, { value: 58, label: "58 mm" }] as const} onChange={(v) => setP(i, { width: v })} disabled={pending || logoBusy} /></div>
               <div><div className="mb-1.5 text-sm font-medium">Türkçe karakter</div><Seg label="Kod sayfası" value={p.codepage} options={[{ value: "pc857", label: "PC857" }, { value: "ascii", label: "Türkçesiz (ç→c)" }] as const} onChange={(v) => setP(i, { codepage: v })} disabled={pending || logoBusy} /></div>
               <div><div className="mb-1.5 text-sm font-medium">Marka</div><Seg label="Marka" value={p.brand} options={[{ value: "genel", label: "Genel" }, { value: "xprinter", label: "XPrinter" }, { value: "epson", label: "Epson" }] as const} onChange={(v) => setP(i, { brand: v })} disabled={pending || logoBusy} /></div>
@@ -133,7 +150,7 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
 
       <div className="rounded-xl border border-line p-4" data-testid="agent-logo">
         <div className="mb-1.5 text-sm font-medium">Fiş logosu</div>
-        <p className="mb-3 text-sm text-muted">PNG dosyası; kağıt genişliğine sığdırılır, siyah-beyaza çevrilir. Fişin üstünde işletme adından önce basılır.</p>
+        <p className="mb-3 text-sm text-muted">PNG dosyası (en fazla 20 MB ve 2 megapiksel); kağıt genişliğine sığdırılır, siyah-beyaza çevrilir. Fişin üstünde işletme adından önce basılır.</p>
         <div className="flex flex-wrap items-center gap-4" aria-busy={logoBusy}>
           {c.logo && <LogoPreview logo={c.logo} />}
           <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-line px-4 py-2 text-sm font-medium hover:bg-surface-2">
@@ -158,8 +175,8 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
         )}
         {sc.kind === "tcp" && (
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <Field label="Terazi IP"><Input value={sc.host} onChange={(e) => setC({ ...c, scale: { ...sc, host: e.target.value } })} /></Field>
-            <Field label="Terazi port"><Input inputMode="numeric" value={String(sc.port)} onChange={(e) => setC({ ...c, scale: { ...sc, port: Number(e.target.value.replace(/\D/g, "")) || 0 } })} /></Field>
+            <Field label="Terazi IP / ana makine" hint="IP adresi ya da ağ adı · en fazla 100 karakter"><Input maxLength={100} pattern=".*\S.*" required value={sc.host} onChange={(e) => setC({ ...c, scale: { ...sc, host: e.target.value } })} /></Field>
+            <Field label="Terazi port" hint="1–65.535"><Input type="number" inputMode="numeric" min={1} max={65535} step={1} value={String(sc.port)} onChange={(e) => setC({ ...c, scale: { ...sc, port: Number(e.target.value) || 0 } })} /></Field>
           </div>
         )}
         {sc.kind !== "yok" && (
@@ -169,9 +186,9 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
 
       <label className="inline-flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={c.autoPrint} onChange={(e) => setC({ ...c, autoPrint: e.target.checked })} /> Satıştan sonra fişi kendiliğinden yazdır</label>
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={pending || logoBusy}>{pending ? "Kaydediliyor…" : logoBusy ? "Logo hazırlanıyor…" : "Donanımı kaydet"}</Button>
-        {state.savedAt && <span className="min-w-0 max-w-full text-sm text-ok" role="status">Kaydedildi; ajan bir dakika içinde alır.</span>}
-        {state.error && <span className="min-w-0 max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span>}
+        <Button ref={saveButtonRef} type="submit" disabled={pending || logoBusy}>{pending ? "Kaydediliyor…" : logoBusy ? "Logo hazırlanıyor…" : "Donanımı kaydet"}</Button>
+        {state.savedAt && !edited && !pending && !state.error && <span className="min-w-0 max-w-full text-sm text-ok" role="status">Kaydedildi; ajan bir dakika içinde alır.</span>}
+        {state.error && !edited && !pending && <span className="min-w-0 max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span>}
       </div>
       </fieldset>
     </form>

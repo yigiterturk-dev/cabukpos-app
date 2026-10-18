@@ -3,14 +3,26 @@
 import { useActionState, useEffect, useId, useRef } from "react";
 import { PasswordInput } from "@/components/PasswordInput";
 
-export function RevokeForm({ action, label = "İptal et", ariaLabel = label }: { action: (s: { error?: string }, f: FormData) => Promise<{ error?: string }>; label?: string; ariaLabel?: string }) {
+export function RevokeForm({ action, label = "İptal et", ariaLabel = label, revoked = false }: { action: (s: { error?: string }, f: FormData) => Promise<{ error?: string }>; label?: string; ariaLabel?: string; revoked?: boolean }) {
   const [state, dispatch, pending] = useActionState(action, {} as { error?: string });
   const errorId = useId();
   const formRef = useRef<HTMLFormElement>(null);
+  const revokedRef = useRef<HTMLSpanElement>(null);
+  const wasRevokedRef = useRef(revoked);
   useEffect(() => {
     if (!state.error) return;
     requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
   }, [state.error]);
+  useEffect(() => {
+    const changedToRevoked = !wasRevokedRef.current && revoked;
+    wasRevokedRef.current = revoked;
+    if (!changedToRevoked || state.error) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (document.activeElement === document.body) revokedRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [revoked, state.error]);
+  if (revoked) return <span ref={revokedRef} tabIndex={-1} className="text-xs text-muted outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" role="status" aria-live="polite">İptal edildi.</span>;
   return (
     <form ref={formRef} action={dispatch} aria-busy={pending} className="flex flex-wrap items-center justify-end gap-2">
       <PasswordInput name="sifre" required autoComplete="current-password" placeholder="Şifreniz" aria-label="Şifreniz" disabled={pending} aria-invalid={!!state.error || undefined} aria-describedby={state.error ? errorId : undefined} className="min-h-11 w-40 px-2 text-base lg:text-sm" />

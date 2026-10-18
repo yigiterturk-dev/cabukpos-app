@@ -1,12 +1,13 @@
 // lib/sync/docs.ts — Kasa → bulut eşitleme belgeleri (istemci ve sunucu ortak, saf).
 // Belgeler değişmez; kimlik istemcide üretilir, bulut aynı kimliği ikinci kez yazmaz.
 import { z } from "zod";
+import { MAX_CART_LINE_QTY_MILLI } from "@/lib/core/cart";
 import { VAT_RATES } from "@/lib/core/money";
-import { PAY_METHODS } from "@/lib/core/payment";
+import { MAX_PAYMENT_KURUS, PAY_METHODS } from "@/lib/core/payment";
 import { buyerSchema } from "@/lib/core/fiscal";
 
 const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
-const kurus = z.number().int().min(0).max(100_000_000);
+const kurus = z.number().int().min(0).max(MAX_PAYMENT_KURUS);
 const at = z.iso.datetime({ offset: true });
 
 export const saleLineDoc = z.object({
@@ -14,7 +15,7 @@ export const saleLineDoc = z.object({
   name: z.string().min(1).max(120),
   unitPrice: kurus,
   vatRate: z.union(VAT_RATES.map((r) => z.literal(r)) as [z.ZodLiteral<1>, z.ZodLiteral<10>, z.ZodLiteral<20>]),
-  qtyMilli: z.number().int().min(1).max(1_000_000),
+  qtyMilli: z.number().int().min(1).max(MAX_CART_LINE_QTY_MILLI),
   // M5 masa: seçenekler (birim fiyata dahil), not, indirim payı (ikram + adisyon indirimi)
   options: z.array(z.object({ id: uuid, name: z.string().min(1).max(80), delta: z.number().int().min(-100_000_000).max(100_000_000) })).max(20).optional(),
   note: z.string().max(200).nullable().optional(),
@@ -27,12 +28,12 @@ export const tabEv = z.discriminatedUnion("type", [
   z.object({ type: z.literal("open"), guests: z.number().int().min(0).max(999), kind: z.enum(["masa", "paket", "platform"]).optional() }),
   z.object({
     type: z.literal("add"), lineId: uuid, productId: uuid.nullable(), name: z.string().min(1).max(120), unitPrice: kurus, vatRate,
-    qtyMilli: z.number().int().min(1).max(1_000_000), options: saleLineDoc.shape.options.unwrap(), note: z.string().max(200).nullable(), stationId: uuid.nullable(),
+    qtyMilli: z.number().int().min(1).max(MAX_CART_LINE_QTY_MILLI), options: saleLineDoc.shape.options.unwrap(), note: z.string().max(200).nullable(), stationId: uuid.nullable(),
   }),
   // #49: masa birleştirme — hedefe satır kopyaları gelir; kaynak ayrıca merge_away alır (sunucu aynı işlemde ekler).
   z.object({ type: z.literal("merge"), fromTabId: uuid, lines: z.array(z.object({
     lineId: uuid, productId: uuid.nullable(), name: z.string().min(1).max(120), unitPrice: kurus, vatRate,
-    qtyMilli: z.number().int().min(1).max(1_000_000), options: saleLineDoc.shape.options.unwrap(), note: z.string().max(200).nullable(), stationId: uuid.nullable(),
+    qtyMilli: z.number().int().min(1).max(MAX_CART_LINE_QTY_MILLI), options: saleLineDoc.shape.options.unwrap(), note: z.string().max(200).nullable(), stationId: uuid.nullable(),
   })).min(1).max(500) }),
   z.object({ type: z.literal("merge_away"), toTabId: uuid }),
   z.object({ type: z.literal("void"), lineId: uuid, reason }),
@@ -59,7 +60,7 @@ export const tabEv = z.discriminatedUnion("type", [
   z.object({ type: z.literal("handover") }),
   z.object({ type: z.literal("cancel"), reason }),
 ]);
-const paidLine = z.object({ lineId: uuid, qtyMilli: z.number().int().min(1).max(1_000_000), discount: kurus });
+const paidLine = z.object({ lineId: uuid, qtyMilli: z.number().int().min(1).max(MAX_CART_LINE_QTY_MILLI), discount: kurus });
 
 const payMethod = z.enum(PAY_METHODS.map((m) => m.value) as ["nakit", "kart", "yemek_karti", "online", "hediye_karti"]);
 
@@ -107,7 +108,7 @@ export const syncDoc = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("register_event"), id: uuid, shiftId: uuid, staffId: uuid, at,
     type: z.enum(["line_removed", "cart_cleared"]),
-    lines: z.array(z.object({ productId: uuid.nullable(), name: z.string().min(1).max(120), qtyMilli: z.number().int().min(1).max(1_000_000), total: kurus })).min(1).max(500),
+    lines: z.array(z.object({ productId: uuid.nullable(), name: z.string().min(1).max(120), qtyMilli: z.number().int().min(1).max(MAX_CART_LINE_QTY_MILLI), total: kurus })).min(1).max(500),
   }),
   // #48: seifeye para alma (safe drop). Kimlik register_events.id; beklenen kasadan düşer.
   z.object({ kind: z.literal("safe_drop"), id: uuid, shiftId: uuid, staffId: uuid, at, amount: kurus.min(1) }),

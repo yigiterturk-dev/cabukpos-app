@@ -8,6 +8,7 @@ import { openTabsByTable, tableStatus, type TabState, type TableStatus } from "@
 import type { Area, Table } from "@/lib/offline/state";
 import { minutesSince } from "./useTabs";
 import { MasaGlyph } from "@/components/MasaGlyph";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { Empty } from "@/components/ui";
 import { beep } from "./beep";
 import { useKasaMainProps } from "./KasaPreviewContext";
@@ -33,7 +34,7 @@ function useCalls(enabled = true) {
     let alive = true;
     const load = async () => {
       try {
-        const r = await fetch("/api/kasa/calls", { cache: "no-store" });
+        const r = await fetch("/api/kasa/calls", { cache: "no-store", signal: AbortSignal.timeout(6500) });
         if (!r.ok) return;
         const j = (await r.json()) as { calls: CallRow[] };
         if (!alive) return;
@@ -60,6 +61,30 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen, currency, callsE
   const [resolving, setResolving] = useState<string | null>(null);
   const resolvingRef = useRef(false);
   const [callError, setCallError] = useState<string | null>(null);
+  const lastResolveButtonRef = useRef<HTMLButtonElement | null>(null);
+  const salonHeadingRef = useRef<HTMLHeadingElement>(null);
+  const callErrorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!callError || resolving) return;
+    const frame = window.requestAnimationFrame(() => {
+      const retry = lastResolveButtonRef.current;
+      if (retry?.isConnected && !retry.disabled) retry.focus();
+      else callErrorRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [callError, resolving]);
+  useEffect(() => {
+    if (resolving || callError || !lastResolveButtonRef.current) return;
+    const removedButton = lastResolveButtonRef.current;
+    if (removedButton.isConnected) return;
+    lastResolveButtonRef.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      if (document.activeElement !== document.body) return;
+      const next = document.querySelector<HTMLButtonElement>("[data-call-resolve]");
+      (next ?? salonHeadingRef.current)?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [callError, calls, resolving]);
   const byTable = openTabsByTable(tabs);
   useEffect(() => {
     const previous = announcedCalls.current;
@@ -82,7 +107,7 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen, currency, callsE
     setResolving(call.id);
     setCallError(null);
     try {
-      const r = await fetch("/api/kasa/calls", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: call.id }) });
+      const r = await fetch("/api/kasa/calls", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: call.id }), signal: AbortSignal.timeout(8000) });
       if (r.ok) {
         setCalls((cs) => cs.filter((c) => c.id !== call.id));
         if (callAnnouncement.current) callAnnouncement.current.textContent = `${call.table} garson çağrısı kapatıldı.`;
@@ -95,7 +120,7 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen, currency, callsE
     <div {...mainProps} className="min-w-0 p-4 outline-none">
       <p ref={callAnnouncement} className="sr-only" role="status" aria-live="polite" aria-atomic="true" />
       {resolving && <p className="sr-only" role="status" aria-live="polite">Garson çağrısı kapatılıyor. Lütfen bekleyin.</p>}
-      {callError && <p className="mb-4 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad" role="alert">{callError}</p>}
+      {callError && <p ref={callErrorRef} tabIndex={-1} className="mb-4 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert">{callError}</p>}
       {calls.length > 0 && (
         <ul aria-label="Garson çağrıları" className="mb-4 space-y-1">
           {calls.map((c) => (
@@ -103,19 +128,19 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen, currency, callsE
               <span aria-hidden className="size-2 shrink-0 rounded-full bg-warn motion-safe:animate-pulse" />
               <span className="min-w-0 flex-1 break-words font-semibold">{c.table}</span>
               <span className="shrink-0 text-muted">{minutesSince(c.createdAt, now)} dk önce</span>
-              <button type="button" disabled={resolving !== null} aria-label={resolving === c.id ? `${c.table} çağrısı kapatılıyor` : `${c.table} çağrısına geldim`} aria-busy={resolving === c.id || undefined} onClick={() => void resolve(c)} className={`press ml-auto min-h-12 shrink-0 rounded-lg bg-espresso px-3 py-1.5 text-xs font-semibold text-white outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50 ${resolving === c.id ? "cursor-wait opacity-70" : ""}`}>{resolving === c.id ? "Kapatılıyor…" : "Geldim"}</button>
+              <button type="button" data-call-resolve disabled={resolving !== null} aria-label={resolving === c.id ? `${c.table} çağrısı kapatılıyor` : `${c.table} çağrısına geldim`} aria-busy={resolving === c.id || undefined} onClick={(e) => { lastResolveButtonRef.current = e.currentTarget; void resolve(c); }} className={`press ml-auto min-h-12 shrink-0 rounded-lg bg-espresso px-3 py-1.5 text-xs font-semibold text-white outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50 ${resolving === c.id ? "cursor-wait opacity-70" : ""}`}>{resolving === c.id ? "Kapatılıyor…" : "Geldim"}</button>
             </li>
           ))}
         </ul>
       )}
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="font-display text-xl font-bold tracking-tight">Salon</h1>
+          <h1 ref={salonHeadingRef} tabIndex={-1} className="font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Salon</h1>
           <p className="mt-0.5 text-sm text-muted">{occupiedTables} dolu · {visibleTables.length - occupiedTables} boş masa</p>
         </div>
         <span className="text-xs text-muted">Bir masaya dokunarak adisyonu açın</span>
       </div>
-      <div className="mb-4 inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-surface-3 p-1" role="group" aria-label="Bölgeler">
+      <HorizontalScrollRegion label="Salon bölgeleri, yatay kaydırılabilir" className="mb-4 inline-flex max-w-full gap-1 rounded-xl bg-surface-3 p-1">
         {areas.map((a) => {
           const busy = tables.filter((t) => t.areaId === a.id && byTable.has(t.id)).length;
           return (
@@ -124,7 +149,7 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen, currency, callsE
             </button>
           );
         })}
-      </div>
+      </HorizontalScrollRegion>
       {visibleTables.length === 0 ? (
         <Empty>Masa yok. Bu bölgeye masa eklemek için Yönetim → Salon sayfasını açın.</Empty>
       ) : (

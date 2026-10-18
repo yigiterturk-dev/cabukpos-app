@@ -4,7 +4,7 @@ import { LEGAL_PAGES, SELLER_MISSING, seller } from "@/lib/legal";
 export function LegalFooter({ className = "" }: { className?: string }) {
   return (
     <nav aria-label="Yasal" className={`flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted ${className}`}>
-      {LEGAL_PAGES.map((p) => <Link key={p.href} href={p.href} className="inline-flex min-h-11 items-center px-1 hover:underline">{p.label}</Link>)}
+      {LEGAL_PAGES.map((p) => <Link key={p.href} href={p.href} className="inline-flex min-h-11 items-center rounded px-1 outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{p.label}</Link>)}
     </nav>
   );
 }

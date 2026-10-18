@@ -8,8 +8,8 @@ export default function YasalLayout({ children }: { children: React.ReactNode })
   return (
     <>
     <SkipToContent />
-    <main id="main-content" className="mx-auto max-w-3xl px-4 py-10">
-      <Link href="/" className="inline-flex min-h-11 items-center gap-2 font-semibold tracking-tight"><LogoMark size="sm" />ÇabukPOS</Link>
+    <main className="mx-auto max-w-3xl px-4 py-10">
+      <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded px-1 font-semibold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60"><LogoMark size="sm" />ÇabukPOS</Link>
       {!sellerReady() && <p className="mt-4 rounded-[10px] bg-warn-soft px-3 py-2 text-sm text-warn">Satıcı şirket bilgileri kuruluş tamamlanınca eklenecek.</p>}
       <article className="legal mt-6 space-y-4 text-[15px] leading-relaxed text-ink-2">{children}</article>
       <p className="mt-8 text-xs text-muted">Son güncelleme: {LEGAL_UPDATED}</p>

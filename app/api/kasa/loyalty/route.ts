@@ -18,7 +18,10 @@ export async function GET(req: Request) {
 
   const p = new URL(req.url).searchParams;
   const phone = p.get("phone");
-  if (phone) return Response.json({ customer: await customerLoyalty(device.tenantId, phone) }, { headers: noStore });
+  if (phone) {
+    if (phone.length > 24) return Response.json({ error: "Telefon numarası çok uzun." }, { status: 400, headers: noStore });
+    return Response.json({ customer: await customerLoyalty(device.tenantId, phone) }, { headers: noStore });
+  }
 
   const coupon = normalizeCouponCode(p.get("coupon") ?? "");
   if (coupon) {

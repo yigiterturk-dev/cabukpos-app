@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { createGiftCard, giftCardCancel, giftCardLoad } from "@/lib/admin/loyalty-actions";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { GiftCardCreateForm, GiftCardLoadForm } from "@/components/admin/GiftCardFormsPending";
+import { ActionResult } from "@/components/admin/ActionResult";
 import { Badge, buttonClass, Card, PageHeader } from "@/components/ui";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 import { currencySymbol } from "@/lib/core/money";
@@ -20,6 +21,7 @@ export default async function HediyeKarti({ searchParams }: { searchParams: Prom
   const money = await moneyFormatter(a.tenantId);
   const currency = await tenantCurrency(a.tenantId);
   const unit = currencySymbol(currency);
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
   const { ok, hata, id, page } = await searchParams;
   const requestedPage = Number(page);
   const pageNo = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
@@ -41,11 +43,11 @@ export default async function HediyeKarti({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader title="Hediye kartı" desc="Önceden yüklü bakiye; kod, kasada ödeme yöntemi olarak harcanır. İptal edilen kartın kalan bakiyesi donar." />
-      {ok && <div role="status" aria-live="polite" className="mb-6 rounded-[14px] border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">Kaydedildi.</div>}
-      {hata && <div role="alert" aria-live="assertive" className="mb-6 rounded-[14px] border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</div>}
+      {ok && <ActionResult kind="success">Kaydedildi.</ActionResult>}
+      {hata && <ActionResult kind="error">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</ActionResult>}
       <section aria-label="Yeni hediye kartı" className="mb-8">
         <Card className="p-5">
-          <GiftCardCreateForm action={createGiftCard} unit={unit} />
+          <GiftCardCreateForm action={createGiftCard} unit={unit} today={today} />
         </Card>
       </section>
       {rows.length === 0 ? (

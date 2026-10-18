@@ -20,5 +20,10 @@ export function PlatformOrderAction({ action, label, pendingLabel, className }: 
   pendingLabel: string;
   className: string;
 }) {
-  return <form action={action}><Submit label={label} pendingLabel={pendingLabel} className={className} /></form>;
+  const runAction = async () => {
+    await action();
+    document.getElementById("platform-orders-heading")?.focus();
+  };
+
+  return <form action={runAction}><Submit label={label} pendingLabel={pendingLabel} className={className} /></form>;
 }

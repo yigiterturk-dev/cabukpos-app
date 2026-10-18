@@ -146,22 +146,25 @@ export async function deleteStation(id: string) {
   revalidatePath("/yonetim/istasyonlar");
 }
 
-export async function setCategoryStation(categoryId: string, stationId: string) {
+export async function setCategoryStation(categoryId: string, stationId: string): Promise<boolean> {
   const a = await requireWriter();
-  if (!UUID.test(categoryId) || (stationId && !UUID.test(stationId))) return;
-  await withTenant(a.tenantId, async (tx) => {
+  if (!UUID.test(categoryId) || (stationId && !UUID.test(stationId))) return false;
+  const saved = await withTenant(a.tenantId, async (tx) => {
     const storeId = await scopedStoreId(tx, a.tenantId);
-    if (!storeId) return;
+    if (!storeId) return false;
     if (stationId) {
       const [s] = await tx.select({ id: schema.stations.id }).from(schema.stations).where(and(eq(schema.stations.id, stationId), eq(schema.stations.storeId, storeId)));
-      if (!s) return;
+      if (!s) return false;
     }
     const R = schema.categoryStationRoutes;
     await tx.insert(R).values({ tenantId: a.tenantId, storeId, categoryId, stationId: stationId || null })
       .onConflictDoUpdate({ target: [R.storeId, R.categoryId], set: { stationId: stationId || null } });
     await audit(tx, a.tenantId, `user:${a.id}`, "category.station", { categoryId, stationId: stationId || null });
+    return true;
   });
+  if (!saved) return false;
   revalidatePath("/yonetim/istasyonlar");
+  return true;
 }
 
 // — Seçenek grupları —

@@ -4,6 +4,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { adjustPoints, saveLoyaltySettings } from "@/lib/admin/loyalty-actions";
 import { LoyaltySettingsForm, PointsAdjustForm } from "@/components/admin/LoyaltyFormsPending";
+import { ActionResult } from "@/components/admin/ActionResult";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 import { currencySymbol } from "@/lib/core/money";
 import { Card, Empty, PageHeader } from "@/components/ui";
@@ -46,8 +47,8 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
   return (
     <>
       <PageHeader title="Sadakat puanı" desc="Müşteri harcaması puan kazanır; puan, sonraki satışta indirim olarak harcanır. Satış anı kazanım/harcanma kasa güncellemesine bağlıdır." />
-      {ok && <div role="status" aria-live="polite" className="mb-6 rounded-[14px] border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">Kaydedildi.</div>}
-      {hata && <div role="alert" aria-live="assertive" className="mb-6 rounded-[14px] border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</div>}
+      {ok && <ActionResult kind="success">Kaydedildi.</ActionResult>}
+      {hata && <ActionResult kind="error">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</ActionResult>}
       <section aria-label="Puan programı ayarları" className="mb-8">
         <Card className="p-5">
           <LoyaltySettingsForm action={saveLoyaltySettings} settings={settings ?? null} unit={unit} />

@@ -29,8 +29,8 @@ export async function signup(_: AuthState, form: FormData): Promise<AuthState> {
   const fail = (error: string, field: string): AuthState => ({ error, field, values });
   if (values.businessName.length < 2 || values.businessName.length > 80) return fail("İşletme adı 2-80 karakter.", "businessName");
   if (values.vertical !== "restoran" && values.vertical !== "market") return fail("İşletme türünü seçin.", "vertical");
-  if (values.name.length < 2) return fail("Ad soyad gerekli.", "name");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(values.email)) return fail("E-posta geçersiz.", "email");
+  if (values.name.length < 2 || values.name.length > 120) return fail("Ad soyad 2-120 karakter olmalı.", "name");
+  if (values.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(values.email)) return fail("E-posta geçersiz (en fazla 254 karakter).", "email");
   const pw = await passwordProblemAsync(password);
   if (pw) return fail(pw, "password");
   if ((await hit(`signup:${await clientIp()}`, 60)) > 5) return fail("Çok fazla kayıt denemesi. Bir saat sonra tekrar deneyin.", "email");
@@ -65,6 +65,7 @@ export async function login(_: AuthState, form: FormData): Promise<AuthState> {
   const password = String(form.get("password") ?? "");
   const values = { email };
   if (!email || !password) return { error: "E-posta ve şifre gerekli.", field: "credentials", values };
+  if (email.length > 254 || password.length > 200) return { error: "E-posta veya şifre hatalı.", field: "credentials", values };
   const [e, i] = await Promise.all([hit(`e:${email}`), hit(`ip:${await clientIp()}`)]);
   if (e > 8 || i > 30) return { error: "Çok fazla deneme. 15 dakika sonra tekrar deneyin.", values };
   if (shouldLock(await hit(failKey(email)))) return { error: "Çok fazla başarısız deneme. Hesap 15 dakika kilitli; şifrenizi unuttuysanız yenileyin.", values };
@@ -118,18 +119,24 @@ export async function mfaKapat(_: MfaState, form: FormData): Promise<MfaState> {
 }
 
 /** Doğrulama e-postasını yeniden gönder (sahip oturumu; form action). */
-export async function emailDogrulamaGonderAction(): Promise<void> {
+export async function emailDogrulamaGonderAction(_: AuthState, _form: FormData): Promise<AuthState> {
+  void _;
+  void _form;
   const a = await getAdmin();
-  if (!a || a.emailVerified) return;
-  if ((await hit(`dv:${a.email}`, 60)) > 3) return;
-  if (!mailReady()) return;
+  if (!a) return { error: "Oturum gerekli." };
+  if (a.emailVerified) return { ok: "Bu e-posta adresi zaten doğrulanmış." };
+  if ((await hit(`dv:${a.email}`, 60)) > 3) return { error: "Çok sık istek gönderildi. Biraz sonra tekrar deneyin." };
+  if (!mailReady()) return { error: "E-posta gönderimi şu anda yapılandırılmamış." };
   const baglanti = `${appUrl()}/dogrula?t=${await dogrulaToken({ id: a.id, email: a.email })}`;
-  await sendEmail({
+  const sent = await sendEmail({
     to: [a.email],
     subject: "ÇabukPOS e-posta doğrulama",
     text: `Merhaba ${a.name},\n\nE-postanızı doğrulamak için: ${baglanti}\n\nBağlantı 24 saat geçerlidir.`,
     html: `<p>Merhaba ${esc(a.name)},</p><p><a href="${esc(baglanti)}">E-postanızı doğrulamak için tıklayın</a>. Bağlantı 24 saat geçerlidir.</p>`,
-  }).catch(() => {});
+  }).catch(() => false);
+  return sent
+    ? { ok: "Doğrulama e-postası gönderildi. Gelen kutunuzu ve spam klasörünü kontrol edin." }
+    : { error: "Doğrulama e-postası gönderilemedi. Biraz sonra tekrar deneyin." };
 }
 
 export async function logout() {
@@ -175,7 +182,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export async function requestReset(_: AuthState, form: FormData): Promise<AuthState> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const values = { email };
-  if (!EMAIL.test(email)) return { error: "E-posta geçersiz.", field: "email", values };
+  if (email.length > 254 || !EMAIL.test(email)) return { error: "E-posta geçersiz (en fazla 254 karakter).", field: "email", values };
   if (!mailReady()) {
     const c = salesContact();
     return { error: `E-posta gönderimi şu an kapalı.${c ? ` Şifre yenilemek için: ${c}` : " Destekle iletişime geçin."}`, values };

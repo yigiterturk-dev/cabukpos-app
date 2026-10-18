@@ -1,7 +1,7 @@
 "use client";
 // İade: fiş no → (yerel, yoksa bulut) satış → ürün/miktar seç → geri ödeme yöntemi → kasiyerse müdür PIN'i → iade fişi.
 // Çevrimdışıyken yalnız bu cihazda kesilmiş fişler bulunur.
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { totals } from "@/lib/core/cart";
 import { parseKg } from "@/lib/core/scan";
 import { kasaFmt } from "./kasa-format";
@@ -22,6 +22,7 @@ const kgText = (g: number) => `${(g / 1000).toLocaleString("tr-TR", { minimumFra
 export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, autoFocusLookup = true }: { meta: Meta; cashier: Cashier; online: boolean; onMeta: (m: Meta) => void; onDone: (s: LocalSale) => void; onBack: () => void; autoFocusLookup?: boolean }) {
   const mainProps = useKasaMainProps();
   const { TL } = kasaFmt(meta);
+  const refundActionId = useId();
   const [no, setNo] = useState("");
   const [sale, setSale] = useState<LookedUpSale | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
@@ -34,6 +35,13 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
   const recordingRef = useRef(false);
   const lookupRef = useRef<HTMLInputElement>(null);
   const [refundId] = useState(() => crypto.randomUUID());
+  useEffect(() => {
+    if (!error || busy) return;
+    const frame = window.requestAnimationFrame(() => {
+      (sale ? document.getElementById(refundActionId) : lookupRef.current)?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [busy, error, refundActionId, sale]);
   const weighed = (l: RefLine) => meta.catalog.products.find((p) => p.id === l.productId)?.kind === "tartili" || l.qtyMilli % 1000 !== 0;
 
   const find = async () => {
@@ -45,7 +53,6 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
     const n = normalizeReceiptNo(no);
     if (!n) {
       setError("Fiş no biçimi: K1-000042 (ya da K1-42).");
-      requestAnimationFrame(() => lookupRef.current?.focus());
       return;
     }
     setBusy(true);
@@ -53,13 +60,13 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
       let s = await findLocalSale(n);
       if (!s) {
         if (!online) return setError("Fiş bu kasada yok. İnternet gelince tekrar deneyin.");
-        const r = await fetch(`/api/sync/sale?no=${encodeURIComponent(n)}`, { cache: "no-store" });
+        const r = await fetch(`/api/sync/sale?no=${encodeURIComponent(n)}`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
         if (r.status === 404) return setError("Fiş bulunamadı.");
         if (!r.ok) return setError("Fiş sorgulanamadı. Tekrar deneyin.");
         s = (await r.json()) as LookedUpSale;
       }
       if (s.fiscalPending && online) {
-        const c = await fetch(`/api/sync/sale?no=${encodeURIComponent(n)}`, { cache: "no-store" }).then((r) => (r.ok ? (r.json() as Promise<LookedUpSale>) : null)).catch(() => null);
+        const c = await fetch(`/api/sync/sale?no=${encodeURIComponent(n)}`, { cache: "no-store", signal: AbortSignal.timeout(8000) }).then((r) => (r.ok ? (r.json() as Promise<LookedUpSale>) : null)).catch(() => null);
         if (c?.fiscal) s = { ...s, fiscal: { ...c.fiscal, refundedBefore: c.fiscal.refundedBefore || s.fiscal?.refundedBefore === true } };
       }
       if (!s.lines.length) return setError("Bu fişin tamamı zaten iade edilmiş.");
@@ -111,7 +118,10 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
         <h1 className="font-display text-2xl font-bold tracking-tight">Müdür onayı</h1>
         <p className="mb-6 text-sm text-muted">{TL(total)} iade · müdür PIN&apos;i girsin</p>
         <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => record(m.id)} autoFocusFirst />
-      <Button variant="ghost" type="button" disabled={busy} onClick={() => setApproving(false)} className="mt-6 min-h-12 w-full">Vazgeç</Button>
+      <Button variant="ghost" type="button" disabled={busy} onClick={() => {
+        setApproving(false);
+        requestAnimationFrame(() => lookupRef.current?.focus());
+      }} className="mt-6 min-h-12 w-full">Vazgeç</Button>
       </div>
     );
   }
@@ -121,7 +131,8 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
       <button type="button" disabled={busy} onClick={onBack} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-wait disabled:opacity-50 -ml-3 mb-4">← Kasa</button>
       <h1 className="mb-4 font-display text-2xl font-bold tracking-tight">İade</h1>
       <form onSubmit={(e) => { e.preventDefault(); void find(); }} className="flex flex-wrap gap-2">
-        <input ref={lookupRef} value={no} onChange={(e) => { setNo(e.target.value); setSale(null); setQty({}); setError(null); setRefundNotice(""); }} disabled={busy} autoFocus={autoFocusLookup} required placeholder="Fiş no (ör. K1-000042)" aria-label="İade fiş no" aria-invalid={!sale && !!error || undefined} aria-describedby={!sale && error ? "refund-lookup-error" : undefined} className={`min-h-12 min-w-0 flex-1 rounded-xl border bg-surface px-4 py-3 uppercase outline-none transition-[border-color,box-shadow] focus:ring-4 disabled:opacity-60 ${!sale && !!error ? "border-bad focus:border-bad focus:ring-bad/40" : "border-line focus:border-brand focus:ring-brand-ring/50"}`} />
+        <label htmlFor="refund-receipt" className="basis-full text-sm font-medium text-ink-2">Fiş numarası</label>
+        <input id="refund-receipt" ref={lookupRef} value={no} onChange={(e) => { setNo(e.target.value); setSale(null); setQty({}); setError(null); setRefundNotice(""); }} disabled={busy} autoFocus={autoFocusLookup} required maxLength={15} placeholder="Ör. K1-000042" aria-invalid={!sale && !!error || undefined} aria-describedby={!sale && error ? "refund-lookup-error" : undefined} className={`min-h-12 min-w-0 flex-1 rounded-xl border bg-surface px-4 py-3 uppercase outline-none transition-[border-color,box-shadow] focus:ring-4 disabled:opacity-60 ${!sale && !!error ? "border-bad focus:border-bad focus:ring-bad/40" : "border-line focus:border-brand focus:ring-brand-ring/50"}`} />
       <Button type="submit" disabled={busy || !no.trim()} className="min-h-12 shrink-0">{busy ? "Sorgulanıyor…" : "Fişi bul"}</Button>
       </form>
       {busy && <p className="sr-only" role="status" aria-live="polite">{sale ? "İade kaydediliyor, lütfen bekleyin." : "Fiş sorgulanıyor, lütfen bekleyin."}</p>}
@@ -141,11 +152,12 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
               const weightDraft = weighedDraft[index] ?? "";
               const weightGrams = parseKg(weightDraft);
               const weightInvalid = weighed(l) && weightDraft.trim() !== "" && (weightGrams === null || weightGrams > l.qtyMilli);
-              const set = (v: number) => {
+              const set = (v: number, focusFallback?: string) => {
                 const next = Math.max(0, Math.min(l.qtyMilli, v));
                 setQty((s) => ({ ...s, [index]: next }));
                 setError(null);
                 setRefundNotice(`${lineLabel} iade miktarı ${weighed(l) ? kgText(next) : next / 1000}.`);
+                if (focusFallback) window.requestAnimationFrame(() => document.getElementById(focusFallback)?.focus());
               };
               return (
                 <div key={`${index}-${l.productId}`} className="flex flex-wrap items-center gap-3 p-3" data-testid="refund-line">
@@ -159,7 +171,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
                     <div className="min-w-0 basis-full sm:basis-auto">
                       <label className="sr-only" htmlFor={`refund-kg-${index}`}>{lineLabel} iade ağırlığı (kg)</label>
                       <div className="flex items-center gap-2">
-                        <input id={`refund-kg-${index}`} inputMode="decimal" placeholder="0,000" value={weightDraft || (q ? (q / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "")} disabled={busy} aria-invalid={weightInvalid || undefined} aria-describedby={weightInvalid ? `refund-kg-hint-${index} refund-kg-error-${index}` : `refund-kg-hint-${index}`} onChange={(e) => {
+                        <input id={`refund-kg-${index}`} inputMode="decimal" maxLength={8} placeholder="0,000" value={weightDraft || (q ? (q / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "")} disabled={busy} aria-invalid={weightInvalid || undefined} aria-describedby={weightInvalid ? `refund-kg-hint-${index} refund-kg-error-${index}` : `refund-kg-hint-${index}`} onChange={(e) => {
                           const value = e.target.value;
                           setWeighedDraft((s) => ({ ...s, [index]: value }));
                           setError(null);
@@ -173,9 +185,9 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
                     </div>
                   ) : (
                     <>
-                      <button type="button" aria-label={`${lineLabel} iade azalt`} disabled={busy || q <= 0} onClick={() => set(q - 1000)} className="press grid size-12 place-items-center rounded-xl border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">−</button>
+                      <button id={`refund-minus-${index}`} type="button" aria-label={`${lineLabel} iade azalt`} disabled={busy || q <= 0} onClick={(event) => set(q - 1000, event.detail === 0 && q === 1000 ? `refund-plus-${index}` : undefined)} className="press grid size-12 place-items-center rounded-xl border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">−</button>
                       <span className="tabular w-8 text-center">{q / 1000}</span>
-                      <button type="button" aria-label={`${lineLabel} iade artır`} disabled={busy || q >= l.qtyMilli} onClick={() => set(q + 1000)} className="press grid size-12 place-items-center rounded-xl border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">+</button>
+                      <button id={`refund-plus-${index}`} type="button" aria-label={`${lineLabel} iade artır`} disabled={busy || q >= l.qtyMilli} onClick={(event) => set(q + 1000, event.detail === 0 && q + 1000 >= l.qtyMilli ? `refund-minus-${index}` : undefined)} className="press grid size-12 place-items-center rounded-xl border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">+</button>
                     </>
                   )}
                 </div>
@@ -194,7 +206,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
           {refundDiscount > 0 && <p className="mt-2 text-right text-sm text-muted">İndirim payı −{TL(refundDiscount)} · Brüt {TL(goods)}</p>}
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/25 bg-brand-soft/30 px-4 py-3">
             <div><span className="block text-xs font-medium uppercase tracking-wide text-muted">İade tutarı</span><span data-testid="refund-total" aria-live="polite" aria-atomic="true" className="tabular font-display text-3xl font-extrabold tracking-tight">{TL(total)}</span><span className="mt-0.5 block text-xs text-muted">Yöntem: {SELECTABLE_METHODS.find((m) => m.value === method)?.label}</span></div>
-            <Button disabled={!picked.length || invalidWeighedDraft || busy} aria-busy={busy || undefined} onClick={() => (role === "mudur" ? void record(cashier.id) : setApproving(true))} className="min-h-12">{busy ? "İade kaydediliyor…" : <>İadeyi onayla{picked.length > 0 && <span className="tabular">· {TL(total)}</span>}</>}</Button>
+            <Button id={refundActionId} disabled={!picked.length || invalidWeighedDraft || busy} aria-busy={busy || undefined} onClick={() => (role === "mudur" ? void record(cashier.id) : setApproving(true))} className="min-h-12">{busy ? "İade kaydediliyor…" : <>İadeyi onayla{picked.length > 0 && <span className="tabular">· {TL(total)}</span>}</>}</Button>
           </div>
           {!picked.length && <p className="mt-2 text-right text-xs text-muted">İade için en az bir kalem seçin.</p>}
         </section>

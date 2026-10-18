@@ -2,12 +2,18 @@
 // Diyalog: örtü + panel. Form gerekiyorsa gövdede <form id> + alt şeritte <button form=id type=submit>. Esc onClose'u çağırır; örtüye dokunmak kapatmaz (kasada yanlışlıkla dokunup girilen tutar kaybolmasın).
 // Erişilebilirlik: açılışta ilk öğeye odak, Tab diyaloğa kilitli (focus trap), kapanışta odak tetikleyiciye döner.
 import { createPortal } from "react-dom";
-import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { X } from "lucide-react";
 
 const WIDTH = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-3xl" };
 
-const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+function isVisible(el: HTMLElement) {
+  return el.getClientRects().length > 0 && getComputedStyle(el).visibility === "visible" && !el.closest('[inert], [aria-hidden="true"]');
+}
+function focusableItems(panel: HTMLElement) {
+  return [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(isVisible);
+}
 const subscribeToPortalTarget = () => () => {};
 const getPortalTarget = () => typeof document === "undefined" ? null : document.body;
 const getServerPortalTarget = () => null;
@@ -17,9 +23,32 @@ export function Dialog({ label, title, aside, onClose, closeDisabled = false, si
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const portalTarget = useSyncExternalStore(subscribeToPortalTarget, getPortalTarget, getServerPortalTarget);
+  const [visualFrame, setVisualFrame] = useState<{ top: number; bottom: number; maxHeight: number } | null>(null);
   // Capture before child autoFocus runs during commit, so closing returns to the opener.
   const restoreRef = useRef<HTMLElement | null>(typeof document === "undefined" ? null : document.activeElement as HTMLElement | null);
   const titleId = useId();
+
+  useEffect(() => {
+    if (!portalTarget) return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const sync = () => {
+      const top = Math.max(0, Math.min(window.innerHeight - 1, Math.round(viewport.offsetTop)));
+      const height = Math.max(1, Math.min(window.innerHeight - top, Math.round(viewport.height)));
+      const bottom = Math.max(0, window.innerHeight - top - height);
+      const next = { top, bottom, maxHeight: height * 0.92 };
+      setVisualFrame((current) => current && current.top === next.top && current.bottom === next.bottom && current.maxHeight === next.maxHeight ? current : next);
+    };
+    sync();
+    window.addEventListener("resize", sync);
+    viewport.addEventListener("resize", sync);
+    viewport.addEventListener("scroll", sync);
+    return () => {
+      window.removeEventListener("resize", sync);
+      viewport.removeEventListener("resize", sync);
+      viewport.removeEventListener("scroll", sync);
+    };
+  }, [portalTarget]);
 
   useEffect(() => {
     if (!portalTarget) return;
@@ -35,14 +64,22 @@ export function Dialog({ label, title, aside, onClose, closeDisabled = false, si
     const panel = ref.current;
     // React autoFocus zaten odakladıysa ona dokunma; değilse kapatma düğmesini atlayıp ilk eyleme geç.
     if (panel && !panel.contains(document.activeElement)) {
-      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+      const items = focusableItems(panel);
       const first = items.find((el) => el.getAttribute("aria-label") !== "Pencereyi kapat") ?? items[0] ?? panel;
       first.focus();
     }
     return () => {
       document.body.style.overflow = previousOverflow;
       document.body.style.paddingRight = previousPaddingRight;
-      if (restoreTarget?.isConnected) restoreTarget.focus();
+      const canRestore = restoreTarget?.isConnected && isVisible(restoreTarget) && !restoreTarget.matches(":disabled") && (restoreTarget.matches(FOCUSABLE) || restoreTarget.hasAttribute("tabindex"));
+      if (canRestore) restoreTarget.focus();
+      else {
+        const fallback = document.querySelector<HTMLElement>("[role=main], main");
+        if (fallback) {
+          if (!fallback.hasAttribute("tabindex")) fallback.tabIndex = -1;
+          fallback.focus();
+        }
+      }
     };
   }, [portalTarget]);
 
@@ -53,7 +90,7 @@ export function Dialog({ label, title, aside, onClose, closeDisabled = false, si
       if (e.key !== "Tab") return;
       const panel = ref.current;
       if (!panel) return;
-      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+      const items = focusableItems(panel);
       if (!items.length) { e.preventDefault(); return; }
       const firstEl = items[0], lastEl = items[items.length - 1];
       const active = document.activeElement;
@@ -67,8 +104,8 @@ export function Dialog({ label, title, aside, onClose, closeDisabled = false, si
   if (!portalTarget) return null;
 
   return createPortal((
-    <div role="dialog" aria-modal="true" {...(title !== undefined ? { "aria-labelledby": titleId } : { "aria-label": label })} className="fixed inset-0 z-50 grid place-items-center bg-espresso/45 p-4 backdrop-blur-[2px]">
-      <div ref={ref} tabIndex={-1} className={`flex max-h-[92vh] w-full ${WIDTH[size]} flex-col overflow-hidden rounded-[20px] bg-surface shadow-pop outline-none`}>
+    <div role="dialog" aria-modal="true" {...(title !== undefined ? { "aria-labelledby": titleId } : { "aria-label": label })} style={visualFrame ? { top: visualFrame.top, bottom: visualFrame.bottom } : undefined} className="fixed inset-0 z-50 grid place-items-center bg-espresso/45 p-4 backdrop-blur-[2px]">
+      <div ref={ref} tabIndex={-1} style={visualFrame ? { maxHeight: visualFrame.maxHeight } : undefined} className={`flex max-h-[92vh] w-full ${WIDTH[size]} flex-col overflow-hidden rounded-[20px] bg-surface shadow-pop outline-none`}>
         {title !== undefined && (
           <div className="flex min-w-0 shrink-0 flex-wrap items-start justify-between gap-3 border-b border-line px-6 py-4">
             <h2 id={titleId} className="min-w-0 basis-full break-words text-lg font-semibold tracking-tight sm:flex-1 sm:basis-auto">{title}</h2>

@@ -15,6 +15,7 @@ import { refundable, type RefLine } from "@/lib/core/refund";
 import { consumption, lineCost, type RecipeItem, type Recipes } from "@/lib/core/recipe";
 import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
 import { normalizePhone } from "@/lib/core/delivery";
+import { endOfStoredIstanbulDay } from "@/lib/core/date";
 import { notifyPlatform, notifyPlatformStatus } from "@/lib/platform/notify";
 import { onRefund, openFiscalDoc } from "@/lib/fiscal/issue";
 import { capDiscount, couponCheck, pointsEarned, pointsValue, type CouponLike } from "@/lib/loyalty";
@@ -272,7 +273,7 @@ async function resolveSaleExtras(tx: Tx, doc: SaleDoc, subtotal: number, reasons
   if (doc.giftCard) {
     const [card] = await tx.select().from(schema.giftCards).where(and(eq(schema.giftCards.code, doc.giftCard.code), eq(schema.giftCards.status, "aktif"))).limit(1);
     if (!card) reasons.push("hediye kartı: bulunamadı");
-    else if (card.expiresAt && card.expiresAt.getTime() < Date.now()) reasons.push("hediye kartı: süresi doldu");
+    else if (card.expiresAt && endOfStoredIstanbulDay(card.expiresAt).getTime() < Date.now()) reasons.push("hediye kartı: süresi doldu");
     else {
       const due = subtotal - out.discount + (doc.tip ?? 0);
       const nonGift = doc.payments.filter((p) => p.method !== "hediye_karti").reduce((a, p) => a + p.amount, 0);

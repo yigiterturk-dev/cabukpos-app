@@ -4,6 +4,8 @@ import { packBits, toBase64, type PaperWidth } from "./escpos";
 /** Fiş kağıdına göre logo tavan genişliği (nokta). */
 export const logoMaxWidth = (w: PaperWidth) => (w === 58 ? 384 : 576);
 export const LOGO_MAX_H = 240;
+export const MAX_LOGO_PNG_BYTES = 20_000_000;
+const MAX_LOGO_PNG_PIXELS = 2_000_000;
 
 export type LogoImg = { w: number; h: number; data: string }; // data: packBits çıktısı base64
 
@@ -65,6 +67,7 @@ function pixels(ihdr: { w: number; h: number; depth: number; ct: number }, plte:
 /** PNG baytlarını siyah/beyaz satır haritasına çevirir (0 beyaz, 1 siyah). Yalnız interlace'siz PNG. */
 export async function pngRows(bytes: Uint8Array): Promise<(0 | 1)[][]> {
   if (bytes.length < 8 || SIG.some((s, i) => bytes[i] !== s)) throw new Error("Dosya PNG değil.");
+  if (bytes.length > MAX_LOGO_PNG_BYTES) throw new Error("PNG dosyası en fazla 20 MB olabilir.");
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let ihdr: { w: number; h: number; depth: number; ct: number } | null = null;
   let plte: Uint8Array<ArrayBufferLike> = new Uint8Array(0), trns: Uint8Array<ArrayBufferLike> | null = null;
@@ -79,6 +82,7 @@ export async function pngRows(bytes: Uint8Array): Promise<(0 | 1)[][]> {
       if (comp !== 0 || filter !== 0) throw new Error("PNG sıkıştırma yöntemi desteklenmiyor.");
       if (interlace !== 0) throw new Error("Sıkıştırılmış (interlace) PNG desteklenmiyor.");
       if (!w || w > 4096 || !h || h > 4096) throw new Error("PNG boyutu 1-4096 arası olmalı.");
+      if (w * h > MAX_LOGO_PNG_PIXELS) throw new Error("Logo görseli en fazla 2 megapiksel olabilir.");
       const okDepth = (ct === 0 || ct === 3) ? [1, 2, 4, 8].includes(depth) : depth === 8;
       if (![0, 2, 3, 4, 6].includes(ct) || !okDepth) throw new Error("PNG renk tipi/derinliği desteklenmiyor (8 bit RGB/RGBA/palet/gri kullanın).");
       ihdr = { w, h, depth, ct };
