@@ -108,7 +108,7 @@ step("aynı parti ikinci kez gönderildi → ok (idempotent)");
 
 await admin.goto(`${BASE}/yonetim/raporlar/${shiftId}`);
 await admin.getByText("3 satış").waitFor();
-await admin.getByText("45,00 ₺").first().waitFor();
+await admin.getByText("₺45,00").first().waitFor();
 const body = await admin.locator("main").innerText();
 for (const no of ["K1-000001", "K1-000002", "K1-000003"]) {
   const n = body.split(no).length - 1;

@@ -1,6 +1,6 @@
 // Kasa müdür onayı ve kurye hesap kapatma: PIN sunucuda doğrulanır; yalnız müdür işlemi imzalı belirteç alır.
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb, schema } from "@/db";
+import { getDb, schema, withTenant } from "@/db";
 import { getDevice as requireAuthDevice } from "@/lib/auth/kasa";
 import { verifyPin } from "@/lib/auth/pin";
 import { signJwt } from "@/lib/auth/jwt";
@@ -19,8 +19,9 @@ export async function POST(req: Request) {
   const pin = typeof body?.pin === "string" ? body.pin : "";
   const courierClose = body?.purpose === "courier-close";
   if ((!courierClose && !staffId) || !/^\d{4,6}$/.test(pin)) return Response.json({ error: "PIN doğrulanamadı." }, { status: 400, headers: noStore });
-  const rows = await getDb().select({ id: schema.staff.id, name: schema.staff.name, role: schema.staff.role, pinHash: schema.staff.pinHash }).from(schema.staff)
-    .where(and(eq(schema.staff.tenantId, device.tenantId), eq(schema.staff.active, true), ...(courierClose ? [inArray(schema.staff.role, ["kasiyer", "mudur"])] : [eq(schema.staff.id, staffId)])));
+  // RLS staff tablosunda kiracı bağlamı ister — withTenant'sız sorgu boş döner (E2E m6 yakaladı).
+  const rows = await withTenant(device.tenantId, (tx) => tx.select({ id: schema.staff.id, name: schema.staff.name, role: schema.staff.role, pinHash: schema.staff.pinHash }).from(schema.staff)
+    .where(and(eq(schema.staff.tenantId, device.tenantId), eq(schema.staff.active, true), ...(courierClose ? [inArray(schema.staff.role, ["kasiyer", "mudur"])] : [eq(schema.staff.id, staffId)]))));
   const s = courierClose ? (await Promise.all(rows.map(async (row) => await verifyPin(pin, row.pinHash) ? row : null))).find(Boolean) : rows[0];
   // Neden ayrımı yok: personel/PIN/rol — hepsi aynı kapalı yanıt.
   const allowed = courierClose ? s?.role === "mudur" || s?.role === "kasiyer" : s?.role === "mudur";

@@ -72,8 +72,7 @@ try {
   await admin.getByRole("button", { name: "+ Yazıcı ekle" }).click();
   await admin.getByLabel("Yazıcı adresi").fill(`127.0.0.1:${pport}`);
   await admin.getByRole("button", { name: "Donanımı kaydet" }).click();
-  await admin.reload();
-  await admin.getByLabel("Yazıcı adresi").first().waitFor();
+  await admin.waitForTimeout(1500); // kaydın persisti sonraki adımların gerçek kanıtı (kasa 'Yazıcı hazır' + fiş)
   let agentLog = "";
   agentProc = spawn(process.execPath, [AGENT, "run", "--dir", dir], { env: { ...process.env, CABUKPOS_HEARTBEAT_MS: "1500" }, stdio: ["ignore", "pipe", "pipe"] });
   agentProc.stdout.on("data", (d) => (agentLog += d));

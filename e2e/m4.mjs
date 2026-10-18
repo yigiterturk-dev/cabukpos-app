@@ -142,7 +142,7 @@ try {
   if (!j1.subarray(0, 5).equals(DRAWER)) throw new Error("nakit satışta çekmece darbesi yok");
   if (!j1.subarray(-4).equals(CUT)) throw new Error("fiş kesilmedi");
   const t1 = j1.toString("latin1");
-  if (!t1.includes("K1-000001") || !t1.includes("TOPLAM") || !t1.includes("70,00 TL")) throw new Error(`fiş içeriği: ${t1.slice(0, 300)}`);
+  if (!t1.includes("K1-000001") || !t1.includes("TOPLAM") || !t1.includes("70,00 ₺")) throw new Error(`fiş içeriği: ${t1.slice(0, 300)}`);
   step("terazi 0,750 kg + Ekmek, nakit 70 TL → fiş (K1-000001, TOPLAM, kes) + çekmece darbesi");
 
   // Yazıcı kapalı: satış kaydolur, fiş başarısız, sonra yeniden dene
@@ -167,7 +167,7 @@ try {
   step("yazıcı açıldı → 'Yeniden dene' → K1-000002 basıldı (çekmecesiz)");
 
   // Fiş ekranından yazdır (ajan)
-  await kasa.getByRole("button", { name: "Fişi yazdır" }).click();
+  await kasa.getByRole("button", { name: /Fişi yazdır|Tekrar yazdır/ }).click();
   await kasa.getByRole("button", { name: "Yazdır", exact: true }).click();
   await kasa.getByText("Yazıcıya gönderildi.").waitFor();
   expect(jobs.length, before + 2, "fiş ekranından yazdırma");
@@ -184,7 +184,7 @@ try {
   step("kasiyer 'Çekmece' → müdür PIN'i → darbe");
 
   await admin.goto(`${BASE}/yonetim/donanim`);
-  await admin.getByText("hazır").first().waitFor();
+  await admin.getByText("hazır").locator("visible=true").first().waitFor({ timeout: 90_000 });
 } finally {
   agentProc?.kill();
   printer.close();

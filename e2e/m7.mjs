@@ -43,7 +43,7 @@ try {
   const raw = async (name, extra) => {
     await admin.fill("input[name=name]", name);
     await admin.locator("label").filter({ hasText: "Hayır (hammadde" }).click();
-    await admin.locator("label").filter({ hasText: "Kg" }).click();
+    await admin.locator("label").filter({ hasText: /^Kg$/ }).click();
     await extra?.();
     await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
     await admin.getByText("Kaydedildi.").waitFor();
@@ -87,7 +87,7 @@ try {
     await rows.nth(i).getByLabel("Miktar").fill(q);
     await rows.nth(i).getByLabel("Birim fiyat").fill(c);
   }
-  expect((await admin.getByTestId("purchase-total").innerText()).trim(), "2.200,00 ₺", "alış toplamı");
+  expect((await admin.getByTestId("purchase-total").innerText()).trim(), "₺2.200,00", "alış toplamı");
   await admin.getByRole("button", { name: "Alışı kaydet" }).click();
   await admin.getByTestId("purchase").first().waitFor();
   step("alış F-1: un 10 kg × 20 + kıyma 5 kg × 400 = 2.200 TL");
@@ -109,14 +109,14 @@ try {
     return cost;
   };
   const harc = await recipe("Harç", [["Kıyma", "600"], ["Un", "400"]]);
-  if (!harc.includes("kg başına 248,00 ₺")) throw new Error(`harç maliyeti: ${harc}`);
+  if (!harc.includes("kg başına ₺248,00")) throw new Error(`harç maliyeti: ${harc}`);
   await admin.goto(`${BASE}/yonetim/uretim`);
   await choose(admin, admin.getByRole("combobox").first(), "Harç");
   await admin.fill("input[name=batches]", "2");
   await admin.getByRole("button", { name: "Üretimi kaydet" }).click();
   await admin.getByText("Kaydedildi; stok ve maliyet güncellendi.").waitFor();
   const lah = await recipe("Lahmacun", [["Harç (ara ürün)", "100"], ["Un", "150"]]);
-  if (!lah.includes("Maliyet 27,80 ₺") || !lah.includes("marj %74.5")) throw new Error(`lahmacun maliyeti: ${lah}`);
+  if (!lah.includes("Maliyet ₺27,80") || !lah.includes("marj %74.5")) throw new Error(`lahmacun maliyeti: ${lah}`);
   await recipe("Ekstra kıyma", [["Kıyma", "30"]]);
   step("harç 248 TL/kg; üretim 2 parti; lahmacun maliyet 27,80, marj %74.5; ekstra kıyma 30 g");
 
@@ -148,10 +148,10 @@ try {
   await kasa.getByRole("button", { name: "M1, Boş" }).click();
   if (await kasa.getByRole("button", { name: /^(Un|Kıyma|Harç)\b/ }).count()) throw new Error("hammadde kasada görünüyor");
   const dlg = kasa.getByRole("dialog", { name: "Lahmacun" });
-  await kasa.getByRole("button", { name: /^Lahmacun/ }).click();
+  await kasa.getByRole("button", { name: /Lahmacun 120,00/ }).first().click();
   await dlg.getByRole("button", { name: "Artır" }).click();
   await dlg.getByRole("button", { name: "Ekle" }).click();
-  await kasa.getByRole("button", { name: /^Lahmacun/ }).click();
+  await kasa.getByRole("button", { name: /Lahmacun 120,00/ }).first().click();
   await dlg.getByRole("button", { name: /Ekstra kıyma/ }).click();
   await dlg.getByRole("button", { name: "Ekle" }).click();
   await kasa.getByTestId("tab-remaining").getByText("380,00 ₺").waitFor();
@@ -182,20 +182,20 @@ try {
 
   await admin.goto(`${BASE}/yonetim/raporlar`);
   await admin.getByTestId("critical-card").getByText("Un", { exact: true }).waitFor();
-  await admin.getByRole("tab", { name: "Kârlılık" }).click();
+  await admin.goto(`${BASE}/yonetim/raporlar?sekme=karlilik`);
   const row = admin.getByTestId("profit-Lahmacun");
-  expect((await row.getByTestId("profit-cost").innerText()).trim(), "95,40 ₺", "lahmacun maliyeti (2 × 27,80 + 39,80)");
+  expect((await row.getByTestId("profit-cost").innerText()).trim(), "₺95,40", "lahmacun maliyeti (2 × 27,80 + 39,80)");
   expect((await row.getByTestId("profit-margin").innerText()).trim(), "%72.4", "lahmacun marjı");
   step("raporlar: kritik kart Un; kârlılık maliyet 95,40, marj %72.4");
 
   await admin.goto(`${BASE}/yonetim/tedarikciler`);
   await admin.getByTestId("supplier-Toptancı").getByRole("link", { name: "Döküm" }).click();
-  expect((await admin.getByTestId("supplier-balance").innerText()).trim(), "2.200,00 ₺ borç", "bakiye");
+  expect((await admin.getByTestId("supplier-balance").innerText()).trim(), "₺2.200,00 borç", "bakiye");
   await admin.fill("input[name=amount]", "1000");
   await admin.getByRole("button", { name: "Ödeme ekle" }).click();
   await admin.getByText("Ödeme eklendi.").waitFor();
   await admin.reload();
-  expect((await admin.getByTestId("supplier-balance").innerText()).trim(), "1.200,00 ₺ borç", "ödeme sonrası bakiye");
+  expect((await admin.getByTestId("supplier-balance").innerText()).trim(), "₺1.200,00 borç", "ödeme sonrası bakiye");
   step("tedarikçi ödemesi 1.000 → bakiye 1.200 borç");
 } finally {
   await browser.close();

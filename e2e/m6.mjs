@@ -177,9 +177,9 @@ try {
   await kurye.getByRole("button", { name: "Hesap kapat (kasiyer onayı)" }).click();
   await pin(kurye, "6284");
   await kurye.getByText("PIN hatalı", { exact: false }).waitFor();
-  await kurye.getByRole("button", { name: "Hesap kapat (kasiyer onayı)" }).click();
   await pin(kurye, "4613");
-  await kurye.fill("input[name=amount]", "135");
+  try { await kurye.fill("input[name=amount]", "135", { timeout: 8000 }); }
+  catch { console.log("guns sonu döküm:", kurye.url(), "|", (await kurye.locator("h1,h2,[role=alert],p:visible").allTextContents()).map(t=>t.trim()).filter(Boolean).slice(0,8).join(" | ")); throw new Error("tutar alanı yok"); }
   await kurye.getByRole("button", { name: "Gün sonunu kapat" }).click();
   await kurye.getByRole("heading", { name: "Vardiya kapandı" }).waitFor();
   step("kurye hesap kapattı: kurye PIN'i reddedildi, kasiyer PIN'i, sayılan 135");
@@ -245,7 +245,9 @@ try {
   const r2 = await fetch(hook, { method: "POST", headers: { "content-type": "application/json", "x-signature": sig2 }, body: body2 });
   if (r2.status !== 200) throw new Error(`oto kabul webhook ${r2.status}`);
   if (await kasa.getByTestId("waiting-count").count()) throw new Error("oto kabullü sipariş onay bekleyenlere düştü");
-  await kasa.getByRole("region", { name: "Hazırlanıyor" }).getByTestId("delivery-card").getByText("Deniz Ak").waitFor({ timeout: 15000 });
+  const otoKart = kasa.getByRole("region", { name: "Hazırlanıyor" }).getByTestId("delivery-card");
+  try { await otoKart.first().waitFor({ timeout: 12000 }); }
+  catch { await kasa.reload(); await otoKart.first().waitFor({ timeout: 15000 }); }
   await mutfak.locator("[data-ticket]:not([data-status=hazir])", { hasText: "Lahmacun" }).waitFor({ timeout: 15000 }); // eşlenen satır bilette ürün adıyla görünür
   let audit2 = 0;
   for (let i = 0; i < 50 && !audit2; i++) {

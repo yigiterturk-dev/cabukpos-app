@@ -184,7 +184,7 @@ await kasa.getByTestId("sync-pending").waitFor({ state: "detached", timeout: 20_
 await admin.goto(`${BASE}/yonetim/raporlar/${shiftId}`);
 await admin.getByText("2 satış").waitFor();
 await admin.getByText("1 iade · -35,00 ₺").waitFor();
-await admin.getByText("305,00 ₺").first().waitFor();
+await admin.getByText("305,00 ₺").locator("visible=true").first().waitFor();
 step("gün sonu: beklenen 305 TL (iade düşülmüş), bulutta aynı");
 
 await browser.close();
