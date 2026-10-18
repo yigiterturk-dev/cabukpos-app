@@ -54,6 +54,10 @@ export function PayDialog({ total, onPay, onClose, onDone, currency }: { total: 
   const [invoiceNotice, setInvoiceNotice] = useState("");
   const [settlementNotice, setSettlementNotice] = useState("");
   const invoiceToggleRef = useRef<HTMLButtonElement>(null);
+  const cardAmountRef = useRef<HTMLInputElement>(null);
+  const mealAmountRef = useRef<HTMLInputElement>(null);
+  const addCardRef = useRef<HTMLButtonElement>(null);
+  const addMealRef = useRef<HTMLButtonElement>(null);
   const [tip, setTip] = useState<string>(""); // #49: bahşiş — toplama eklenir
 
   // #33: kupon / puan / hediye kartı
@@ -132,10 +136,10 @@ export function PayDialog({ total, onPay, onClose, onDone, currency }: { total: 
     const frame = window.requestAnimationFrame(() => document.getElementById(submitButtonId)?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [error, pending, submitButtonId]);
-  const all = (m: "nakit" | "kart" | "yemek_karti") => { const v = bare(payBase); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
+  const all = (m: "nakit" | "kart" | "yemek_karti") => { setError(null); const v = bare(payBase); setCash(m === "nakit" ? v : ""); setCard(m === "kart" ? v : null); setMeal(m === "yemek_karti" ? v : null); };
   const other = (card === null ? 0 : parse(card) ?? 0) + (meal === null ? 0 : parse(meal) ?? 0);
   const due = Math.max(0, payBase - other); // nakitle kapanacak kalan
-  const setCashK = (k: number) => setCash(bare(k));
+  const setCashK = (k: number) => { setError(null); setCash(bare(k)); };
   const full = bare(payBase);
   const mode = payBase > 0 && (cash === full && card === null && meal === null ? "nakit" : !cash && card === full && meal === null ? "kart" : !cash && card === null && meal === full ? "yemek_karti" : null);
   const extrasSummary = [
@@ -281,15 +285,15 @@ export function PayDialog({ total, onPay, onClose, onDone, currency }: { total: 
             ))}
           </div>
           {giftApplied > 0 && <p className="text-xs text-muted" role="status" aria-live="polite">{payBase > 0 ? `Hediye kartı ${TL(giftApplied)} karşıladı; kalan ${TL(payBase)} tutar seçilen yöntemle alınır.` : `Hediye kartı ${TL(giftApplied)} ile tutarın tamamı karşılandı; ek ödeme yok.`}</p>}
-          <label className="flex items-center gap-3"><span className="w-24 shrink-0 text-sm font-medium text-ink-2 sm:w-28">Alınan nakit ({currencyUnit(currency)})</span><input name="amount-nakit" inputMode="decimal" maxLength={12} value={cash} onChange={(e) => setCash(e.target.value)} onKeyDown={submitFromAmount} placeholder="0,00" aria-invalid={cashInvalid || undefined} aria-describedby={cashInvalid ? amountErrorId : undefined} className={`${amount} min-w-0 ${cashInvalid ? "border-bad focus:border-bad focus:ring-bad/50" : ""}`} /></label>
+          <label className="flex items-center gap-3"><span className="w-24 shrink-0 text-sm font-medium text-ink-2 sm:w-28">Alınan nakit ({currencyUnit(currency)})</span><input name="amount-nakit" inputMode="decimal" maxLength={12} value={cash} onChange={(e) => { setCash(e.target.value); setError(null); }} onKeyDown={submitFromAmount} placeholder="0,00" aria-invalid={cashInvalid || undefined} aria-describedby={cashInvalid ? amountErrorId : undefined} className={`${amount} min-w-0 ${cashInvalid ? "border-bad focus:border-bad focus:ring-bad/50" : ""}`} /></label>
           <div className="flex flex-wrap items-center gap-3">
             <label htmlFor={tipInputId} className="w-24 shrink-0 text-sm font-medium text-ink-2 sm:w-28">Bahşiş ({currencyUnit(currency)})</label>
-            <input id={tipInputId} name="amount-bahsis" inputMode="decimal" maxLength={12} value={tip} onChange={(e) => setTip(e.target.value)} onKeyDown={submitFromAmount} placeholder="0,00" aria-invalid={tipInvalid || undefined} aria-describedby={tipInvalid ? amountErrorId : undefined} className={`${amount} min-w-0 flex-1 ${tipInvalid ? "border-bad focus:border-bad focus:ring-bad/50" : ""}`} />
+            <input id={tipInputId} name="amount-bahsis" inputMode="decimal" maxLength={12} value={tip} onChange={(e) => { setTip(e.target.value); setError(null); }} onKeyDown={submitFromAmount} placeholder="0,00" aria-invalid={tipInvalid || undefined} aria-describedby={tipInvalid ? amountErrorId : undefined} className={`${amount} min-w-0 flex-1 ${tipInvalid ? "border-bad focus:border-bad focus:ring-bad/50" : ""}`} />
             <div className="flex shrink-0 gap-1" role="group" aria-label="Bahşiş oranı">
               {[10, 15].map((p) => (
-                <Button key={p} variant="secondary" size="sm" type="button" className="min-h-12" onClick={() => setTip(bare(Math.min(MAX_TIP_KURUS, Math.round((total * p) / 100))))}>{`%${p}`}</Button>
+                <Button key={p} variant="secondary" size="sm" type="button" className="min-h-12" onClick={() => { setError(null); setTip(bare(Math.min(MAX_TIP_KURUS, Math.round((total * p) / 100)))); }}>{`%${p}`}</Button>
               ))}
-              {tip && <IconButton label="Bahşişi kaldır" onClick={() => setTip("")}><X aria-hidden className="size-5" /></IconButton>}
+              {tip && <IconButton label="Bahşişi kaldır" onClick={() => { setTip(""); setError(null); }}><X aria-hidden className="size-5" /></IconButton>}
             </div>
           </div>
           {due > 0 && (
@@ -298,11 +302,11 @@ export function PayDialog({ total, onPay, onClose, onDone, currency }: { total: 
               {quickCash(due).map((k) => <Button key={k} variant="secondary" size="sm" className="min-h-12 tabular" onClick={() => setCashK(k)}>{bare(k).replace(",00", "")} {currencyUnit(currency)}</Button>)}
             </div>
           )}
-          {card !== null && <label className="flex items-center gap-3"><span className="w-24 shrink-0 text-sm font-medium text-ink-2 sm:w-28">Kart ({currencyUnit(currency)})</span><input name="amount-kart" inputMode="decimal" maxLength={12} value={card} onChange={(e) => setCard(e.target.value)} onKeyDown={submitFromAmount} aria-invalid={cardInvalid || undefined} aria-describedby={cardInvalid ? amountErrorId : undefined} className={`${amount} min-w-0 ${cardInvalid ? "border-bad focus:border-bad focus:ring-bad/50" : ""}`} /><IconButton label="Kartı kaldır" onClick={() => setCard(null)}><X aria-hidden className="size-5" /></IconButton></label>}
-          {meal !== null && <label className="flex items-center gap-3"><span className="w-24 shrink-0 text-sm font-medium text-ink-2 sm:w-28">Yemek kartı ({currencyUnit(currency)})</span><input name="amount-yemek_karti" inputMode="decimal" maxLength={12} value={meal} onChange={(e) => setMeal(e.target.value)} onKeyDown={submitFromAmount} aria-invalid={mealInvalid || undefined} aria-describedby={mealInvalid ? amountErrorId : undefined} className={`${amount} min-w-0 ${mealInvalid ? "border-bad focus:border-bad focus:ring-bad/50" : ""}`} /><IconButton label="Yemek kartını kaldır" onClick={() => setMeal(null)}><X aria-hidden className="size-5" /></IconButton></label>}
+          {card !== null && <label className="flex items-center gap-3"><span className="w-24 shrink-0 text-sm font-medium text-ink-2 sm:w-28">Kart ({currencyUnit(currency)})</span><input ref={cardAmountRef} name="amount-kart" inputMode="decimal" maxLength={12} value={card} onChange={(e) => { setCard(e.target.value); setError(null); }} onKeyDown={submitFromAmount} aria-invalid={cardInvalid || undefined} aria-describedby={cardInvalid ? amountErrorId : undefined} className={`${amount} min-w-0 ${cardInvalid ? "border-bad focus:border-bad focus:ring-bad/50" : ""}`} /><IconButton label="Kartı kaldır" onClick={() => { setCard(null); setError(null); requestAnimationFrame(() => addCardRef.current?.focus()); }}><X aria-hidden className="size-5" /></IconButton></label>}
+          {meal !== null && <label className="flex items-center gap-3"><span className="w-24 shrink-0 text-sm font-medium text-ink-2 sm:w-28">Yemek kartı ({currencyUnit(currency)})</span><input ref={mealAmountRef} name="amount-yemek_karti" inputMode="decimal" maxLength={12} value={meal} onChange={(e) => { setMeal(e.target.value); setError(null); }} onKeyDown={submitFromAmount} aria-invalid={mealInvalid || undefined} aria-describedby={mealInvalid ? amountErrorId : undefined} className={`${amount} min-w-0 ${mealInvalid ? "border-bad focus:border-bad focus:ring-bad/50" : ""}`} /><IconButton label="Yemek kartını kaldır" onClick={() => { setMeal(null); setError(null); requestAnimationFrame(() => addMealRef.current?.focus()); }}><X aria-hidden className="size-5" /></IconButton></label>}
           <div className="flex flex-wrap gap-2 pt-1">
-            {card === null && <Button variant="ghost" size="sm" className="min-h-12" onClick={() => setCard("")}><Plus aria-hidden className="size-4" />Kart ekle</Button>}
-            {meal === null && <Button variant="ghost" size="sm" className="min-h-12" onClick={() => setMeal("")}><Plus aria-hidden className="size-4" />Yemek kartı ekle</Button>}
+            {card === null && <Button ref={addCardRef} variant="ghost" size="sm" className="min-h-12" onClick={() => { setCard(""); setError(null); requestAnimationFrame(() => cardAmountRef.current?.focus()); }}><Plus aria-hidden className="size-4" />Kart ekle</Button>}
+            {meal === null && <Button ref={addMealRef} variant="ghost" size="sm" className="min-h-12" onClick={() => { setMeal(""); setError(null); requestAnimationFrame(() => mealAmountRef.current?.focus()); }}><Plus aria-hidden className="size-4" />Yemek kartı ekle</Button>}
             {!invoicing && <Button ref={invoiceToggleRef} variant="ghost" size="sm" className="min-h-12" onClick={() => { setInvoiceNotice(""); setInvoicing(true); }}><FileText aria-hidden className="size-4" />Fatura</Button>}
             {buyer && !invoicing && <span className="inline-flex max-w-full break-words rounded-full bg-brand-soft px-2.5 text-sm text-brand" data-testid="buyer-badge">{buyer.name}</span>}
           </div>
@@ -415,10 +419,11 @@ export function PayDialog({ total, onPay, onClose, onDone, currency }: { total: 
   );
 }
 
-function WeighDialog({ product, onOk, onClose, scale, currency }: { product: KasaProduct; onOk: (grams: number) => void; onClose: () => void; scale?: ReadScale; currency?: Currency }) {
+function WeighDialog({ product, onOk, onClose, scale, currency }: { product: KasaProduct; onOk: (grams: number) => string | null; onClose: () => void; scale?: ReadScale; currency?: Currency }) {
   const { TL } = kasaFmt({ device: { currency } });
   const [v, setV] = useState("");
   const [scaleMsg, setScaleMsg] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
   const weightRef = useRef<HTMLInputElement>(null);
   const g = parseKg(v);
@@ -430,6 +435,7 @@ function WeighDialog({ product, onOk, onClose, scale, currency }: { product: Kas
   const fromScale = async () => {
     setReading(true);
     setScaleMsg(null);
+    setSubmitError(null);
     try {
       const r = await scale!();
       if (!r.stable) setScaleMsg("Tartı dengelenmedi, tekrar deneyin.");
@@ -447,11 +453,12 @@ function WeighDialog({ product, onOk, onClose, scale, currency }: { product: Kas
         <Button variant="secondary" size="lg" disabled={reading} onClick={onClose} className="flex-1">Vazgeç</Button>
         <Button type="submit" form="weigh-form" size="lg" disabled={!g || reading} className="flex-[2]">{reading ? "Tartı okunuyor…" : "Sepete ekle"}</Button>
       </>}>
-      <form id="weigh-form" aria-busy={reading} onSubmit={(e) => { e.preventDefault(); if (g && !reading) onOk(g); }}>
+      <form id="weigh-form" aria-busy={reading} onSubmit={(e) => { e.preventDefault(); if (g && !reading) { const message = onOk(g); setSubmitError(message); if (!message) onClose(); } }}>
         <label className="block text-sm font-medium text-ink-2" htmlFor="weigh-kg">Ağırlık (kg)</label>
-        <input ref={weightRef} id="weigh-kg" name="kg" inputMode="decimal" maxLength={8} value={v} disabled={reading} onChange={(e) => { setV(e.target.value); setScaleMsg(null); }} placeholder="ör. 0,750" aria-invalid={weightInvalid || undefined} aria-describedby={weightInvalid ? "weigh-error weigh-hint" : "weigh-hint"} className={`tabular mt-1.5 h-16 w-full rounded-xl border px-4 text-right text-3xl font-semibold outline-none focus:ring-4 disabled:opacity-60 ${weightInvalid ? "border-bad focus:border-bad focus:ring-bad/40" : "border-line focus:border-brand focus:ring-brand-ring/50"}`} />
+        <input ref={weightRef} id="weigh-kg" name="kg" inputMode="decimal" maxLength={8} value={v} disabled={reading} onChange={(e) => { setV(e.target.value); setScaleMsg(null); setSubmitError(null); }} placeholder="ör. 0,750" aria-invalid={weightInvalid || Boolean(submitError) || undefined} aria-describedby={weightInvalid ? "weigh-error weigh-hint" : submitError ? "weigh-submit-error weigh-hint" : "weigh-hint"} className={`tabular mt-1.5 h-16 w-full rounded-xl border px-4 text-right text-3xl font-semibold outline-none focus:ring-4 disabled:opacity-60 ${weightInvalid || submitError ? "border-bad focus:border-bad focus:ring-bad/40" : "border-line focus:border-brand focus:ring-brand-ring/50"}`} />
         <p id="weigh-hint" className="mt-1 text-xs text-muted">Kg olarak girin; ör. 0,750. 0’dan büyük, en fazla 1000 kg ve 3 ondalık hane.</p>
         {weightInvalid && <p id="weigh-error" className="mt-1 text-sm text-bad" role="status" aria-live="polite">0&apos;dan büyük ve en fazla 1000 kg olan geçerli bir ağırlık girin.</p>}
+        {submitError && <p id="weigh-submit-error" className="mt-1 text-sm text-bad" role="alert" aria-live="assertive">{submitError}</p>}
         {scale && (
           <div className="mt-3 flex items-center gap-3">
             <Button variant="secondary" onClick={() => void fromScale()} disabled={reading} className="min-h-12"><Scale aria-hidden className="size-4" />{reading ? "Okunuyor…" : "Teraziden al"}</Button>
@@ -472,6 +479,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
   const { TL } = kasaFmt({ device: { currency } });
   const searchHintId = useId();
   const [cart, setCart] = useState<CartLine[]>([]);
+  const cartRef = useRef(cart);
   const [undoCart, setUndoCart] = useState<CartLine[] | null>(null);
   const [cartNotice, setCartNotice] = useState("");
   const [cat, setCat] = useState<string | null>(null);
@@ -514,9 +522,12 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
     return () => observer.disconnect();
   }, []);
   // M9a: silme/azaltma kaydı. Güncelleyici fonksiyon değil düz değer: StrictMode'da iki kez çağrılıp çift olay yazmasın.
-  const shrink = (next: CartLine[]) => {
-    const out = removedLines(cart, next);
+  const shrink = (productId: string, qtyMilli: number) => {
+    const current = cartRef.current;
+    const next = setQty(current, productId, qtyMilli);
+    const out = removedLines(current, next);
     setUndoCart(null);
+    cartRef.current = next;
     setCart(next);
     if (out[0]) {
       const remainingLine = next.find((line) => line.productId === out[0].productId);
@@ -531,11 +542,13 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
     if (out.length) onRemove?.("line_removed", out);
   };
   const clear = () => {
-    if (cart.length) onRemove?.("cart_cleared", removedLines(cart, []));
-    setUndoCart(cart.length ? cart : null);
-    setCartNotice(cart.length ? "Sepet temizlendi. Geri almak için sepet alanındaki Geri al düğmesini kullanın." : "");
+    const current = cartRef.current;
+    if (current.length) onRemove?.("cart_cleared", removedLines(current, []));
+    setUndoCart(current.length ? current : null);
+    setCartNotice(current.length ? "Sepet temizlendi. Geri almak için sepet alanındaki Geri al düğmesini kullanın." : "");
+    cartRef.current = [];
     setCart([]);
-    if (cart.length) requestAnimationFrame(() => undoRef.current?.focus());
+    if (current.length) requestAnimationFrame(() => undoRef.current?.focus());
   };
   const index = useMemo(() => buildIndex(products), [products]);
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
@@ -546,39 +559,58 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
     const matches = base.filter((p) => (cat ? p.categoryId === cat : true));
     return { items: matches.slice(0, MAX_SHOWN), hasMore: matches.length > MAX_SHOWN };
   }, [products, cat, q, market]);
-  const resultKey = `${q.trim()}|${cat ?? ""}|${shown.items.length}|${shown.hasMore}`;
+  const resultKey = `${q.trim()}|${cat ?? ""}|${shown.items.length}|${shown.hasMore}|${products.length}|${market}`;
+  const emptyResultText = q.trim()
+    ? `“${q.trim().slice(0, 32)}” aramasıyla eşleşen ürün yok.`
+    : cat
+      ? "Bu kategoride satışa açık ürün yok."
+      : market && products.length > 0
+        ? "Hızlı tuş yok. Barkod okutun ya da arayın."
+        : "Satışa açık ürün yok.";
+  const resultSummary = useMemo(() => {
+    if (shown.items.length === 0) return emptyResultText;
+    const queryLabel = q.trim() ? `“${q.trim().slice(0, 32)}” araması: ` : "";
+    return `${queryLabel}${shown.items.length}${shown.hasMore ? "+" : ""} ürün gösteriliyor${shown.hasMore ? " · aramayı daraltın" : ""}`;
+  }, [emptyResultText, q, shown.hasMore, shown.items.length]);
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const queryLabel = q.trim() ? `“${q.trim().slice(0, 32)}” araması: ` : "";
-      setResultNotice({ key: resultKey, text: `${queryLabel}${shown.items.length}${shown.hasMore ? "+" : ""} ürün gösteriliyor${shown.hasMore ? " · aramayı daraltın" : ""}` });
-    }, 450);
+    const timer = window.setTimeout(() => setResultNotice({ key: resultKey, text: resultSummary }), 450);
     return () => window.clearTimeout(timer);
-  }, [q, resultKey, shown.hasMore, shown.items.length]);
+  }, [resultKey, resultSummary]);
   const resultText = resultNotice === null
-    ? `${shown.items.length}${shown.hasMore ? "+" : ""} ürün gösteriliyor${shown.hasMore ? " · aramayı daraltın" : ""}`
+    ? resultSummary
     : resultNotice.key === resultKey ? resultNotice.text : "";
   // #50: fiyat satır eklenirken donar — happy hour bitse de sepetteki satır değişmez.
-  const add = (p: KasaProduct, qtyMilli = 1000) => {
-    const nextQty = (cart.find((line) => line.productId === p.id)?.qtyMilli ?? 0) + qtyMilli;
+  const add = (p: KasaProduct, qtyMilli = 1000): string | null => {
+    const current = cartRef.current;
+    const nextQty = (current.find((line) => line.productId === p.id)?.qtyMilli ?? 0) + qtyMilli;
     if (nextQty > MAX_CART_LINE_QTY_MILLI) {
-      setScanError(`${p.name}: bir satış satırında en fazla ${p.kind === "tartili" ? "1.000 kg" : "1.000 adet"} olabilir.`);
-      return;
+      const message = `${p.name}: bir satış satırında en fazla ${p.kind === "tartili" ? "1.000 kg" : "1.000 adet"} olabilir.`;
+      setScanError(message);
+      return message;
     }
     setUndoCart(null);
-    setCart((c) => addProduct(c, { ...p, price: effectivePrice(p.id, p.price, priceLists, new Date(), undefined, p.categoryId) }, qtyMilli));
+    const next = addProduct(current, { ...p, price: effectivePrice(p.id, p.price, priceLists, new Date(), undefined, p.categoryId) }, qtyMilli);
+    cartRef.current = next;
+    setCart(next);
     setCartNotice(`${p.name} sepete eklendi${p.kind === "tartili" ? `, toplam ${kg(nextQty)}` : `, ${nextQty / 1000} adet`}.`);
     setLast(null);
     setScanError(null);
+    return null;
   };
   const pick = (p: KasaProduct) => (p.kind === "tartili" ? setWeigh(p) : add(p));
   const refocus = () => requestAnimationFrame(() => search.current?.focus());
   const onScan = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter" || !q.trim()) return;
     const r = resolveScan(q, index);
-    if ("product" in r) { add(r.product, r.qtyMilli); setQ(""); return; }
+    if ("product" in r) { if (add(r.product, r.qtyMilli) === null) setQ(""); return; }
     if ("weigh" in r) { setWeigh(r.weigh); setQ(""); return; }
     // Barkod değilse ve aramada tek ürün kaldıysa onu ekle (elle arama + Enter).
-    if (shown.items.length === 1 && !/^\d+\*/.test(q.trim())) { pick(shown.items[0]); setQ(""); return; }
+    if (shown.items.length === 1 && !/^\d+\*/.test(q.trim())) {
+      const product = shown.items[0];
+      if (product.kind === "tartili") { setWeigh(product); setQ(""); }
+      else if (add(product) === null) setQ("");
+      return;
+    }
     if (shown.items.length > 1 && !/^\d+\*/.test(q.trim())) {
       setScanError("Birden fazla ürün bulundu. Listeden doğru ürünü seçin.");
       return;
@@ -660,7 +692,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
           {shown.items.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center gap-2 py-14 text-center">
               <span className="grid size-12 place-items-center rounded-2xl bg-surface-3 text-line-strong"><ShoppingBasket aria-hidden className="size-6" /></span>
-              <p className="text-sm text-muted">{market && !q ? "Hızlı tuş yok. Barkod okutun ya da arayın." : "Ürün bulunamadı."}</p>
+              <p className="text-sm text-muted">{emptyResultText}</p>
               {(q || cat !== null) && <button type="button" onClick={() => { setQ(""); setCat(null); setScanError(null); refocus(); }} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-brand underline underline-offset-4 outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aramayı ve kategoriyi temizle</button>}
             </div>
           )}
@@ -678,7 +710,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
               <div>
                 {undoCart ? <>
                   <p className="font-medium text-ink-2">Sepet temizlendi.</p>
-                  <button ref={undoRef} type="button" onClick={() => { setCart(undoCart); setUndoCart(null); setCartNotice("Sepet geri alındı."); refocus(); }} className="mt-1 inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-brand underline underline-offset-4 outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">Geri al</button>
+                  <button ref={undoRef} type="button" onClick={() => { cartRef.current = undoCart; setCart(undoCart); setUndoCart(null); setCartNotice("Sepet geri alındı."); refocus(); }} className="mt-1 inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-brand underline underline-offset-4 outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">Geri al</button>
                 </> : <>
                   <p className="font-medium text-ink-2">Sepet boş</p>
                   <p className="mt-0.5 text-xs text-muted">Ürün seçin ya da barkod okutun.</p>
@@ -694,12 +726,12 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
                 <div className="min-w-0 basis-full flex-1 sm:basis-auto"><div className="break-words font-medium">{l.name}</div><div className="tabular text-xs text-muted">{weighed ? `${kg(l.qtyMilli)} × ${TL(l.unitPrice)}/kg` : TL(l.unitPrice)}</div></div>
                 <div className="ml-auto flex shrink-0 items-center gap-2">
                   {weighed ? (
-                    <button type="button" aria-label={`${l.name} sil`} onClick={() => shrink(setQty(cart, l.productId, 0))} className={`${step} text-bad`}><Trash2 aria-hidden className="size-4" /></button>
+                      <button type="button" aria-label={`${l.name} sil`} onClick={() => shrink(l.productId, 0)} className={`${step} text-bad`}><Trash2 aria-hidden className="size-4" /></button>
                   ) : (
                     <>
-                      <button type="button" aria-label={`${l.name} azalt`} onClick={() => shrink(setQty(cart, l.productId, l.qtyMilli - 1000))} className={step}>−</button>
+                      <button type="button" aria-label={`${l.name} azalt`} onClick={() => shrink(l.productId, Math.max(0, (cartRef.current.find((line) => line.productId === l.productId)?.qtyMilli ?? 0) - 1000))} className={step}>−</button>
                       <span className="tabular w-8 text-center font-semibold" data-testid="cart-qty">{l.qtyMilli / 1000}</span>
-                      <button type="button" aria-label={`${l.name} artır, en fazla 1.000 adet`} title={l.qtyMilli >= MAX_CART_LINE_QTY_MILLI ? "Satır üst sınırı: 1.000 adet" : undefined} disabled={l.qtyMilli >= MAX_CART_LINE_QTY_MILLI} onClick={() => { const qty = Math.min(MAX_CART_LINE_QTY_MILLI, l.qtyMilli + 1000); setUndoCart(null); setCart((c) => setQty(c, l.productId, qty)); setCartNotice(`${l.name} adedi ${ (qty / 1000).toLocaleString("tr-TR") } oldu.`); }} className={`${step} disabled:cursor-not-allowed disabled:opacity-40`}>+</button>
+                      <button type="button" aria-label={`${l.name} artır, en fazla 1.000 adet`} title={l.qtyMilli >= MAX_CART_LINE_QTY_MILLI ? "Satır üst sınırı: 1.000 adet" : undefined} disabled={l.qtyMilli >= MAX_CART_LINE_QTY_MILLI} onClick={() => { const qty = Math.min(MAX_CART_LINE_QTY_MILLI, (cartRef.current.find((line) => line.productId === l.productId)?.qtyMilli ?? l.qtyMilli) + 1000); const next = setQty(cartRef.current, l.productId, qty); cartRef.current = next; setUndoCart(null); setCart(next); setCartNotice(`${l.name} adedi ${ (qty / 1000).toLocaleString("tr-TR") } oldu.`); }} className={`${step} disabled:cursor-not-allowed disabled:opacity-40`}>+</button>
                     </>
                   )}
                   <span className="tabular w-24 shrink-0 text-right font-semibold">{TL(lineTotal(l))}</span>
@@ -757,8 +789,8 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
         <span className="flex min-w-0 flex-col"><span>Sepete git</span><span className="text-xs font-medium opacity-90">{count.toLocaleString("tr-TR")} kalem</span></span>
         <span className="tabular shrink-0">{TL(t.total)} <ArrowRight aria-hidden className="ml-1 inline size-4" /></span>
       </button>}
-      {weigh && <WeighDialog product={weigh} scale={scale} currency={currency} onClose={() => { setWeigh(null); refocus(); }} onOk={(g) => { add(weigh, g); setWeigh(null); refocus(); }} />}
-          {paying && <PayDialog total={t.total} currency={currency} onPay={(id, p, b, tip) => onPay(id, p, cart, b, tip)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setUndoCart(null); setCart([]); setLast(r); refocus(); }} />}
+      {weigh && <WeighDialog product={weigh} scale={scale} currency={currency} onClose={() => { setWeigh(null); refocus(); }} onOk={(g) => add(weigh, g)} />}
+          {paying && <PayDialog total={t.total} currency={currency} onPay={(id, p, b, tip) => onPay(id, p, cart, b, tip)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setUndoCart(null); cartRef.current = []; setCart([]); setLast(r); refocus(); }} />}
     </div>
   );
 }

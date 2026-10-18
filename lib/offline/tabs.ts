@@ -7,17 +7,17 @@ import type { LanLink } from "@/lib/agent/config";
 import type { TabDoc } from "@/lib/sync/docs";
 import { kasaDb } from "./db";
 
-export type NewTabEvent = { tabId: string; tableId: string | null; staffId: string | null; approvedBy?: string | null; ev: TabEv };
+export type NewTabEvent = { tabId: string; tableId: string | null; staffId: string | null; approvedBy?: string | null; approvalToken?: string | null; ev: TabEv };
 
 /** Olayları (sırayla) yerel depoya ve giden kutusuna yazar. Aynı milisaniyede sıra bozulmasın diye zaman 1 ms artar. */
 export async function addTabEvents(list: NewTabEvent[]): Promise<TabEvent[]> {
   const d = kasaDb();
   const base = Date.now();
-  const events: TabEvent[] = list.map((e, i) => ({ id: crypto.randomUUID(), tabId: e.tabId, tableId: e.tableId, at: new Date(base + i).toISOString(), staffId: e.staffId, approvedBy: e.approvedBy ?? null, seq: null, ev: e.ev }));
+  const events: TabEvent[] = list.map((e, i) => ({ id: crypto.randomUUID(), tabId: e.tabId, tableId: e.tableId, at: new Date(base + i).toISOString(), staffId: e.staffId, approvedBy: e.approvedBy ?? null, approvalToken: e.approvalToken ?? undefined, seq: null, ev: e.ev }));
   await d.transaction("rw", [d.tabEvents, d.outbox], async () => {
     for (const e of events) {
       await d.tabEvents.put(e);
-      const doc: TabDoc = { kind: "tab", id: e.id, tabId: e.tabId, tableId: e.tableId, at: e.at, staffId: e.staffId, approvedBy: e.approvedBy, ev: e.ev as TabDoc["ev"] };
+      const doc: TabDoc = { kind: "tab", id: e.id, tabId: e.tabId, tableId: e.tableId, at: e.at, staffId: e.staffId, approvedBy: e.approvedBy, ev: e.ev as TabDoc["ev"], ...(e.approvalToken ? { approvalToken: e.approvalToken } : {}) };
       await d.outbox.add({ id: e.id, doc });
     }
   });

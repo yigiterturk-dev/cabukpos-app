@@ -27,8 +27,8 @@ export function BrandForm({ initial }: { initial?: { id: string; name: string; s
   }, [pending, state.error, state.savedAt]);
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} aria-busy={pending} className="flex flex-wrap items-end gap-3">
-      <div><Field label="Marka adı" hint="1–80 karakter"><Input name="name" disabled={pending} defaultValue={initial?.name} placeholder="Örn. Pideci İnşaat" maxLength={80} className="w-56" required {...errorProps(displayState, "name", idPrefix)} /></Field><Err s={displayState} f="name" idPrefix={idPrefix} /></div>
-      <div><Field label="Adres (slug)" hint="2–40 küçük harf, rakam veya tire; boşsa isimden üretilir"><Input name="slug" disabled={pending} defaultValue={initial?.slug} placeholder="pideci-insaat" maxLength={40} className="w-44" {...errorProps(displayState, "slug", idPrefix)} /></Field><Err s={displayState} f="slug" idPrefix={idPrefix} /></div>
+      <div><Field label="Marka adı" hint="1–80 karakter"><Input name="name" disabled={pending} defaultValue={initial?.name} placeholder="Örn. Pideci İnşaat" maxLength={80} pattern=".*\\S.*" className="w-56" required {...errorProps(displayState, "name", idPrefix)} /></Field><Err s={displayState} f="name" idPrefix={idPrefix} /></div>
+      <div><Field label="Adres (slug)" hint="2–40 küçük harf, rakam veya tire; boşsa isimden üretilir"><Input name="slug" disabled={pending} defaultValue={initial?.slug} placeholder="pideci-insaat" minLength={2} maxLength={40} pattern="[a-z0-9][a-z0-9-]{1,39}" autoCapitalize="none" spellCheck={false} className="w-44" {...errorProps(displayState, "slug", idPrefix)} /></Field><Err s={displayState} f="slug" idPrefix={idPrefix} /></div>
       <Button ref={saveButtonRef} type="submit" variant={initial ? "ghost" : "primary"} disabled={pending}>{initial ? "Kaydet" : "Marka ekle"}</Button>
       {pending && <span className="sr-only" role="status" aria-live="polite">Marka bilgileri kaydediliyor.</span>}
       {state.savedAt && !edited && !pending && !state.error && <Saved s={state} />}<Err s={displayState} />

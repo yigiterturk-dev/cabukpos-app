@@ -47,7 +47,7 @@ function OptionsDialog({ product, groups, onAdd, onClose, currency, busy }: { pr
     <Modal label={product.name} onClose={onClose} closeDisabled={busy}>
       {groups.map((g) => (
         <fieldset key={g.id} className="mb-4">
-          <legend className="mb-2 text-sm font-medium">{g.name} <span className="font-normal text-muted">{g.min > 0 ? "(zorunlu)" : ""}{g.max > 1 ? ` en çok ${g.max}` : ""}</span></legend>
+          <legend className="mb-2 text-sm font-medium">{g.name} <span className="font-normal text-muted">{g.min > 0 || g.max > 1 ? `(${[g.min > 0 ? `en az ${g.min} seçim` : "", g.max > 1 ? `en çok ${g.max}` : ""].filter(Boolean).join(" · ")})` : ""}</span></legend>
           <div className="flex flex-wrap gap-2">
             {g.options.map((o) => {
               const selected = picked.includes(o.id);
@@ -79,7 +79,7 @@ function OptionsDialog({ product, groups, onAdd, onClose, currency, busy }: { pr
 /** Gerekçe (+ indirimde tutar) ve müdür değilse müdür PIN'i. */
 function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose, busy }: {
   meta: Meta; onMeta: (m: Meta) => void; waiter: Waiter; title: string; discount?: boolean;
-  onOk: (approvedBy: string | null, reason: string, d?: { percent: number | null; amount: number | null }) => void | Promise<void>; onClose: () => void; busy: boolean;
+  onOk: (approvedBy: string | null, reason: string, d?: { percent: number | null; amount: number | null }, approvalToken?: string) => void | Promise<void>; onClose: () => void; busy: boolean;
 }) {
   const [reason, setReason] = useState("");
   const [kind, setKind] = useState<"yuzde" | "tutar" | "kaldir">("yuzde");
@@ -125,7 +125,7 @@ function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose, 
         </>
       ) : (
         <>
-          <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => onOk(m.id, reason.trim(), d)} autoFocusFirst />
+          <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m, token) => onOk(m.id, reason.trim(), d, token)} autoFocusFirst />
           <button type="button" disabled={busy} onClick={onClose} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full">Vazgeç</button>
         </>
       )}
@@ -136,7 +136,7 @@ function ApprovalDialog({ meta, onMeta, waiter, title, discount, onOk, onClose, 
 type Dialog =
   | { k: "options"; product: KasaProduct }
   | { k: "line"; line: TabLine }
-  | { k: "approve"; title: string; discount?: boolean; run: (approvedBy: string | null, reason: string, d?: { percent: number | null; amount: number | null }) => NewTabEvent[] }
+  | { k: "approve"; title: string; discount?: boolean; run: (approvedBy: string | null, reason: string, d?: { percent: number | null; amount: number | null }, approvalToken?: string) => NewTabEvent[] }
   | { k: "note"; line: TabLine }
   | { k: "move" }
   | { k: "merge" };
@@ -193,7 +193,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
     window.addEventListener("keydown", onShortcut);
     return () => window.removeEventListener("keydown", onShortcut);
   }, [dialog, productQuery]);
-  const ev = (e: NewTabEvent["ev"], approvedBy: string | null = null): NewTabEvent => ({ tabId, tableId: table?.id ?? null, staffId: waiter.id, approvedBy, ev: e });
+  const ev = (e: NewTabEvent["ev"], approvedBy: string | null = null, approvalToken?: string): NewTabEvent => ({ tabId, tableId: table?.id ?? null, staffId: waiter.id, approvedBy, approvalToken, ev: e });
   const run = async (list: NewTabEvent[], returnFocusTo?: HTMLButtonElement) => {
     if (busyRef.current) return false;
     busyRef.current = true;
@@ -370,7 +370,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             <div className="grid grid-cols-2 gap-2">
               {table && <button type="button" disabled={busy} onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>}
               {table && <button type="button" disabled={busy} onClick={() => setDialog({ k: "merge" })} className={btn}>Birleştir</button>}
-              <button type="button" disabled={busy} onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by)] })} className={btn}>İndirim</button>
+              <button type="button" disabled={busy} onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d, token) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by, token)] })} className={btn}>İndirim</button>
               {!canPay && table && <button type="button" disabled={busy || tab.billRequested} onClick={(event) => void run([ev({ type: "bill" })], event.currentTarget)} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
               {canPay && <button type="button" disabled={busy || (tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli))} onClick={() => onBill(tab.id)} className={`${btn} font-medium`}>Hesap</button>}
             </div>
@@ -394,10 +394,10 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
                 <button type="button" disabled={busy} onClick={() => setDialog({ k: "note", line: dialog.line })} className={btn}>Not ekle / değiştir</button>
               </>
             ) : dialog.line.paidMilli === 0 && (
-              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İptal: ${l.name}`, run: (by, reason) => [ev({ type: "void", lineId: l.lineId, reason }, by)] }); }} className={btn}>İptal et (müdür onayı)</button>
+              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İptal: ${l.name}`, run: (by, reason, _d, token) => [ev({ type: "void", lineId: l.lineId, reason }, by, token)] }); }} className={btn}>İptal et (müdür onayı)</button>
             )}
             {!dialog.line.comped && dialog.line.paidMilli === 0 && (
-              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İkram: ${l.name}`, run: (by, reason) => [ev({ type: "comp", lineId: l.lineId, reason }, by)] }); }} className={btn}>İkram et</button>
+              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İkram: ${l.name}`, run: (by, reason, _d, token) => [ev({ type: "comp", lineId: l.lineId, reason }, by, token)] }); }} className={btn}>İkram et</button>
             )}
             <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-2 w-full">Kapat</button>
           </div>
@@ -408,7 +408,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
         void run([ev({ type: "void", lineId: l.lineId, reason: "not değişti" }), ev({ type: "add", lineId: crypto.randomUUID(), productId: l.productId, name: l.name, unitPrice: l.unitPrice, vatRate: l.vatRate, qtyMilli: l.qtyMilli, options: l.options, note, stationId: l.stationId })]);
       }} />}
       {dialog?.k === "approve" && (
-        <ApprovalDialog meta={meta} onMeta={onMeta} waiter={waiter} title={dialog.title} discount={dialog.discount} busy={busy} onClose={() => setDialog(null)} onOk={async (by, reason, d) => { await run(dialog.run(by, reason, d)); }} />
+        <ApprovalDialog meta={meta} onMeta={onMeta} waiter={waiter} title={dialog.title} discount={dialog.discount} busy={busy} onClose={() => setDialog(null)} onOk={async (by, reason, d, token) => { await run(dialog.run(by, reason, d, token)); }} />
       )}
       {dialog?.k === "move" && table && (
         <Modal label={`${table.name} → taşı`} onClose={() => setDialog(null)} closeDisabled={busy}>

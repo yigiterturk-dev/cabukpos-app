@@ -1,8 +1,8 @@
 // lib/core/refund.ts — İade edilebilir miktar (saf): satılan − önceki iadeler, ürün/birim fiyatı/seçenek bazında. Kasada ve bulutta aynı.
-export type RefLine = { productId: string; name: string; unitPrice: number; vatRate: 1 | 10 | 20; qtyMilli: number; options?: { id: string; name: string; delta: number }[]; note?: string | null };
+export type RefLine = { productId: string; name: string; unitPrice: number; vatRate: 1 | 10 | 20; qtyMilli: number; options?: { id: string; name: string; delta: number }[]; note?: string | null; total?: number; discount?: number };
 
 const priceKey = (l: Pick<RefLine, "productId" | "unitPrice" | "vatRate">) => `${l.productId}:${l.unitPrice}:${l.vatRate}`;
-const refundKey = (l: Pick<RefLine, "productId" | "unitPrice" | "vatRate" | "options">) => `${priceKey(l)}:${(l.options ?? []).map((o) => o.id).sort().join(",")}`;
+export const refundKey = (l: Pick<RefLine, "productId" | "unitPrice" | "vatRate" | "options">) => `${priceKey(l)}:${(l.options ?? []).map((o) => o.id).sort().join(",")}`;
 
 export function refundable(sold: RefLine[], refunded: { productId: string; qtyMilli: number; unitPrice?: number | null; vatRate?: RefLine["vatRate"] | null; options?: RefLine["options"] | null }[]): RefLine[] {
   const back = new Map<string, number>();

@@ -43,7 +43,7 @@ export type TabEv =
   | { type: "handover" }
   | { type: "cancel"; reason: string };
 
-export type TabEvent = { id: string; tabId: string; tableId: string | null; at: string; staffId: string | null; approvedBy: string | null; seq: number | null; ev: TabEv };
+export type TabEvent = { id: string; tabId: string; tableId: string | null; at: string; staffId: string | null; approvedBy: string | null; approvalToken?: string; seq: number | null; ev: TabEv };
 
 export type TabLine = Extract<TabEv, { type: "add" }> & { addedAt: string; staffId: string | null; sent: boolean; voided: boolean; comped: boolean; paidMilli: number; paidDiscount: Kurus };
 export type Ticket = { id: string; stationId: string | null; lineIds: string[]; at: string; staffId: string | null; status: KitchenStatus; readyAt: string | null; printed: boolean };

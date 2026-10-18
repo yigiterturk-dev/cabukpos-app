@@ -24,7 +24,7 @@ function CreateFields({ state, pending }: { state: StoreFormState; pending: bool
   return (
     <>
       <fieldset disabled={pending} aria-busy={pending} className="m-0 flex min-w-0 flex-wrap items-end gap-3 border-0 p-0">
-        <Field label="Şube adı" hint="2–80 karakter"><Input name="name" maxLength={80} className="w-56" required aria-invalid={state.field === "name" || undefined} aria-describedby={state.field === "name" ? "store-create-name-error" : undefined} /></Field>
+        <Field label="Şube adı" hint="2–80 karakter"><Input name="name" minLength={2} maxLength={80} pattern=".*\\S.*\\S.*" className="w-56" required aria-invalid={state.field === "name" || undefined} aria-describedby={state.field === "name" ? "store-create-name-error" : undefined} /></Field>
         <Field label="Adres" hint="İsteğe bağlı · en fazla 300 karakter"><Input name="address" maxLength={300} className="w-72" /></Field>
         <Submit label="Şube oluştur" pendingLabel="Şube oluşturuluyor…" pending={pending} />
       </fieldset>
@@ -47,7 +47,7 @@ export function StoreCreateForm({ action }: { action: StoreAction }) {
 function UpdateFields({ name, address, state, storeId, pending }: { name: string; address: string; state: StoreFormState; storeId: string; pending: boolean }) {
   return (
     <fieldset disabled={pending} aria-busy={pending} className="m-0 flex min-w-0 flex-wrap items-end gap-3 border-0 p-0">
-      <Field label="Ad" hint="2–80 karakter"><Input name="name" maxLength={80} defaultValue={name} className="w-56" required aria-invalid={state.field === "name" || undefined} aria-describedby={state.field === "name" ? `store-${storeId}-name-error` : undefined} /></Field>
+      <Field label="Ad" hint="2–80 karakter"><Input name="name" minLength={2} maxLength={80} pattern=".*\\S.*\\S.*" defaultValue={name} className="w-56" required aria-invalid={state.field === "name" || undefined} aria-describedby={state.field === "name" ? `store-${storeId}-name-error` : undefined} /></Field>
       <Field label="Adres" hint="İsteğe bağlı · en fazla 300 karakter"><Input name="address" maxLength={300} defaultValue={address} className="w-72" /></Field>
       <Submit label="Kaydet" pendingLabel="Kaydediliyor…" pending={pending} />
     </fieldset>

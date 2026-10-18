@@ -11,12 +11,12 @@ import { formatTL } from "@/lib/core/money";
 export const dynamic = "force-dynamic";
 
 const VERTICALS = [
-  { title: "Restoran", lead: "Salondan mutfağa, paketten kuryeye tek ekran.", items: ["Masa planı, adisyon, hesap bölme, ikram", "Garson telefonu ve mutfak ekranı, istasyon yazıcısı", "Paket servis, teslimat bölgeleri, kurye ekranı", "Reçeteyle otomatik stok düşümü ve porsiyon maliyeti", "Yemeksepeti / Trendyol Go siparişleri (yakında)"] },
+  { title: "Restoran", lead: "Salondan mutfağa, paketten kuryeye tek ekran.", items: ["Masa planı, adisyon, hesap bölme, ikram", "Garson telefonu ve mutfak ekranı, istasyon yazıcısı", "Paket servis, teslimat bölgeleri, kurye ekranı", "Reçeteyle otomatik stok düşümü ve porsiyon maliyeti", "Platform sipariş panosu; canlı bağlantı için entegratör kurulumu gerekir"] },
   { title: "Market", lead: "Barkodu okut, tart, öde. Kuyruk birikmez.", items: ["Barkodla hızlı kasa, bölünmüş ödeme", "Terazi etiketi (ağırlık barkodu) okuma", "A4 raf etiketi basımı", "Alış fişi, tedarikçi bakiyesi, stok sayımı", "Fiş numarasıyla iade, müdür onayı"] },
 ];
 
 const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: WifiOff, title: "İnternet gitse de satış sürer", text: "Kasa satışları cihazda tutar, bağlantı gelince buluta eşitler. Hiçbir fiş kaybolmaz." },
+  { icon: WifiOff, title: "İnternet gitse de satış sürer", text: "Satışlar cihazda korunur ve bağlantı gelince eşitlenir; eşitlenemeyen kayıtlar kasada uyarıyla gösterilir." },
   { icon: Printer, title: "Yazıcı, çekmece, terazi", text: "Kasadaki bilgisayara kurulan küçük ajan termal yazıcıyı, para çekmecesini ve teraziyi sürer." },
   { icon: Router, title: "İnternetsiz salon", text: "Masa siparişleri dükkân içi ağ üzerinden garsondan mutfağa gider; internet şart değil." },
   { icon: ChartColumn, title: "Raporlar", text: "Günlük ciro, saat yoğunluğu, ürün ve personel performansı, kârlılık. CSV olarak indirin." },

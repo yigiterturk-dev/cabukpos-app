@@ -230,7 +230,7 @@ export function WaiterCall({ storeId, secret, tables }: { storeId: string; secre
     <section aria-label="Garson çağır" className="mt-6 rounded-xl border border-line p-4">
       <h2 className="text-sm font-semibold text-ink">Garson çağır</h2>
       <div className="mt-2 flex flex-wrap gap-2">
-        <div className="min-w-0 flex-1"><Field label="Masa"><Select placeholder="Masanı seç" disabled={busy} options={tables.map((t) => ({ value: t.id, label: t.name }))} onChange={(value) => { if (value === tableId) return; setTableId(value); setSent(false); setError(null); }} /></Field></div>
+        <div className="min-w-0 flex-1"><Field label="Masa" hint="Garson çağırmak için masa seçin"><Select placeholder="Masanı seç" disabled={busy} aria-required options={tables.map((t) => ({ value: t.id, label: t.name }))} onChange={(value) => { if (value === tableId) return; setTableId(value); setSent(false); setError(null); }} /></Field></div>
         <button type="button" disabled={!selectedTableExists} aria-disabled={busy || sent || undefined} aria-busy={busy || undefined} onClick={call} className="press min-h-12 shrink-0 rounded-lg bg-brand-action px-4 text-sm font-semibold text-white outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50">
           {busy ? "Çağırılıyor…" : sent ? "Çağrı gönderildi" : "Çağır"}
         </button>

@@ -27,7 +27,7 @@ function RadioCards<T extends string>({ name, value, set, items, label, error }:
       <legend className="mb-1.5 text-sm font-medium">{label}</legend>
       <div className="flex flex-wrap gap-1">
         {items.map(([v, l]) => (
-          <label key={v} className={`press inline-flex min-h-11 cursor-pointer items-center rounded-lg border px-3 py-2 text-sm outline-none transition focus-within:ring-4 focus-within:ring-brand-ring/60 ${value === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"}`}>
+          <label key={v} className={`press inline-flex min-h-11 cursor-pointer items-center rounded-lg border px-3 py-2 text-sm outline-none transition focus-within:ring-4 focus-within:ring-brand-ring/60 ${error ? "border-bad bg-bad-soft text-bad" : value === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"}`}>
             <input type="radio" name={name} value={v} required checked={value === v} onChange={() => set(v)} aria-describedby={error ? `catalog-${name}-error` : undefined} className="peer sr-only" />
             {l}
           </label>
@@ -56,7 +56,7 @@ function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: C
   const qtyFormatHint = u === "adet" ? "tam sayı · en fazla 999.999" : `en fazla 999.999,999 ${u} · 3 ondalık hane`;
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-      <div><Field label="Ürün adı" hint="2–80 karakter"><Input name="name" defaultValue={initial?.name} maxLength={80} required {...fieldErrorProps(s, "name")} /></Field><Err s={s} f="name" /></div>
+      <div><Field label="Ürün adı" hint="2–80 karakter"><Input name="name" defaultValue={initial?.name} minLength={2} maxLength={80} pattern=".*\\S.*\\S.*" required {...fieldErrorProps(s, "name")} /></Field><Err s={s} f="name" /></div>
       <div>
         <RadioCards name="sellable" value={sellable ? "true" : "false"} set={(v) => setSellable(v === "true")} label="Kasada satılır" items={[["true", "Evet"], ["false", "Hayır (hammadde / ara ürün)"]]} />
       </div>
@@ -66,14 +66,14 @@ function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: C
           <div><Field label={`Parti miktarı (${uLabel})`} hint={`Bir üretim partisinin çıktısı · ${qtyFormatHint}`}><Input name="yieldMilli" inputMode={u === "adet" ? "numeric" : "decimal"} maxLength={qtyMaxLength} value={yieldMilli} onChange={(e) => setYieldMilli(e.target.value)} {...fieldErrorProps(s, "yieldMilli")} /></Field><Err s={s} f="yieldMilli" /></div>
         </>
       )}
-      <div><Field label={`Maliyet (${uLabel} başına, ${currencyUnit})`} hint="Alış fişi kaydedince kendiliğinden güncellenir · en fazla 100.000,00"><Input name="cost" inputMode="decimal" maxLength={10} defaultValue={money(initial?.cost)} {...fieldErrorProps(s, "cost")} /></Field><Err s={s} f="cost" /></div>
+      <div><Field label={`Maliyet (${uLabel} başına, ${currencyUnit})`} hint="Alış fişi kaydedince kendiliğinden güncellenir · en fazla 100.000,00 · en çok 2 ondalık"><Input name="cost" inputMode="decimal" maxLength={10} defaultValue={money(initial?.cost)} {...fieldErrorProps(s, "cost")} /></Field><Err s={s} f="cost" /></div>
       <div><Field label={`Kritik stok sınırı (${uLabel})`} hint={`Stok bu değere inince uyarı; boş = uyarı yok · ${qtyFormatHint}`}><Input name="minStock" inputMode={u === "adet" ? "numeric" : "decimal"} maxLength={qtyMaxLength} defaultValue={qty(initial?.minStock, u)} {...fieldErrorProps(s, "minStock")} /></Field><Err s={s} f="minStock" /></div>
       {sellable && (<>
       <div>
         <RadioCards name="kind" value={kind} set={setKind} label="Tür" items={[["adet", "Adet"], ["tartili", "Tartılı (kg)"]]} error={s.field === "kind" && !!s.error} />
         <Err s={s} f="kind" />
       </div>
-      <div><Field label={kind === "tartili" ? `Kg fiyatı (${currencyUnit}, KDV dahil)` : `Fiyat (${currencyUnit}, KDV dahil)`} hint={`1,00–100.000,00 ${currencyUnit}`}><Input name="price" inputMode="decimal" maxLength={10} value={price} onChange={(e) => setPrice(e.target.value)} required {...fieldErrorProps(s, "price")} /></Field><Err s={s} f="price" /></div>
+      <div><Field label={kind === "tartili" ? `Kg fiyatı (${currencyUnit}, KDV dahil)` : `Fiyat (${currencyUnit}, KDV dahil)`} hint={`0,01–100.000,00 ${currencyUnit} · en çok 2 ondalık`}><Input name="price" inputMode="decimal" maxLength={10} value={price} onChange={(e) => setPrice(e.target.value)} required {...fieldErrorProps(s, "price")} /></Field><Err s={s} f="price" /></div>
       <div>
         <RadioCards name="vatRate" value={vat} set={setVat} label="KDV" items={[...["1", "10", "20"].map((r) => [r, `%${r}`] as const)]} error={s.field === "vatRate" && !!s.error} />
         <Err s={s} f="vatRate" />
@@ -119,7 +119,11 @@ export function ProductForm({ initial, categories, salon, currencyUnit }: { init
   const displayState = edited || pending ? {} as CatalogState : state;
   useEffect(() => {
     if (!state.error || !state.field) return;
-    requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+    requestAnimationFrame(() => {
+      const invalid = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      const radio = FIELDS.includes(state.field!) ? formRef.current?.querySelector<HTMLInputElement>(`input[type="radio"][name="${CSS.escape(state.field!)}"]`) : null;
+      (invalid ?? radio)?.focus();
+    });
   }, [state.error, state.field]);
   useEffect(() => {
     if (pending || !state.savedAt || state.error) return;
@@ -159,7 +163,7 @@ export function CategoryForm() {
   }, [state.error, state.savedAt]);
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} aria-busy={pending} className="flex flex-wrap items-start gap-2">
-      <div><Input key={state.savedAt ?? 0} name="categoryName" placeholder="Yeni kategori" aria-label="Kategori adı" aria-invalid={displayState.field === "categoryName" && !!displayState.error || undefined} aria-describedby={`catalog-categoryName-hint${displayState.field === "categoryName" && displayState.error ? " catalog-categoryName-error" : ""}`} maxLength={40} minLength={2} pattern=".*\S.*" disabled={pending} required className="w-48 disabled:cursor-wait disabled:opacity-50" /><span id="catalog-categoryName-hint" className="mt-1 block text-xs text-muted">2–40 karakter</span><Err s={displayState} f="categoryName" /></div>
+      <div><Input key={state.savedAt ?? 0} name="categoryName" placeholder="Yeni kategori" aria-label="Kategori adı" aria-invalid={displayState.field === "categoryName" && !!displayState.error || undefined} aria-describedby={`catalog-categoryName-hint${displayState.field === "categoryName" && displayState.error ? " catalog-categoryName-error" : ""}`} maxLength={40} minLength={2} pattern=".*\\S.*\\S.*" disabled={pending} required className="w-48 disabled:cursor-wait disabled:opacity-50" /><span id="catalog-categoryName-hint" className="mt-1 block text-xs text-muted">2–40 karakter</span><Err s={displayState} f="categoryName" /></div>
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Ekleniyor…" : "Kategori ekle"}</Button>
       {pending && <span className="sr-only" role="status" aria-live="polite">Kategori ekleniyor. Lütfen bekleyin.</span>}
       {displayState.error && !displayState.field && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}

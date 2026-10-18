@@ -131,7 +131,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
     const t = setInterval(() => beep(true), 4000);
     return () => clearInterval(t);
   }, [waiting]);
-  const ev = (tab: TabState, e: NewTabEvent["ev"], approvedBy: string | null = null): NewTabEvent => ({ tabId: tab.id, tableId: null, staffId: waiter.id, approvedBy, ev: e });
+  const ev = (tab: TabState, e: NewTabEvent["ev"], approvedBy: string | null = null, approvalToken?: string): NewTabEvent => ({ tabId: tab.id, tableId: null, staffId: waiter.id, approvedBy, approvalToken, ev: e });
   const openDialog = (next: Dialog) => { setActionError(null); setDialog(next); };
   const run = async (fn: () => Promise<unknown>, successNotice: string, actionKey = "dialog", pendingNotice = "Sipariş güncelleniyor.", focusOrderId?: string) => {
     if (busyRef.current) return;
@@ -170,14 +170,16 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div>
           <h2 ref={boardHeadingRef} tabIndex={-1} className="font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Paket siparişleri</h2>
-          <p className="mt-0.5 text-sm text-muted">{active} aktif · {closed} son 12 saatte kapanan</p>
+          <p role={loaded ? undefined : "status"} aria-live={loaded ? undefined : "polite"} className="mt-0.5 text-sm text-muted">{loaded ? `${active} aktif · ${closed} son 12 saatte kapanan` : "Siparişler yükleniyor…"}</p>
         </div>
         {waiting > 0 && <span className="rounded-full bg-bad-action px-2.5 py-0.5 text-xs font-medium text-white" data-testid="waiting-count">{waiting} onay bekliyor</span>}
         <button type="button" onClick={onNew} className="press ml-auto inline-flex min-h-12 items-center rounded-xl bg-brand-action px-4 text-sm font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">+ Yeni paket</button>
       </div>
       {actionError && !dialog && <p ref={actionErrorRef} tabIndex={-1} className="mb-4 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{actionError}</p>}
-      <div className="grid min-w-0 gap-3 md:min-h-0 md:flex-1 md:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] 2xl:grid-cols-[repeat(5,minmax(0,1fr))]">
-        {COLUMNS.map((c) => {
+      <div aria-busy={!loaded || undefined} className="grid min-w-0 gap-3 md:min-h-0 md:flex-1 md:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] 2xl:grid-cols-[repeat(5,minmax(0,1fr))]">
+        {!loaded ? <div className="col-span-full min-h-24" aria-hidden="true" /> : list.length === 0 ? (
+          <p className="col-span-full self-center rounded-2xl border border-dashed border-line-strong bg-surface-2/40 p-8 text-center text-sm text-muted">Henüz paket veya platform siparişi yok. Yeni siparişler geldikçe burada görünecek.</p>
+        ) : COLUMNS.map((c) => {
           const cards = list.filter((t) => c.key.includes(deliveryStatus(t))).sort((a, b) => {
             if (c.key[0] === "onay_bekliyor") {
               const aDeadline = deadlineInfo(a).at ?? Number.POSITIVE_INFINITY;
@@ -285,13 +287,13 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
             <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
-      {dialog?.k === "cancel" && <CancelDialog meta={meta} onMeta={onMeta} waiter={waiter} busy={busy} error={actionError} errorRef={actionErrorRef} onClose={() => setDialog(null)} onOk={(by, reason) => run(() => add([ev(dialog.tab, { type: "cancel", reason }, by)]), "Sipariş iptal edildi.", "dialog", "Sipariş güncelleniyor.", dialog.tab.id)} />}
+      {dialog?.k === "cancel" && <CancelDialog meta={meta} onMeta={onMeta} waiter={waiter} busy={busy} error={actionError} errorRef={actionErrorRef} onClose={() => setDialog(null)} onOk={(by, reason, token) => run(() => add([ev(dialog.tab, { type: "cancel", reason }, by, token)]), "Sipariş iptal edildi.", "dialog", "Sipariş güncelleniyor.", dialog.tab.id)} />}
     </div>
   );
 }
 
 /** İptal: gerekçe + müdür değilse müdür PIN'i. */
-function CancelDialog({ meta, onMeta, waiter, busy, error, errorRef, onOk, onClose }: { meta: Meta; onMeta: (m: Meta) => void; waiter: Waiter; busy: boolean; error?: string | null; errorRef: React.RefObject<HTMLParagraphElement | null>; onOk: (approvedBy: string | null, reason: string) => void | Promise<void>; onClose: () => void }) {
+function CancelDialog({ meta, onMeta, waiter, busy, error, errorRef, onOk, onClose }: { meta: Meta; onMeta: (m: Meta) => void; waiter: Waiter; busy: boolean; error?: string | null; errorRef: React.RefObject<HTMLParagraphElement | null>; onOk: (approvedBy: string | null, reason: string, approvalToken?: string) => void | Promise<void>; onClose: () => void }) {
   const [reason, setReason] = useState("");
   const [pin, setPin] = useState(false);
   const reasonInvalid = reason.trim().length > 0 && reason.trim().length < 2;
@@ -300,7 +302,7 @@ function CancelDialog({ meta, onMeta, waiter, busy, error, errorRef, onOk, onClo
       {!pin ? (
         <>
           {error && <p ref={errorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
-          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} aria-invalid={reasonInvalid || undefined} aria-describedby="delivery-cancel-reason-hint" className={`min-h-12 w-full rounded-[10px] border bg-surface px-3 py-2 outline-none focus:ring-4 ${reasonInvalid ? "border-bad focus:ring-bad/30" : "border-line focus:border-brand focus:ring-brand-ring/50"}`} /><span id="delivery-cancel-reason-hint" className={`mt-1 block text-xs ${reasonInvalid ? "text-bad" : "text-muted"}`}>{reasonInvalid ? "İptal gerekçesi en az 2 karakter olmalı." : "İptal gerekçesi kayda eklenir; en az 2 karakter girin."}</span></label>
+          <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input autoFocus required value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} aria-invalid={reasonInvalid || undefined} aria-describedby="delivery-cancel-reason-hint" className={`min-h-12 w-full rounded-[10px] border bg-surface px-3 py-2 outline-none focus:ring-4 ${reasonInvalid ? "border-bad focus:ring-bad/30" : "border-line focus:border-brand focus:ring-brand-ring/50"}`} /><span id="delivery-cancel-reason-hint" className={`mt-1 block text-xs ${reasonInvalid ? "text-bad" : "text-muted"}`}>{reasonInvalid ? "İptal gerekçesi en az 2 karakter olmalı." : "İptal gerekçesi kayda eklenir; en az 2 karakter girin."}</span></label>
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
             <button type="button" disabled={busy || reason.trim().length < 2} onClick={() => (waiter.role === "mudur" ? onOk(null, reason.trim()) : setPin(true))} className="inline-flex min-h-12 flex-[2] items-center justify-center rounded-lg bg-bad-action px-4 py-2 text-sm font-medium text-white outline-none hover:bg-bad-action-hover focus-visible:ring-4 focus-visible:ring-bad/30 disabled:opacity-40">{busy ? "Gönderiliyor…" : waiter.role === "mudur" ? "İptal et" : "Müdür onayına"}</button>
@@ -309,7 +311,7 @@ function CancelDialog({ meta, onMeta, waiter, busy, error, errorRef, onOk, onClo
       ) : (
         <>
           {error && <p ref={errorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
-          <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => onOk(m.id, reason.trim())} autoFocusFirst />
+          <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m, token) => onOk(m.id, reason.trim(), token)} autoFocusFirst />
             <button type="button" disabled={busy} onClick={onClose} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40 mt-4 w-full">Vazgeç</button>
         </>
       )}

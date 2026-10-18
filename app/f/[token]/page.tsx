@@ -83,8 +83,9 @@ export default async function Fatura({ params }: { params: Promise<{ token: stri
             {discountedVat(d.sale.vat, d.sale.discount).map((v) => (
               <div key={v.rate} className="flex justify-between"><span className="text-muted">KDV %{v.rate} (matrah {formatTL(v.net)})</span><span>{formatTL(v.vat)}</span></div>
             ))}
+            {!!d.sale.tip && <div className="flex justify-between"><span className="text-muted">Bahşiş (bu belgeye dahil değildir)</span><span>{formatTL(d.sale.tip)}</span></div>}
             {!!d.sale.discount && <div className="flex justify-between"><span className="text-muted">İndirim (kupon/puan)</span><span>-{formatTL(d.sale.discount)}</span></div>}
-            <div className="flex justify-between border-t border-line pt-1 text-base font-bold"><span>Genel toplam</span><span>{formatTL(d.sale.total - d.sale.discount)}</span></div>
+            <div className="flex justify-between border-t border-line pt-1 text-base font-bold"><span>Genel toplam</span><span>{formatTL(d.sale.total - (d.sale.tip ?? 0) - d.sale.discount)}</span></div>
           </div>
           <footer className="border-t border-line pt-3 text-xs text-muted">
             <div>ETTN: <span className="font-mono" data-testid="fiscal-ettn">{d.ettn}</span></div>

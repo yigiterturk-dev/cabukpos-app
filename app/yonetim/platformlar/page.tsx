@@ -188,7 +188,7 @@ export default async function Platformlar() {
           <div>
             <h3 className="mb-2 text-sm font-semibold">Ürün kodu eşleme</h3>
             <p className="mb-3 text-sm text-muted">Eşlenmeyen kod siparişe platformdaki ad ve fiyatla serbest satır olarak düşer.</p>
-            <CodeForm connectionId={c.id} products={products} />
+            {products.length > 0 ? <CodeForm connectionId={c.id} products={products} /> : <p className="rounded-lg border border-line bg-surface-2 p-3 text-sm text-muted">Kod eşlemek için en az bir aktif ürün gerekli. <Link href="/yonetim/urunler" className="font-medium text-brand underline underline-offset-2">Ürün ekleyin veya satışa açın</Link>.</p>}
             <ul className="mt-3 divide-y divide-line text-sm">
               {codes.filter((k) => k.platform === c.platform && k.storeId === c.storeId).map((k) => (
                 <li key={k.id} className="flex min-w-0 items-center gap-3 py-1.5"><code className="w-40 shrink-0 truncate" title={k.code}>{k.code}</code><span className="min-w-0 flex-1 truncate" title={k.product}>{k.product}</span>

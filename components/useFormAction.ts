@@ -1,11 +1,18 @@
 "use client";
 // React 19 <form action> gönderimden sonra alanları sıfırlar; hata durumunda kullanıcının girdisi
 // kaybolmasın diye gönderimi onSubmit üzerinden yapıyoruz.
-import { startTransition, useActionState, useEffect, useId, useRef, type FormEvent } from "react";
+import { startTransition, useActionState, useCallback, useEffect, useId, useLayoutEffect, useRef, type FormEvent } from "react";
 
 export function useFormAction<S>(action: (s: S, f: FormData) => Promise<S>, initial: S) {
+  const actionRef = useRef(action);
+  useLayoutEffect(() => { actionRef.current = action; }, [action]);
+  const submitLockRef = useRef(false);
+  const submitAction = useCallback(async (state: S, form: FormData) => {
+    try { return await actionRef.current(state, form); }
+    finally { submitLockRef.current = false; }
+  }, []);
   const [state, dispatch, pending] = useActionState<S, FormData>(
-    action as (s: Awaited<S>, f: FormData) => Promise<S>,
+    submitAction as (s: Awaited<S>, f: FormData) => Promise<S>,
     initial as Awaited<S>,
   );
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -31,6 +38,11 @@ export function useFormAction<S>(action: (s: S, f: FormData) => Promise<S>, init
       if (control) describedField = control;
     }
     else if (field) describedField = field;
+    // Aggregate server fields (for example `lines`) may not match an input name;
+    // in that case take the user to the first concrete control marked invalid.
+    if (!describedField && typeof formState.field === "string" && formState.field) {
+      describedField = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? null;
+    }
 
     if (describedField) {
       // ARIA invalid state is not supported on native radio buttons; their group
@@ -78,8 +90,11 @@ export function useFormAction<S>(action: (s: S, f: FormData) => Promise<S>, init
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    formRef.current = e.currentTarget;
-    const fd = new FormData(e.currentTarget);
+    if (pending || submitLockRef.current) return;
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    submitLockRef.current = true;
+    formRef.current = form;
     startTransition(() => dispatch(fd));
   };
   return { state, pending, onSubmit };

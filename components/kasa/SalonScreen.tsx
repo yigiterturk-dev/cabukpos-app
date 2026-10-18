@@ -51,7 +51,7 @@ function useCalls(enabled = true) {
   return [calls, setCalls] as const;
 }
 
-export function SalonScreen({ areas, tables, tabs, now, onOpen, currency, callsEnabled = true }: { areas: Area[]; tables: Table[]; tabs: Map<string, TabState>; now: number; onOpen: (tableId: string) => void; currency?: Currency; callsEnabled?: boolean }) {
+export function SalonScreen({ areas, tables, tabs, tabsLoaded = true, now, onOpen, currency, callsEnabled = true }: { areas: Area[]; tables: Table[]; tabs: Map<string, TabState>; tabsLoaded?: boolean; now: number; onOpen: (tableId: string) => void; currency?: Currency; callsEnabled?: boolean }) {
   const mainProps = useKasaMainProps();
   const { TL } = kasaFmt({ device: { currency } });
   const [areaId, setAreaId] = useState(areas[0]?.id ?? "");
@@ -97,8 +97,7 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen, currency, callsE
     }
     announcedCalls.current = new Set(calls.map((call) => call.id));
   }, [calls]);
-  if (!areas.length) return <p className="p-8 text-center text-muted">Masa tanımlı değil. Yönetim → Salon sayfasından bölge ve masa ekleyin.</p>;
-  const current = areas.some((a) => a.id === areaId) ? areaId : areas[0].id;
+  const current = areas.some((a) => a.id === areaId) ? areaId : areas[0]?.id ?? "";
   const visibleTables = tables.filter((t) => t.areaId === current);
   const occupiedTables = visibleTables.filter((t) => byTable.has(t.id)).length;
   const resolve = async (call: CallRow) => {
@@ -136,24 +135,29 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen, currency, callsE
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 ref={salonHeadingRef} tabIndex={-1} className="font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Salon</h1>
-          <p className="mt-0.5 text-sm text-muted">{occupiedTables} dolu · {visibleTables.length - occupiedTables} boş masa</p>
+          {areas.length > 0 && <p role={tabsLoaded ? undefined : "status"} aria-live={tabsLoaded ? undefined : "polite"} className="mt-0.5 text-sm text-muted">{tabsLoaded ? `${occupiedTables} dolu · ${visibleTables.length - occupiedTables} boş masa` : "Adisyonlar yükleniyor…"}</p>}
         </div>
-        <span className="text-xs text-muted">Bir masaya dokunarak adisyonu açın</span>
+        {tabsLoaded && areas.length > 0 && <span className="text-xs text-muted">Bir masaya dokunarak adisyonu açın</span>}
       </div>
-      <HorizontalScrollRegion label="Salon bölgeleri, yatay kaydırılabilir" className="mb-4 inline-flex max-w-full gap-1 rounded-xl bg-surface-3 p-1">
-        {areas.map((a) => {
-          const busy = tables.filter((t) => t.areaId === a.id && byTable.has(t.id)).length;
-          return (
-            <button key={a.id} type="button" aria-pressed={a.id === current} title={a.name} onClick={() => setAreaId(a.id)} className={`press min-h-12 whitespace-nowrap rounded-[9px] px-4 text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${a.id === current ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink"}`}>
-              {a.name}{busy > 0 && <span className="ml-1.5 opacity-80">({busy})</span>}
-            </button>
-          );
-        })}
-      </HorizontalScrollRegion>
-      {visibleTables.length === 0 ? (
-        <Empty>Masa yok. Bu bölgeye masa eklemek için Yönetim → Salon sayfasını açın.</Empty>
-      ) : (
-        <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
+      {!areas.length ? (
+        <p className="p-8 text-center text-muted">Masa tanımlı değil. Yönetim → Salon sayfasından bölge ve masa ekleyin.</p>
+      ) : <>
+        <HorizontalScrollRegion label="Salon bölgeleri, yatay kaydırılabilir" className="mb-4 inline-flex max-w-full gap-1 rounded-xl bg-surface-3 p-1">
+            {areas.map((a) => {
+            const busy = tables.filter((t) => t.areaId === a.id && byTable.has(t.id)).length;
+            return (
+              <button key={a.id} type="button" aria-pressed={a.id === current} title={a.name} onClick={() => setAreaId(a.id)} className={`press min-h-12 whitespace-nowrap rounded-[9px] px-4 text-sm font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${a.id === current ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink"}`}>
+                {a.name}{tabsLoaded && busy > 0 && <span className="ml-1.5 opacity-80">({busy})</span>}
+              </button>
+            );
+          })}
+        </HorizontalScrollRegion>
+        {!tabsLoaded ? (
+          <div className="rounded-2xl border border-dashed border-line-strong p-8 text-center text-sm text-muted" aria-hidden="true">Masalar ve adisyonlar yükleniyor…</div>
+        ) : visibleTables.length === 0 ? (
+          <Empty>Masa yok. Bu bölgeye masa eklemek için Yönetim → Salon sayfasını açın.</Empty>
+        ) : (
+          <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
           {visibleTables.map((t) => {
           const open = byTable.get(t.id) ?? [];
           const st = tableStatus(open, now);
@@ -175,8 +179,9 @@ export function SalonScreen({ areas, tables, tabs, now, onOpen, currency, callsE
             </button>
           );
           })}
-        </div>
-      )}
+          </div>
+        )}
+      </>}
     </div>
   );
 }

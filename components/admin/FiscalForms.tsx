@@ -21,8 +21,10 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
 }) {
   const { state, pending, onSubmit } = useFormAction(saveFiscalSettings, {} as FiscalState);
   const formRef = useRef<HTMLFormElement>(null);
+  const addressRef = useRef<HTMLTextAreaElement>(null);
   const saveButtonRef = useRef<HTMLButtonElement>(null);
   const [edited, setEdited] = useState(false);
+  const [addressError, setAddressError] = useState(false);
   const displayState = edited || pending ? ({} as FiscalState) : state;
   useEffect(() => {
     if (state.error && state.field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
@@ -35,16 +37,27 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
   const [modes, setModes] = useState<ChannelModes>(() => blockEarsiv
     ? Object.fromEntries(channels.map((c) => [c, "info"])) as ChannelModes
     : initial.modes);
+  const requiresEarsiv = Object.values(modes).includes("earsiv");
   const [okcOn, setOkcOn] = useState(!!okc);
   const [okcProvider, setOkcProvider] = useState(okc?.provider ?? OKC_PROVIDERS[0].value);
   const okcCloud = OKC_PROVIDERS.find((p) => p.value === okcProvider)?.cloud ?? false;
   return (
-    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="space-y-5">
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => {
+      if (requiresEarsiv && !addressRef.current?.value.trim()) {
+        e.preventDefault();
+        setAddressError(true);
+        requestAnimationFrame(() => addressRef.current?.focus());
+        return;
+      }
+      setAddressError(false);
+      setEdited(false);
+      onSubmit(e);
+    }} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><Field label="İşletme vergi no" hint="10 hane VKN ya da 11 hane TCKN (şahıs)"><Input name="taxId" disabled={pending} inputMode="numeric" maxLength={11} pattern="([0-9]{10}|[0-9]{11})" defaultValue={initial.taxId} {...errorProps(displayState, "taxId")} /></Field><Err s={displayState} f="taxId" /></div>
-        <div><Field label="Vergi dairesi" hint="e-Arşiv için gerekli · en fazla 80 karakter"><Input name="taxOffice" disabled={pending} maxLength={80} defaultValue={initial.taxOffice} {...errorProps(displayState, "taxOffice")} /></Field><Err s={displayState} f="taxOffice" /></div>
+        <div><Field label="İşletme vergi no" hint="10 hane VKN ya da 11 hane TCKN (şahıs)"><Input name="taxId" disabled={pending} inputMode="numeric" maxLength={11} pattern="([0-9]{10}|[0-9]{11})" required={requiresEarsiv} defaultValue={initial.taxId} {...errorProps(displayState, "taxId")} /></Field><Err s={displayState} f="taxId" /></div>
+        <div><Field label="Vergi dairesi" hint="e-Arşiv için gerekli · en fazla 80 karakter"><Input name="taxOffice" disabled={pending} maxLength={80} pattern={requiresEarsiv ? ".*\\S.*" : undefined} required={requiresEarsiv} defaultValue={initial.taxOffice} {...errorProps(displayState, "taxOffice")} /></Field><Err s={displayState} f="taxOffice" /></div>
       </div>
-      <div><Field label="İşletme adresi (faturada satıcı adresi)" hint="En fazla 500 karakter"><Textarea name="address" disabled={pending} rows={2} maxLength={500} defaultValue={initial.address} {...errorProps(displayState, "address")} /></Field><Err s={displayState} f="address" /></div>
+      <div><Field label="İşletme adresi (faturada satıcı adresi)" hint="e-Arşiv için gerekli · en fazla 500 karakter"><Textarea ref={addressRef} name="address" disabled={pending} rows={2} maxLength={500} required={requiresEarsiv} defaultValue={initial.address} onChange={() => setAddressError(false)} aria-invalid={addressError || displayState.field === "address" || undefined} aria-describedby={addressError ? "fiscal-address-local-error" : displayState.field === "address" && displayState.error ? "fiscal-address-error" : undefined} /></Field>{addressError && <p id="fiscal-address-local-error" className="mt-1 break-words text-xs text-bad" role="alert" aria-live="assertive">e-Arşiv için adres girin; yalnızca boşluk kullanmayın.</p>}<Err s={displayState} f="address" /></div>
       <div className="w-40"><Field label="Fatura serisi" hint="Tam 3 harf veya rakam, ör. CBP"><Input name="series" disabled={pending} maxLength={3} minLength={3} pattern="[A-Za-z0-9]{3}" defaultValue={initial.series} required className="font-mono uppercase" {...errorProps(displayState, "series")} /></Field><Err s={displayState} f="series" /></div>
       <div>
         <h3 className="mb-2 text-sm font-semibold">Kanal başına belge</h3>
@@ -80,7 +93,7 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <div>
               <Field label="ÖKC sağlayıcısı">
-                <Select disabled={pending} name="okcProvider" defaultValue={okcProvider} onChange={(value) => { setEdited(true); setOkcProvider(value); }} options={OKC_PROVIDERS.map((p) => ({ value: p.value, label: p.label }))} {...errorProps(displayState, "okcProvider")} />
+                <Select disabled={pending} name="okcProvider" defaultValue={okcProvider} onChange={(value) => { setEdited(true); setOkcProvider(value); }} aria-required={okcOn} options={OKC_PROVIDERS.map((p) => ({ value: p.value, label: p.label }))} {...errorProps(displayState, "okcProvider")} />
               </Field>
               <Err s={displayState} f="okcProvider" />
             </div>

@@ -97,9 +97,11 @@ export const syncDoc = z.discriminatedUnion("kind", [
     at,
     lines: z.array(saleLineDoc).min(1).max(500),
     payments: z.array(z.object({ method: payMethod, amount: kurus.min(1) })).length(1),
+    // Derin tarama #2: PinPad sunucudan aldığı kısa ömürlü müdür onayı; bulutta tekrar doğrulanır.
+    approvalToken: z.string().min(20).max(1024).optional(),
   }),
   // M5: adisyon olayı (garson/kasa/mutfak). Ödeme olayı ayrı belge değil: masadan satış (tab alanı) bulutta "paid" olayı üretir.
-  z.object({ kind: z.literal("tab"), id: uuid, tabId: uuid, tableId: uuid.nullable(), at, staffId: uuid.nullable(), approvedBy: uuid.nullable(), ev: tabEv }),
+  z.object({ kind: z.literal("tab"), id: uuid, tabId: uuid, tableId: uuid.nullable(), at, staffId: uuid.nullable(), approvedBy: uuid.nullable(), ev: tabEv, approvalToken: z.string().min(20).max(1024).optional() }),
   z.object({ kind: z.literal("shift_open"), id: uuid, staffId: uuid, at, openingCash: kurus }),
   z.object({ kind: z.literal("shift_close"), id: uuid, staffId: uuid, at, countedCash: kurus }),
   // Yetkili işlem kaydı (M4: elle çekmece açma). Kimlik audit_log.id olur → tekrar gelirse ikinci kayıt yok.

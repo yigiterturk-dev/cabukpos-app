@@ -11,7 +11,8 @@ import { summarizeShift } from "@/lib/core/shift";
 import type { VatLine } from "@/lib/core/cart";
 import type { PayMethod } from "@/lib/core/payment";
 import { audit } from "@/lib/audit";
-import { refundable, type RefLine } from "@/lib/core/refund";
+import { verifyJwt } from "@/lib/auth/jwt";
+import { refundable, refundKey, type RefLine } from "@/lib/core/refund";
 import { consumption, lineCost, type RecipeItem, type Recipes } from "@/lib/core/recipe";
 import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
 import { normalizePhone } from "@/lib/core/delivery";
@@ -21,8 +22,9 @@ import { onRefund, openFiscalDoc } from "@/lib/fiscal/issue";
 import { capDiscount, couponCheck, pointsEarned, pointsValue, type CouponLike } from "@/lib/loyalty";
 import { formatReceipt, syncDoc, type DocResult, type RefundDoc, type SaleDoc, type SyncDoc, type TabDoc } from "./docs";
 
-export type DeviceCtx = { tenantId: string; storeId: string; deviceId: string; receiptPrefix: string };
+export type DeviceCtx = { tenantId: string; storeId: string; deviceId: string; receiptPrefix: string; now?: number };
 const FUTURE_SLACK_MS = 5 * 60_000;
+const PAST_WINDOW_MS = 30 * 60_000;
 
 export async function applyDoc(ctx: DeviceCtx, raw: unknown): Promise<DocResult> {
   const parsed = syncDoc.safeParse(raw);
@@ -52,11 +54,22 @@ async function staffExists(tx: Tx, staffId: string) {
   return Boolean(s);
 }
 
-/** Cihaz saati ileri gitmişse sunucu saati. */
-function clampAt(at: string, reasons?: string[]): Date {
+/** Cihaz saati ileri/geri gitmişse sunucu saati. now: cihazın push anındaki saati (sync.now); yoksa yalnız ileri yönü kollar.
+ *  Geri yön: cihaz saati sunucudan sapmışsa ve belge cihaz saatine göre "taze"se (son 30 dk) sunucu zamanına çekilir;
+ *  gerçekten uzun süredir çevrimdışı cihazın eski belgeleri kendi zamanında kalır. */
+function clampAt(at: string, reasons?: string[], deviceNow?: number): Date {
   const d = new Date(at);
-  if (d.getTime() > Date.now() + FUTURE_SLACK_MS) { reasons?.push("cihaz saati ileri"); return new Date(); }
+  const now = Date.now();
+  if (d.getTime() > now + FUTURE_SLACK_MS) { reasons?.push("cihaz saati ileri"); return new Date(); }
+  if (deviceNow && Math.abs(now - deviceNow) > FUTURE_SLACK_MS && d.getTime() > deviceNow - PAST_WINDOW_MS) { reasons?.push("cihaz saati geri"); return new Date(); }
   return d;
+}
+
+/** PinPad'in /api/kasa/onay'dan aldığı kısa ömürlü müdür onayı. Yoksa eski davranış (rol beyanı);
+ *  varsa geçersizse review'a yazılır — onaylı cihazlarda onay, PIN bilgisine kriptografik olarak bağlanır. */
+async function approvalOk(token: string, ctx: DeviceCtx, staffId: string): Promise<boolean> {
+  const p = await verifyJwt("onay", token);
+  return Boolean(p && p.sub === staffId && p.tid === ctx.tenantId && p.did === ctx.deviceId);
 }
 
 async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | null> {
@@ -65,7 +78,7 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
     const [done] = await tx.select({ deviceId: sh.deviceId }).from(sh).where(eq(sh.id, doc.id));
     if (done) return done.deviceId === ctx.deviceId ? null : "Vardiya başka cihazda.";
     if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
-    await tx.insert(sh).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, openedBy: doc.staffId, openedAt: clampAt(doc.at), openingCash: doc.openingCash });
+    await tx.insert(sh).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, openedBy: doc.staffId, openedAt: clampAt(doc.at, undefined, ctx.now), openingCash: doc.openingCash });
     await audit(tx, ctx.tenantId, `staff:${doc.staffId}`, "shift.open", { shiftId: doc.id, deviceId: ctx.deviceId, openingCash: doc.openingCash });
     return null;
   }
@@ -76,7 +89,7 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
     if (shift.closedAt) return null;
     if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
     const expectedCash = await expectedCashOf(tx, shift.id, shift.openingCash);
-    await tx.update(sh).set({ closedAt: clampAt(doc.at), closedBy: doc.staffId, countedCash: doc.countedCash, expectedCash }).where(eq(sh.id, shift.id));
+    await tx.update(sh).set({ closedAt: clampAt(doc.at, undefined, ctx.now), closedBy: doc.staffId, countedCash: doc.countedCash, expectedCash }).where(eq(sh.id, shift.id));
     await audit(tx, ctx.tenantId, `staff:${doc.staffId}`, "shift.close", { shiftId: shift.id, counted: doc.countedCash, expected: expectedCash });
     return null;
   }
@@ -84,7 +97,7 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
   if (doc.kind === "audit") {
     if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
     await tx.insert(schema.auditLog)
-      .values({ id: doc.id, tenantId: ctx.tenantId, actor: `staff:${doc.staffId}`, action: `kasa.${doc.action}`, detail: { deviceId: ctx.deviceId, approvedBy: doc.approvedBy }, createdAt: clampAt(doc.at) })
+      .values({ id: doc.id, tenantId: ctx.tenantId, actor: `staff:${doc.staffId}`, action: `kasa.${doc.action}`, detail: { deviceId: ctx.deviceId, approvedBy: doc.approvedBy }, createdAt: clampAt(doc.at, undefined, ctx.now) })
       .onConflictDoNothing();
     return null;
   }
@@ -94,7 +107,7 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
     if (!shift) return "Vardiya bulunamadı.";
     if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
     await tx.insert(schema.registerEvents)
-      .values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, at: clampAt(doc.at), type: doc.type, lines: doc.lines, total: doc.lines.reduce((s, l) => s + l.total, 0) })
+      .values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, at: clampAt(doc.at, undefined, ctx.now), type: doc.type, lines: doc.lines, total: doc.lines.reduce((s, l) => s + l.total, 0) })
       .onConflictDoNothing();
     return null;
   }
@@ -104,7 +117,7 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
     if (!shift) return "Vardiya bulunamadı.";
     if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
     await tx.insert(schema.registerEvents)
-      .values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, at: clampAt(doc.at), type: "safe_drop", lines: [], total: doc.amount })
+      .values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, at: clampAt(doc.at, undefined, ctx.now), type: "safe_drop", lines: [], total: doc.amount })
       .onConflictDoNothing();
     await audit(tx, ctx.tenantId, `staff:${doc.staffId}`, "kasa.safe_drop", { shiftId: doc.shiftId, amount: doc.amount });
     return null;
@@ -184,7 +197,7 @@ async function recipeData(tx: Tx, lines: Checked["lines"]): Promise<{ byProduct:
 async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checked, payments: { method: PayMethod; amount: number }[], change: number, extra: { status: "kapandi" | "iade"; refundOf?: string; approvedBy?: string; tabId?: string; tableId?: string | null; channel?: "masa" | "paket" | "platform"; discount?: number; customerId?: string | null }) {
   const t = totals(c.lines);
   const receiptNo = await freeReceiptNo(tx, ctx, doc.receiptSeq, c.reasons);
-  const at = clampAt(doc.at, c.reasons);
+  const at = clampAt(doc.at, c.reasons, ctx.now);
   const tip = doc.kind === "sale" ? doc.tip ?? 0 : 0; // #49: bahşiş toplamın içinde
   await tx.insert(schema.sales).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, shiftId: doc.shiftId, staffId: doc.staffId, receiptNo, total: t.total + tip, tip, change, vat: t.vat, createdAt: at, review: c.reasons.length ? c.reasons.join("; ") : null, ...extra });
   const r = await recipeData(tx, c.lines);
@@ -338,7 +351,7 @@ async function applySale(tx: Tx, ctx: DeviceCtx, doc: SaleDoc): Promise<string |
   await openFiscalDoc(tx, ctx.tenantId, doc.id, tab ? (state?.kind ?? "masa") : "kasa", doc.fiscal);
   if (tab) {
     const ev: TabEv = { type: "paid", saleId: doc.id, lines: tab.paidLines, amount: subtotal };
-    await tx.insert(schema.tabEvents).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, tabId: tab.tabId, tableId: tab.tableId, deviceId: ctx.deviceId, staffId: doc.staffId, at: clampAt(doc.at), type: ev.type, payload: ev }).onConflictDoNothing();
+    await tx.insert(schema.tabEvents).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, tabId: tab.tabId, tableId: tab.tableId, deviceId: ctx.deviceId, staffId: doc.staffId, at: clampAt(doc.at, undefined, ctx.now), type: ev.type, payload: ev }).onConflictDoNothing();
   }
   return null;
 }
@@ -403,8 +416,9 @@ async function applyTab(tx: Tx, ctx: DeviceCtx, doc: TabDoc): Promise<string | n
     const [s] = who ? await tx.select({ role: schema.staff.role }).from(schema.staff).where(eq(schema.staff.id, who)) : [];
     if (!s) return "Onaylayan personel bulunamadı.";
     if (s.role !== "mudur") reasons.push("müdür onayı yok");
+    if (doc.approvalToken !== undefined && who && !(await approvalOk(doc.approvalToken, ctx, who))) reasons.push("müdür onayı doğrulanamadı");
   }
-  const at = clampAt(doc.at, reasons);
+  const at = clampAt(doc.at, reasons, ctx.now);
   await tx.insert(E).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, tabId: doc.tabId, tableId: doc.tableId, deviceId: ctx.deviceId, staffId: doc.staffId, approvedBy: doc.approvedBy, at, type: ev.type, payload: ev, review: reasons.length ? reasons.join("; ") : null });
   if (ev.type === "merge" && !reasons.length) {
     const { randomUUID } = await import("node:crypto");
@@ -473,16 +487,31 @@ async function applyRefund(tx: Tx, ctx: DeviceCtx, doc: RefundDoc): Promise<stri
   const [approver] = await tx.select({ role: schema.staff.role }).from(schema.staff).where(eq(schema.staff.id, doc.approvedBy));
   if (!approver) return "Onaylayan personel bulunamadı.";
   if (approver.role !== "mudur") c.reasons.push("onaylayan müdür değil");
+  // Derin tarama #2: PIN sunucuda doğrulanmışsa belge onaya kriptografik olarak bağlanır.
+  if (doc.approvalToken !== undefined && !(await approvalOk(doc.approvalToken, ctx, doc.approvedBy))) c.reasons.push("müdür onayı doğrulanamadı");
   const sold = await soldLines(tx, doc.refundOf);
+  let serverGoods: number | null = null;
   if (!sold) c.reasons.push("asıl satış bulunamadı");
   else {
     const left = refundable(sold.lines, sold.refunded);
-    const want = new Map<string, number>();
-    for (const l of c.lines) if (l.productId) want.set(l.productId, (want.get(l.productId) ?? 0) + l.qtyMilli); // serbest satır: precheck review
-    for (const [pid, q] of want) if (q > left.filter((l) => l.productId === pid).reduce((a, l) => a + l.qtyMilli, 0)) c.reasons.push(`satılandan fazla iade: ${c.lines.find((l) => l.productId === pid)!.name}`);
+    const leftByKey = new Map<string, number>();
+    for (const l of left) { const k = refundKey(l); leftByKey.set(k, (leftByKey.get(k) ?? 0) + l.qtyMilli); }
+    // Derin tarama #1/#3: iade satırları asıl satışla satır anahtarıyla eşlenir; tutar sunucu yetkinliğinde
+    // orijinal satır tutarından (satır indirimi dahil) oransal hesaplanır — cihazın gönderdiği tutara güvenilmez.
+    let goods = 0;
+    let allKnown = true;
+    for (const l of c.lines) {
+      if (!l.productId) { allKnown = false; continue; } // serbest satır: precheck review
+      const k = refundKey(l as RefLine);
+      const orig = sold.lines.find((s) => refundKey(s) === k);
+      if (!orig) { c.reasons.push(`asıl satışta böyle bir satır yok: ${l.name}`); allKnown = false; continue; }
+      if (l.qtyMilli > (leftByKey.get(k) ?? 0)) c.reasons.push(`satılandan fazla iade: ${l.name}`);
+      goods += orig.total != null && orig.qtyMilli > 0 ? Math.max(0, Math.round((orig.total * l.qtyMilli) / orig.qtyMilli)) : lineTotal(l);
+    }
+    if (allKnown) serverGoods = goods;
   }
   // #33: asıl satış indirimliyse iade tutarına da oransal indirim yansır — aksi hâlde müşteri fazla para alır.
-  const refundGoods = totals(c.lines).total;
+  const refundGoods = serverGoods ?? totals(c.lines).total;
   const [origSale] = await tx.select({ total: schema.sales.total, tip: schema.sales.tip, discount: schema.sales.discount }).from(schema.sales).where(eq(schema.sales.id, doc.refundOf));
   const origGoods = origSale ? origSale.total - origSale.tip : 0;
   const refundDiscount = origSale && origGoods > 0 ? Math.floor((refundGoods * origSale.discount) / origGoods) : 0;
@@ -498,7 +527,7 @@ export async function soldLines(tx: Tx, saleId: string) {
   const [sale] = await tx.select({ id: schema.sales.id }).from(schema.sales).where(and(eq(schema.sales.id, saleId), eq(schema.sales.status, "kapandi")));
   if (!sale) return null;
   const L = schema.saleLines;
-  const lines = await tx.select({ productId: L.productId, name: L.name, unitPrice: L.unitPrice, vatRate: L.vatRate, qtyMilli: L.qtyMilli, options: L.options, note: L.note }).from(L).where(eq(L.saleId, saleId));
+  const lines = await tx.select({ productId: L.productId, name: L.name, unitPrice: L.unitPrice, vatRate: L.vatRate, qtyMilli: L.qtyMilli, total: L.total, discount: L.discount, options: L.options, note: L.note }).from(L).where(eq(L.saleId, saleId));
   const refunds = await tx.select({ id: schema.sales.id }).from(schema.sales).where(and(eq(schema.sales.refundOf, saleId), eq(schema.sales.status, "iade")));
   const refunded = refunds.length ? await tx.select({ productId: L.productId, qtyMilli: L.qtyMilli, unitPrice: L.unitPrice, vatRate: L.vatRate, options: L.options }).from(L).where(inArray(L.saleId, refunds.map((r) => r.id))) : [];
   return {

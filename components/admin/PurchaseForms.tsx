@@ -37,7 +37,7 @@ function PurchaseFields({ state, pending, onSubmit, products, suppliers, today, 
     return q !== null && c !== null ? purchaseLineTotal({ qtyMilli: q, unitCost: c }) : null;
   };
   const hasValidLine = rows.some((r) => Boolean(r.pid) && lineTotal(r) !== null);
-  const hasIncompleteLine = rows.some((r) => Boolean(r.pid || r.qty.trim() || r.price.trim()) && lineTotal(r) === null);
+  const hasIncompleteLine = rows.some((r) => lineTotal(r) === null);
   const total = !hasValidLine || hasIncompleteLine ? null : rows.reduce((s, r) => s + (lineTotal(r) ?? 0), 0);
   useEffect(() => {
     if (!totalMounted.current) {
@@ -68,12 +68,22 @@ function PurchaseFields({ state, pending, onSubmit, products, suppliers, today, 
           const u = unitOf.get(r.pid), t = lineTotal(r);
           return (
             <div key={r.k} role="group" aria-label={`Alış kalemi ${rowIndex + 1}`} className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-[minmax(12rem,1fr)_6rem_7rem_3.5rem_6rem_auto] lg:items-center" data-testid="purchase-row">
-              <div className="col-span-2 min-w-0 lg:col-span-1"><span aria-hidden="true" className="mb-1 block text-xs text-muted lg:hidden">Ürün</span><Select ariaLabel={`Kalem ${rowIndex + 1}: ürün`} name="pid" disabled={pending} options={products} defaultValue="" placeholder="Ürün seçin" onChange={(v) => set(r.k, { pid: v })} aria-invalid={displayState.field === "lines" && !!displayState.error || undefined} aria-describedby={displayState.field === "lines" && displayState.error ? "purchase-lines-error" : undefined} /></div>
+              <div className="col-span-2 min-w-0 lg:col-span-1"><span aria-hidden="true" className="mb-1 block text-xs text-muted lg:hidden">Ürün</span><Select ariaLabel={`Kalem ${rowIndex + 1}: ürün`} name="pid" disabled={pending} options={products} defaultValue="" placeholder="Ürün seçin" onChange={(v) => set(r.k, { pid: v })} aria-required aria-invalid={displayState.field === "lines" && !!displayState.error || undefined} aria-describedby={displayState.field === "lines" && displayState.error ? "purchase-lines-error" : undefined} /></div>
               <div className="min-w-0"><span aria-hidden="true" className="mb-1 block text-xs text-muted lg:hidden">Miktar</span><Input name="qty" inputMode={u === "adet" ? "numeric" : "decimal"} maxLength={u ? u === "adet" ? 6 : 10 : undefined} value={r.qty} onChange={(e) => set(r.k, { qty: e.target.value })} aria-label={`Kalem ${rowIndex + 1}: miktar${u ? `, ${u}, ${u === "adet" ? "en fazla 999.999 tam sayı" : "en fazla 999.999,999"}` : ""}`} disabled={pending} className="w-full disabled:cursor-wait disabled:opacity-50" aria-invalid={displayState.field === "lines" && !!displayState.error || undefined} aria-describedby={displayState.field === "lines" && displayState.error ? "purchase-lines-error" : undefined} /><span aria-hidden="true" className="mt-1 block text-[10px] leading-4 text-muted">{u ? u === "adet" ? "Tam sayı · en çok 999.999" : `En çok 999.999,999 ${u}` : "Ürün seçin"}</span></div>
               <div className="min-w-0"><span aria-hidden="true" className="mb-1 block text-xs text-muted lg:hidden">Birim fiyat (KDV dahil)</span><Input name="price" inputMode="decimal" maxLength={10} value={r.price} onChange={(e) => set(r.k, { price: e.target.value })} aria-label={`Kalem ${rowIndex + 1}: birim fiyat, KDV dahil, en fazla 100.000,00 ${currencySymbol(currency)}, en çok 2 ondalık`} disabled={pending} className="w-full disabled:cursor-wait disabled:opacity-50" aria-invalid={displayState.field === "lines" && !!displayState.error || undefined} aria-describedby={displayState.field === "lines" && !!displayState.error ? "purchase-lines-error" : undefined} /><span aria-hidden="true" className="mt-1 block text-[10px] leading-4 text-muted">En fazla 100.000,00 {currencySymbol(currency)} · en çok 2 ondalık{u ? ` · birim: ${u}` : ""}</span>{u && <span aria-hidden="true" className="mt-1 block text-xs text-muted lg:hidden">{currencySymbol(currency)}/{u}</span>}</div>
               <span className="hidden text-sm text-muted lg:block">{u ? `${currencySymbol(currency)}/${u}` : ""}</span>
               <div className={`flex min-h-11 items-center justify-between gap-2 text-sm lg:block lg:text-right ${rows.length === 1 ? "col-span-2 lg:col-span-1" : ""}`}><span aria-hidden="true" className="text-xs text-muted lg:hidden">Toplam</span><span className="tabular">{t !== null ? formatMoney(t, currency) : "—"}</span></div>
-              {rows.length > 1 && <button type="button" disabled={pending} onClick={() => { setEdited(true); setRows((rs) => rs.filter((x) => x.k !== r.k)); setRowAnnouncement(`Alış kalemi silindi. ${rows.length - 1} kalem kaldı.`); requestAnimationFrame(() => addRowRef.current?.focus()); }} className="ml-auto grid size-11 place-items-center rounded-lg text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-wait disabled:opacity-50 lg:ml-0" aria-label={`${rowIndex + 1}. alış kalemini sil`}>×</button>}
+              {rows.length > 1 && <button type="button" disabled={pending} onClick={() => {
+                const remaining = rows.filter((x) => x.k !== r.k);
+                setEdited(true);
+                setRows(remaining);
+                setRowAnnouncement(`Alış kalemi silindi. ${remaining.length} kalem kaldı.`);
+                requestAnimationFrame(() => {
+                  const selects = formRef.current?.querySelectorAll<HTMLElement>('[data-testid="purchase-row"] [role="combobox"]');
+                  const nextIndex = Math.min(rowIndex, remaining.length - 1);
+                  (selects?.[nextIndex] ?? addRowRef.current)?.focus();
+                });
+              }} className="ml-auto grid size-11 place-items-center rounded-lg text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-wait disabled:opacity-50 lg:ml-0" aria-label={`${rowIndex + 1}. alış kalemini sil`}>×</button>}
             </div>
           );
         })}
@@ -118,7 +128,7 @@ export function SupplierForm({ initial }: { initial?: SupplierInitial }) {
   }, [isEditing, pending, state.error, state.savedAt]);
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} key={initial ? initial.id : state.savedAt ?? 0} aria-busy={pending} className="grid gap-4 sm:grid-cols-2">
-      <div><Field label="Ad" hint="2–80 karakter"><Input name="name" maxLength={80} defaultValue={initial?.name} disabled={pending} required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
+      <div><Field label="Ad" hint="2–80 karakter"><Input name="name" minLength={2} maxLength={80} pattern=".*\\S.*\\S.*" defaultValue={initial?.name} disabled={pending} required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
       <div><Field label="Telefon" hint="İsteğe bağlı · en fazla 30 karakter"><Input name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={30} defaultValue={initial?.phone ?? ""} disabled={pending} /></Field></div>
       <div><Field label="Vergi / TC no" hint="İsteğe bağlı; yalnızca 10 haneli VKN veya 11 haneli TCKN"><Input name="taxNo" inputMode="numeric" maxLength={11} pattern="[0-9]{10,11}" defaultValue={initial?.taxNo ?? ""} disabled={pending} {...errorProps(displayState, "taxNo")} /></Field><Err s={displayState} f="taxNo" /></div>
       <div><Field label="Not" hint="İsteğe bağlı · en fazla 200 karakter"><Input name="note" maxLength={200} defaultValue={initial?.note ?? ""} disabled={pending} /></Field></div>

@@ -9,6 +9,7 @@ export function Select({
   id: controlId,
   "aria-describedby": describedBy,
   "aria-invalid": invalid,
+  "aria-required": required,
   name,
   ariaLabel,
   options,
@@ -20,6 +21,7 @@ export function Select({
   id?: string;
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
+  "aria-required"?: boolean;
   name?: string;
   ariaLabel?: string;
   options: Option[];
@@ -172,7 +174,9 @@ export function Select({
       e.stopPropagation();
       setOpen(false);
     }
-    else if (e.key === "Tab") setOpen(false);
+    else if (e.key === "Tab") {
+      setOpen(false);
+    }
     else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.trim()) {
       const character = normalizeSearchText(e.key);
       const previous = typeahead.current;
@@ -203,6 +207,7 @@ export function Select({
         aria-label={ariaLabel}
         aria-describedby={describedBy}
         aria-invalid={invalid || undefined}
+        aria-required={required || undefined}
         aria-haspopup="listbox"
         aria-expanded={open && !unavailable}
         aria-controls={open && !unavailable ? id : undefined}

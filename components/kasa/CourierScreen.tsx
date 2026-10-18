@@ -25,8 +25,8 @@ const phoneHref = (raw: string) => {
   return `tel:${digits}`;
 };
 
-export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onCloseShift }: {
-  meta: Meta; courier: Cashier; tabs: Map<string, TabState>; now: number; add: (list: NewTabEvent[]) => Promise<unknown>;
+export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add, onDeliver, onCloseShift }: {
+  meta: Meta; courier: Cashier; tabs: Map<string, TabState>; tabsLoaded?: boolean; now: number; add: (list: NewTabEvent[]) => Promise<unknown>;
   onDeliver: (tab: TabState, method: PayIntent) => Promise<void>; onCloseShift: () => void;
 }) {
   const mainProps = useKasaMainProps();
@@ -35,6 +35,7 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
   const [deliver, setDeliver] = useState<TabState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const busyRef = useRef(false);
   const lastActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const actionErrorRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
@@ -61,8 +62,11 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
   const active = mine.filter((t) => !t.delivery.deliveredAt).sort((a, b) => a.openedAt.localeCompare(b.openedAt));
   const done = mine.filter((t) => t.delivery.deliveredAt && Date.parse(t.delivery.deliveredAt) >= todayStart);
   const waiting = active.filter((t) => !t.delivery.outAt);
+  const hasOutForDelivery = active.some((t) => t.delivery.outAt);
   const cash = courierCash(done, courier.id);
   const run = async (action: "out" | "deliver", fn: () => Promise<unknown>, success: string) => {
+    if (busyRef.current) return false;
+    busyRef.current = true;
     setBusy(action);
     setError(null);
     setNotice("");
@@ -74,20 +78,22 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
     } catch (e) {
       setError(e instanceof Error ? e.message : "İşlem tamamlanamadı. Tekrar deneyin.");
       return false;
-    } finally { setBusy(null); }
+    } finally { busyRef.current = false; setBusy(null); }
   };
   const out = () => run("out", () => add(waiting.map((t) => ({ tabId: t.id, tableId: null, staffId: courier.id, ev: { type: "out" as const } }))), "Siparişler yola çıktı olarak kaydedildi.");
 
   return (
     <div {...mainProps} className="mx-auto w-full max-w-lg px-4 py-5 outline-none">
       <div className="mb-4 flex items-center gap-3">
-        <h1 id="courier-heading" tabIndex={-1} className="min-w-0 break-words rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Siparişlerim <span className="tabular text-muted">({active.length})</span></h1>
-        {waiting.length > 0 && <button type="button" disabled={busy !== null} aria-busy={busy === "out" || undefined} onClick={(e) => { lastActionButtonRef.current = e.currentTarget; void out(); }} className={`ml-auto shrink-0 ${strong}`}>{busy === "out" ? "Yola çıkış kaydediliyor…" : `Yola çıktım (${waiting.length})`}</button>}
+        <h1 id="courier-heading" tabIndex={-1} className="min-w-0 break-words rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Siparişlerim <span className="tabular text-muted">({tabsLoaded ? active.length : "—"})</span></h1>
+        {tabsLoaded && waiting.length > 0 && <button type="button" disabled={busy !== null} aria-busy={busy === "out" || undefined} onClick={(e) => { lastActionButtonRef.current = e.currentTarget; void out(); }} className={`ml-auto shrink-0 ${strong}`}>{busy === "out" ? "Yola çıkış kaydediliyor…" : `Yola çıktım (${waiting.length})`}</button>}
       </div>
+      {!tabsLoaded && <p className="sr-only" role="status" aria-live="polite">Kurye siparişleri yükleniyor.</p>}
       {error && !deliver && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
       {busy && <p className="sr-only" role="status" aria-live="polite">{busy === "out" ? "Siparişlerin yola çıkışı kaydediliyor." : "Teslimat ve ödeme kaydediliyor."}</p>}
       {notice && <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{notice}</p>}
-      <ul className="space-y-3">
+      <ul aria-busy={!tabsLoaded || undefined} className="space-y-3">
+        {!tabsLoaded ? <li className="rounded-xl border border-dashed border-line p-6 text-center text-muted" aria-hidden="true">Siparişler yükleniyor…</li> : <>
         {active.map((t) => {
           const o = t.order;
           const st = deliveryStatus(t);
@@ -119,15 +125,17 @@ export function CourierScreen({ meta, courier, tabs, now, add, onDeliver, onClos
           );
         })}
         {!active.length && <li className="rounded-xl border border-dashed border-line p-6 text-center text-muted">Üzerinizde sipariş yok.</li>}
+        </>}
       </ul>
 
       <section className="mt-8 rounded-xl border border-line bg-surface p-4 text-sm">
         <div className="flex items-baseline justify-between">
-          <span>Bugün teslim: <span className="tabular font-medium">{done.length}</span></span>
-          <span>Bugün tahsil edilen nakit: <span className="tabular font-display text-base font-bold" data-testid="courier-cash">{TL(cash)}</span></span>
+          <span>Bugün teslim: <span className="tabular font-medium">{tabsLoaded ? done.length : "—"}</span></span>
+          <span>Bugün tahsil edilen nakit: <span className="tabular font-display text-base font-bold" data-testid="courier-cash">{tabsLoaded ? TL(cash) : "—"}</span></span>
         </div>
-        <button type="button" disabled={busy !== null || active.some((t) => t.delivery.outAt)} aria-describedby={active.some((t) => t.delivery.outAt) ? "courier-shift-blocked" : undefined} onClick={onCloseShift} className={`mt-3 w-full ${btn}`}>Hesap kapat (kasiyer onayı)</button>
-        {active.some((t) => t.delivery.outAt) && <p id="courier-shift-blocked" className="mt-2 text-xs text-muted">Yoldaki siparişler teslim edilmeden hesap kapatılamaz.</p>}
+        <button type="button" disabled={busy !== null || !tabsLoaded || hasOutForDelivery} aria-describedby={!tabsLoaded ? "courier-shift-loading" : hasOutForDelivery ? "courier-shift-blocked" : undefined} onClick={onCloseShift} className={`mt-3 w-full ${btn}`}>Hesap kapat (kasiyer onayı)</button>
+        {!tabsLoaded && <p id="courier-shift-loading" className="mt-2 text-xs text-muted">Siparişler yüklenmeden hesap kapatılamaz.</p>}
+        {hasOutForDelivery && <p id="courier-shift-blocked" className="mt-2 text-xs text-muted">Yoldaki siparişler teslim edilmeden hesap kapatılamaz.</p>}
       </section>
 
       {deliver && (

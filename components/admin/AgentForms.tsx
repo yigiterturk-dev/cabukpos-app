@@ -38,7 +38,7 @@ export function AgentCreateForm() {
   return (
     <form ref={formRef} onSubmit={onSubmit} aria-busy={pending}>
       <div className="flex flex-wrap items-start gap-3">
-        <div><Field label="Bilgisayar adı" hint="2–40 karakter"><Input key={state.code ?? "agent-name"} name="name" maxLength={40} placeholder="Kasa PC" required disabled={pending} aria-invalid={state.field === "name" && !!state.error || undefined} aria-describedby={state.field === "name" && state.error ? "agent-name-error" : undefined} /></Field>{state.field === "name" && <p id="agent-name-error" className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}</div>
+        <div><Field label="Bilgisayar adı" hint="2–40 karakter"><Input key={state.code ?? "agent-name"} name="name" minLength={2} maxLength={40} pattern=".*\\S.*\\S.*" placeholder="Kasa PC" required disabled={pending} aria-invalid={state.field === "name" && !!state.error || undefined} aria-describedby={state.field === "name" && state.error ? "agent-name-error" : undefined} /></Field>{state.field === "name" && <p id="agent-name-error" className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}</div>
         <Button type="submit" disabled={pending} className="mt-6">{pending ? "Ekleniyor…" : "Ajan ekle"}</Button>
       </div>
       <CodeBox s={state} />
@@ -101,6 +101,7 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
   const sc = c.scale;
   const [logoErr, setLogoErr] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const addPrinterRef = useRef<HTMLButtonElement>(null);
   const saveButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -123,7 +124,7 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
     finally { setLogoBusy(false); }
   };
   return (
-    <form onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="space-y-5" data-testid={`agent-config-${agentId}`}>
+    <form ref={formRef} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="space-y-5" data-testid={`agent-config-${agentId}`}>
       <input type="hidden" name="config" value={JSON.stringify(c)} />
       <p className="sr-only" role="status" aria-live="polite">{logoBusy ? "Logo hazırlanıyor." : pending ? "Donanım ayarları kaydediliyor." : ""}</p>
       <fieldset disabled={pending || logoBusy} aria-busy={pending || logoBusy} className="space-y-5">
@@ -141,11 +142,11 @@ export function AgentConfigForm({ agentId, initial }: { agentId: string; initial
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
               <label className="inline-flex min-h-11 items-center gap-2"><input type="checkbox" checked={p.drawer} onChange={(e) => setP(i, { drawer: e.target.checked })} /> Para çekmecesi bu yazıcıya bağlı</label>
-              <button type="button" disabled={pending || logoBusy} className="ml-auto inline-flex min-h-11 items-center rounded-lg px-2.5 text-bad underline outline-none hover:bg-bad-soft focus-visible:ring-4 focus-visible:ring-bad/20" onClick={() => { setC((current) => ({ ...current, printers: current.printers.filter((printer) => printer.id !== p.id) })); requestAnimationFrame(() => addPrinterRef.current?.focus()); }}>Yazıcıyı kaldır</button>
+              <button type="button" aria-label={`${p.name || "Yazıcı"} yazıcısını kaldır`} disabled={pending || logoBusy} className="ml-auto inline-flex min-h-11 items-center rounded-lg px-2.5 text-bad underline outline-none hover:bg-bad-soft focus-visible:ring-4 focus-visible:ring-bad/20" onClick={() => { setC((current) => ({ ...current, printers: current.printers.filter((printer) => printer.id !== p.id) })); requestAnimationFrame(() => { const controls = formRef.current?.querySelectorAll<HTMLElement>('[data-testid^="printer-"] [role="combobox"]'); (controls?.[Math.min(i, controls.length - 1)] ?? addPrinterRef.current)?.focus(); }); }}>Yazıcıyı kaldır</button>
             </div>
           </div>
         ))}
-        {c.printers.length < 8 && <button ref={addPrinterRef} type="button" disabled={pending || logoBusy} className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60" onClick={() => setC((current) => ({ ...current, printers: [...current.printers, newPrinter(nextN())] }))}>+ Yazıcı ekle</button>}
+        {c.printers.length < 8 && <button ref={addPrinterRef} type="button" disabled={pending || logoBusy} className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60" onClick={() => { setC((current) => ({ ...current, printers: [...current.printers, newPrinter(nextN())] })); requestAnimationFrame(() => { const rows = formRef.current?.querySelectorAll<HTMLElement>('[data-testid^="printer-"]'); rows?.[rows.length - 1]?.querySelector<HTMLInputElement>("input")?.focus(); }); }}>+ Yazıcı ekle</button>}
       </div>
 
       <div className="rounded-xl border border-line p-4" data-testid="agent-logo">

@@ -29,17 +29,25 @@ export default async function Markalar() {
     selByBrand.get(s.brandId)!.add(s.productId);
   }
   const sellable = products.filter((p) => p.sellable && p.active);
+  const sellableIds = new Set(sellable.map((p) => p.id));
   return (
     <>
       <PageHeader
         title="Markalar (bulut mutfak)"
         desc="Tek mutfak, çok marka: her markanın kendi QR menüsü olur. Seçki boşsa marka menüsü tüm aktif ürünleri gösterir; mutfağa düşen siparişler aynı istasyonlardan akar."
       />
+      {sellable.length === 0 && <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warn/30 bg-warn-soft px-4 py-3 text-sm text-ink-2">
+        <p>Satışa açık ürün yok. Marka QR menüleri ürün listesi olmadan görünür; ürün ekleyin veya mevcut ürünleri satışa açın.</p>
+        <Link href="/yonetim/urunler" className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-2 font-medium text-brand underline underline-offset-2 outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Ürünleri yönet</Link>
+      </div>}
       <div className="mb-6"><Panel title="Marka ekle"><BrandForm /></Panel></div>
       {brands.length === 0 ? <Empty>Henüz marka yok. Marka ekleyince her markaya özel menü adresi oluşur.</Empty> : (
         <div className="space-y-4">
-          {brands.map((b) => (
-            <Card key={b.id} className="p-4">
+          {brands.map((b) => {
+            const selected = selByBrand.get(b.id) ?? new Set<string>();
+            const activeSelectionCount = [...selected].filter((id) => sellableIds.has(id)).length;
+            const unavailableSelectionCount = selected.size - activeSelectionCount;
+            return <Card key={b.id} className="p-4">
               <div className={`flex min-w-0 flex-wrap items-end gap-3 ${b.active ? "" : "opacity-60"}`}>
                 <BrandForm initial={{ id: b.id, name: b.name, slug: b.slug }} />
                 <div className="ml-auto flex min-w-0 flex-wrap items-center gap-3">
@@ -48,15 +56,18 @@ export default async function Markalar() {
                   <PendingActionForm action={toggleBrand.bind(null, b.id, !b.active)} label={b.active ? "Pasifleştir" : "Aktifleştir"} ariaLabel={`${b.active ? "Pasifleştir" : "Aktifleştir"}: ${b.name}`} pendingStatus={`${b.name} marka durumu kaydediliyor.`} buttonClassName="inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60" />
                 </div>
               </div>
-              <p className="mt-2 break-words text-sm text-muted">Menü adresi: <span className="break-all text-ink">/menu/{storeId}?marka={b.slug}</span> · Seçki: {selByBrand.get(b.id)?.size ?? 0} ürün {selByBrand.get(b.id)?.size ? "" : "(tümü)"}</p>
+              <p className="mt-2 break-words text-sm text-muted">Menü adresi: <span className="break-all text-ink">/menu/{storeId}?marka={b.slug}</span> · Seçki: {selected.size === 0 ? "tüm aktif ürünler" : `${activeSelectionCount} aktif ürün`}</p>
+              {unavailableSelectionCount > 0 && <p className="mt-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-ink-2">
+                Seçkide {unavailableSelectionCount} pasif veya satışa kapalı ürün var; menüde görünmüyor. {b.active && sellable.length > 0 ? "Hiçbir aktif ürünü seçmeden seçkiyi kaydetmek, tüm aktif ürünleri menüye ekler." : "Ürünleri satışa açtıktan sonra menü seçkisini kontrol edin."} <Link href="/yonetim/urunler" className="font-medium text-brand underline underline-offset-2">Ürünleri yönet</Link>.
+              </p>}
               {b.active && sellable.length > 0 && (
                 <details className="mt-1">
                   <summary className="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-2.5 text-sm text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Menü seçkisini düzenle</summary>
-                  <ProductPicker brandId={b.id} products={sellable.map((p) => ({ id: p.id, name: p.name, category: p.category }))} selected={selByBrand.get(b.id) ?? new Set()} />
+                  <ProductPicker brandId={b.id} products={sellable.map((p) => ({ id: p.id, name: p.name, category: p.category }))} selected={selected} />
                 </details>
               )}
             </Card>
-          ))}
+          })}
         </div>
       )}
     </>

@@ -57,7 +57,8 @@ export async function issueOne(tenantId: string, saleId: string, { force = false
       seller: { taxId: t.taxId, name: t.name, taxOffice: t.taxOffice, address: t.address },
       buyer: buyer.data,
       lines: lines.map((l) => ({ name: l.name, qty: l.qtyMilli / 1000, unitPrice: l.unitPrice, vatRate: l.vatRate, total: l.total })),
-      vat: discountedVat(sale.vat, sale.discount ?? 0), discount: sale.discount ?? 0, total: sale.total - (sale.discount ?? 0), soldAt: sale.createdAt, number,
+      // #49/derin tarama #4: bahşiş mali belgeye girmez — toplam yalnız mal/hizmet − indirim; KDV kırılımı da mal TOPlamındandır.
+      vat: discountedVat(sale.vat, sale.discount ?? 0), discount: sale.discount ?? 0, total: sale.total - (sale.tip ?? 0) - (sale.discount ?? 0), soldAt: sale.createdAt, number,
     };
     let r;
     try { r = await getProvider(s.provider, { fakeFail: s.fakeFail }).issue(input); }

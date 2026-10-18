@@ -10,6 +10,7 @@ export function InvoiceForm({ initial, onSave, onCancel, disabled = false }: { i
   const r = buyerSchema.safeParse(v);
   const err = (k: keyof typeof v) => (touched && !r.success ? r.error.issues.find((i) => i.path[0] === k)?.message : undefined);
   const kind = validateTaxId(v.taxId.trim());
+  const finalConsumerSelected = v.taxId === NIHAI_TUKETICI.taxId && v.name === NIHAI_TUKETICI.name && !v.email && !v.address;
   const set = (k: keyof typeof v) => (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value }));
   const save = () => {
     setTouched(true);
@@ -22,7 +23,7 @@ export function InvoiceForm({ initial, onSave, onCancel, disabled = false }: { i
       <fieldset disabled={disabled} className="m-0 min-w-0 space-y-3 border-0 p-0">
       <div className="flex items-center justify-between">
         <h3 id="invoice-form-title" className="text-sm font-semibold">Fatura (e-Arşiv)</h3>
-        <button type="button" onClick={() => setV((x) => ({ ...x, taxId: NIHAI_TUKETICI.taxId, name: NIHAI_TUKETICI.name, address: "" }))} className="inline-flex min-h-12 items-center rounded px-1 text-sm text-brand underline outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Nihai tüketici</button>
+        <button type="button" aria-pressed={finalConsumerSelected} onClick={() => setV((x) => ({ ...x, taxId: NIHAI_TUKETICI.taxId, name: NIHAI_TUKETICI.name, email: "", address: "" }))} className={`inline-flex min-h-12 items-center rounded px-2 text-sm underline outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${finalConsumerSelected ? "bg-brand-soft font-medium text-brand" : "text-brand hover:bg-brand-soft"}`}>Nihai tüketici</button>
       </div>
       {touched && !r.success && <p className="text-sm text-bad" role="alert">Bilgileri kontrol edin. Hatalı alanlar işaretlendi.</p>}
       <Field label="VKN / TCKN" hint={`10 haneli VKN ya da 11 haneli geçerli TCKN${kind === "vkn" ? " · vergi kimlik no (şirket)" : kind === "tckn" ? " · T.C. kimlik no" : ""}`}>

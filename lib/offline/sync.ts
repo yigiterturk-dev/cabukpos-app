@@ -43,7 +43,7 @@ export function createSync(listener: Listener) {
     for (;;) {
       const rows = await d.outbox.orderBy("n").limit(PUSH_BATCH).toArray();
       if (!rows.length) return;
-      const { results } = (await getJson("/api/sync/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deviceId, docs: rows.map((r) => r.doc) }) })) as { results: DocResult[] };
+      const { results } = (await getJson("/api/sync/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deviceId, now: Date.now(), docs: rows.map((r) => r.doc) }) })) as { results: DocResult[] };
       // Çökme dayanıklılığı (#26): sonuç partiyle hizalı değilse hiçbir satır silinmez;
       // aynı belgeler sunucuda idempotent (var olan tekrar yazılmaz) olduğundan yeniden gönderim güvenli.
       if (!Array.isArray(results) || results.length !== rows.length) throw new Error("push yanıtı partiyle uyuşmuyor");

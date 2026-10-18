@@ -39,6 +39,7 @@ export function MfaAc() {
   }, [displayError]);
   const s = baslat.state;
   const hazir = s.secret && s.url ? { secret: s.secret, url: s.url } : null;
+  const startError = baslat.pending ? undefined : s.error;
   if (onayla.state.ok) return <p tabIndex={-1} role="status" aria-live="polite" className="rounded-[14px] bg-ok-soft p-4 text-sm text-ok outline-none focus-visible:ring-4 focus-visible:ring-ok/30">{onayla.state.ok}</p>;
   if (!hazir) {
     return (
@@ -48,7 +49,7 @@ export function MfaAc() {
           {baslat.pending ? "Üretiliyor…" : "Kurulumu başlat"}
         </Button>
         {baslat.pending && <p className="sr-only" role="status" aria-live="polite">İki adımlı doğrulama kurulumu başlatılıyor.</p>}
-        {s.error && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p>}
+        {startError && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{startError}</p>}
       </form>
     );
   }

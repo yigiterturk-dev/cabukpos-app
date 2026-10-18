@@ -56,10 +56,13 @@ export const pointsForKurus = (kurus: Kurus, kurusPerRedeem: number) =>
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // okunması karışan 0/O/1/I yok
 
-/** HK-XXXXXX biçiminde hediye kartı kodu (benzersizlik DB tekil indeksiyle garanti). */
+/** HK-XXXXXX biçiminde hediye kartı kodu (benzersizlik DB tekil indeksiyle garanti).
+ *  Parasal kod CSPRNG ile üretilir — derin tarama bulgusu #8 (Math.random değil). */
 export function newGiftCardCode(): string {
+  const rnd = new Uint32Array(6);
+  crypto.getRandomValues(rnd);
   let s = "";
-  for (let i = 0; i < 6; i++) s += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+  for (let i = 0; i < 6; i++) s += CODE_ALPHABET[rnd[i] % CODE_ALPHABET.length];
   return "HK-" + s;
 }
 

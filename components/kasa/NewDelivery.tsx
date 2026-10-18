@@ -161,7 +161,8 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
           <p className="text-sm text-muted" data-testid="customer-status" role="status" aria-live="polite" aria-atomic="true">
             {found.customer ? `Kayıtlı müşteri · ${formatPhone(phone)}` : lookupFailed ? "Müşteri kaydı alınamadı; bilgileri elle girin." : offline ? "Bağlantı yok: müşteri defterine bakılamadı, bilgileri elle girin." : "Yeni müşteri"}
           </p>
-          <Field label="Ad soyad" hint="Zorunlu · 2–120 karakter"><Input ref={nameRef} id="delivery-name" name="name" autoComplete="name" value={name} onChange={(e) => { setName(e.target.value); clearError(); }} aria-invalid={errorField === "name" || undefined} aria-describedby={errorField === "name" ? "delivery-error" : undefined} maxLength={120} required /></Field>
+          <Field label="Ad soyad" hint="Zorunlu · 2–120 karakter"><Input ref={nameRef} id="delivery-name" name="name" autoComplete="name" value={name} onChange={(e) => { setName(e.target.value); clearError(); }} aria-invalid={errorField === "name" || undefined} aria-describedby={errorField === "name" ? "delivery-error" : undefined} minLength={2} maxLength={120} pattern=".*\\S.*" required /></Field>
+          {errorField === "name" && error && <p id="delivery-error" className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
           {found.addresses.length > 0 && (
             <fieldset className="m-0 border-0 p-0">
               <legend className="mb-1.5 text-sm font-medium">Kayıtlı adresler</legend>
@@ -179,7 +180,8 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
               </div>
             </fieldset>
           )}
-          <Field label="Adres" hint="Zorunlu · 5–500 karakter"><Textarea ref={addressRef} id="delivery-address" value={address} onChange={(e) => { setAddress(e.target.value); setAddrId(null); setZoneId(null); setKm(""); clearError(); }} aria-invalid={errorField === "address" || undefined} aria-describedby={errorField === "address" ? "delivery-error" : undefined} maxLength={500} rows={2} required className="resize-y" /></Field>
+          <Field label="Adres" hint="Zorunlu · 5–500 karakter"><Textarea ref={addressRef} id="delivery-address" value={address} onChange={(e) => { setAddress(e.target.value); setAddrId(null); setZoneId(null); setKm(""); clearError(); }} aria-invalid={errorField === "address" || undefined} aria-describedby={errorField === "address" ? "delivery-error" : undefined} minLength={5} maxLength={500} rows={2} required className="resize-y" /></Field>
+          {errorField === "address" && error && <p id="delivery-error" className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
           <Field label="Adres tarifi" hint="İsteğe bağlı · en fazla 300 karakter (ör. yeşil kapı, 3. kat)"><Input value={directions} onChange={(e) => { setDirections(e.target.value); clearError(); }} maxLength={300} /></Field>
           {zones.length > 0 && (
             <fieldset ref={zoneRef} tabIndex={-1} aria-describedby={errorField === "zone" ? "delivery-error" : undefined} className="m-0 border-0 p-0 outline-none focus-within:ring-4 focus-within:ring-brand-ring/60">
@@ -195,12 +197,14 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
                   );
                 })}
               </div>
+              {errorField === "zone" && error && <p id="delivery-error" className="mt-2 break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
               {(() => {
                 const z = zones.find((x) => x.id === zoneId);
                 if (!z?.perKm) return null;
                 return (
                   <div className="mt-2 flex flex-wrap items-end gap-3">
                     <div className="w-28"><Field label="Mesafe (km)" hint="Zorunlu · 0'dan büyük, en fazla 100 km · en çok 2 ondalık"><Input ref={kmRef} id="delivery-km" value={km} onChange={(e) => { setKm(e.target.value); clearError(); }} aria-invalid={errorField === "km" || kmInvalid || undefined} aria-describedby={errorField === "km" ? "delivery-error" : undefined} inputMode="decimal" maxLength={6} pattern="[0-9]{1,3}([.,][0-9]{1,2})?" placeholder="3,5" required /></Field></div>
+                    {errorField === "km" && error && <p id="delivery-error" className="basis-full break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
                     <span className="pb-3 text-sm text-muted" aria-live="polite" aria-atomic="true">Ücret: <b className="tabular text-ink">{validKm === null ? "0–100 km · en çok 2 ondalık girin" : TL(zoneFee(z, validKm))}</b></span>
                   </div>
                 );
@@ -236,7 +240,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
               </p>}
             </div>
           )}
-          {error && <p ref={errorRef} id="delivery-error" tabIndex={-1} className="break-words text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
+          {error && !errorField && <p ref={errorRef} id="delivery-error" tabIndex={-1} className="break-words text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
             <Button id={createButtonId} type="submit" disabled={busy !== null || noOpenZones} className="min-h-14 w-full text-base">{busy === "create" ? "Sipariş oluşturuluyor…" : noOpenZones ? "Şu an servis yok" : "Siparişe geç"}</Button>
           </fieldset>
         </form>

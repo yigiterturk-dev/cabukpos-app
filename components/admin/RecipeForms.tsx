@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { produce, saveRecipe, type RecipeState } from "@/lib/admin/recipe-actions";
 import { formatMoney, type Currency } from "@/lib/core/money";
@@ -58,6 +59,7 @@ export function RecipeForm({ owner, ingredients, initial, currency = "TRY" }: { 
       <p className="text-sm text-muted">
         {owner.yieldMilli ? `Miktarlar bir parti (${owner.unit === "adet" ? owner.yieldMilli / 1000 + " adet" : `${owner.yieldMilli / 1000} ${owner.unit}`}) için.` : owner.optionId ? "Miktarlar seçenek bir kez seçildiğinde eklenen malzeme." : "Miktarlar 1 porsiyon (tartılı üründe 1 kg) için."}
       </p>
+      {ingredients.length === 0 && <p className="rounded-lg border border-warn/30 bg-warn-soft p-3 text-sm text-warn">Reçeteye eklenebilir stok ürünü yok. Önce <Link href="/yonetim/urunler" className="font-medium underline underline-offset-2">Ürünler’de stok takibini açık bir hammadde veya ara ürün oluşturun</Link>.</p>}
       <fieldset disabled={pending} aria-busy={pending} className="space-y-3">
       {rows.map((r, rowIndex) => {
         const ing = byId.get(r.id);
@@ -66,15 +68,15 @@ export function RecipeForm({ owner, ingredients, initial, currency = "TRY" }: { 
         const qtyHintId = `${idPrefix}-qty-hint-${r.k}`;
         return (
           <div key={r.k} className="grid min-w-0 grid-cols-1 items-center gap-2 lg:grid-cols-[minmax(0,16rem)_7rem_auto_minmax(6rem,auto)_2.75rem]" data-testid="recipe-row">
-            <div className="min-w-0"><Select disabled={pending} ariaLabel={`Malzeme satırı ${rowIndex + 1}`} name="ing" options={ingredients} defaultValue={r.id} placeholder="Malzeme seçin" onChange={(v) => set(r.k, { id: v })} aria-invalid={itemsInvalid || undefined} aria-describedby={itemsInvalid ? "recipe-items-error" : undefined} /></div>
+            <div className="min-w-0"><Select disabled={pending} ariaLabel={`Malzeme satırı ${rowIndex + 1}`} name="ing" options={ingredients} defaultValue={r.id} placeholder="Malzeme seçin" onChange={(v) => set(r.k, { id: v })} aria-required aria-invalid={itemsInvalid || undefined} aria-describedby={itemsInvalid ? "recipe-items-error" : undefined} /></div>
             <div className="min-w-0"><Input name="qty" inputMode={ing && ing.unit !== "adet" ? "numeric" : "decimal"} maxLength={ing ? ing.unit === "adet" ? 8 : 6 : undefined} value={r.qty} onChange={(e) => set(r.k, { qty: e.target.value })} aria-label={`Malzeme satırı ${rowIndex + 1}, ${ing?.label ?? "malzeme seçilmedi"}: miktar (${qtyInputUnit})`} aria-invalid={itemsInvalid || undefined} aria-describedby={`${qtyHintId}${itemsInvalid ? " recipe-items-error" : ""}`} className="w-full" /><span id={qtyHintId} className="mt-1 block text-[10px] leading-4 text-muted">{qtyHint}</span></div>
             <span className="text-sm text-muted">{ing ? inputUnit(ing.unit) : ""}</span>
             <span className="tabular text-left text-sm text-muted lg:text-right">{ing?.cost != null ? formatMoney(Math.round((ing.cost * toMilli(r.qty, ing.unit)) / 1000), currency) : ing ? "maliyet yok" : ""}</span>
-            <button type="button" disabled={pending} onClick={() => { setEdited(true); setRows((rs) => rs.filter((x) => x.k !== r.k)); requestAnimationFrame(() => addIngredientRef.current?.focus()); }} className="inline-flex size-11 items-center justify-center rounded-lg text-lg text-muted outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50" aria-label={`Malzeme satırı ${rowIndex + 1}${ing ? `, ${ing.label}` : ""} sil`}>×</button>
+            <button type="button" disabled={pending} onClick={() => { setEdited(true); setRows((rs) => rs.filter((x) => x.k !== r.k)); requestAnimationFrame(() => { const selects = formRef.current?.querySelectorAll<HTMLElement>('[data-testid="recipe-row"] [role="combobox"]'); (selects?.[Math.min(rowIndex, selects.length - 1)] ?? addIngredientRef.current)?.focus(); }); }} className="inline-flex size-11 items-center justify-center rounded-lg text-lg text-muted outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-50" aria-label={`Malzeme satırı ${rowIndex + 1}${ing ? `, ${ing.label}` : ""} sil`}>×</button>
           </div>
         );
       })}
-      <Button ref={addIngredientRef} type="button" variant="secondary" disabled={pending} onClick={() => { setEdited(true); setRows((rs) => [...rs, { k: next, id: "", qty: "" }]); setNext(next + 1); }}>+ Malzeme</Button>
+      <Button ref={addIngredientRef} type="button" variant="secondary" disabled={pending || ingredients.length === 0} onClick={() => { setEdited(true); setRows((rs) => [...rs, { k: next, id: "", qty: "" }]); setNext(next + 1); requestAnimationFrame(() => formRef.current?.querySelectorAll<HTMLElement>('[data-testid="recipe-row"] [role="combobox"]')[rows.length]?.focus()); }}>+ Malzeme</Button>
       <div className="rounded-lg bg-surface-2 p-3 text-sm" data-testid="recipe-cost">
         {owner.yieldMilli ? <>Parti maliyeti <b className="tabular">{formatMoney(Math.round(total), currency)}</b> · {owner.unit} başına <b className="tabular">{formatMoney(Math.round(perUnit), currency)}</b></> : <>Maliyet <b className="tabular">{formatMoney(Math.round(total), currency)}</b></>}
         {missing && <span className="ml-2 text-warn">(maliyeti olmayan malzeme var)</span>}
@@ -97,7 +99,7 @@ function ProductionFields({ products, state, displayState, pending, showSaved }:
   return (
     <>
       <fieldset disabled={pending} aria-busy={pending} className="contents">
-      <div><Field label="Ara ürün"><Select key={state.savedAt ?? 0} disabled={pending} name="productId" options={products} defaultValue="" placeholder="Seçin" onChange={setPid} aria-invalid={displayState.field === "productId" && !!displayState.error || undefined} aria-describedby={displayState.field === "productId" && displayState.error ? "production-product-error" : undefined} /></Field>{displayState.field === "productId" && <p id="production-product-error" className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}</div>
+      <div><Field label="Ara ürün"><Select key={state.savedAt ?? 0} disabled={pending} name="productId" options={products} defaultValue="" placeholder="Seçin" onChange={setPid} aria-required aria-invalid={displayState.field === "productId" && !!displayState.error || undefined} aria-describedby={displayState.field === "productId" && displayState.error ? "production-product-error" : undefined} /></Field>{displayState.field === "productId" && <p id="production-product-error" className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}</div>
       <div><Field label="Parti sayısı" hint={`0'dan büyük · en çok 9.999,999 · en çok 3 ondalık${y ? ` · 1 parti = ${y}` : " · ör. 2 ya da 0,5"}`}><Input key={state.savedAt ?? 0} name="batches" inputMode="decimal" maxLength={8} pattern="[0-9]{1,4}([.,][0-9]{1,3})?" defaultValue="1" required aria-invalid={displayState.field === "batches" && !!displayState.error || undefined} aria-describedby={displayState.field === "batches" && displayState.error ? "production-batches-error" : undefined} /></Field>{displayState.field === "batches" && <p id="production-batches-error" className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}</div>
       <div><Field label="Not" hint="İsteğe bağlı · en fazla 200 karakter"><Input key={state.savedAt ?? 0} name="note" maxLength={200} /></Field></div>
       {displayState.error && !displayState.field && <p className="break-words text-sm text-bad sm:col-span-3" role="alert" aria-live="assertive">{displayState.error}</p>}

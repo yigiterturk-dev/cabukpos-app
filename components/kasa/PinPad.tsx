@@ -10,8 +10,10 @@ const KEY = "press h-20 rounded-2xl border border-line bg-surface text-3xl font-
 
 export type Cashier = { id: string; name: string };
 
-/** PIN doğrulama cihazda (hash'ler katalogla iner). only: yalnız bu personel kabul (ör. iade onayı için müdür). */
-export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previewOnly = false }: { meta: Meta; onOk: (c: Cashier) => void | Promise<void>; onMeta: (m: Meta) => void; only?: (s: KasaStaff) => boolean; autoFocusFirst?: boolean; previewOnly?: boolean }) {
+/** PIN doğrulama cihazda (hash'ler katalogla iner). only: yalnız bu personel kabul (ör. iade onayı için müdür).
+ *  Müdür eşleşmesinde ve çevrimiçiyken PIN /api/kasa/onay ile sunucuda da doğrulanır; dönüşte kısa ömürlü
+ *  imzalı onay belirteci onOk'ya verilir (belgeyle buluta gider, apply'da tekrar doğrulanır). */
+export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previewOnly = false, serverPurpose }: { meta: Meta; onOk: (c: Cashier, approvalToken?: string) => void | Promise<void>; onMeta: (m: Meta) => void; only?: (s: KasaStaff) => boolean; autoFocusFirst?: boolean; previewOnly?: boolean; serverPurpose?: "courier-close" }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,14 +66,34 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
     try {
       const entered = pin;
       setPin("");
-      let found: Cashier | null = null;
-      for (const s of meta.catalog.staff.filter(only ?? (() => true))) if (await verifyPin(entered, s.pinHash)) { found = { id: s.id, name: s.name }; break; }
+      let foundStaff: KasaStaff | null = null;
+      if (serverPurpose) {
+        if (!navigator.onLine) throw new Error("İnternet bağlantısı olmadan kasiyer PIN'i doğrulanamaz.");
+        const r = await fetch("/api/kasa/onay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ purpose: serverPurpose, pin: entered }) });
+        if (!r.ok) throw new Error(r.status === 429 ? "Çok fazla deneme yapıldı. Bir dakika sonra tekrar deneyin." : "PIN hatalı. Tekrar deneyin.");
+        const result = (await r.json()) as { staff?: { id: string } };
+        foundStaff = meta.catalog.staff.find((s) => s.id === result.staff?.id) ?? null;
+      } else {
+        for (const s of meta.catalog.staff.filter(only ?? (() => true))) {
+          if (!s.pinHash) continue;
+          if (await verifyPin(entered, s.pinHash)) { foundStaff = s; break; }
+        }
+      }
+      const found: Cashier | null = foundStaff ? { id: foundStaff.id, name: foundStaff.name } : null;
+      // Müdür onayı: PIN sunucuda da doğrulanır, kısa ömürlü imzalı belirteç belgeyle buluta gider.
+      let approvalToken: string | undefined;
+      if (foundStaff?.role === "mudur" && navigator.onLine) {
+        try {
+          const r = await fetch("/api/kasa/onay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ staffId: foundStaff.id, pin: entered }) });
+          if (r.ok) approvalToken = ((await r.json()) as { token?: string }).token;
+        } catch { /* çevrimdışı: yerel doğrulama yeterli; belge onaysız gider ve bulutta review'lanır */ }
+      }
       const m = await loadMeta();
       if (found) {
         await kasaDb().meta.put({ ...m, pinFails: 0, pinLockUntil: 0 });
         onMeta({ ...m, pinFails: 0, pinLockUntil: 0 });
         setWorking(true);
-        try { await onOk(found); }
+        try { await onOk(found, approvalToken); }
         catch { setError("PIN doğru, ancak işlem tamamlanamadı. Tekrar deneyin."); }
       } else {
         const fails = m.pinFails + 1;
@@ -81,14 +103,14 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
         setNow(Date.now());
         setError(fails >= PIN_MAX_FAILS ? null : `PIN hatalı. Kilitlenmeden önce ${PIN_MAX_FAILS - fails} deneme kaldı.`);
       }
-    } catch {
-      setError("PIN doğrulanamadı. Tekrar deneyin.");
+    } catch (error) {
+      setError(error instanceof TypeError ? "Doğrulama servisine ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin." : error instanceof Error ? error.message : "PIN doğrulanamadı. Tekrar deneyin.");
     } finally {
       setWorking(false);
       submitRef.current = false;
       setBusy(false);
     }
-  }, [busy, locked, meta, onMeta, onOk, only, pin, previewOnly]);
+  }, [busy, locked, meta, onMeta, onOk, only, pin, previewOnly, serverPurpose]);
   useEffect(() => {
     // The design preview keeps a static PIN pad mounted beside other live screens.
     // Its global keyboard handler must not consume those screens' Enter/digit keys.

@@ -13,8 +13,9 @@ import { ArrowRight, Bike, ChefHat, LayoutGrid, Receipt, ShoppingBasket, Users, 
 
 type Summary = ReturnType<typeof summarizeShift>;
 
-export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalon, onGoPaket }: {
+export function BugunScreen({ meta, tabs, tabsLoaded, hasSalon, hasPaket, onGoSale, onGoSalon, onGoPaket }: {
   meta: Meta; tabs: Map<string, TabState>;
+  tabsLoaded: boolean;
   hasSalon: boolean; hasPaket: boolean;
   onGoSale: () => void; onGoSalon: () => void; onGoPaket: () => void;
 }) {
@@ -24,17 +25,20 @@ export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalo
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [summaryRetry, setSummaryRetry] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const shiftId = shift?.id;
+  const openingCash = shift?.openingCash;
+  const drops = meta.drops;
 
   useEffect(() => {
-    if (!shift) return;
+    if (!shiftId || openingCash === undefined) return;
     let alive = true;
-    void shiftSales(shift.id).then((s) => {
+    void shiftSales(shiftId).then((s) => {
       if (!alive) return;
-      setLoaded({ shiftId: shift.id, sales: s, sum: summarizeShift(shift.openingCash, s, (meta.drops ?? []).map((d) => d.amount)) });
+      setLoaded({ shiftId, sales: s, sum: summarizeShift(openingCash, s, (drops ?? []).map((d) => d.amount)) });
       setSummaryError(null);
-    }).catch(() => { if (alive) setSummaryError(shift.id); });
+    }).catch(() => { if (alive) setSummaryError(shiftId); });
     return () => { alive = false; };
-  }, [shift, meta, summaryRetry]);
+  }, [shiftId, openingCash, drops, summaryRetry]);
 
   const summary = shift && loaded?.shiftId === shift.id ? loaded : null;
   const hasSummaryError = !!shift && summaryError === shift.id;
@@ -42,7 +46,7 @@ export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalo
     .filter((m) => summary.sum.byMethod[m.value] !== 0)
     .map((m) => `${m.label.toLocaleLowerCase("tr-TR")} ${TL(summary.sum.byMethod[m.value])}`)
     .join(" · ");
-  const open = [...tabs.values()].filter((t) => !t.closed);
+  const open = tabsLoaded ? [...tabs.values()].filter((t) => !t.closed) : [];
   const ready = open.reduce((a, t) => a + t.tickets.filter((k) => k.status === "hazir").length, 0);
   const waiting = open.filter((t) => t.kind === "platform" && deliveryStatus(t) === "onay_bekliyor").length;
   const recent = [...(summary?.sales ?? [])].reverse().slice(0, 5);
@@ -60,9 +64,10 @@ export function BugunScreen({ meta, tabs, hasSalon, hasPaket, onGoSale, onGoSalo
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Ciro (KDV dahil)" value={summary ? TL(summary.sum.gross) : "—"} tone="brand" icon={<Wallet />} hint={summary && summary.sum.refundCount > 0 ? `${summary.sum.refundCount} iade düşülmüş` : undefined} />
         <StatCard label="Satış" value={summary ? `${summary.sum.saleCount}` : "—"} tone="ok" icon={<Receipt />} hint={paymentSummary ? `Ödemeler: ${paymentSummary}` : undefined} />
-        <StatCard label="Açık adisyon" value={`${open.length}`} tone="info" icon={<Users />} hint={waiting > 0 ? `${waiting} onay bekliyor` : undefined} />
-        <StatCard label="Hazır bekleyen" value={`${ready}`} tone={ready > 0 ? "warn" : "neutral"} icon={<ChefHat />} />
+        <StatCard label="Açık adisyon" value={tabsLoaded ? `${open.length}` : "—"} tone="info" icon={<Users />} hint={tabsLoaded && waiting > 0 ? `${waiting} onay bekliyor` : undefined} />
+        <StatCard label="Hazır bekleyen" value={tabsLoaded ? `${ready}` : "—"} tone={tabsLoaded && ready > 0 ? "warn" : "neutral"} icon={<ChefHat />} />
       </div>
+      {!tabsLoaded && <p className="mt-3 text-sm text-muted" role="status" aria-live="polite">Adisyonlar yükleniyor…</p>}
       {hasSummaryError ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warn/30 bg-warn-soft p-3 text-sm text-warn" role="alert">
         <span>Vardiya özeti bu cihazdan okunamadı.</span>
         <button type="button" onClick={() => { setSummaryError(null); setSummaryRetry((n) => n + 1); requestAnimationFrame(() => headingRef.current?.focus()); }} className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-ink outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yeniden yükle</button>

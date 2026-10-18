@@ -20,7 +20,7 @@ function ListFields({ categories, state, pending, onEdit }: { categories: Option
   return (
     <>
       <div className="flex flex-wrap items-end gap-3">
-        <div><Field label="Liste adı" hint="1–60 karakter"><Input name="name" disabled={pending} maxLength={60} placeholder="Happy Hour" className="w-44" required {...errorProps(state, "name")} /></Field><Err s={state} f="name" /></div>
+        <div><Field label="Liste adı" hint="1–60 karakter"><Input name="name" disabled={pending} maxLength={60} pattern=".*\\S.*" placeholder="Happy Hour" className="w-44" required {...errorProps(state, "name")} /></Field><Err s={state} f="name" /></div>
         <div className="w-48">
           <Field label="Tür"><Select disabled={pending} name="kind" defaultValue="fiyat" onChange={(v) => { onEdit(); setKind(v as "fiyat" | "yuzde"); }} options={[
             { value: "fiyat", label: "Ürün başı fiyat" },
@@ -101,8 +101,8 @@ export function ItemForm({ listId, products, currencyUnit }: { listId: string; p
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="flex flex-wrap items-end gap-3">
       <div key={state.savedAt ?? 0} className="flex flex-wrap items-end gap-3">
-        <div className="w-64"><Field label="Ürün"><Select disabled={pending} name="productId" options={products} placeholder="Ürün seçin" onChange={() => setEdited(true)} {...errorProps(displayState, "productId", idPrefix)} /></Field><Err s={displayState} f="productId" idPrefix={idPrefix} /></div>
-        <div><Field label={`Liste fiyatı (${currencyUnit})`} hint={`0'dan büyük · en çok 21.474.836,47 ${currencyUnit}`}><Input name="price" disabled={pending} inputMode="decimal" maxLength={13} placeholder="0,00" className="w-28 text-right" required {...errorProps(displayState, "price", idPrefix)} /></Field><Err s={displayState} f="price" idPrefix={idPrefix} /></div>
+        <div className="w-64"><Field label="Ürün"><Select disabled={pending} name="productId" options={products} placeholder="Ürün seçin" onChange={() => setEdited(true)} aria-required {...errorProps(displayState, "productId", idPrefix)} /></Field><Err s={displayState} f="productId" idPrefix={idPrefix} /></div>
+        <div><Field label={`Liste fiyatı (${currencyUnit})`} hint={`0'dan büyük · en çok 21.474.836,47 ${currencyUnit} · en çok 2 ondalık`}><Input name="price" disabled={pending} inputMode="decimal" maxLength={13} placeholder="0,00" className="w-28 text-right" required {...errorProps(displayState, "price", idPrefix)} /></Field><Err s={displayState} f="price" idPrefix={idPrefix} /></div>
       </div>
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Ekleniyor…" : "Fiyat ekle"}</Button>
       {state.savedAt && !edited && !pending && !state.error && <Saved s={state} />}<Err s={displayState} />

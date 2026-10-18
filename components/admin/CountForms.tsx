@@ -8,10 +8,11 @@ import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 
 export function StartCountForm({ disabled }: { disabled?: boolean }) {
   const { state, pending, onSubmit } = useFormAction(startStockCount, {} as CountState);
+  const displayError = pending ? undefined : state.error;
   return <form onSubmit={onSubmit} aria-busy={pending}>
     <Button type="submit" disabled={disabled || pending} aria-busy={pending || undefined}>{pending ? "Sayım başlatılıyor…" : "Sayım başlat"}</Button>
     {pending && <span className="sr-only" role="status" aria-live="polite">Yeni stok sayımı başlatılıyor.</span>}
-    {state.error && <p className="mt-2 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}
+    {displayError && <p className="mt-2 break-words text-sm text-bad" role="alert" aria-live="assertive">{displayError}</p>}
   </form>;
 }
 
@@ -46,15 +47,17 @@ export function CountLineForm({ countId, lineId, productName, unit, countedMilli
 export function CloseCountForm({ countId }: { countId: string }) {
   const { state, pending, onSubmit } = useFormAction(closeStockCount.bind(null, countId), {} as CountState);
   const [confirmed, setConfirmed] = useState(false);
+  const [edited, setEdited] = useState(false);
+  const displayState = edited || pending ? {} as CountState : state;
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (!state.error || !state.field) return;
     requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
   }, [state.error, state.field]);
   return (
-    <form ref={formRef} onSubmit={onSubmit} aria-busy={pending} className="space-y-3">
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} aria-busy={pending} className="space-y-3">
       <label className="flex min-h-11 items-start gap-2 text-sm">
-        <input type="checkbox" name="onay" checked={confirmed} disabled={pending} onChange={(e) => setConfirmed(e.target.checked)} aria-invalid={state.field === "onay" && !!state.error || undefined} aria-describedby={state.field === "onay" && state.error ? "count-close-confirm-error" : undefined} className="mt-1 size-4 accent-[var(--color-brand)] disabled:opacity-50" />
+        <input type="checkbox" name="onay" checked={confirmed} disabled={pending} onChange={(e) => setConfirmed(e.target.checked)} aria-invalid={displayState.field === "onay" && !!displayState.error || undefined} aria-describedby={displayState.field === "onay" && displayState.error ? "count-close-confirm-error" : undefined} className="mt-1 size-4 accent-[var(--color-brand)] disabled:opacity-50" />
         <span>Sapmaları onaylıyorum: kapanışta sayılan ürünler için <b>sayım hareketi</b> yazılır, stok sayılan değere oturur. Sayılmayan ürünlere dokunulmaz.</span>
       </label>
       <div className="flex flex-wrap items-end gap-3">
@@ -63,7 +66,7 @@ export function CloseCountForm({ countId }: { countId: string }) {
       </div>
       {pending && <p className="sr-only" role="status" aria-live="polite">Sayım kapatılıyor. Stok hareketleri kaydediliyor.</p>}
       {!confirmed && <p className="text-xs text-muted">Kapatmak için yukarıdaki onayı işaretleyin.</p>}
-      {state.error ? <p id={state.field === "onay" ? "count-close-confirm-error" : undefined} className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p> : null}
+      {displayState.error ? <p id={displayState.field === "onay" ? "count-close-confirm-error" : undefined} className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p> : null}
     </form>
   );
 }

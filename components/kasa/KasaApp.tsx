@@ -141,10 +141,11 @@ function AgentBadge({ s }: { s: AgentStatus | null }) {
   );
 }
 
-function MoneyForm({ label, hint, submit, pendingMessage, onSubmit, defaultValue = "", currency }: { label: string; hint?: string; submit: string; pendingMessage: string; onSubmit: (k: number) => Promise<void>; defaultValue?: string; currency?: Currency }) {
+function MoneyForm({ label, hint, submit, pendingMessage, onSubmit, defaultValue = "", currency, positive = false }: { label: string; hint?: string; submit: string; pendingMessage: string; onSubmit: (k: number) => Promise<void>; defaultValue?: string; currency?: Currency; positive?: boolean }) {
   const errorId = useId();
   const submitButtonId = useId();
   const amountRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [amountInvalid, setAmountInvalid] = useState(false);
   const [amount, setAmount] = useState(defaultValue);
@@ -160,9 +161,10 @@ function MoneyForm({ label, hint, submit, pendingMessage, onSubmit, defaultValue
       aria-busy={busy}
       onSubmit={async (e) => {
         e.preventDefault();
+        if (submittingRef.current) return;
         const k = parseTL(amount);
-        if (k === null) {
-          setError("Tutar geçersiz (ör. 500 ya da 500,00).");
+        if (k === null || (positive && k === 0)) {
+          setError(k === null ? "Tutar geçersiz (ör. 500 ya da 500,00)." : "Aktarılacak tutar sıfırdan büyük olmalı.");
           setAmountInvalid(true);
           requestAnimationFrame(() => amountRef.current?.focus());
           return;
@@ -175,17 +177,19 @@ function MoneyForm({ label, hint, submit, pendingMessage, onSubmit, defaultValue
         }
         setError(null);
         setAmountInvalid(false);
+        submittingRef.current = true;
         setBusy(true);
         try {
           await onSubmit(k);
         } catch (e) {
           setError(e instanceof Error ? e.message : "İşlem kaydedilemedi. Tekrar deneyin.");
         } finally {
+          submittingRef.current = false;
           setBusy(false);
         }
       }}
     >
-      <Field label={label} hint={hint ?? `En fazla 1.000.000 ${currencyUnit(currency)}.`}><Input ref={amountRef} name="amount" inputMode="decimal" maxLength={12} value={amount} onChange={(e) => { setAmount(e.target.value); setError(null); setAmountInvalid(false); }} disabled={busy} aria-invalid={amountInvalid || undefined} aria-describedby={amountInvalid ? errorId : undefined} className={`tabular h-14 text-right text-2xl font-semibold disabled:cursor-wait disabled:opacity-50 ${amountInvalid ? "border-bad focus:border-bad focus:ring-bad/40" : ""}`} required /></Field>
+      <Field label={label} hint={hint ?? `En fazla 1.000.000 ${currencyUnit(currency)}.${positive ? " Sıfırdan büyük olmalı." : ""}`}><Input ref={amountRef} name="amount" inputMode="decimal" maxLength={12} value={amount} onChange={(e) => { setAmount(e.target.value); setError(null); setAmountInvalid(false); }} disabled={busy} aria-invalid={amountInvalid || undefined} aria-describedby={amountInvalid ? errorId : undefined} className={`tabular h-14 text-right text-2xl font-semibold disabled:cursor-wait disabled:opacity-50 ${amountInvalid ? "border-bad focus:border-bad focus:ring-bad/40" : ""}`} required /></Field>
       {error && <p id={errorId} className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
       {busy && <p className="sr-only" role="status" aria-live="polite">{pendingMessage}</p>}
       <Button id={submitButtonId} type="submit" size="lg" disabled={busy} className="w-full">{busy ? "Kaydediliyor…" : submit}</Button>
@@ -579,11 +583,12 @@ export function KasaApp() {
     }
   }, [tabsApi, meta, restoran, role, now]);
   const readyCount = useMemo(() => [...openTabsByTable(tabsApi.tabs).values()].flat().reduce((a, t) => a + t.tickets.filter((k) => k.status === "hazir").length, 0), [tabsApi.tabs]);
-  const lastReady = useRef(0);
+  const lastReady = useRef<number | null>(null);
   useEffect(() => {
-    if (restoran && role !== "mutfak" && readyCount > lastReady.current) beep();
+    if (!tabsApi.loaded) { lastReady.current = null; return; }
+    if (lastReady.current !== null && restoran && role !== "mutfak" && readyCount > lastReady.current) beep();
     lastReady.current = readyCount;
-  }, [readyCount, restoran, role]);
+  }, [readyCount, restoran, role, tabsApi.loaded]);
 
   // Donanım satışı beklemez: fiş (+ nakitte çekmece) arka planda.
   // M8: e-Arşiv satışında fiş en çok 3 sn bekler (eşitle + kes) → numara/ETTN basılır; olmazsa bağlantı/e-posta notu.
@@ -779,7 +784,7 @@ export function KasaApp() {
       </Bar>
     );
     if (view.name === "kurye-kapat") {
-      return <>{kHeader}<Center title="Hesap kapat" sub="Kasiyer ya da müdür PIN'i"><PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "kasiyer" || x.role === "mudur"} onOk={(c) => setView({ name: "kurye-gun-sonu", by: c.id })} autoFocusFirst />
+      return <>{kHeader}<Center title="Hesap kapat" sub="Kasiyer ya da müdür PIN'i · internet bağlantısı gerekir"><PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "kasiyer" || x.role === "mudur"} serverPurpose="courier-close" onOk={(c) => setView({ name: "kurye-gun-sonu", by: c.id })} autoFocusFirst />
         <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-4 min-h-12 w-full">Vazgeç</Button></Center></>;
     }
     if (view.name === "kurye-gun-sonu" && meta.shift) {
@@ -792,7 +797,7 @@ export function KasaApp() {
       }} /></>;
     }
     if (!meta.shift) return <>{kHeader}<Center title="Vardiya açılıyor…" /></>;
-    return <>{kHeader}<CourierScreen meta={meta} courier={cashier} tabs={tabsApi.tabs} now={now} add={tabsApi.add} onDeliver={onDeliver} onCloseShift={() => setView({ name: "kurye-kapat" })} /></>;
+    return <>{kHeader}<CourierScreen meta={meta} courier={cashier} tabs={tabsApi.tabs} tabsLoaded={tabsApi.loaded} now={now} add={tabsApi.add} onDeliver={onDeliver} onCloseShift={() => setView({ name: "kurye-kapat" })} /></>;
   }
   if (view.name === "receipt") return <Receipt meta={meta} sale={view.sale} onBack={() => setView({ name: "home" })} onPrinted={(r) => { setPrints((p) => ({ ...p, [view.sale.id]: { state: r.ok ? "ok" : "fail", error: r.error, jobId: r.jobId } })); refreshAgent(); }} />;
   if (view.name === "cekmece") {
@@ -817,7 +822,7 @@ export function KasaApp() {
               {drops.map((d) => <li key={d.id} className="flex justify-between py-1.5"><span>{new Date(d.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span><span className="tabular-nums">-{formatReceipt(d.amount, meta.device?.currency)}</span></li>)}
             </ul>
           )}
-          <MoneyForm label={`Aktarılacak tutar (${currencyUnit(meta.device?.currency)})`} currency={meta.device?.currency} submit="Parayı aktar" pendingMessage="Para güvenli kasaya aktarılıyor ve kaydediliyor." onSubmit={async (k) => { const m2 = await safeDropLocal(cashier.id, k); if (m2) setMeta(m2); setView({ name: "gun-sonu" }); }} />
+          <MoneyForm label={`Aktarılacak tutar (${currencyUnit(meta.device?.currency)})`} currency={meta.device?.currency} positive submit="Parayı aktar" pendingMessage="Para güvenli kasaya aktarılıyor ve kaydediliyor." onSubmit={async (k) => { const m2 = await safeDropLocal(cashier.id, k); if (!m2) throw new Error("Açık vardiya bulunamadı. Kasa durumunu yenileyip tekrar deneyin."); setMeta(m2); setView({ name: "gun-sonu" }); }} />
           <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 min-h-12 w-full">Vazgeç</Button>
         </Center>
       </>
@@ -839,7 +844,7 @@ export function KasaApp() {
       return <BillScreen tab={tab} tableName={tables.find((t) => t.id === tab.tableId)?.name ?? ""} currency={d.currency} onPay={(part, id, p, b, tip, ex) => onTabPay(tab, part, id, p, b, tip, ex)}
         onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed || !tab.tableId ? { name: "home" } : { name: "tab", tableId: tab.tableId })} />;
     }
-    return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} currency={d.currency} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
+    return <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} tabsLoaded={tabsApi.loaded} now={now} currency={d.currency} onOpen={(tableId) => setView({ name: "tab", tableId })} />;
   };
   // Masa tanımlı değilse restoran kasası da doğrudan hızlı satışta açılır. Paket sekmesi restoran kasasında hep var (M6).
   const hasSalon = restoran && tables.length > 0;
@@ -876,7 +881,7 @@ export function KasaApp() {
     }
     return null;
   };
-  if (restoran && role === "garson") return <>{header}{salonView() ?? <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} now={now} currency={d.currency} onOpen={(tableId) => setView({ name: "tab", tableId })} />}</>;
+  if (restoran && role === "garson") return <>{header}{salonView() ?? <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} tabsLoaded={tabsApi.loaded} now={now} currency={d.currency} onOpen={(tableId) => setView({ name: "tab", tableId })} />}</>;
   if (!meta.shift) {
     return (
       <>
@@ -913,7 +918,7 @@ export function KasaApp() {
     return (
       <>
         {bar(kasaTabs)}
-        <BugunScreen meta={meta} tabs={tabsApi.tabs} hasSalon={hasSalon} hasPaket={hasPaket}
+        <BugunScreen meta={meta} tabs={tabsApi.tabs} tabsLoaded={tabsApi.loaded} hasSalon={hasSalon} hasPaket={hasPaket}
           onGoSale={() => setView({ name: "sale" })} onGoSalon={() => setView({ name: "home" })} onGoPaket={() => setView({ name: "paket" })} />
       </>
     );

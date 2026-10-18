@@ -55,8 +55,8 @@ export default async function FiyatListesi() {
                   <p className="mt-3 text-sm text-muted">Kapsam: <b className="text-ink-2">{scope}</b>. Aktif olduğu saatlerde kapsamdaki ürünlerin fiyatı %{l.percent} indirilir; kasa satır eklenirken donar.</p>
                 ) : l.active && (
                   <div className="mt-4 space-y-3 border-t border-line pt-4">
-                    <ItemForm listId={l.id} products={products} currencyUnit={unit} />
-                    {mine.length === 0 ? <p className="text-sm text-muted">Ürün fiyatı yok: listeye ürün ekleyin.</p> : (
+                    {products.length > 0 ? <ItemForm listId={l.id} products={products} currencyUnit={unit} /> : <p className="rounded-lg border border-line bg-surface-2 p-3 text-sm text-muted">Fiyat listesine ürün eklemek için en az bir aktif ürün gerekli. <Link href="/yonetim/urunler" className="font-medium text-brand underline underline-offset-2">Ürün ekleyin veya satışa açın</Link>.</p>}
+                    {mine.length === 0 && products.length > 0 ? <p className="text-sm text-muted">Ürün fiyatı yok: listeye ürün ekleyin.</p> : mine.length > 0 && (
                       <div className="divide-y divide-line rounded-xl border border-line">
                         {mine.map((i) => (
                           <div key={i.id} className="flex min-w-0 flex-wrap items-center gap-3 p-3 text-sm">

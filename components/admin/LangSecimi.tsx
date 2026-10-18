@@ -10,6 +10,7 @@ const btn = (on: boolean) => `min-h-11 rounded-lg border px-4 py-2 text-sm outli
 /** #45: panel dili seçimi — sunucu eylemi çerezi yazar, layout yeniden çizilir. */
 export function LangSecimi({ lang }: { lang: Lang }) {
   const { state, pending, onSubmit } = useFormAction(setLang, {} as LangState);
+  const displayState = pending ? ({} as LangState) : state;
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (!state.savedAt) return;
@@ -24,8 +25,8 @@ export function LangSecimi({ lang }: { lang: Lang }) {
         <button key={l} type="submit" name="lang" value={l} aria-pressed={l === lang} aria-busy={pending && l === lang || undefined} disabled={pending} className={btn(l === lang)}>{LABEL[l]}</button>
       ))}
       {pending && <span className="sr-only" role="status" aria-live="polite">{lang === "en" ? "Saving language." : "Dil kaydediliyor."}</span>}
-      {state.savedAt && <span className="text-sm text-ok" role="status" aria-live="polite">{lang === "en" ? "Language saved." : "Dil kaydedildi."}</span>}
-      {state.error && <span className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</span>}
+      {displayState.savedAt && <span className="text-sm text-ok" role="status" aria-live="polite">{lang === "en" ? "Language saved." : "Dil kaydedildi."}</span>}
+      {displayState.error && <span className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</span>}
     </form>
   );
 }

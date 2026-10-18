@@ -93,14 +93,14 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
   const total = goods - refundDiscount;
   const role = meta.catalog.staff.find((s) => s.id === cashier.id)?.role;
 
-  const record = async (approvedBy: string) => {
+  const record = async (approvedBy: string, approvalToken?: string) => {
     if (!sale || recordingRef.current) return;
     recordingRef.current = true;
     setBusy(true);
     // Asıl satış e-Arşiv'liyse iade fişine tutanak / alıcı faturası notu (bulut aynı kuralla kaydını açar).
     const rf = sale.fiscal ? (({ refundedBefore, ...f }) => ({ ...f, partial: isPartialRefund(sale.lines, picked, refundedBefore), sellerTaxId: meta.catalog.fiscal?.sellerTaxId ?? null }))(sale.fiscal) : undefined;
     try {
-      const r = await recordRefundLocal(cashier, approvedBy, sale, picked, method, refundId, rf, refundDiscount);
+      const r = await recordRefundLocal(cashier, approvedBy, sale, picked, method, refundId, rf, refundDiscount, approvalToken);
       if (r.ok) onDone(r.sale);
       else { setApproving(false); setError(r.error); }
     } catch {
@@ -117,7 +117,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
       <div {...mainProps} className="mx-auto w-full max-w-sm px-4 py-8 text-center outline-none">
         <h1 className="font-display text-2xl font-bold tracking-tight">Müdür onayı</h1>
         <p className="mb-6 text-sm text-muted">{TL(total)} iade · müdür PIN&apos;i girsin</p>
-        <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m) => record(m.id)} autoFocusFirst />
+        <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m, token) => record(m.id, token)} autoFocusFirst />
       <Button variant="ghost" type="button" disabled={busy} onClick={() => {
         setApproving(false);
         requestAnimationFrame(() => lookupRef.current?.focus());

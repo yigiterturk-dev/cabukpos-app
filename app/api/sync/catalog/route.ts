@@ -55,8 +55,12 @@ export async function GET(req: Request) {
     stationId: productStationForStore(p.id, stationId, p.categoryId ? categoryStations.get(p.categoryId) ?? null : null, routes),
     optionGroupIds: salon?.links.filter((l) => l.productId === p.id).map((l) => l.groupId) ?? [],
   }));
+  // PIN hash'i yalnız PIN kullanan rollere iner; mutfak/kurye yalnız ekranda gereken kimlik ve rolü alır.
+  const staffOut = device.role === "kasa" || device.role === "garson"
+    ? staff
+    : staff.map(({ id, name, role }) => ({ id, name, role }));
   const catalog = {
-    categories: cats.map(({ id, name }) => ({ id, name })), products, staff,
+    categories: cats.map(({ id, name }) => ({ id, name })), products, staff: staffOut,
     priceLists: priceLists.length ? priceLists : undefined, // #50
     fiscal: { modes: { ...DEFAULT_MODES, ...fs?.modes }, provider: fs?.provider ?? "fake-earsiv", sellerTaxId: tn?.taxId ?? null }, // M8
     ...(salon ? { areas: salon.areas, tables: salon.tables, stations: salon.stations, optionGroups: salon.optionGroups, deliveryZones: salon.deliveryZones } : {}),

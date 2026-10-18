@@ -34,6 +34,7 @@ export function SmsReceiptForm({ saleId }: { saleId: string }) {
   const send = async () => {
     if (sendingRef.current || state === "ok") return;
     if (!normalizePhone(phone)) {
+      setPhoneTouched(true);
       setError("Geçerli bir Türkiye telefon numarası girin.");
       return;
     }
@@ -67,7 +68,7 @@ export function SmsReceiptForm({ saleId }: { saleId: string }) {
       setRetryAcknowledged(false);
       setError(cause instanceof DOMException && cause.name === "TimeoutError"
         ? "SMS yanıtı zaman aşımına uğradı; mesaj müşteriye ulaşmış olabilir. Tekrar göndermeden önce kontrol edin."
-        : "Sunucuya ulaşılamadı (çevrimdışı?).");
+        : "Sunucuya ulaşılamadı; önceki SMS müşteriye ulaşmış olabilir. Tekrar göndermeden önce teslimatı kontrol edin.");
       setState("idle");
     } finally {
       sendingRef.current = false;

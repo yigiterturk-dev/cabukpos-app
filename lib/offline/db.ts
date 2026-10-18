@@ -121,7 +121,7 @@ export async function findLocalSale(receiptNo: string): Promise<LookedUpSale | n
 }
 
 /** İade: yerel kayıt + giden kutusu, aynı fiş sayacı. Geri ödeme tek yöntemle, tutar = iade toplamı. */
-export async function recordRefundLocal(staff: { id: string; name: string }, approvedBy: string, of: { id: string; receiptNo: string }, lines: RefLine[], method: Payment["method"], refundId: string, refundFiscal?: RefundFiscal, refundDiscount = 0): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
+export async function recordRefundLocal(staff: { id: string; name: string }, approvedBy: string, of: { id: string; receiptNo: string }, lines: RefLine[], method: Payment["method"], refundId: string, refundFiscal?: RefundFiscal, refundDiscount = 0, approvalToken?: string): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
   const d = kasaDb();
   return d.transaction("rw", [d.meta, d.sales, d.outbox], async () => {
     const done = await d.sales.get(refundId);
@@ -137,7 +137,7 @@ export async function recordRefundLocal(staff: { id: string; name: string }, app
     const at = new Date().toISOString();
     const sale: LocalSale = { id: refundId, shiftId: m.shift.id, staffId: staff.id, staffName: staff.name, seq, receiptNo: formatReceipt(m.device.receiptPrefix, seq), at, lines: picked, payments, total: t.total, ...(refundDiscount ? { discount: refundDiscount } : {}), change: 0, vat: t.vat, refund: true, refundOf: of.id, refundOfNo: of.receiptNo, approvedBy, ...(refundFiscal ? { refundFiscal } : {}) };
     await d.sales.add(sale);
-    await enqueue({ kind: "refund", id: refundId, shiftId: m.shift.id, staffId: staff.id, approvedBy, refundOf: of.id, receiptSeq: seq, at, lines: picked, payments });
+    await enqueue({ kind: "refund", id: refundId, shiftId: m.shift.id, staffId: staff.id, approvedBy, refundOf: of.id, receiptSeq: seq, at, lines: picked, payments, ...(approvalToken ? { approvalToken } : {}) });
     await d.meta.put({ ...m, nextSeq: seq + 1 });
     return { ok: true as const, sale };
   });

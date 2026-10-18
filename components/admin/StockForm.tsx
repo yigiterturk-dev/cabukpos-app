@@ -41,7 +41,7 @@ export function StockForm({ productId, unit }: { productId: string; unit: StockU
         </div>
       </fieldset>
       <div className="w-36"><Field label={kind === "sayim" ? "Sayılan" : "Miktar"} hint={qtyHint}><Input key={`q${state.savedAt ?? 0}`} name="qty" inputMode={unit === "adet" ? "numeric" : "decimal"} maxLength={unit === "adet" ? 6 : 10} disabled={pending} required className="disabled:cursor-wait disabled:opacity-50" {...errorProps(displayState, "qty")} /></Field></div>
-      <div className="min-w-48 flex-1"><Field label="Not" hint={`${kind === "fire" ? "zorunlu" : "isteğe bağlı"} · en fazla 200 karakter`}><Input key={`n${state.savedAt ?? 0}`} name="note" maxLength={200} disabled={pending} required={kind === "fire"} className="disabled:cursor-wait disabled:opacity-50" {...errorProps(displayState, "note")} /></Field></div>
+      <div className="min-w-48 flex-1"><Field label="Not" hint={`${kind === "fire" ? "zorunlu" : "isteğe bağlı"} · en fazla 200 karakter`}><Input key={`n${state.savedAt ?? 0}`} name="note" maxLength={200} disabled={pending} required={kind === "fire"} pattern={kind === "fire" ? ".*\\S.*" : undefined} className="disabled:cursor-wait disabled:opacity-50" {...errorProps(displayState, "note")} /></Field></div>
       <Button type="submit" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</Button>
       {pending && <span className="sr-only" role="status" aria-live="polite">Stok hareketi kaydediliyor. Lütfen bekleyin.</span>}
       <div className="basis-full text-sm">

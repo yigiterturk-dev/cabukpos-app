@@ -13,11 +13,12 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const device = await getDevice();
   if (!device) return Response.json({ error: "cihaz" }, { status: 401 });
-  const body = (await req.json().catch(() => null)) as { deviceId?: unknown; docs?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { deviceId?: unknown; docs?: unknown; now?: unknown } | null;
   if (!body || !Array.isArray(body.docs) || body.docs.length > PUSH_BATCH) return Response.json({ error: "parti" }, { status: 400 });
   // Tarayıcı başka cihaz olarak yeniden eşlendiyse eski cihazın belgeleri yeni cihaza yazılmasın.
   if (body.deviceId !== device.id) return Response.json({ error: "eşleme değişti" }, { status: 409 });
-  const ctx = { tenantId: device.tenantId, storeId: device.storeId, deviceId: device.id, receiptPrefix: device.receiptPrefix };
+  const now = typeof body.now === "number" && Number.isFinite(body.now) && body.now > 1e12 ? body.now : undefined;
+  const ctx = { tenantId: device.tenantId, storeId: device.storeId, deviceId: device.id, receiptPrefix: device.receiptPrefix, now };
   const results: DocResult[] = [];
   for (const doc of body.docs) results.push(await applyDoc(ctx, doc));
   // Reddedilen belge cihazda kalır; yönetimde görünsün diye kaydı (Raporlar → İncelenecek).
