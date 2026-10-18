@@ -9,6 +9,7 @@ import { PLATFORM_NAMES } from "@/lib/core/platform";
 import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import QRCode from "qrcode";
 import { foldTabs, type TabState } from "@/lib/core/tab";
+import { phoneHref } from "@/lib/core/delivery";
 import { initialEvents } from "@/lib/tabs/stream";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { CodeForm, ConnectionForm, ConnectionToggles, PushCatalogButton, TestOrderButton } from "@/components/admin/DeliveryForms";
@@ -65,10 +66,11 @@ function PaketHatti({ acik, teslim, money }: { acik: TabState[]; teslim: number;
           <ul aria-label="Platform siparişleri" className="divide-y divide-line">
             {acik.map((t) => {
               const dk = dkOnce(t.openedAt), durum = DURUM(t);
+              const tel = t.order?.phone ? phoneHref(t.order.phone) : null;
               return (
                 <li key={t.id} className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0"><p className="font-semibold">{platformEtiket(t)}{t.order?.source?.externalId ? <span className="text-muted"> #{t.order.source.externalId.slice(-4)}</span> : null}</p><p className="mt-1 break-words text-sm">{t.order?.name ?? "—"}</p>{t.order?.phone && <a href={`tel:${t.order.phone}`} className="inline-flex min-h-11 items-center text-sm text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{t.order.phone}</a>}</div>
+                    <div className="min-w-0"><p className="font-semibold">{platformEtiket(t)}{t.order?.source?.externalId ? <span className="text-muted"> #{t.order.source.externalId.slice(-4)}</span> : null}</p><p className="mt-1 break-words text-sm">{t.order?.name ?? "—"}</p>{t.order?.phone && (tel ? <a href={tel} aria-label={`Ara ${t.order.name ?? "müşteri"}, ${t.order.phone}`} className="inline-flex min-h-11 items-center text-sm text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{t.order.phone}</a> : <span className="text-sm text-muted">{t.order.phone}</span>)}</div>
                     <span className={`shrink-0 rounded px-2 py-1 text-xs font-medium ${durum.cls}`}>{durum.label}</span>
                   </div>
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
@@ -103,10 +105,11 @@ function PaketHatti({ acik, teslim, money }: { acik: TabState[]; teslim: number;
             <tbody className="divide-y divide-line">
               {acik.map((t) => {
                 const dk = dkOnce(t.openedAt);
+                const tel = t.order?.phone ? phoneHref(t.order.phone) : null;
                 return (
                   <tr key={t.id} className="transition-colors hover:bg-surface-2">
                     <td className="px-4 py-2.5 font-medium">{platformEtiket(t)}{t.order?.source?.externalId ? <span className="text-muted"> #{t.order.source.externalId.slice(-4)}</span> : null}</td>
-                    <td className="max-w-[14rem] px-4 py-2.5"><span className="block truncate" title={t.order?.name ?? "—"}>{t.order?.name ?? "—"}</span><span className="block text-xs text-muted">{t.order?.phone ?? ""}</span></td>
+                    <td className="max-w-[14rem] px-4 py-2.5"><span className="block truncate" title={t.order?.name ?? "—"}>{t.order?.name ?? "—"}</span>{t.order?.phone && (tel ? <a href={tel} aria-label={`Ara ${t.order?.name ?? "müşteri"}, ${t.order.phone}`} className="block text-xs text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{t.order.phone}</a> : <span className="block text-xs text-muted">{t.order.phone}</span>)}</td>
                     <td className="px-4 py-2.5 text-muted">{t.lines.filter((l) => !l.voided).length} ürün</td>
                     <td className="px-4 py-2.5 tabular font-semibold">{money(t.total)}</td>
                     <td className="px-4 py-2.5"><span className={`rounded px-1.5 py-0.5 text-xs font-medium ${DURUM(t).cls}`}>{DURUM(t).label}</span><span className="block text-[11px] text-muted">{cizelge(t)}</span></td>

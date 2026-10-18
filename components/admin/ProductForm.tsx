@@ -42,6 +42,10 @@ function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: C
   const [kind, setKind] = useState(initial?.kind ?? "adet");
   const [sellable, setSellable] = useState(initial?.sellable ?? true);
   const [unit, setUnit] = useState<StockUnit>(initial?.unit ?? "kg");
+  const originalStockUnit: StockUnit = initial
+    ? initial.sellable ? initial.kind === "tartili" ? "kg" : "adet" : initial.unit
+    : unit;
+  const [unitValuesReviewed, setUnitValuesReviewed] = useState(false);
   const [price, setPrice] = useState(initial ? formatPlain(initial.price) : "");
   const [yieldMilli, setYieldMilli] = useState(qty(initial?.yieldMilli, initial?.unit ?? "kg"));
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
@@ -51,6 +55,7 @@ function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: C
   const [stationId, setStationId] = useState(initial?.stationId ?? "");
   const [optionGroupIds, setOptionGroupIds] = useState(initial?.optionGroupIds ?? []);
   const u: StockUnit = sellable ? (kind === "tartili" ? "kg" : "adet") : unit;
+  const stockUnitChanged = Boolean(initial && u !== originalStockUnit);
   const uLabel = u === "adet" ? "adet" : u;
   const qtyMaxLength = u === "adet" ? 6 : 10;
   const qtyFormatHint = u === "adet" ? "tam sayı · en fazla 999.999" : `en fazla 999.999,999 ${u} · 3 ondalık hane`;
@@ -58,11 +63,14 @@ function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: C
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
       <div><Field label="Ürün adı" hint="2–80 karakter"><Input name="name" defaultValue={initial?.name} minLength={2} maxLength={80} pattern=".*\\S.*\\S.*" required {...fieldErrorProps(s, "name")} /></Field><Err s={s} f="name" /></div>
       <div>
-        <RadioCards name="sellable" value={sellable ? "true" : "false"} set={(v) => setSellable(v === "true")} label="Kasada satılır" items={[["true", "Evet"], ["false", "Hayır (hammadde / ara ürün)"]]} />
+        <RadioCards name="sellable" value={sellable ? "true" : "false"} set={(v) => { setSellable(v === "true"); setUnitValuesReviewed(false); }} label="Kasada satılır" items={[["true", "Evet"], ["false", "Hayır (hammadde / ara ürün)"]]} />
       </div>
       {!sellable && (
         <>
-          <div><RadioCards name="unit" value={unit} set={setUnit} label="Stok birimi" items={[["adet", "Adet"], ["kg", "Kg"], ["lt", "Litre"]]} error={s.field === "unit" && !!s.error} /><Err s={s} f="unit" /></div>
+          <div>
+            <RadioCards name="unit" value={unit} set={(next) => { setUnit(next); setUnitValuesReviewed(false); }} label="Stok birimi" items={[["adet", "Adet"], ["kg", "Kg"], ["lt", "Litre"]]} error={s.field === "unit" && !!s.error} />
+            <Err s={s} f="unit" />
+          </div>
           <div><Field label={`Parti miktarı (${uLabel})`} hint={`Bir üretim partisinin çıktısı · ${qtyFormatHint}`}><Input name="yieldMilli" inputMode={u === "adet" ? "numeric" : "decimal"} maxLength={qtyMaxLength} value={yieldMilli} onChange={(e) => setYieldMilli(e.target.value)} {...fieldErrorProps(s, "yieldMilli")} /></Field><Err s={s} f="yieldMilli" /></div>
         </>
       )}
@@ -70,7 +78,7 @@ function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: C
       <div><Field label={`Kritik stok sınırı (${uLabel})`} hint={`Stok bu değere inince uyarı; boş = uyarı yok · ${qtyFormatHint}`}><Input name="minStock" inputMode={u === "adet" ? "numeric" : "decimal"} maxLength={qtyMaxLength} defaultValue={qty(initial?.minStock, u)} {...fieldErrorProps(s, "minStock")} /></Field><Err s={s} f="minStock" /></div>
       {sellable && (<>
       <div>
-        <RadioCards name="kind" value={kind} set={setKind} label="Tür" items={[["adet", "Adet"], ["tartili", "Tartılı (kg)"]]} error={s.field === "kind" && !!s.error} />
+        <RadioCards name="kind" value={kind} set={(next) => { setKind(next); setUnitValuesReviewed(false); }} label="Tür" items={[["adet", "Adet"], ["tartili", "Tartılı (kg)"]]} error={s.field === "kind" && !!s.error} />
         <Err s={s} f="kind" />
       </div>
       <div><Field label={kind === "tartili" ? `Kg fiyatı (${currencyUnit}, KDV dahil)` : `Fiyat (${currencyUnit}, KDV dahil)`} hint={`0,01–100.000,00 ${currencyUnit} · en çok 2 ondalık`}><Input name="price" inputMode="decimal" maxLength={10} value={price} onChange={(e) => setPrice(e.target.value)} required {...fieldErrorProps(s, "price")} /></Field><Err s={s} f="price" /></div>
@@ -105,6 +113,15 @@ function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: C
         </>
       )}
       </>)}
+      {stockUnitChanged && (
+        <div className="rounded-lg border border-warn/30 bg-warn-soft p-3 text-sm text-warn sm:col-span-2 lg:col-span-1">
+          <p role="status" aria-live="polite">Stok birimi değişti. Maliyet, kritik stok sınırı ve parti miktarını yeni {uLabel} birimine göre kontrol edin.</p>
+          <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 font-medium">
+            <input type="checkbox" name="unitValuesReviewed" value="true" checked={unitValuesReviewed} onChange={(event) => setUnitValuesReviewed(event.target.checked)} required className="size-4 accent-[var(--color-brand)]" />
+            Değerleri yeni birime göre kontrol ettim
+          </label>
+        </div>
+      )}
       <div className="sm:col-span-2 lg:col-span-1"><Field label="Barkodlar" hint="Her barkod 3–14 rakam olmalı; virgül ya da satırla ayırın. Boş bırakılabilir."><Textarea name="barcodes" rows={2} defaultValue={initial?.barcodes.join("\n")} {...fieldErrorProps(s, "barcodes")} /></Field><Err s={s} f="barcodes" /></div>
     </div>
   );

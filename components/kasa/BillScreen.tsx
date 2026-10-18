@@ -67,14 +67,15 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
       <ul className="mb-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         {(mode === "sec" ? lines : part).map((l) => {
           const q = mode === "sec" ? picks[l.lineId] ?? 0 : l.qtyMilli;
+          const lineLabel = [l.name, l.options.length > 0 ? optionsText(l.options) : null, l.note ? `Not: ${l.note}` : null].filter(Boolean).join(", ");
           return (
             <li key={l.lineId} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-              <span className="min-w-0 basis-full flex-1 break-words sm:basis-auto">{l.name}{l.options.length > 0 && <span className="block break-words text-xs text-muted">{optionsText(l.options)}</span>}</span>
+              <span className="min-w-0 basis-full flex-1 break-words sm:basis-auto"><span>{l.name}</span>{l.options.length > 0 && <span className="block break-words text-xs text-muted">{optionsText(l.options)}</span>}{l.note && <span className="block break-words text-xs font-medium text-warn">Not: {l.note}</span>}</span>
               {mode === "sec" ? (
                 <span className="flex shrink-0 items-center gap-2">
-                  <button type="button" aria-label={`${l.name} azalt`} disabled={q <= 0} onClick={() => bump(l, -1000)} className="press grid size-12 place-items-center rounded-[10px] border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">−</button>
+                  <button type="button" aria-label={`${lineLabel} azalt`} disabled={q <= 0} onClick={() => bump(l, -1000)} className="press grid size-12 place-items-center rounded-[10px] border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">−</button>
                   <span className="tabular w-14 text-center">{qtyText(q)} / {qtyText(l.qtyMilli)}</span>
-                  <button type="button" aria-label={`${l.name} artır`} disabled={q >= l.qtyMilli} onClick={() => bump(l, l.qtyMilli - q < 1000 ? l.qtyMilli - q : 1000)} className="press grid size-12 place-items-center rounded-[10px] border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">+</button>
+                  <button type="button" aria-label={`${lineLabel} artır`} disabled={q >= l.qtyMilli} onClick={() => bump(l, l.qtyMilli - q < 1000 ? l.qtyMilli - q : 1000)} className="press grid size-12 place-items-center rounded-[10px] border border-line bg-surface text-lg font-medium outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:pointer-events-none disabled:opacity-40">+</button>
                 </span>
               ) : <span className="tabular shrink-0 text-sm text-muted">{qtyText(q)}×</span>}
               <span className="tabular w-24 shrink-0 text-right">{TL(Math.round((l.unitPrice * q) / 1000))}</span>

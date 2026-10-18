@@ -10,6 +10,7 @@ import { formatReceipt, isCurrency } from "@/lib/core/money";
 import { Cart, Add, WaiterCall } from "./Cart";
 import { Empty } from "@/components/ui";
 import { SkipToContent } from "@/components/SkipToContent";
+import { RateLimitNotice } from "@/components/RateLimitNotice";
 import { UtensilsCrossed } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ export default async function Menu({ params, searchParams }: { params: Promise<{
   const { storeId } = await params;
   const { k, marka } = await searchParams;
   if ((await hit(`menu:${await clientIp()}`, 1)) > 60) {
-    return <main className="grid min-h-dvh place-items-center p-8 text-center text-sm text-ink-2">Çok fazla istek. Bir dakika sonra tekrar deneyin.</main>;
+    return <RateLimitNotice resource="Menü" />;
   }
   const menu: (MenuData & { brand?: string }) | null = marka ? await menuByBrand(storeId, marka) : await menuByStore(storeId);
   if (!menu) notFound();

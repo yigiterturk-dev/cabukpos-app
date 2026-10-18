@@ -71,7 +71,7 @@ export function BugunScreen({ meta, tabs, tabsLoaded, hasSalon, hasPaket, onGoSa
       {hasSummaryError ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warn/30 bg-warn-soft p-3 text-sm text-warn" role="alert">
         <span>Vardiya özeti bu cihazdan okunamadı.</span>
         <button type="button" onClick={() => { setSummaryError(null); setSummaryRetry((n) => n + 1); requestAnimationFrame(() => headingRef.current?.focus()); }} className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-ink outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yeniden yükle</button>
-      </div> : shift && !summary && <p className="sr-only" role="status" aria-live="polite">Vardiya özeti yükleniyor.</p>}
+      </div> : shift && !summary && <p className="mt-3 text-sm text-muted" role="status" aria-live="polite">Vardiya özeti yükleniyor…</p>}
 
       <h2 className="mb-3 mt-7 font-display text-base font-bold tracking-tight">Hızlı geçiş</h2>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

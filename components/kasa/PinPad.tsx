@@ -69,10 +69,10 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
       let foundStaff: KasaStaff | null = null;
       if (serverPurpose) {
         if (!navigator.onLine) throw new Error("İnternet bağlantısı olmadan kasiyer PIN'i doğrulanamaz.");
-        const r = await fetch("/api/kasa/onay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ purpose: serverPurpose, pin: entered }) });
+        const r = await fetch("/api/kasa/onay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ purpose: serverPurpose, pin: entered }), signal: AbortSignal.timeout(8000) });
         if (!r.ok) throw new Error(r.status === 429 ? "Çok fazla deneme yapıldı. Bir dakika sonra tekrar deneyin." : "PIN hatalı. Tekrar deneyin.");
-        const result = (await r.json()) as { staff?: { id: string } };
-        foundStaff = meta.catalog.staff.find((s) => s.id === result.staff?.id) ?? null;
+        const result = (await r.json()) as { staff?: { id: string; name: string; role: KasaStaff["role"] } };
+        if (result.staff && (result.staff.role === "kasiyer" || result.staff.role === "mudur")) foundStaff = result.staff;
       } else {
         for (const s of meta.catalog.staff.filter(only ?? (() => true))) {
           if (!s.pinHash) continue;
@@ -82,9 +82,9 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
       const found: Cashier | null = foundStaff ? { id: foundStaff.id, name: foundStaff.name } : null;
       // Müdür onayı: PIN sunucuda da doğrulanır, kısa ömürlü imzalı belirteç belgeyle buluta gider.
       let approvalToken: string | undefined;
-      if (foundStaff?.role === "mudur" && navigator.onLine) {
+      if (!serverPurpose && foundStaff?.role === "mudur" && navigator.onLine) {
         try {
-          const r = await fetch("/api/kasa/onay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ staffId: foundStaff.id, pin: entered }) });
+          const r = await fetch("/api/kasa/onay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ staffId: foundStaff.id, pin: entered }), signal: AbortSignal.timeout(8000) });
           if (r.ok) approvalToken = ((await r.json()) as { token?: string }).token;
         } catch { /* çevrimdışı: yerel doğrulama yeterli; belge onaysız gider ve bulutta review'lanır */ }
       }
@@ -104,7 +104,7 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
         setError(fails >= PIN_MAX_FAILS ? null : `PIN hatalı. Kilitlenmeden önce ${PIN_MAX_FAILS - fails} deneme kaldı.`);
       }
     } catch (error) {
-      setError(error instanceof TypeError ? "Doğrulama servisine ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin." : error instanceof Error ? error.message : "PIN doğrulanamadı. Tekrar deneyin.");
+      setError(error instanceof DOMException && error.name === "TimeoutError" ? "PIN doğrulaması zaman aşımına uğradı. Bağlantıyı kontrol edip tekrar deneyin." : error instanceof TypeError ? "Doğrulama servisine ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin." : error instanceof Error ? error.message : "PIN doğrulanamadı. Tekrar deneyin.");
     } finally {
       setWorking(false);
       submitRef.current = false;

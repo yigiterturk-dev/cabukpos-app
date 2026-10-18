@@ -16,7 +16,7 @@ const errorProps = (state: ResState, field: string) => state.field === field && 
   : {};
 
 /** Yeni rezervasyon formu. */
-export function ReservationForm({ storeId, day, tables }: { storeId: string | null; day: string; tables: { id: string; name: string; storeId: string }[] }) {
+export function ReservationForm({ storeId, day, tables }: { storeId: string | null; day: string; tables: { id: string; name: string; areaName: string }[] }) {
   const { state, pending, onSubmit } = useFormAction(createReservation, {} as ResState);
   const formRef = useRef<HTMLFormElement>(null);
   const [edited, setEdited] = useState(false);
@@ -36,7 +36,7 @@ export function ReservationForm({ storeId, day, tables }: { storeId: string | nu
       <div><Field label="Saat" hint="Rezervasyon Türkiye saatine göre kaydedilir."><Input name="time" type="time" required defaultValue="19:00" className="!w-32" {...errorProps(displayState, "time")} /></Field><Err state={displayState} field="time" /></div>
       {tables.length > 0 && (
         <Field label="Masa (opsiyonel)">
-          <Select disabled={pending} name="tableId" defaultValue="" onChange={() => setEdited(true)} options={[{ value: "", label: "—" }, ...tables.map((t) => ({ value: t.id, label: t.name }))]} />
+          <Select disabled={pending} name="tableId" defaultValue="" onChange={() => setEdited(true)} options={[{ value: "", label: "—" }, ...tables.map((t) => ({ value: t.id, label: `${t.areaName} · ${t.name}` }))]} />
         </Field>
       )}
       <div className="sm:col-span-2"><Field label="Not" hint="İsteğe bağlı · en fazla 300 karakter"><Textarea name="note" rows={2} maxLength={300} placeholder="ör. bebek sandalyesi" {...errorProps(displayState, "note")} /></Field><Err state={displayState} field="note" /></div>

@@ -18,6 +18,9 @@ import { PinPad, type Cashier } from "./PinPad";
 import { useKasaMainProps } from "./KasaPreviewContext";
 
 const kgText = (g: number) => `${(g / 1000).toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;
+const receiptLookupFailure = () => navigator.onLine
+  ? "Fiş sorgulanamadı. Sunucuya ulaşılamadı; bağlantıyı kontrol edip tekrar deneyin."
+  : "Fiş bu kasada yok. Çevrimdışı olduğunuz için başka kasada kesilen fişler aranamaz.";
 
 export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, autoFocusLookup = true }: { meta: Meta; cashier: Cashier; online: boolean; onMeta: (m: Meta) => void; onDone: (s: LocalSale) => void; onBack: () => void; autoFocusLookup?: boolean }) {
   const mainProps = useKasaMainProps();
@@ -62,7 +65,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
         if (!online) return setError("Fiş bu kasada yok. İnternet gelince tekrar deneyin.");
         const r = await fetch(`/api/sync/sale?no=${encodeURIComponent(n)}`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
         if (r.status === 404) return setError("Fiş bulunamadı.");
-        if (!r.ok) return setError("Fiş sorgulanamadı. Tekrar deneyin.");
+        if (!r.ok) return setError(r.status === 401 || r.status === 403 ? "Kasa oturumu doğrulanamadı. Sayfayı yenileyip tekrar deneyin." : "Fiş sorgulanamadı. Biraz sonra tekrar deneyin.");
         s = (await r.json()) as LookedUpSale;
       }
       if (s.fiscalPending && online) {
@@ -75,7 +78,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
       setWeighedDraft({});
       setRefundNotice(`Fiş ${s.receiptNo} bulundu. ${s.lines.length} kalem; iade edilecek miktarları seçin.`);
     } catch {
-      setError("Fiş sorgulanamadı. Tekrar deneyin.");
+      setError(receiptLookupFailure());
     } finally {
       setBusy(false);
     }

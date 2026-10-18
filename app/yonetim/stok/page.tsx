@@ -4,6 +4,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { stockLevels } from "@/lib/admin/stock";
 import { scopedStoreId } from "@/lib/admin/store-scope";
+import { normalizeSearchText } from "@/lib/core/search";
 import { formatQty, isCriticalRow, stockUnitOf } from "@/lib/admin/stock-view";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { StockForm } from "@/components/admin/StockForm";
@@ -35,8 +36,8 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
     ]);
     return { rows, moves, moveTotal, storeId };
   });
-  const needle = q.trim().toLocaleLowerCase("tr");
-  const shown = rows.filter((r) => (!needle || r.name.toLocaleLowerCase("tr").includes(needle)) && (!kritik || isCriticalRow(r)));
+  const needle = normalizeSearchText(q.trim());
+  const shown = rows.filter((r) => (!needle || normalizeSearchText(r.name).includes(needle)) && (!kritik || isCriticalRow(r)));
   const critical = rows.filter(isCriticalRow).length;
   const value = rows.reduce((s, r) => s + (r.cost != null && r.level > 0 ? Math.round((r.cost * r.level) / 1000) : 0), 0);
   const sel = rows.find((r) => r.id === urun);

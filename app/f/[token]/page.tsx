@@ -8,6 +8,7 @@ import { qtyText } from "@/lib/core/receipt";
 import { clientIp, hit } from "@/lib/ratelimit";
 import { PrintButton } from "@/components/PrintButton";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
+import { RateLimitNotice } from "@/components/RateLimitNotice";
 import { docByToken } from "./doc";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export default async function Fatura({ params }: { params: Promise<{ token: stri
   if (!d) notFound();
   // Sınır yalnız gerçek belge görünümünü tutar; bilinmeyen token ucuz dizinli aramayla 404 döner (e2e m8 de buna dayanır).
   if ((await hit(`fatura:${await clientIp()}`, 1)) > 30) {
-    return <main className="mx-auto max-w-md p-8 text-center text-sm">Çok fazla istek. Bir dakika sonra tekrar deneyin.</main>;
+    return <RateLimitNotice resource="Fatura" />;
   }
   const test = (d.provider ?? "fake-earsiv") === "fake-earsiv";
   const ready = d.status === "issued" || d.status === "cancelled" || d.status === "cancel_rejected";

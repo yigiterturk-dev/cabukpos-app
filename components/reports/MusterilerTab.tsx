@@ -70,7 +70,7 @@ export function MusterilerTab({ data, money }: { data: RfmData; money: (k: numbe
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="break-words font-medium">{r.name}</h3>
-                {phone ? <a href={`tel:+${phone}`} className="mt-1 inline-flex min-h-11 items-center text-sm text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{formatPhone(phone)}</a> : <span className="mt-1 block text-sm text-muted">{r.phone || "Telefon yok"}</span>}
+                {phone ? <a href={`tel:+${phone}`} aria-label={`Ara ${r.name}, ${formatPhone(phone)}`} className="mt-1 inline-flex min-h-11 items-center text-sm text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{formatPhone(phone)}</a> : <span className="mt-1 block text-sm text-muted">{r.phone || "Telefon yok"}</span>}
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${SEGMENT_TONE[r.segment] ?? "bg-surface-2"}`}>{r.segment}</span>
             </div>

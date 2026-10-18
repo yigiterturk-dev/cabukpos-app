@@ -9,6 +9,7 @@ import { formatTL, splitVat } from "@/lib/core/money";
 import { clientIp, hit } from "@/lib/ratelimit";
 import { PrintButton } from "@/components/PrintButton";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
+import { RateLimitNotice } from "@/components/RateLimitNotice";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Abonelik faturası — ÇabukPOS", robots: { index: false, follow: false } };
@@ -24,7 +25,7 @@ export default async function AbonelikFatura({ params }: { params: Promise<{ tok
   const { token } = await params;
   if (!/^[A-Za-z0-9_-]{24}$/.test(token)) notFound();
   if ((await hit(`fatura:${await clientIp()}`, 1)) > 30) {
-    return <main className="mx-auto max-w-md p-8 text-center text-sm">Çok fazla istek. Bir dakika sonra tekrar deneyin.</main>;
+    return <RateLimitNotice resource="Fatura" />;
   }
   const I = schema.billingInvoices, P = schema.billingPayments;
   const [row] = await getDb().select({ i: I, p: P }).from(I).innerJoin(P, eq(I.paymentId, P.id)).where(eq(I.token, token));

@@ -1,7 +1,7 @@
 // tests/delivery.test.ts — paket servis: telefon, bölge, kurye nakdi, paket fişi, platform eşleme. Saf.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { courierCash, etaMinutes, feeLine, formatPhone, normalizePhone, renderDeliverySlip, zoneCheck } from "@/lib/core/delivery";
+import { courierCash, etaMinutes, feeLine, formatPhone, normalizePhone, phoneHref, renderDeliverySlip, zoneCheck } from "@/lib/core/delivery";
 import { sendByStation, toTabEvents, type IncomingOrder } from "@/lib/core/platform";
 import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
 
@@ -9,6 +9,13 @@ test("telefon normalize", () => {
   for (const s of ["0532 123 45 67", "+90 (532) 123-45-67", "5321234567", "905321234567"]) assert.equal(normalizePhone(s), "905321234567");
   for (const s of ["123", "05321234", "+1 415 555 0100", ""]) assert.equal(normalizePhone(s), null);
   assert.equal(formatPhone("905321234567"), "0532 123 45 67");
+});
+
+test("telefon arama bağlantısı numarayı normalize eder", () => {
+  assert.equal(phoneHref("0532 (123) 45-67"), "tel:+905321234567");
+  assert.equal(phoneHref("+1 (415) 555-0100"), "tel:+14155550100");
+  assert.equal(phoneHref("0044 20 7946 0958"), "tel:+442079460958");
+  assert.equal(phoneHref("numara yok"), null);
 });
 
 test("bölge ücreti + asgari tutar uyarısı", () => {

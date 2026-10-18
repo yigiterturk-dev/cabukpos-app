@@ -13,6 +13,17 @@ export function normalizePhone(input: string): string | null {
   return null;
 }
 
+/** Dialable URI for Turkish or international numbers; invalid input stays plain text. */
+export function phoneHref(raw: string): string | null {
+  const tr = normalizePhone(raw);
+  if (tr) return `tel:+${tr}`;
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return null;
+  if (/^\s*\+/.test(raw)) return `tel:+${digits}`;
+  if (digits.startsWith("00")) return `tel:+${digits.slice(2)}`;
+  return `tel:${digits}`;
+}
+
 /** "905321234567" → "0532 123 45 67" */
 export const formatPhone = (p: string) => (/^90\d{10}$/.test(p) ? `0${p.slice(2, 5)} ${p.slice(5, 8)} ${p.slice(8, 10)} ${p.slice(10)}` : p);
 

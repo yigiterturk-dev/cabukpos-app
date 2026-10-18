@@ -1,7 +1,7 @@
 "use client";
 // Masa adisyonu: ürün ızgarası (seçenek penceresi), adisyon satırları, mutfağa gönder, taşı, ikram/indirim/iptal (müdür onayı), hesap.
 // Her dokunuş bir adisyon olayıdır (yerel + giden kutusu) → çökmede kaybolmaz, diğer cihazlara akışla gider.
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { parseMoney, type Currency } from "@/lib/core/money";
 import { currencyUnit, kasaFmt } from "./kasa-format";
@@ -21,9 +21,15 @@ import { useKasaMainProps } from "./KasaPreviewContext";
 
 type Add = (list: NewTabEvent[]) => Promise<unknown>;
 export type Waiter = { id: string; name: string; role: KasaStaff["role"] };
+const DialogFeedbackContext = createContext<{ error: string | null; busy: boolean }>({ error: null, busy: false });
 
-export function Modal({ label, children, onClose, closeDisabled = false }: { label: string; children: React.ReactNode; onClose: () => void; closeDisabled?: boolean }) {
-  return <Dialog label={label} title={label} onClose={onClose} closeDisabled={closeDisabled}>{children}</Dialog>;
+export function Modal({ label, children, onClose, closeDisabled = false, statusMessage }: { label: string; children: React.ReactNode; onClose: () => void; closeDisabled?: boolean; statusMessage?: string }) {
+  const { error, busy } = useContext(DialogFeedbackContext);
+  return <Dialog label={label} title={label} onClose={onClose} closeDisabled={closeDisabled}>
+    {(statusMessage || busy) && <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{statusMessage || "Adisyon işlemi kaydediliyor. Lütfen bekleyin."}</p>}
+    {error && <p tabIndex={-1} data-dialog-action-error className="mb-3 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
+    {children}
+  </Dialog>;
 }
 
 const focus = "outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60";
@@ -160,6 +166,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const openDialog = (next: Dialog) => { setActionError(null); setDialog(next); };
   const [actionNotice, setActionNotice] = useState("");
   const cats = meta.catalog.categories;
   const groups = meta.catalog.optionGroups ?? [];
@@ -241,6 +248,8 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
     const frame = window.requestAnimationFrame(() => {
       const panel = document.querySelector<HTMLElement>("[role=dialog]");
       if (!panel) return;
+      const errorMessage = panel.querySelector<HTMLElement>("[data-dialog-action-error]");
+      if (errorMessage) { errorMessage.focus(); return; }
       const active = document.activeElement;
       if (active instanceof HTMLElement && panel.contains(active) && !active.matches(":disabled")) return;
       panel.querySelector<HTMLElement>('button:not(:disabled):not([aria-label="Pencereyi kapat"]), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')?.focus();
@@ -252,7 +261,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
     run([...(tab ? [] : [ev({ type: "open", guests: 0 })]), ev({ type: "add", lineId: crypto.randomUUID(), productId: p.id, name: p.name, unitPrice, vatRate: p.vatRate, qtyMilli, options, note, stationId: p.stationId ?? null })], returnFocusTo);
   const tapProduct = (p: KasaProduct, source?: HTMLButtonElement) => {
     const gs = (p.optionGroupIds ?? []).map((id) => groups.find((g) => g.id === id)).filter((g): g is OptionGroup => Boolean(g));
-    if (gs.length) setDialog({ k: "options", product: p });
+    if (gs.length) openDialog({ k: "options", product: p });
     else void addLine(p, p.price, [], null, 1000, source);
   };
 
@@ -274,8 +283,10 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
   const occupied = openTabsByTable(allTabs);
 
   return (
+    <DialogFeedbackContext.Provider value={{ error: dialog ? actionError : null, busy }}>
     <div {...mainProps} className="grid min-h-0 min-w-0 flex-1 outline-none md:overflow-hidden md:grid-cols-[minmax(0,1fr)_24rem]">
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{actionNotice}</p>
+      {!dialog && <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{busy ? "Adisyon işlemi kaydediliyor. Lütfen bekleyin." : ""}</p>}
       <section className="min-w-0 p-4 md:min-h-0 md:overflow-y-auto">
         <div className="mb-3 flex min-w-0 items-center gap-2">
           <label className="min-w-0 flex-1">
@@ -316,7 +327,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
 
       <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-line bg-surface">
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
-        <button type="button" onClick={onBack} className="press inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 -ml-2">← {table ? "Salon" : "Paket"}</button>
+        <button type="button" disabled={busy} onClick={onBack} className="press inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-wait disabled:opacity-50 -ml-2">← {table ? "Salon" : "Paket"}</button>
           <h2 id="tab-heading" tabIndex={-1} className="min-w-0 flex-1 truncate rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" title={title}>{title}</h2>
           {tab && <span className="shrink-0 text-sm text-muted">{minutesSince(tab.openedAt, now)} dk</span>}
           {tabs.length > 1 && (
@@ -339,7 +350,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             const k = tab.tickets.find((t) => t.lineIds.includes(l.lineId));
             return (
               <li key={l.lineId}>
-            <button type="button" disabled={l.voided || busy} onClick={() => setDialog({ k: "line", line: l })} className={`flex min-h-12 w-full items-start gap-2 px-3 py-2.5 text-left outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-60 ${l.voided ? "text-muted line-through" : ""}`}>
+            <button type="button" disabled={l.voided || busy} onClick={() => openDialog({ k: "line", line: l })} className={`flex min-h-12 w-full items-start gap-2 px-3 py-2.5 text-left outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-60 ${l.voided ? "text-muted line-through" : ""}`}>
                   <span className="tabular w-8 font-semibold">{qtyText(l.qtyMilli)}×</span>
                   <span className="min-w-0 flex-1">
                     <span className="block break-words">{l.name}</span>
@@ -368,9 +379,9 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             )}
             {ready.length > 0 && <button type="button" disabled={busy} onClick={(event) => void run(ready.map((k) => ev({ type: "kitchen", ticketId: k.id, status: "teslim" })), event.currentTarget)} className="press min-h-12 w-full rounded-[10px] bg-ok-action text-sm font-medium text-white shadow-card outline-none hover:bg-ok-action-hover focus-visible:ring-4 focus-visible:ring-ok/30 disabled:pointer-events-none disabled:opacity-40">{busy ? "Güncelleniyor…" : "Hazır — teslim edildi"}</button>}
             <div className="grid grid-cols-2 gap-2">
-              {table && <button type="button" disabled={busy} onClick={() => setDialog({ k: "move" })} className={btn}>Taşı</button>}
-              {table && <button type="button" disabled={busy} onClick={() => setDialog({ k: "merge" })} className={btn}>Birleştir</button>}
-              <button type="button" disabled={busy} onClick={() => setDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d, token) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by, token)] })} className={btn}>İndirim</button>
+              {table && <button type="button" disabled={busy} onClick={() => openDialog({ k: "move" })} className={btn}>Taşı</button>}
+              {table && <button type="button" disabled={busy} onClick={() => openDialog({ k: "merge" })} className={btn}>Birleştir</button>}
+              <button type="button" disabled={busy} onClick={() => openDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d, token) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by, token)] })} className={btn}>İndirim</button>
               {!canPay && table && <button type="button" disabled={busy || tab.billRequested} onClick={(event) => void run([ev({ type: "bill" })], event.currentTarget)} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
               {canPay && <button type="button" disabled={busy || (tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli))} onClick={() => onBill(tab.id)} className={`${btn} font-medium`}>Hesap</button>}
             </div>
@@ -391,13 +402,13 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
             {!dialog.line.sent ? (
               <>
                 <button type="button" disabled={busy} onClick={() => void run([ev({ type: "void", lineId: dialog.line.lineId, reason: "gönderilmeden silindi" })])} className={btn}>Sil</button>
-                <button type="button" disabled={busy} onClick={() => setDialog({ k: "note", line: dialog.line })} className={btn}>Not ekle / değiştir</button>
+                <button type="button" disabled={busy} onClick={() => openDialog({ k: "note", line: dialog.line })} className={btn}>Not ekle / değiştir</button>
               </>
             ) : dialog.line.paidMilli === 0 && (
-              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İptal: ${l.name}`, run: (by, reason, _d, token) => [ev({ type: "void", lineId: l.lineId, reason }, by, token)] }); }} className={btn}>İptal et (müdür onayı)</button>
+              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; openDialog({ k: "approve", title: `İptal: ${l.name}`, run: (by, reason, _d, token) => [ev({ type: "void", lineId: l.lineId, reason }, by, token)] }); }} className={btn}>İptal et (müdür onayı)</button>
             )}
             {!dialog.line.comped && dialog.line.paidMilli === 0 && (
-              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; setDialog({ k: "approve", title: `İkram: ${l.name}`, run: (by, reason, _d, token) => [ev({ type: "comp", lineId: l.lineId, reason }, by, token)] }); }} className={btn}>İkram et</button>
+              <button type="button" disabled={busy} onClick={() => { const l = dialog.line; openDialog({ k: "approve", title: `İkram: ${l.name}`, run: (by, reason, _d, token) => [ev({ type: "comp", lineId: l.lineId, reason }, by, token)] }); }} className={btn}>İkram et</button>
             )}
             <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-2 w-full">Kapat</button>
           </div>
@@ -443,12 +454,13 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
           </div>
         </Modal>
       )}
-      {actionError && (
+      {actionError && !dialog && (
         <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[70] flex justify-center md:inset-x-auto md:right-6">
           <p className="pointer-events-auto max-w-md break-words rounded-xl border border-bad/30 bg-bad-soft px-4 py-3 text-sm font-medium text-bad shadow-pop" role="alert" aria-live="assertive">{actionError}</p>
         </div>
       )}
     </div>
+    </DialogFeedbackContext.Provider>
   );
 }
 

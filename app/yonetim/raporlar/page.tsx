@@ -8,6 +8,7 @@ import { formatQty, isCriticalRow } from "@/lib/admin/stock-view";
 import { heatData, productData, staffData, staffEvents, summaryData } from "@/lib/admin/report";
 import { parseRange, REPORT_TABS, type ReportTab } from "@/lib/core/report";
 import { Card, PageHeader } from "@/components/ui";
+import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { RangeBar, reportHref } from "@/components/reports/RangeBar";
 import { ReportMailCard } from "@/components/admin/ReportMailCard";
 import { SummaryTab } from "@/components/reports/SummaryTab";
@@ -74,8 +75,10 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
           <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">{critical.map((c) => <li key={c.id} className="min-w-0 break-words rounded-lg border border-bad/20 bg-canvas/40 px-3 py-2"><b>{c.name}</b> <span className="tabular">{formatQty(c.level, c.unit)}</span> <span className="text-muted">(sınır {formatQty(c.minStock!, c.unit)})</span></li>)}</ul>
         </Card>
       )}
-      <nav className="-mx-1 mb-4 flex gap-1 overflow-x-auto px-1 pb-1 lg:sticky lg:top-2 lg:z-30 lg:bg-canvas/95 lg:py-1 lg:backdrop-blur" aria-label="Rapor bölümü">
-        {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} aria-current={t.key === tab.key ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line text-ink-2 hover:bg-surface-2"}`}>{t.label}</Link>)}
+      <nav className="mb-4 min-w-0 lg:sticky lg:top-2 lg:z-30 lg:bg-canvas/95 lg:py-1 lg:backdrop-blur" aria-label="Rapor bölümü">
+        <HorizontalScrollRegion label="Rapor sekmeleri, yatay kaydırılabilir" className="-mx-1 flex gap-1 px-1 pb-1">
+          {REPORT_TABS.map((t) => <Link key={t.key} href={reportHref(t.key, t.range ? range : undefined)} aria-current={t.key === tab.key ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${t.key === tab.key ? "border-brand bg-brand-soft font-medium text-brand" : "border-line text-ink-2 hover:bg-surface-2"}`}>{t.label}</Link>)}
+        </HorizontalScrollRegion>
       </nav>
       {tab.key === "musteriler" ? (
         <div className="mb-4"><Link className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 py-2 text-sm outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60" href="/yonetim/raporlar/csv?sekme=musteriler" download>CSV indir</Link></div>

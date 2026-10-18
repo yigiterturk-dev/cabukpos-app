@@ -166,7 +166,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   return (
     <div {...mainProps} ref={boardRef} className="flex min-h-0 flex-1 flex-col p-4 outline-none">
       <p ref={announcementRef} className="sr-only" role="status" aria-live="polite" aria-atomic="true" />
-      {pendingMessage && <p className="sr-only" role="status" aria-live="polite">{pendingMessage}</p>}
+      {pendingMessage && !dialog && <p className="sr-only" role="status" aria-live="polite">{pendingMessage}</p>}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div>
           <h2 ref={boardHeadingRef} tabIndex={-1} className="font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Paket siparişleri</h2>
@@ -253,7 +253,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
       </div>
 
       {dialog?.k === "accept" && (
-        <Modal label="Hazırlama süresi" onClose={() => setDialog(null)} closeDisabled={busy}>
+        <Modal label="Hazırlama süresi" onClose={() => setDialog(null)} closeDisabled={busy} statusMessage={pendingMessage}>
           <p className="mb-1 font-medium">{tabLabel(dialog.tab, tables, PLATFORM_NAMES)} · {TL(dialog.tab.total)}</p>
           <p className="mb-4 text-sm text-muted">Siparişi kabul edip mutfağa göndermek için tahmini hazırlama süresini seçin.</p>
           {actionError && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{actionError}</p>}
@@ -264,7 +264,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
         </Modal>
       )}
       {dialog?.k === "reject" && (
-        <Modal label="Red sebebi" onClose={() => setDialog(null)} closeDisabled={busy}>
+        <Modal label="Red sebebi" onClose={() => setDialog(null)} closeDisabled={busy} statusMessage={pendingMessage}>
           <p className="mb-4 text-sm text-muted">{tabLabel(dialog.tab, tables, PLATFORM_NAMES)} siparişi reddedilecek. Nedeni seçin; bu bilgi işlem kaydına eklenir.</p>
           {actionError && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{actionError}</p>}
           <div className="grid gap-2">
@@ -274,7 +274,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
         </Modal>
       )}
       {dialog?.k === "courier" && (
-        <Modal label="Kurye ata" onClose={() => setDialog(null)} closeDisabled={busy}>
+        <Modal label="Kurye ata" onClose={() => setDialog(null)} closeDisabled={busy} statusMessage={pendingMessage}>
           <p className="mb-4 text-sm text-muted">{tabLabel(dialog.tab, tables, PLATFORM_NAMES)} için kuryeyi seçin. Atama sipariş kartında görünür.</p>
           {actionError && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{actionError}</p>}
           <div role="group" aria-label="Kurye seçimi" className="grid gap-2">
@@ -287,18 +287,18 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
             <button type="button" disabled={busy} onClick={() => setDialog(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40 mt-4 w-full">Vazgeç</button>
         </Modal>
       )}
-      {dialog?.k === "cancel" && <CancelDialog meta={meta} onMeta={onMeta} waiter={waiter} busy={busy} error={actionError} errorRef={actionErrorRef} onClose={() => setDialog(null)} onOk={(by, reason, token) => run(() => add([ev(dialog.tab, { type: "cancel", reason }, by, token)]), "Sipariş iptal edildi.", "dialog", "Sipariş güncelleniyor.", dialog.tab.id)} />}
+      {dialog?.k === "cancel" && <CancelDialog meta={meta} onMeta={onMeta} waiter={waiter} busy={busy} error={actionError} errorRef={actionErrorRef} statusMessage={pendingMessage} onClose={() => setDialog(null)} onOk={(by, reason, token) => run(() => add([ev(dialog.tab, { type: "cancel", reason }, by, token)]), "Sipariş iptal edildi.", "dialog", "Sipariş güncelleniyor.", dialog.tab.id)} />}
     </div>
   );
 }
 
 /** İptal: gerekçe + müdür değilse müdür PIN'i. */
-function CancelDialog({ meta, onMeta, waiter, busy, error, errorRef, onOk, onClose }: { meta: Meta; onMeta: (m: Meta) => void; waiter: Waiter; busy: boolean; error?: string | null; errorRef: React.RefObject<HTMLParagraphElement | null>; onOk: (approvedBy: string | null, reason: string, approvalToken?: string) => void | Promise<void>; onClose: () => void }) {
+function CancelDialog({ meta, onMeta, waiter, busy, error, errorRef, statusMessage, onOk, onClose }: { meta: Meta; onMeta: (m: Meta) => void; waiter: Waiter; busy: boolean; error?: string | null; errorRef: React.RefObject<HTMLParagraphElement | null>; statusMessage: string; onOk: (approvedBy: string | null, reason: string, approvalToken?: string) => void | Promise<void>; onClose: () => void }) {
   const [reason, setReason] = useState("");
   const [pin, setPin] = useState(false);
   const reasonInvalid = reason.trim().length > 0 && reason.trim().length < 2;
   return (
-    <Modal label="Siparişi iptal et" onClose={onClose} closeDisabled={busy}>
+    <Modal label="Siparişi iptal et" onClose={onClose} closeDisabled={busy} statusMessage={statusMessage}>
       {!pin ? (
         <>
           {error && <p ref={errorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}

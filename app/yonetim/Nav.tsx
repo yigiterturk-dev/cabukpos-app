@@ -100,7 +100,8 @@ export function Nav({ vertical, onNavigate }: { vertical: "restoran" | "market";
           target.isContentEditable ||
           target.matches("input, textarea, select")
         );
-        if (e.repeat || document.querySelector('[aria-modal="true"]') || (typing && active !== searchRef.current)) return;
+        const modal = document.querySelector<HTMLElement>('[aria-modal="true"]');
+        if (e.repeat || (modal && !modal.contains(searchRef.current)) || (typing && active !== searchRef.current)) return;
         e.preventDefault();
         searchRef.current?.focus();
         searchRef.current?.select();

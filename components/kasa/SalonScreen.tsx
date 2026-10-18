@@ -28,6 +28,8 @@ type CallRow = { id: string; table: string; note: string | null; createdAt: stri
 
 function useCalls(enabled = true) {
   const [calls, setCalls] = useState<CallRow[]>([]);
+  const [callStatus, setCallStatus] = useState<"loading" | "ok" | "error" | "unavailable">(enabled ? "loading" : "ok");
+  const loadedOnce = useRef(false);
   const seen = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (!enabled) return;
@@ -35,27 +37,34 @@ function useCalls(enabled = true) {
     const load = async () => {
       try {
         const r = await fetch("/api/kasa/calls", { cache: "no-store", signal: AbortSignal.timeout(6500) });
-        if (!r.ok) return;
+        if (!r.ok) {
+          if (alive) setCallStatus(loadedOnce.current ? "error" : "unavailable");
+          return;
+        }
         const j = (await r.json()) as { calls: CallRow[] };
         if (!alive) return;
         const previous = seen.current;
         if (previous === null ? j.calls.length > 0 : j.calls.some((call) => !previous.has(call.id))) beep(true);
         seen.current = new Set(j.calls.map((call) => call.id));
         setCalls(j.calls);
-      } catch { /* çevrimdışı: sonraki turda tekrar */ }
+        loadedOnce.current = true;
+        setCallStatus("ok");
+      } catch {
+        if (alive) setCallStatus(loadedOnce.current ? "error" : "unavailable");
+      }
     };
     load();
     const t = setInterval(load, 8000);
     return () => { alive = false; clearInterval(t); };
   }, [enabled]);
-  return [calls, setCalls] as const;
+  return [calls, setCalls, callStatus] as const;
 }
 
 export function SalonScreen({ areas, tables, tabs, tabsLoaded = true, now, onOpen, currency, callsEnabled = true }: { areas: Area[]; tables: Table[]; tabs: Map<string, TabState>; tabsLoaded?: boolean; now: number; onOpen: (tableId: string) => void; currency?: Currency; callsEnabled?: boolean }) {
   const mainProps = useKasaMainProps();
   const { TL } = kasaFmt({ device: { currency } });
   const [areaId, setAreaId] = useState(areas[0]?.id ?? "");
-  const [calls, setCalls] = useCalls(callsEnabled);
+  const [calls, setCalls, callStatus] = useCalls(callsEnabled);
   const announcedCalls = useRef<Set<string> | null>(null);
   const callAnnouncement = useRef<HTMLParagraphElement>(null);
   const [resolving, setResolving] = useState<string | null>(null);
@@ -119,6 +128,7 @@ export function SalonScreen({ areas, tables, tabs, tabsLoaded = true, now, onOpe
     <div {...mainProps} className="min-w-0 p-4 outline-none">
       <p ref={callAnnouncement} className="sr-only" role="status" aria-live="polite" aria-atomic="true" />
       {resolving && <p className="sr-only" role="status" aria-live="polite">Garson çağrısı kapatılıyor. Lütfen bekleyin.</p>}
+      {callsEnabled && callStatus !== "ok" && <p className={`mb-3 rounded-xl px-3 py-2 text-sm ${callStatus === "error" || callStatus === "unavailable" ? "bg-warn-soft text-warn" : "bg-surface-2 text-muted"}`} role="status" aria-live="polite">{callStatus === "loading" ? "Garson çağrıları yükleniyor…" : callStatus === "unavailable" ? "Garson çağrıları yüklenemedi. Bağlantı kurulunca yeniden denenecek." : "Garson çağrıları güncellenemiyor. Son görünen liste eski olabilir; bağlantı kurulunca yeniden denenecek."}</p>}
       {callError && <p ref={callErrorRef} tabIndex={-1} className="mb-4 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert">{callError}</p>}
       {calls.length > 0 && (
         <ul aria-label="Garson çağrıları" className="mb-4 space-y-1">

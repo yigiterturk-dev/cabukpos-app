@@ -1,6 +1,6 @@
 "use server";
 // Ürün ve kategori yönetimi. Her yazma requireWriter + withTenant (RLS) + denetim kaydı.
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, arrayOverlaps, eq, inArray, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant, type Tx } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
@@ -72,6 +72,39 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
     if (p.value.categoryId) {
       const [c] = await tx.select({ id: schema.categories.id }).from(schema.categories).where(eq(schema.categories.id, p.value.categoryId));
       if (!c) return { error: "Kategori bulunamadı.", field: "categoryId" };
+    }
+    const current = id
+      ? (await tx.select({ id: P.id, barcodes: P.barcodes, kind: P.kind, sellable: P.sellable, unit: P.unit }).from(P).where(eq(P.id, id)).limit(1))[0]
+      : null;
+    if (id && !current) return { error: "Ürün bulunamadı.", field: "" };
+    if (current) {
+      const previousStockUnit = current.sellable ? current.kind === "tartili" ? "kg" : "adet" : current.unit;
+      const nextStockUnit = p.value.sellable ? p.value.kind === "tartili" ? "kg" : "adet" : p.value.unit;
+      if (previousStockUnit !== nextStockUnit) {
+        const [movement, countLine, recipeUse, saleLine, purchaseLine, production] = await Promise.all([
+          tx.select({ id: schema.stockMovements.id }).from(schema.stockMovements).where(eq(schema.stockMovements.productId, current.id)).limit(1),
+          tx.select({ id: schema.stockCountLines.id }).from(schema.stockCountLines).where(eq(schema.stockCountLines.productId, current.id)).limit(1),
+          tx.select({ id: schema.recipeItems.id }).from(schema.recipeItems).where(eq(schema.recipeItems.ingredientId, current.id)).limit(1),
+          tx.select({ id: schema.saleLines.id }).from(schema.saleLines).where(eq(schema.saleLines.productId, current.id)).limit(1),
+          tx.select({ id: schema.purchaseLines.id }).from(schema.purchaseLines).where(eq(schema.purchaseLines.productId, current.id)).limit(1),
+          tx.select({ id: schema.productions.id }).from(schema.productions).where(eq(schema.productions.productId, current.id)).limit(1),
+        ]);
+        if (movement.length || countLine.length || recipeUse.length || saleLine.length || purchaseLine.length || production.length) {
+          return { error: "Bu ürünün satış, sayım, stok veya reçete geçmişi var. Birim değiştirmek geçmiş miktarları yanlış yorumlatır; yeni birim için ayrı ürün oluşturun.", field: "" };
+        }
+        if (!form.has("unitValuesReviewed")) {
+          return { error: "Maliyet, kritik stok sınırı ve parti miktarını yeni birime göre kontrol edip onaylayın.", field: "" };
+        }
+      }
+    }
+    const addedBarcodes = p.value.barcodes.filter((barcode) => !current?.barcodes.includes(barcode));
+    if (addedBarcodes.length) {
+      const [duplicate] = await tx.select({ name: P.name, barcodes: P.barcodes }).from(P)
+        .where(and(arrayOverlaps(P.barcodes, addedBarcodes), id ? ne(P.id, id) : undefined)).limit(1);
+      if (duplicate) {
+        const barcode = duplicate.barcodes.find((value) => addedBarcodes.includes(value));
+        return { error: `Barkod ${barcode ?? ""} zaten "${duplicate.name}" ürününde.`, field: "barcodes" };
+      }
     }
     if (p.value.plu) {
       const [dup] = await tx.select({ name: P.name }).from(P).where(id ? and(eq(P.plu, p.value.plu), ne(P.id, id)) : eq(P.plu, p.value.plu));

@@ -4,6 +4,7 @@ import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { deleteAddress } from "@/lib/admin/delivery-actions";
 import { formatPhone, normalizePhone } from "@/lib/core/delivery";
+import { normalizeSearchText } from "@/lib/core/search";
 import { CustomerForm } from "@/components/admin/DeliveryForms";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { buttonClass, Card, Empty, Input, PageHeader } from "@/components/ui";
@@ -23,10 +24,15 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
     const phone = normalizePhone(q);
     const term = q.trim();
     const literalTerm = term.replace(/[\\%_]/g, (char) => `\\${char}`);
-    const where = term ? or(ilike(C.name, `%${literalTerm}%`), phone ? eq(C.phone, phone) : ilike(C.phone, `%${term.replace(/\D/g, "") || "-"}%`)) : undefined;
+    const normalizedName = normalizeSearchText(term);
+    const literalName = normalizedName.replace(/[\\%_]/g, (char) => `\\${char}`);
+    const normalizedNameMatch = normalizedName
+      ? sql`lower(translate(${C.name}, 'ıİşŞğĞüÜöÖçÇ', 'iiSSGGUUOOCC')) like ${`%${literalName}%`}`
+      : undefined;
+    const where = term ? or(ilike(C.name, `%${literalTerm}%`), normalizedNameMatch, phone ? eq(C.phone, phone) : ilike(C.phone, `%${term.replace(/\D/g, "") || "-"}%`)) : undefined;
     const [{ filteredTotal }] = await tx.select({ filteredTotal: count() }).from(C).where(where);
     const safePage = Math.min(pageNo, Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE)));
-    const rows = await tx.select().from(C).where(where).orderBy(desc(C.lastOrderAt)).limit(PAGE_SIZE).offset((safePage - 1) * PAGE_SIZE);
+    const rows = await tx.select().from(C).where(where).orderBy(sql`${C.lastOrderAt} desc nulls last`, desc(C.createdAt)).limit(PAGE_SIZE).offset((safePage - 1) * PAGE_SIZE);
     const addrs = rows.length ? await tx.select().from(A).where(and(inArray(A.customerId, rows.map((r) => r.id)), eq(A.deleted, false))).orderBy(desc(A.lastUsedAt)) : [];
     const zones = await tx.select({ id: Z.id, name: Z.name }).from(Z);
     const [total, active, dormant, fresh, consented, reachableDormant] = await Promise.all([

@@ -124,7 +124,7 @@ export function KitchenScreen({ meta, tabs, now, add, loaded = true }: { meta: M
           <h1 id="kitchen-heading" tabIndex={-1} className="rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Mutfak</h1>
           <div role={loaded ? undefined : "status"} aria-live={loaded ? undefined : "polite"} className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted">{loaded ? <><span>{open.length} bekleyen · {ready.length} hazır</span>{late > 0 && <span className="rounded-full bg-bad-soft px-2 py-0.5 text-xs font-medium text-bad">{late} geciken</span>}</> : "Siparişler yükleniyor…"}</div>
         </div>
-        {filter.length > 0 && <span className="text-xs text-muted">İstasyon filtresi aktif</span>}
+        {filter.length > 0 && <span className="max-w-full break-words text-right text-xs text-muted">İstasyon filtresi: {filter.map((id) => stations.find((station) => station.id === id)?.name ?? "İstasyon bulunamadı").join(", ")}</span>}
       </div>
       {actionError && <p className="mb-4 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad" role="alert" aria-live="assertive">{actionError}</p>}
       <div aria-busy={!loaded || undefined} className="grid min-h-0 min-w-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">

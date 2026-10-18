@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { scopedStoreId } from "@/lib/admin/store-scope";
@@ -30,7 +30,10 @@ export default async function Rezervasyonlar({ searchParams }: { searchParams: P
       storeId,
     };
   });
-  const tables = rows.storeId ? (await withTenant(a.tenantId, (tx) => tx.select({ id: schema.tables.id, name: schema.tables.name, storeId: schema.areas.storeId }).from(schema.tables).innerJoin(schema.areas, eq(schema.tables.areaId, schema.areas.id)))).filter((t) => t.storeId === rows.storeId) : [];
+  const tables = rows.storeId ? await withTenant(a.tenantId, (tx) => tx.select({ id: schema.tables.id, name: schema.tables.name, areaName: schema.areas.name })
+    .from(schema.tables).innerJoin(schema.areas, eq(schema.tables.areaId, schema.areas.id)).where(eq(schema.areas.storeId, rows.storeId!))
+    .orderBy(asc(schema.areas.name), asc(schema.tables.name))) : [];
+  const tableNames = new Map(tables.map((table) => [table.id, `${table.areaName} · ${table.name}`]));
   const fmt = (at: Date) => at.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
   return (
     <>
@@ -63,11 +66,11 @@ export default async function Rezervasyonlar({ searchParams }: { searchParams: P
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="break-words font-semibold">{r.name}</p>
-                    <p className="mt-1 text-sm text-muted"><time dateTime={r.at.toISOString()}>{fmt(r.at)}</time> · {r.guests} kişi</p>
+                    <p className="mt-1 text-sm text-muted"><time dateTime={r.at.toISOString()}>{fmt(r.at)}</time> · {r.guests} kişi · Masa: {r.tableId ? tableNames.get(r.tableId) ?? "Masa bulunamadı" : "Atanmadı"}</p>
                   </div>
                   <span className="shrink-0 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-medium">{RES_LABEL[r.status]}</span>
                 </div>
-                {phone ? <a href={`tel:+${phone}`} className="inline-flex min-h-11 items-center tabular text-sm text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{formatPhone(phone)}</a> : <span className="inline-flex min-h-11 items-center tabular text-sm text-muted">{r.phone}</span>}
+                {phone ? <a href={`tel:+${phone}`} aria-label={`Ara ${r.name}, ${formatPhone(phone)}`} className="inline-flex min-h-11 items-center tabular text-sm text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{formatPhone(phone)}</a> : <span className="inline-flex min-h-11 items-center tabular text-sm text-muted">{r.phone}</span>}
                 {r.note && <p className="break-words text-sm text-muted">{r.note}</p>}
                 <div className="border-t border-line pt-2"><ResStatusButtons id={r.id} name={r.name} status={r.status} /></div>
               </li>;
@@ -76,19 +79,23 @@ export default async function Rezervasyonlar({ searchParams }: { searchParams: P
         </Card>
         <Card className="hidden p-0 lg:block">
           <HorizontalScrollRegion label="Günlük rezervasyonlar, yatay kaydırılabilir" className="rounded-2xl">
-          <table aria-label="Günlük rezervasyonlar" className="w-full min-w-[720px] text-sm">
-            <thead className={TABLE_HEAD}><tr><th scope="col" className="py-2 pr-4 font-medium">Saat</th><th scope="col" className="py-2 pr-4 font-medium">İsim</th><th scope="col" className="py-2 pr-4 font-medium">Kişi</th><th scope="col" className="py-2 pr-4 font-medium">Telefon</th><th scope="col" className="py-2 pr-4 font-medium">Not</th><th scope="col" className="py-2 font-medium">Durum</th></tr></thead>
+          <table aria-label="Günlük rezervasyonlar" className="w-full min-w-[800px] text-sm">
+            <thead className={TABLE_HEAD}><tr><th scope="col" className="py-2 pr-4 font-medium">Saat</th><th scope="col" className="py-2 pr-4 font-medium">İsim</th><th scope="col" className="py-2 pr-4 font-medium">Kişi</th><th scope="col" className="py-2 pr-4 font-medium">Masa</th><th scope="col" className="py-2 pr-4 font-medium">Telefon</th><th scope="col" className="py-2 pr-4 font-medium">Not</th><th scope="col" className="py-2 font-medium">Durum</th></tr></thead>
             <tbody className="divide-y divide-line">
-              {rows.list.map((r) => (
+              {rows.list.map((r) => {
+                const phone = normalizePhone(r.phone);
+                return (
                 <tr key={r.id} data-testid="res-row">
                   <td className="py-2 pr-4 tabular">{fmt(r.at)}</td>
                   <td className="max-w-[14rem] py-2 pr-4 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
                   <td className="py-2 pr-4 tabular">{r.guests}</td>
-                  <td className="py-2 pr-4 tabular">{r.phone}</td>
+                  <td className="py-2 pr-4">{r.tableId ? tableNames.get(r.tableId) ?? "Masa bulunamadı" : "Atanmadı"}</td>
+                  <td className="py-2 pr-4 tabular">{phone ? <a href={`tel:+${phone}`} aria-label={`Ara ${r.name}, ${formatPhone(phone)}`} className="text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{formatPhone(phone)}</a> : r.phone}</td>
                   <td className="max-w-[20rem] py-2 pr-4 text-muted"><span className="block truncate" title={r.note ?? ""}>{r.note ?? ""}</span></td>
                   <td className="py-2"><ResStatusButtons id={r.id} name={r.name} status={r.status} /></td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           </HorizontalScrollRegion>

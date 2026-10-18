@@ -6,6 +6,7 @@ import { deleteCategory, setProductActive } from "@/lib/admin/catalog-actions";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 import { currencySymbol } from "@/lib/core/money";
+import { normalizeSearchText } from "@/lib/core/search";
 import { stockUnitOf } from "@/lib/core/stock";
 import { categoryStationForStore, loadStoreStationRoutes, productStationForStore } from "@/lib/core/station-routing";
 import { CategoryForm, ProductForm } from "@/components/admin/ProductForm";
@@ -43,8 +44,8 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
   const salon = restoran ? { stations, groups, storeId } : undefined;
   const catName = new Map(cats.map((c) => [c.id, c.name]));
   const editing = prods.find((p) => p.id === duzenle);
-  const needle = q.trim().toLocaleLowerCase("tr");
-  const shown = prods.filter((p) => p.sellable !== raw && (!needle || p.name.toLocaleLowerCase("tr").includes(needle) || p.barcodes.some((barcode) => barcode.includes(q.trim()))));
+  const needle = normalizeSearchText(q.trim());
+  const shown = prods.filter((p) => p.sellable !== raw && (!needle || normalizeSearchText(p.name).includes(needle) || p.barcodes.some((barcode) => barcode.includes(q.trim()))));
   const options = cats.map((c) => ({ value: c.id, label: c.name }));
   const encodedQuery = q.trim() ? encodeURIComponent(q.trim()) : "";
   const querySuffix = encodedQuery ? `&q=${encodedQuery}` : "";

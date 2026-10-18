@@ -790,7 +790,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
         <span className="tabular shrink-0">{TL(t.total)} <ArrowRight aria-hidden className="ml-1 inline size-4" /></span>
       </button>}
       {weigh && <WeighDialog product={weigh} scale={scale} currency={currency} onClose={() => { setWeigh(null); refocus(); }} onOk={(g) => add(weigh, g)} />}
-          {paying && <PayDialog total={t.total} currency={currency} onPay={(id, p, b, tip) => onPay(id, p, cart, b, tip)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setUndoCart(null); cartRef.current = []; setCart([]); setLast(r); refocus(); }} />}
+          {paying && <PayDialog total={t.total} currency={currency} onPay={(id, p, b, tip, extras) => onPay(id, p, cart, b, tip, extras)} onClose={() => { setPaying(false); refocus(); }} onDone={(r) => { setPaying(false); setUndoCart(null); cartRef.current = []; setCart([]); setLast(r); refocus(); }} />}
     </div>
   );
 }

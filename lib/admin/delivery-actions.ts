@@ -102,8 +102,17 @@ export async function saveCustomer(id: string, _: DeliveryState, form: FormData)
   const result = await withTenant(a.tenantId, async (tx): Promise<DeliveryState | undefined> => {
     const [before] = await tx.select({ marketingConsent: schema.customers.marketingConsent, marketingConsentAt: schema.customers.marketingConsentAt, marketingConsentSource: schema.customers.marketingConsentSource }).from(schema.customers).where(eq(schema.customers.id, id)).limit(1);
     if (!before) return { error: "Müşteri bulunamadı." };
-    await tx.update(schema.customers).set({ name, note, marketingConsent, marketingConsentAt: marketingConsent ? new Date() : null, marketingConsentSource: marketingConsent ? "manual" : null }).where(eq(schema.customers.id, id));
-    await audit(tx, a.tenantId, `user:${a.id}`, "customer.update", { id, marketingConsentBefore: before.marketingConsent, marketingConsentAfter: marketingConsent, consentChanged: before.marketingConsent !== marketingConsent, consentSourceBefore: before.marketingConsentSource, consentSourceAfter: marketingConsent ? "manual" : null });
+    const consentChanged = before.marketingConsent !== marketingConsent;
+    const marketingConsentAt = marketingConsent ? (consentChanged ? new Date() : before.marketingConsentAt) : null;
+    const marketingConsentSource = marketingConsent ? (consentChanged ? "manual" : before.marketingConsentSource) : null;
+    await tx.update(schema.customers).set({
+      name,
+      note,
+      marketingConsent,
+      marketingConsentAt,
+      marketingConsentSource,
+    }).where(eq(schema.customers.id, id));
+    await audit(tx, a.tenantId, `user:${a.id}`, "customer.update", { id, marketingConsentBefore: before.marketingConsent, marketingConsentAfter: marketingConsent, consentChanged, consentSourceBefore: before.marketingConsentSource, consentSourceAfter: marketingConsentSource });
   });
   if (result?.error) return result;
   revalidatePath("/yonetim/musteriler");

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { kasaFmt } from "./kasa-format";
 import { deliveryStatus, type PayIntent, type TabState } from "@/lib/core/tab";
 import { istToday } from "@/lib/core/report";
-import { courierCash, formatPhone, intentLabel, normalizePhone, PAY_INTENTS } from "@/lib/core/delivery";
+import { courierCash, formatPhone, intentLabel, phoneHref, PAY_INTENTS } from "@/lib/core/delivery";
 import type { NewTabEvent } from "@/lib/offline/tabs";
 import type { Meta } from "@/lib/offline/state";
 import type { Cashier } from "./PinPad";
@@ -15,16 +15,6 @@ import { useKasaMainProps } from "./KasaPreviewContext";
 
 const btn = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm font-medium shadow-card outline-none hover:border-line-strong hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
 const strong = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] bg-espresso px-3 py-2 text-sm font-medium text-white shadow-card outline-none hover:bg-espresso-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
-const phoneHref = (raw: string) => {
-  const tr = normalizePhone(raw);
-  if (tr) return `tel:+${tr}`;
-  const digits = raw.replace(/\D/g, "");
-  if (!digits) return null;
-  if (/^\s*\+/.test(raw)) return `tel:+${digits}`;
-  if (digits.startsWith("00")) return `tel:+${digits.slice(2)}`;
-  return `tel:${digits}`;
-};
-
 export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add, onDeliver, onCloseShift }: {
   meta: Meta; courier: Cashier; tabs: Map<string, TabState>; tabsLoaded?: boolean; now: number; add: (list: NewTabEvent[]) => Promise<unknown>;
   onDeliver: (tab: TabState, method: PayIntent) => Promise<void>; onCloseShift: () => void;
@@ -90,7 +80,7 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
       </div>
       {!tabsLoaded && <p className="sr-only" role="status" aria-live="polite">Kurye siparişleri yükleniyor.</p>}
       {error && !deliver && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
-      {busy && <p className="sr-only" role="status" aria-live="polite">{busy === "out" ? "Siparişlerin yola çıkışı kaydediliyor." : "Teslimat ve ödeme kaydediliyor."}</p>}
+      {busy && busy !== "deliver" && <p className="sr-only" role="status" aria-live="polite">Siparişlerin yola çıkışı kaydediliyor.</p>}
       {notice && <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{notice}</p>}
       <ul aria-busy={!tabsLoaded || undefined} className="space-y-3">
         {!tabsLoaded ? <li className="rounded-xl border border-dashed border-line p-6 text-center text-muted" aria-hidden="true">Siparişler yükleniyor…</li> : <>
@@ -118,7 +108,7 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {addr && <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" aria-label={`Haritada aç: ${o?.name ?? "Paket"}, ${zone?.name ?? o?.address ?? "adres"}`} className={btn}>Harita</a>}
-                {phone && o?.phone && <a href={phone} className={btn}>Ara {formatPhone(o.phone)}</a>}
+                {phone && o?.phone && <a href={phone} aria-label={`Ara ${o.name ?? "müşteri"}, ${formatPhone(o.phone)}`} className={btn}>Ara {formatPhone(o.phone)}</a>}
                 {t.delivery.outAt && <button type="button" disabled={busy !== null} onClick={() => { setError(null); setDeliver(t); }} className={`ml-auto ${strong}`}>Teslim ettim</button>}
               </div>
             </li>
@@ -139,7 +129,7 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
       </section>
 
       {deliver && (
-        <Modal label="Nasıl ödendi?" onClose={() => setDeliver(null)} closeDisabled={busy !== null}>
+        <Modal label="Nasıl ödendi?" onClose={() => setDeliver(null)} closeDisabled={busy !== null} statusMessage={busy === "deliver" ? "Teslimat ve ödeme kaydediliyor." : ""}>
           <p className="mb-3 text-sm">{deliver.order?.name} · <span className="tabular font-semibold">{TL(deliver.remaining)}</span></p>
           {deliver.order?.payIntent && <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">Sipariş tercihi: <b className="text-ink">{intentLabel(deliver.order.payIntent)}</b>. Lütfen teslimde gerçekte tahsil edilen yöntemi seçin.</p>}
           {error && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}

@@ -334,7 +334,15 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
   const [printing, setPrinting] = useState(false);
   const print = async () => {
     if (printing) return;
-    const job = printSale(meta, sale);
+    let job: ReturnType<typeof printSale>;
+    try {
+      job = printSale(meta, sale);
+    } catch (e) {
+      const error = e instanceof Error ? e.message : "Yazıcı işi başlatılamadı.";
+      onPrinted({ ok: false, error, jobId: null });
+      setMsg(`Yazdırılamadı (${error}). Tarayıcıdan yazdırabilirsiniz.`);
+      return;
+    }
     if (!job) return window.print();
     setPrinting(true);
     setMsg("Yazdırılıyor…");
@@ -342,6 +350,10 @@ function Receipt({ meta, sale, onBack, onPrinted }: { meta: Meta; sale: LocalSal
       const r = await job;
       onPrinted(r);
       setMsg(r.ok ? "Yazıcıya gönderildi." : `Yazdırılamadı (${r.error}). Tarayıcıdan yazdırabilirsiniz.`);
+    } catch (e) {
+      const error = e instanceof Error ? e.message : "Bilinmeyen yazıcı hatası.";
+      onPrinted({ ok: false, error, jobId: null });
+      setMsg(`Yazdırılamadı (${error}). Tarayıcıdan yazdırabilirsiniz.`);
     } finally {
       setPrinting(false);
     }

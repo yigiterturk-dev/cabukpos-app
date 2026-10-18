@@ -11,6 +11,7 @@ import { clientIp, hit } from "@/lib/ratelimit";
 import type { TabEv } from "@/lib/core/tab";
 import { OrderRefresh } from "./OrderRefresh";
 import { SkipToContent } from "@/components/SkipToContent";
+import { RateLimitNotice } from "@/components/RateLimitNotice";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Sipariş durumu", robots: { index: false, follow: false } };
@@ -22,7 +23,7 @@ export default async function Siparis({ params }: { params: Promise<{ storeId: s
   const { storeId, tabId } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(storeId) || !/^[0-9a-f-]{36}$/i.test(tabId)) notFound();
   if ((await hit(`siparis:${await clientIp()}`, 1)) > 60) {
-    return <main className="grid min-h-dvh place-items-center p-8 text-center text-sm text-ink-2">Çok fazla istek. Bir dakika sonra tekrar deneyin.</main>;
+    return <RateLimitNotice resource="Sipariş durumu" />;
   }
   const menu = await menuByStore(storeId);
   if (!menu) notFound();
@@ -45,7 +46,7 @@ export default async function Siparis({ params }: { params: Promise<{ storeId: s
         <h1 id="main-content" tabIndex={-1} className="break-words rounded-sm font-display text-2xl font-bold text-ink outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" title={menu.store}>{menu.store}</h1>
       </header>
       <section aria-label="Durum" className="mb-6 rounded-[18px] border border-line bg-surface p-5 text-center shadow-card">
-        <div className={`mx-auto mb-3 grid size-14 place-items-center rounded-full text-2xl ${st.step === "iptal" ? "bg-bad-soft" : st.step === "tamam" ? "bg-ok-soft" : "bg-brand-soft"}`}>
+        <div aria-hidden="true" className={`mx-auto mb-3 grid size-14 place-items-center rounded-full text-2xl ${st.step === "iptal" ? "bg-bad-soft" : st.step === "tamam" ? "bg-ok-soft" : "bg-brand-soft"}`}>
           {st.step === "iptal" ? "✕" : st.step === "tamam" ? "✓" : st.step === "yolda" ? "🛎️" : "⏳"}
         </div>
         <p className="break-words text-lg font-semibold text-ink" data-testid="siparis-durum" role="status" aria-live="polite" aria-atomic="true">{st.label}</p>

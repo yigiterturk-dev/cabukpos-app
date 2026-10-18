@@ -5,17 +5,19 @@ import { requireAdmin } from "@/lib/auth/session";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { stockUnitOf, countVariance, wasteSummary, formatQty, type CountLineCore } from "@/lib/core/stock";
 import { moneyFormatter } from "@/lib/admin/currency";
+import { normalizeSearchText } from "@/lib/core/search";
 import { StartCountForm, CountLineForm, CloseCountForm, CancelCountForm } from "@/components/admin/CountForms";
 import { ActionResult } from "@/components/admin/ActionResult";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
-import { Badge, Card, Empty, PageHeader, Panel, TABLE_HEAD } from "@/components/ui";
+import { Badge, Card, Empty, Input, PageHeader, Panel, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 const dt = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 
-export default async function Sayim({ searchParams }: { searchParams: Promise<{ count?: string }> }) {
+export default async function Sayim({ searchParams }: { searchParams: Promise<{ count?: string; q?: string }> }) {
   const a = await requireAdmin();
-  const { count: countResult } = await searchParams;
+  const { count: countResult, q: rawQuery = "" } = await searchParams;
+  const query = rawQuery.slice(0, 80);
   const money = await moneyFormatter(a.tenantId);
   const C = schema.stockCounts, L = schema.stockCountLines, M = schema.stockMovements, P = schema.products;
   const data = await withTenant(a.tenantId, async (tx) => {
@@ -34,6 +36,8 @@ export default async function Sayim({ searchParams }: { searchParams: Promise<{ 
     return { open, lines, past, fires };
   });
   if (!data) return <Empty>Sayım yapmak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</Empty>;
+  const needle = normalizeSearchText(query.trim());
+  const visibleLines = data.lines.filter((line) => !needle || normalizeSearchText(line.name).includes(needle));
   const waste = wasteSummary(data.fires.map((f) => ({ productId: f.productId, name: f.name, unit: stockUnitOf(f), qtyMilli: f.qtyMilli, cost: f.cost })));
   const wasteTotal = waste.reduce((s, r) => s + (r.cost ?? 0), 0);
   const core = (r: (typeof data.lines)[number]): CountLineCore => ({ productId: r.productId, expectedMilli: r.expectedMilli, countedMilli: r.countedMilli });
@@ -46,6 +50,15 @@ export default async function Sayim({ searchParams }: { searchParams: Promise<{ 
       {countResult === "closed" && <ActionResult kind="success">Sayım oturumu kapatıldı.</ActionResult>}
       {data.open ? (
         <div className="space-y-4">
+          <form action="/yonetim/sayim" role="search" className="flex flex-wrap items-end gap-2">
+            <div className="min-w-48 flex-1 sm:max-w-sm">
+              <label htmlFor="count-product-search" className="mb-1 block text-sm font-medium">Sayımda ürün ara</label>
+              <Input id="count-product-search" name="q" defaultValue={query} maxLength={80} placeholder="Ürün adı" />
+            </div>
+            <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-[10px] border border-line bg-surface px-4 py-2 text-sm font-medium hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Ara</button>
+            {needle && <Link href="/yonetim/sayim" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-brand underline outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">Temizle</Link>}
+            {needle && <span className="text-xs text-muted" aria-live="polite">{visibleLines.length}/{data.lines.length} ürün gösteriliyor</span>}
+          </form>
           <Card className="p-4">
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-semibold">Açık sayım oturumu</span>
@@ -55,9 +68,10 @@ export default async function Sayim({ searchParams }: { searchParams: Promise<{ 
               <div className="ml-auto"><CancelCountForm countId={data.open.id} /></div>
             </div>
           </Card>
+          {visibleLines.length === 0 && data.lines.length > 0 ? <Empty action={<Link href="/yonetim/sayim" className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 font-medium text-brand outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aramayı temizle</Link>}>Bu aramayla eşleşen sayım ürünü yok.</Empty> : <>
           <Card className="overflow-hidden lg:hidden">
             <ul aria-label="Stok sayım kalemleri" className="divide-y divide-line">
-              {data.lines.map((r) => {
+              {visibleLines.map((r) => {
                 const v = countVariance(core(r));
                 return (
                   <li key={r.id} className={`space-y-3 p-4 ${v != null && v !== 0 ? "bg-brand-soft/40" : ""}`}>
@@ -77,7 +91,7 @@ export default async function Sayim({ searchParams }: { searchParams: Promise<{ 
             <table aria-label="Stok sayım kalemleri" className="w-full min-w-[680px] text-sm">
               <thead className={TABLE_HEAD}><tr><th scope="col" className="p-3 text-left">Ürün</th><th scope="col" className="p-3 text-right">Beklenen</th><th scope="col" className="p-3 text-right">Sapma</th><th scope="col" className="p-3 text-left">Sayım</th></tr></thead>
               <tbody className="divide-y divide-line">
-                {data.lines.map((r) => {
+                {visibleLines.map((r) => {
                   const v = countVariance(core(r));
                   return (
                     <tr key={r.id} className={v != null && v !== 0 ? "bg-brand-soft/40" : ""}>
@@ -92,6 +106,7 @@ export default async function Sayim({ searchParams }: { searchParams: Promise<{ 
             </table>
             </HorizontalScrollRegion>
           </Card>
+          </>}
           <Card className="p-4"><CloseCountForm countId={data.open.id} /></Card>
         </div>
       ) : (
