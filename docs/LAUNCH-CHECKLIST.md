@@ -19,7 +19,7 @@ Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 - [x] Neon migration ve FORCE RLS doğrulaması
 - [x] Kaynak RLS coverage gate ve `audit_log` append-only yetki testi
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
-- [x] Pilot E2E komutu CI kapısına bağlı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`); son 5 CI koşusu (2026-10-05 09:06–09:12) **success**
+- [x] Pilot E2E komutu CI kapısına bağlı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`); 2026-10-18 lokal prova turu: m1 (tam müşteri yolculuğu), m3, m5, lan, m8, m9a, m9b, m9c, iade **success** (E2E seçicileri canlı UI ile hizalandı; m2/m4/m6/m7/m49/m54 ikincil suite hizalaması sürüyor)
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
 - [x] `npm run launch:check` ile sırları göstermeden production ayar kontrolü; plan fiyatları production env'ine işlendi ve canlıya çıktı (2026-10-16 deploy — `/fiyatlandirma` tutarları basıyor, "Fiyat yakında" placeholder'ı gitti); yasal satıcı bilgileri (LEGAL_NAME/ADDRESS/EMAIL/PHONE) ve PayTR anahtarları hâlâ bekleniyor
 

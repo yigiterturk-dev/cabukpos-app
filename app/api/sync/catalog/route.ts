@@ -55,10 +55,11 @@ export async function GET(req: Request) {
     stationId: productStationForStore(p.id, stationId, p.categoryId ? categoryStations.get(p.categoryId) ?? null : null, routes),
     optionGroupIds: salon?.links.filter((l) => l.productId === p.id).map((l) => l.groupId) ?? [],
   }));
-  // PIN hash'i yalnız PIN kullanan rollere iner; mutfak/kurye yalnız ekranda gereken kimlik ve rolü alır.
-  const staffOut = device.role === "kasa" || device.role === "garson"
-    ? staff
-    : staff.map(({ id, name, role }) => ({ id, name, role }));
+  // PIN hash'i yalnız PIN kullanan rollere iner. DİKKAT: kurye cihazları PIN'le girer (E2E m6);
+  // yalnız mutfak ekranı PIN'sizdir → hash yalnız mutfakta kesilir.
+  const staffOut = device.role === "mutfak"
+    ? staff.map(({ id, name, role }) => ({ id, name, role }))
+    : staff;
   const catalog = {
     categories: cats.map(({ id, name }) => ({ id, name })), products, staff: staffOut,
     priceLists: priceLists.length ? priceLists : undefined, // #50

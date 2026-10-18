@@ -2,6 +2,30 @@
 
 Bu form ilk restoran pilotunda teknik akışı kanıtlamak için kullanılır. Repo testleri bu formun yerine geçmez; her kutu gerçek cihaz ve gerçek kullanıcı akışıyla işaretlenir.
 
+## 5 dakikada saha kurulumu (işletmeci için)
+
+**1) Bulut — telefondan, 3 dakika**
+1. `cabukpos.com/kayit` → işletme adı + sektör (Restoran/Market) + e-posta + şifre.
+2. Yönetim → Ürünler: "Ürün ekle" ile ürünleri gir (ad + fiyat + KDV yeterli).
+3. Yönetim → Personel: kasiyere ve müdüre birer PIN ver (4-6 hane; kurye cihazı açılacaksa kurye personeli de).
+
+**2) Kasa — kasadaki tarayıcıdan, 1 dakika**
+1. Chrome ile `cabukpos.com/kasa` aç → "Kasa eşlemesini başlat".
+2. Yönetim → Cihazlar → "Cihaz ekle" → ekrandaki 8 haneli kodu kasaya yaz.
+3. Kasiyer PIN'i ile gir → açılış tutarını yaz → "Vardiyayı aç". Bu kadar; internet kesilse bile kasa çalışmaya devam eder.
+
+**3) Yazıcı / çekmece / terazi — Windows PC varsa, 5 dakika**
+1. Yönetim → Donanım → "Ajan ekle" → indirme bağlantısından `cabukpos-agent` kurulumunu çalıştır.
+2. Kurulumda eşleme kodunu gir; Donanım ekranında ajan "çevrimiçi" görünür.
+3. "+ Yazıcı ekle" → adres (ör. `192.168.1.50:9100`) → kaydet.
+4. Sağlama: `node cabukpos-agent.cjs test-print` (fiş), `test-drawer` (çekmece), `test-scale` (terazi).
+
+**4) Garson tableti / mutfak ekranı — her biri 1 dakika**
+1. Yönetim → Cihazlar → "Cihaz ekle" → cihaz rolünü seç (Garson tableti / Mutfak ekranı / Kurye telefonu) → kodu tablete yaz.
+2. Mutfak PIN'siz açılır; garson ve kurye personel PIN'iyle girer.
+
+**Sorun olursa:** kasa internet olmadan da satış yapar; eşitleme bağlantı gelince kendiliğinden olur. Ekranda "incelenecek" işaretli kayıt görürsen destekle paylaş — veri kaybı değil, inceleme demektir.
+
 ## Kurulum
 
 - [ ] İşletme adı, dikey ve şube bilgisi girildi

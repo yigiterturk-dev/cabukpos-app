@@ -126,7 +126,7 @@ try {
   await pin(kasa, "4613");
   await kasa.fill("input[name=amount]", "0");
   await kasa.getByRole("button", { name: "Vardiyayı aç" }).click();
-  await kasa.getByRole("button", { name: "Salon", exact: true }).waitFor();
+  await kasa.getByRole("button", { name: /^Salon/ }).waitFor();
   await kasa.getByTestId("agent-status").getByText("Yazıcı hazır").waitFor().catch(async () => { console.log("AJAN LOG:", agentLog.slice(-300), "ROZET:", await kasa.getByTestId("agent-status").textContent()); throw new Error("kasa ajanı hazır değil"); });
   step("kasa: vardiya açık, ajan hazır");
 

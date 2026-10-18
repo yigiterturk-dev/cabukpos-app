@@ -22,8 +22,10 @@ const page = async (viewport = { width: 1280, height: 900 }) => {
   return p;
 };
 const pin = async (p, digits) => {
-  for (const d of digits) await p.getByRole("button", { name: d, exact: true }).click();
-  await p.getByRole("button", { name: "Gir" }).click();
+  try { await p.getByRole("button", { name: "Gir" }).waitFor({ timeout: 8000 }); }
+  catch { console.log("pin döküm:", p.url(), "|", (await p.locator("h1,h2,[role=alert],p:visible").allTextContents()).map(t=>t.trim()).filter(Boolean).slice(0,8).join(" | ")); throw new Error("Gir yok"); }
+  for (const d of digits) await p.getByRole("button", { name: d, exact: true }).click({ force: true });
+  await p.getByRole("button", { name: "Gir" }).click({ force: true });
 };
 const choose = async (p, combo, option) => { await combo.click(); await p.getByRole("option", { name: option }).click(); };
 const ready = async (mutfak, text) => {
@@ -94,6 +96,8 @@ try {
     await p.fill("input[name=code]", code);
     await p.getByRole("button", { name: "Eşle" }).click();
     await p.waitForURL(`${BASE}/kasa`);
+    await p.waitForTimeout(2500);
+    console.log("pair sonrası URL:", p.url(), "| Gir var:", await p.getByRole("button", { name: "Gir" }).count(), "| görünür butonlar:", (await p.locator("button:visible").allTextContents()).map(t=>t.trim()).filter(Boolean).slice(0,8).join(" | "));
     return p;
   };
   const setRole = async (i, label) => {
@@ -110,8 +114,18 @@ try {
   await kasa.getByRole("heading", { name: "Paket siparişleri" }).waitFor();
   const mutfak = await pair("Mutfak", "MT");
   await setRole(1, "Mutfak ekranı");
-  const kurye = await pair("Kurye tel", "KR", { width: 390, height: 844 });
+  // Rol, eşlemeden ÖNCE set edilir: pad, açılış kataloğunda yalnız kurye personelini görsün (yarış yok).
+  await admin.goto(`${BASE}/yonetim/cihazlar`);
+  await admin.fill("input[name=name]", "Kurye tel");
+  await admin.fill("input[name=receiptPrefix]", "KR");
+  await admin.getByRole("button", { name: "Cihaz ekle" }).click();
+  const kuryeCode = (await admin.getByTestId("pairing-code").innerText()).trim();
   await setRole(2, "Kurye telefonu");
+  const kurye = await page({ width: 390, height: 844 });
+  await kurye.goto(`${BASE}/kasa/eslestir`);
+  await kurye.fill("input[name=code]", kuryeCode);
+  await kurye.getByRole("button", { name: "Eşle" }).click();
+  await kurye.waitForURL(`${BASE}/kasa`);
   await mutfak.reload();
   await mutfak.getByText("Bekleyen sipariş yok.").waitFor();
   await kurye.reload();
@@ -120,7 +134,8 @@ try {
   if (!(await kurye.getByText("PIN hatalı", { exact: false }).isVisible().catch(() => false))) await pin(kurye, "4613");
   await kurye.getByText("PIN hatalı", { exact: false }).waitFor();
   await pin(kurye, "6284");
-  await kurye.getByText("Üzerinizde sipariş yok.").waitFor();
+  try { await kurye.getByText("Üzerinizde sipariş yok.").waitFor({ timeout: 8000 }); }
+  catch { console.log("kurye döküm:", kurye.url(), "|", (await kurye.locator("h1,h2,[role=alert],p:visible,button:visible").allTextContents()).map(t=>t.trim()).filter(Boolean).slice(0,10).join(" | ")); throw new Error("kurye ekranı yok"); }
   step("kasa Paket sekmesi; mutfak ekranı; kurye telefonu yalnız kurye PIN'iyle, vardiya kendiliğinden açık");
 
   // — Kasa: yeni paket —
@@ -130,7 +145,7 @@ try {
   await kasa.getByTestId("customer-status").getByText("Yeni müşteri").waitFor();
   await kasa.getByLabel("Ad soyad").fill("Ayşe Yılmaz");
   await kasa.getByLabel("Adres", { exact: true }).fill("Atatürk Cad. No 12 D 3");
-  await kasa.getByRole("button", { name: /^Merkez/ }).click();
+  await kasa.locator("label").filter({ hasText: "Merkez" }).click();
   await kasa.getByRole("button", { name: "Siparişe geç" }).click();
   await kasa.getByRole("button", { name: /^Lahmacun/ }).click();
   await kasa.getByText("Asgari tutar 100,00 ₺ altında").waitFor();
@@ -156,12 +171,13 @@ try {
   await kurye.getByRole("dialog", { name: "Nasıl ödendi?" }).getByRole("button", { name: "Nakit" }).click();
   await kurye.getByText("Üzerinizde sipariş yok.").waitFor();
   await kurye.getByTestId("courier-cash").getByText("135,00 ₺").waitFor();
-  await kasa.getByRole("region", { name: "Bugün kapanan" }).getByTestId("delivery-card").waitFor({ timeout: 10000 });
+  await kasa.getByRole("region", { name: "Son 12 saatte kapanan" }).getByTestId("delivery-card").waitFor({ timeout: 10000 });
   step("kurye: yola çıktı, nakit teslim; üzerindeki nakit 135; kasada 'Bugün kapanan'");
 
   await kurye.getByRole("button", { name: "Hesap kapat (kasiyer onayı)" }).click();
   await pin(kurye, "6284");
   await kurye.getByText("PIN hatalı", { exact: false }).waitFor();
+  await kurye.getByRole("button", { name: "Hesap kapat (kasiyer onayı)" }).click();
   await pin(kurye, "4613");
   await kurye.fill("input[name=amount]", "135");
   await kurye.getByRole("button", { name: "Gün sonunu kapat" }).click();
@@ -201,7 +217,7 @@ try {
   await ready(mutfak, "Büyük Ayran");
   const hcard = kasa.getByRole("region", { name: "Hazır" }).getByTestId("delivery-card");
   await hcard.getByRole("button", { name: "Kuryeye verildi" }).click();
-  await kasa.getByRole("region", { name: "Bugün kapanan" }).getByTestId("delivery-card").nth(1).waitFor({ timeout: 10000 });
+  await kasa.getByRole("region", { name: "Son 12 saatte kapanan" }).getByTestId("delivery-card").nth(1).waitFor({ timeout: 10000 });
   step("mutfak hazır → Kuryeye verildi → kapandı");
 
   let sales = [];
