@@ -104,7 +104,7 @@ export default async function Hq() {
         title="Zincir merkezi (HQ)"
         desc="Tüm şubeler tek ekranda: bugün ve son 7 günün cirosu, ortalaması, kârı. Şube değiştirmek için üst şube seçicisini kullanın; aylık PDF için konsolide rapora gidin."
       />
-      {stores.length === 0 ? <Empty>Henüz şube yok.</Empty> : (
+      {stores.length === 0 ? <Empty>Merkezi rapor için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline underline-offset-2">bir şube oluşturun</Link>.</Empty> : (
         <>
           <div className="mb-6 grid gap-4 md:grid-cols-2">
             <Panel title="Bugün">

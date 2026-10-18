@@ -90,7 +90,7 @@ export default async function Rezervasyonlar({ searchParams }: { searchParams: P
                   <td className="max-w-[14rem] py-2 pr-4 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
                   <td className="py-2 pr-4 tabular">{r.guests}</td>
                   <td className="py-2 pr-4">{r.tableId ? tableNames.get(r.tableId) ?? "Masa bulunamadı" : "Atanmadı"}</td>
-                  <td className="py-2 pr-4 tabular">{phone ? <a href={`tel:+${phone}`} aria-label={`Ara ${r.name}, ${formatPhone(phone)}`} className="text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{formatPhone(phone)}</a> : r.phone}</td>
+                  <td className="py-2 pr-4 tabular">{phone ? <a href={`tel:+${phone}`} aria-label={`Ara ${r.name}, ${formatPhone(phone)}`} className="inline-flex min-h-11 items-center text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{formatPhone(phone)}</a> : r.phone}</td>
                   <td className="max-w-[20rem] py-2 pr-4 text-muted"><span className="block truncate" title={r.note ?? ""}>{r.note ?? ""}</span></td>
                   <td className="py-2"><ResStatusButtons id={r.id} name={r.name} status={r.status} /></td>
                 </tr>

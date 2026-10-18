@@ -44,7 +44,7 @@ export default async function Receteler({ searchParams }: { searchParams: Promis
       <div className="grid min-w-0 gap-6 xl:grid-cols-[16rem_minmax(0,1fr)]">
         <Card className="min-w-0 space-y-4 p-3">
           <div><h2 className="mb-1 px-3 text-xs font-medium uppercase text-muted">Ürünler</h2>{sellable.map((p) => link(`/yonetim/receteler?urun=${p.id}`, p.name, p.id === urun, has.has(p.id)))}</div>
-          <div><h2 className="mb-1 px-3 text-xs font-medium uppercase text-muted">Ara ürünler</h2>{intermediates.length ? intermediates.map((p) => link(`/yonetim/receteler?urun=${p.id}`, p.name, p.id === urun, has.has(p.id))) : <p className="px-3 text-sm text-muted">Ürünler’de “Kasada satılır: Hayır” + parti miktarı.</p>}</div>
+          <div><h2 className="mb-1 px-3 text-xs font-medium uppercase text-muted">Ara ürünler</h2>{intermediates.length ? intermediates.map((p) => link(`/yonetim/receteler?urun=${p.id}`, p.name, p.id === urun, has.has(p.id))) : <p className="px-3 text-sm text-muted"><Link href="/yonetim/urunler?tur=hammadde" className="font-medium text-brand underline underline-offset-2">Ürünler’de ara ürün oluşturun</Link> (Kasada satılır: Hayır + parti miktarı).</p>}</div>
           {groups.map((g) => (
             <div key={g.id}><h2 className="mb-1 px-3 text-xs font-medium uppercase text-muted">Seçenek · {g.name}</h2>{opts.filter((o) => o.groupId === g.id).map((o) => link(`/yonetim/receteler?secenek=${o.id}`, o.name, o.id === secenek, has.has(o.id)))}</div>
           ))}

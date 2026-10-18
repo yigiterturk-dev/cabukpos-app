@@ -55,7 +55,7 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
         </Card>
       </section>
       {rows.length === 0 ? (
-        <Empty>Puanı olan müşteri yok. Satışlarda puan kazanan müşteriler burada listelenir.</Empty>
+        <Empty>Puanı olan müşteri yok. Satışlarda puan kazanan müşteriler burada listelenir. <Link href="/kasa" className="font-medium text-brand underline underline-offset-2">Puan toplamak için kasada satış yapın</Link>.</Empty>
       ) : (
         <>
         <p className="mb-3 text-sm text-muted">{firstItem}–{lastItem} / {total} puan bakiyesi olan müşteri</p>

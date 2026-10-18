@@ -107,7 +107,7 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
                 {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {addr && <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" aria-label={`Haritada aç: ${o?.name ?? "Paket"}, ${zone?.name ?? o?.address ?? "adres"}`} className={btn}>Harita</a>}
+                {addr && <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" aria-label={`Haritada aç: ${o?.name ?? "Paket"}, ${zone?.name ?? o?.address ?? "adres"}; yeni sekmede açılır`} className={btn}>Harita</a>}
                 {phone && o?.phone && <a href={phone} aria-label={`Ara ${o.name ?? "müşteri"}, ${formatPhone(o.phone)}`} className={btn}>Ara {formatPhone(o.phone)}</a>}
                 {t.delivery.outAt && <button type="button" disabled={busy !== null} onClick={() => { setError(null); setDeliver(t); }} className={`ml-auto ${strong}`}>Teslim ettim</button>}
               </div>

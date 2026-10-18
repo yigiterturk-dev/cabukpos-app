@@ -26,7 +26,7 @@ export default async function Uretim() {
     <>
       <PageHeader title="Üretim" desc="Ara ürün (harç, sos, hamur) üretince hammaddeler düşer, ara ürün stoğa girer; maliyeti hammaddelerden hesaplanır." />
       <Card className="mb-6 p-5">
-        {!storeId ? <Empty>Üretim yapmak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</Empty> : prods.length ? <ProductionForm products={prods.map((p) => ({ value: p.id, label: p.name, yieldLabel: formatQty(p.yieldMilli!, p.unit) + (p.unit === "adet" ? " adet" : "") }))} /> : <Empty>Reçeteli ara ürün yok. Önce Ürünler’de ara ürün, sonra Reçeteler’de reçetesini girin.</Empty>}
+        {!storeId ? <Empty>Üretim yapmak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</Empty> : prods.length ? <ProductionForm products={prods.map((p) => ({ value: p.id, label: p.name, yieldLabel: formatQty(p.yieldMilli!, p.unit) + (p.unit === "adet" ? " adet" : "") }))} /> : <Empty>Reçeteli ara ürün yok. Önce <Link href="/yonetim/urunler?tur=hammadde" className="font-medium text-brand underline underline-offset-2">Ürünler’de ara ürün ekleyin</Link>, sonra <Link href="/yonetim/receteler" className="font-medium text-brand underline underline-offset-2">Reçeteler’de reçetesini girin</Link>.</Empty>}
       </Card>
       {recent.length > 0 && (
         <>

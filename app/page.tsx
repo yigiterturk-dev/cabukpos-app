@@ -107,7 +107,7 @@ export default function Home() {
             <p className="mt-4 text-sm text-muted">
               Randevulu bir hizmet işletmesi misiniz?{" "}
               <a data-cta="cross-sell-yanindapos" href="https://yanindapos.com" target="_blank" rel="noopener noreferrer" className="font-medium text-brand underline underline-offset-4">
-                YanındaPOS’a bakın →
+                YanındaPOS’a bakın →<span className="sr-only"> (yeni sekmede açılır)</span>
               </a>
             </p>
             <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-2">

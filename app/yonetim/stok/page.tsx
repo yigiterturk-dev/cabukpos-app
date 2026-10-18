@@ -68,7 +68,7 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
           </Panel>
         ) : (
           <Panel title="Sayım ve fire">
-            <p className="text-sm text-muted">{storeId ? <>Listeden bir ürünün <b className="text-ink-2">Hareket</b> bağlantısına basın. Mal girişi: <Link href="/yonetim/alislar" className="font-medium text-brand hover:underline">Alışlar</Link>. Stok takibini ürün formundan açın.</> : <>Stok takibi için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</>}</p>
+            <p className="text-sm text-muted">{storeId ? <>Listeden bir ürünün <b className="text-ink-2">Hareket</b> bağlantısına basın. Mal girişi: <Link href="/yonetim/alislar" className="font-medium text-brand hover:underline">Alışlar</Link>. <Link href="/yonetim/urunler" className="font-medium text-brand underline underline-offset-2">Ürünler’de stok takibini açın</Link>.</> : <>Stok takibi için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</>}</p>
             <div className="mt-4 rounded-[10px] bg-surface-2 p-3">
               <div className="text-xs text-muted">Stok değeri</div>
               <div className="text-xl font-semibold tabular" data-testid="stock-value">{money(value)}</div>

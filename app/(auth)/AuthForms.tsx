@@ -43,7 +43,7 @@ export function SignupForm() {
       <Err s={displayState} f="email" />
       <Field label="Şifre" hint="10–200 karakter, harf ve rakam"><PasswordInput name="password" disabled={pending} autoComplete="new-password" minLength={10} maxLength={200} required aria-invalid={displayState.field === "password" && !!displayState.error || undefined} aria-describedby={displayState.field === "password" && displayState.error ? "signup-password-error" : undefined} /></Field>
       <Err s={displayState} f="password" />
-      <p className="text-xs text-muted">Hesap oluşturarak <Link href="/yasal/kullanim-kosullari" target="_blank" className="underline">Kullanım koşulları</Link>nı kabul etmiş ve <Link href="/yasal/kvkk" target="_blank" className="underline">KVKK aydınlatma metni</Link>ni okumuş olursunuz.</p>
+      <p className="text-xs text-muted">Hesap oluşturarak <Link href="/yasal/kullanim-kosullari" target="_blank" className="underline">Kullanım koşulları<span className="sr-only"> (yeni sekmede açılır)</span></Link>nı kabul etmiş ve <Link href="/yasal/kvkk" target="_blank" className="underline">KVKK aydınlatma metni<span className="sr-only"> (yeni sekmede açılır)</span></Link>ni okumuş olursunuz.</p>
       <Button type="submit" disabled={pending} size="lg" className="w-full">{pending ? "Oluşturuluyor…" : "Hesap oluştur"}</Button>
       {pending && <p className="sr-only" role="status" aria-live="polite">İşletme hesabı oluşturuluyor.</p>}
       <p className="text-center text-sm text-muted">Hesabınız var mı? <Link href="/giris" className="font-medium text-brand hover:underline">Giriş yapın</Link></p>

@@ -41,7 +41,7 @@ export default async function Alislar({ searchParams }: { searchParams: Promise<
   const firstItem = total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const lastItem = Math.min(currentPage * PAGE_SIZE, total);
   const purchaseContent = !prods.length
-    ? <Empty>Stok takipli ürün yok. Ürünler’de stok takibini açın ya da hammadde ekleyin.</Empty>
+    ? <Empty>Stok takipli ürün yok. <Link href="/yonetim/urunler" className="font-medium text-brand underline underline-offset-2">Ürünler’e gidip stok takibini açın</Link> ya da <Link href="/yonetim/urunler?tur=hammadde" className="font-medium text-brand underline underline-offset-2">hammadde ekleyin</Link>.</Empty>
     : !storeId
       ? <p className="text-sm text-muted" role="status">Alış kaydı için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline underline-offset-2">bir şube oluşturun</Link>.</p>
       : <PurchaseForm products={prods.map((p) => ({ value: p.id, label: p.name, unit: stockUnitOf(p) }))} suppliers={sups} today={today()} currency={await tenantCurrency(a.tenantId)} />;

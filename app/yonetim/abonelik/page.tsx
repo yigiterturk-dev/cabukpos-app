@@ -96,7 +96,7 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
               )}
               {provider && bd ? (
                 <CheckoutForm action={startCheckout} label={`${p.label} öde`} period={p.key} phoneRequired={provider.name === "paytr"}>
-                  <p className="mt-2 break-words text-xs text-muted">Ödeyerek <Link href="/yasal/mesafeli-satis" target="_blank" className="underline">Mesafeli satış sözleşmesi</Link>ni ve <Link href="/yasal/iade-iptal" target="_blank" className="underline">İptal ve iade</Link> koşullarını kabul edersiniz. Otomatik yenileme yoktur.</p>
+                  <p className="mt-2 break-words text-xs text-muted">Ödeyerek <Link href="/yasal/mesafeli-satis" target="_blank" className="underline">Mesafeli satış sözleşmesi<span className="sr-only"> (yeni sekmede açılır)</span></Link>ni ve <Link href="/yasal/iade-iptal" target="_blank" className="underline">İptal ve iade<span className="sr-only"> (yeni sekmede açılır)</span></Link> koşullarını kabul edersiniz. Otomatik yenileme yoktur.</p>
                 </CheckoutForm>
               ) : <p className="text-sm text-muted">Online ödeme yakında.{contact ? ` Ödeme için: ${contact}` : ""}</p>}
             </Card>

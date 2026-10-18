@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { supplierStatement, suppliersWithBalance } from "@/lib/admin/purchase";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 import { currencySymbol } from "@/lib/core/money";
+import { phoneHref } from "@/lib/core/delivery";
 import { PaymentForm, SupplierForm } from "@/components/admin/PurchaseForms";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { Card, Empty, PageHeader, Panel, SplitView } from "@/components/ui";
@@ -11,7 +12,6 @@ import { Card, Empty, PageHeader, Panel, SplitView } from "@/components/ui";
 export const dynamic = "force-dynamic";
 const today = () => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
 const day = (d: string) => d.split("-").reverse().join(".");
-const telHref = (phone: string) => "tel:" + (phone.trim().startsWith("+") ? "+" : "") + [...phone].filter((char) => char >= "0" && char <= "9").join("");
 export default async function Tedarikciler({ searchParams }: { searchParams: Promise<{ id?: string; duzenle?: string }> }) {
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
@@ -32,7 +32,7 @@ export default async function Tedarikciler({ searchParams }: { searchParams: Pro
         panel={sel && st ? (
         <Card className="p-5">
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-semibold">{sel.name}{sel.phone && <span className="ml-2 text-sm font-normal text-muted">{sel.phone}</span>}</h2>
+            <h2 className="font-semibold">{sel.name}{sel.phone && (phoneHref(sel.phone) ? <a href={phoneHref(sel.phone)!} aria-label={`Ara ${sel.name}, ${sel.phone}`} className="ml-2 inline-flex min-h-11 items-center text-sm font-normal text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{sel.phone}</a> : <span className="ml-2 text-sm font-normal text-muted">{sel.phone}</span>)}</h2>
             <div className="flex flex-wrap items-center gap-1 text-sm">Bakiye <b className={`tabular ${st.balance > 0 ? "text-warn" : st.balance < 0 ? "text-ok" : ""}`} data-testid="supplier-balance">{bal(st.balance)}</b><span aria-hidden>·</span><Link href={`/yonetim/tedarikciler?duzenle=${sel.id}`} className="inline-flex min-h-11 items-center rounded-lg px-2.5 underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">düzenle</Link><span aria-hidden>·</span><Link href="/yonetim/tedarikciler" className="inline-flex min-h-11 items-center rounded-lg px-2.5 underline outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">kapat</Link></div>
           </div>
           <PaymentForm supplierId={sel.id} today={today()} currencyUnit={currencyUnit} />
@@ -62,15 +62,18 @@ export default async function Tedarikciler({ searchParams }: { searchParams: Pro
         <>
         <Card className="overflow-hidden lg:hidden">
           <ul aria-label="Tedarikçi listesi" className="divide-y divide-line">
-            {sups.map((s) => (
+            {sups.map((s) => {
+              const tel = s.phone ? phoneHref(s.phone) : null;
+              return (
               <li key={s.id} className={`space-y-3 p-4 ${s.id === id ? "bg-brand-soft/45" : ""}`}>
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0"><p className="break-words font-medium">{s.name}</p>{s.phone && <a href={telHref(s.phone)} aria-label={`Ara ${s.name}, ${s.phone}`} className="mt-1 inline-flex min-h-11 items-center text-sm text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{s.phone}</a>}</div>
+                  <div className="min-w-0"><p className="break-words font-medium">{s.name}</p>{s.phone && (tel ? <a href={tel} aria-label={`Ara ${s.name}, ${s.phone}`} className="mt-1 inline-flex min-h-11 items-center text-sm text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{s.phone}</a> : <span className="mt-1 block text-sm text-muted">{s.phone}</span>)}</div>
                   <p className={`shrink-0 text-right text-sm ${s.balance > 0 ? "font-medium text-warn" : s.balance < 0 ? "font-medium text-ok" : "text-muted"}`}><span className="sr-only">Bakiye: </span>{bal(s.balance)}</p>
                 </div>
                 <div className="border-t border-line pt-2"><Link href={`/yonetim/tedarikciler?id=${s.id}`} className="inline-flex min-h-11 items-center rounded-lg px-3 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Döküm</Link></div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </Card>
         <Card className="hidden p-0 lg:block">
@@ -78,14 +81,17 @@ export default async function Tedarikciler({ searchParams }: { searchParams: Pro
           <table aria-label="Tedarikçi listesi" className="w-full min-w-[600px] text-sm">
             <thead className="border-b border-line bg-surface-2 text-left text-xs text-muted"><tr><th scope="col" className="px-4 py-2.5 font-medium">Tedarikçi</th><th scope="col" className="px-4 py-2.5 font-medium">Telefon</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Bakiye</th><th scope="col" className="sticky right-0 z-20 bg-surface-2 px-4 py-2.5 text-right font-medium shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.45)]">Aksiyonlar</th></tr></thead>
             <tbody className="divide-y divide-line">
-              {sups.map((s) => (
+              {sups.map((s) => {
+                const tel = s.phone ? phoneHref(s.phone) : null;
+                return (
                 <tr key={s.id} data-testid={`supplier-${s.name}`} className={`${s.id === id ? "bg-brand-soft/45" : "hover:bg-surface-2"}`}>
                   <td className="max-w-[16rem] px-4 py-2.5 font-medium"><span className="block truncate" title={s.name}>{s.name}</span></td>
-                  <td className="px-4 py-2.5 text-muted">{s.phone ?? ""}</td>
+                  <td className="px-4 py-2.5">{s.phone && (tel ? <a href={tel} aria-label={`Ara ${s.name}, ${s.phone}`} className="inline-flex min-h-11 items-center text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{s.phone}</a> : <span className="text-muted">{s.phone}</span>)}</td>
                   <td className={`tabular px-4 py-2.5 text-right ${s.balance > 0 ? "font-medium text-warn" : s.balance < 0 ? "font-medium text-ok" : "text-muted"}`}>{bal(s.balance)}</td>
                   <td className={`sticky right-0 px-4 py-2.5 text-right shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.35)] ${s.id === id ? "bg-brand-soft/90" : "bg-surface"}`}><Link href={`/yonetim/tedarikciler?id=${s.id}`} className="inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Döküm</Link></td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           </HorizontalScrollRegion>
