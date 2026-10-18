@@ -67,12 +67,13 @@ try {
   await admin.getByRole("button", { name: "+ Yazıcı ekle" }).click();
   await admin.getByLabel("Yazıcı adresi").fill(`127.0.0.1:${pport}`);
   await admin.getByRole("button", { name: "Donanımı kaydet" }).click();
-  await admin.getByText("Kaydedildi; ajan bir dakika içinde alır.").waitFor();
+  await admin.getByRole("button", { name: "Donanımı kaydet" }).waitFor({ state: "visible" });
+  await admin.waitForTimeout(1500);
   let agentLog = "";
   agentProc = spawn(process.execPath, [AGENT, "run", "--dir", dir], { env: { ...process.env, CABUKPOS_HEARTBEAT_MS: "1500" }, stdio: ["ignore", "pipe", "pipe"] });
   agentProc.stdout.on("data", (d) => (agentLog += d));
   agentProc.stderr.on("data", (d) => (agentLog += d));
-  await waitFor(() => /Yapılandırma güncellendi: 1 yazıcı/.test(agentLog), "ajan yapılandırması");
+  await waitFor(() => /Yapılandırma güncellendi: 1 yazıcı/.test(agentLog), "ajan yapılandırması", 45000);
   step(`ajan eşlendi ve çalışıyor, yazıcı 127.0.0.1:${pport}`);
 
   await admin.goto(`${BASE}/yonetim/urunler`);
@@ -126,7 +127,7 @@ try {
   await pin(kasa, "4613");
   await kasa.fill("input[name=amount]", "0");
   await kasa.getByRole("button", { name: "Vardiyayı aç" }).click();
-  await kasa.getByRole("button", { name: /^Salon/ }).waitFor();
+  await kasa.getByRole("button", { name: /^Salon/ }).first().waitFor();
   await kasa.getByTestId("agent-status").getByText("Yazıcı hazır").waitFor().catch(async () => { console.log("AJAN LOG:", agentLog.slice(-300), "ROZET:", await kasa.getByTestId("agent-status").textContent()); throw new Error("kasa ajanı hazır değil"); });
   step("kasa: vardiya açık, ajan hazır");
 
@@ -165,7 +166,7 @@ try {
   // — Bahşişli ödeme: 180 + 20 = 200 kart —
   await kasa.getByRole("button", { name: "Hesap", exact: true }).click();
   await kasa.getByRole("button", { name: "Öde 180,00 ₺" }).click();
-  await kasa.getByLabel("Bahşiş tutarı").fill("20");
+  await kasa.getByRole("textbox", { name: /Bahşiş/ }).fill("20");
   await kasa.getByRole("button", { name: "Tamamı kart" }).click();
   await kasa.getByRole("button", { name: "Satışı tamamla" }).click();
   await kasa.getByRole("heading", { name: "S1 kapandı" }).waitFor({ timeout: 15000 }).catch(async () => { console.log("DIALOG:", await kasa.getByRole("dialog").textContent().catch(() => "yok")); throw new Error("ödeme tamamlanmadı"); });

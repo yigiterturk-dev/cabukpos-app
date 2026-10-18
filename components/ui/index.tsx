@@ -125,7 +125,7 @@ export function SplitView({ list, panel, wide = false }: { list: ReactNode; pane
   return (
     <div className={`grid gap-6 xl:items-start ${wide ? "xl:grid-cols-[minmax(0,1fr)_440px]" : "xl:grid-cols-[minmax(0,1fr)_380px]"}`}>
       <div className="order-2 min-w-0 xl:order-1">{list}</div>
-      <aside className="order-1 xl:sticky xl:top-8 xl:order-2 xl:max-h-[calc(100dvh-4rem)] xl:overflow-y-auto xl:rounded-[14px]">{panel}</aside>
+      <aside className="order-1 min-w-0 xl:sticky xl:top-8 xl:order-2 xl:max-h-[calc(100dvh-4rem)] xl:overflow-y-auto xl:rounded-[14px]">{panel}</aside>
     </div>
   );
 }

@@ -58,7 +58,7 @@ try {
   await admin.fill("input[name=price]", "45");
   await admin.locator("label").filter({ hasText: /^%10$/ }).click();
   await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
-  await admin.getByRole("cell", { name: "Mobil Tost", exact: true }).waitFor();
+  await admin.getByText("Mobil Tost").locator("visible=true").first().waitFor();
   step("ürün eklendi");
 
   // 4) Kiosk/QR bağla

@@ -237,17 +237,28 @@ try {
   for (let i = 0; i < 25 && !(await togg.isChecked()); i++) await new Promise((r) => setTimeout(r, 200));
   if (!(await togg.isChecked())) throw new Error("otomatik kabul togglesi açılmadı");
   step("otomatik kabul togglesi açıldı");
+  // Kaydın DB'ye düşmesini bekle (webhook connection SELECT'i eski autoAccept'i okumasın)
+  let upd = 0;
+  for (let i = 0; i < 50 && !upd; i++) { [{ n: upd }] = await sql`select count(*)::int n from audit_log where action = 'platform.update' and created_at > now() - interval '1 minute'`; if (!upd) await new Promise((r) => setTimeout(r, 200)); }
 
   const ext2 = `E2E-A-${stamp}`;
   const body2 = JSON.stringify({ orders: [{ externalId: ext2, customer: { name: "Deniz Ak", phone: "05330001122" }, address: "İstiklal Cad. 9", payIntent: "online",
     lines: [{ code: "LAH", name: "Lahmacun (oto)", unitPrice: 6000, qtyMilli: 2000, note: null }] }] });
   const sig2 = createHmac("sha256", secret).update(body2).digest("hex");
   const r2 = await fetch(hook, { method: "POST", headers: { "content-type": "application/json", "x-signature": sig2 }, body: body2 });
-  if (r2.status !== 200) throw new Error(`oto kabul webhook ${r2.status}`);
+  if (r2.status !== 200) throw new Error(`oto kabul webhook ${r2.status}`); console.log("webhook2:", JSON.stringify(await r2.json()));
   if (await kasa.getByTestId("waiting-count").count()) throw new Error("oto kabullü sipariş onay bekleyenlere düştü");
   const otoKart = kasa.getByRole("region", { name: "Hazırlanıyor" }).getByTestId("delivery-card");
   try { await otoKart.first().waitFor({ timeout: 12000 }); }
-  catch { await kasa.reload(); await otoKart.first().waitFor({ timeout: 15000 }); }
+  catch {
+    console.log("PANO-1 regions:", (await kasa.getByRole("region").allTextContents()).map((t) => t.trim().replace(/\s+/g, " ").slice(0, 60)).join(" || ") || "(yok)");
+    if (await kasa.getByRole("button", { name: "Gir" }).count()) {
+      await pin(kasa, "4613");
+      await kasa.getByRole("button", { name: "Paket", exact: true }).click();
+      await kasa.getByRole("region", { name: "Hazırlanıyor" }).waitFor({ timeout: 10000 });
+    }
+    await otoKart.first().waitFor({ timeout: 10000 });
+  }
   await mutfak.locator("[data-ticket]:not([data-status=hazir])", { hasText: "Lahmacun" }).waitFor({ timeout: 15000 }); // eşlenen satır bilette ürün adıyla görünür
   let audit2 = 0;
   for (let i = 0; i < 50 && !audit2; i++) {
