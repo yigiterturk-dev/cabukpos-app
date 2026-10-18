@@ -42,8 +42,8 @@ try {
   await admin.goto(`${BASE}/yonetim/urunler`);
   const raw = async (name, extra) => {
     await admin.fill("input[name=name]", name);
-    await admin.getByRole("button", { name: "Hayır (hammadde / ara ürün)" }).click();
-    await admin.getByRole("button", { name: "Kg", exact: true }).click();
+    await admin.locator("label").filter({ hasText: "Hayır (hammadde" }).click();
+    await admin.locator("label").filter({ hasText: "Kg" }).click();
     await extra?.();
     await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
     await admin.getByText("Kaydedildi.").waitFor();

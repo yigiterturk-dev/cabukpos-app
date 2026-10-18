@@ -94,7 +94,7 @@ try {
   await admin.getByText("Çevrimdışı").first().waitFor();
   await admin.getByRole("button", { name: "+ Yazıcı ekle" }).click();
   await admin.getByLabel("Yazıcı adresi").fill(`127.0.0.1:${pport}`);
-  await admin.getByRole("button", { name: "Ağ (IP)" }).click();
+  await admin.locator("label").filter({ hasText: "Ağ (IP" }).click();
   await admin.getByLabel("Terazi IP").fill("127.0.0.1");
   await admin.getByLabel("Terazi port").fill(String(sport));
   await admin.getByRole("button", { name: "Donanımı kaydet" }).click();
