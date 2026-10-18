@@ -26,7 +26,7 @@ try {
   const a = await newPage();
   await a.goto(`${BASE}/kayit`);
   await a.fill("input[name=businessName]", `E2E Şifre ${stamp}`);
-  await a.getByRole("button", { name: "Market" }).click();
+  await a.getByText("Market", { exact: true }).click();
   await a.fill("input[name=name]", "Yiğit Test");
   await a.fill("input[name=email]", email);
   await a.fill("input[name=password]", "Cabukpos2026x");

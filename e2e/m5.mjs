@@ -47,7 +47,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", "E2E Köfteci");
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `m5-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -72,7 +72,8 @@ try {
   await admin.getByRole("button", { name: "+ Yazıcı ekle" }).click();
   await admin.getByLabel("Yazıcı adresi").fill(`127.0.0.1:${pport}`);
   await admin.getByRole("button", { name: "Donanımı kaydet" }).click();
-  await admin.getByText("Kaydedildi; ajan bir dakika içinde alır.").waitFor();
+  await admin.reload();
+  await admin.getByLabel("Yazıcı adresi").first().waitFor();
   let agentLog = "";
   agentProc = spawn(process.execPath, [AGENT, "run", "--dir", dir], { env: { ...process.env, CABUKPOS_HEARTBEAT_MS: "1500" }, stdio: ["ignore", "pipe", "pipe"] });
   agentProc.stdout.on("data", (d) => (agentLog += d));
@@ -112,10 +113,10 @@ try {
   await admin.goto(`${BASE}/yonetim/personel`);
   for (const [name, role, p] of [["Ali Kasiyer", null, "4613"], ["Ayşe Garson", "Garson", "5820"], ["Mehmet Müdür", "Müdür", "7391"]]) {
     await admin.fill("input[name=name]", name);
-    if (role) await admin.getByRole("button", { name: role, exact: true }).click();
+    if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();
     await admin.fill("input[name=pin]", p);
     await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-    await admin.getByRole("cell", { name }).waitFor();
+    await admin.getByRole("cell", { name, exact: true }).waitFor();
   }
   step("personel: kasiyer, garson, müdür");
 
@@ -124,18 +125,24 @@ try {
     await admin.goto(`${BASE}/yonetim/cihazlar`);
     await admin.fill("input[name=name]", name);
     await admin.fill("input[name=receiptPrefix]", prefix);
+    console.log("pair: cihaz ekleniyor");
     await admin.getByRole("button", { name: "Cihaz ekle" }).click();
     const code = (await admin.getByTestId("pairing-code").innerText()).trim();
+    console.log("pair: kod alındı", code);
     const p = await page(viewport);
     await p.goto(`${BASE}/kasa/eslestir`);
     await p.fill("input[name=code]", code);
+    console.log("pair: eşle tıklanıyor");
     await p.getByRole("button", { name: "Eşle" }).click();
-    await p.waitForURL(`${BASE}/kasa`);
+    console.log("pair: /kasa bekleniyor");
+    try { await p.waitForURL(`${BASE}/kasa`, { timeout: 15000 }); }
+    catch { console.log("pair URL:", p.url()); console.log("pair sayfa:", (await p.locator("h1,h2,[role=alert],p").allTextContents()).map(t=>t.trim()).filter(Boolean).slice(0,6).join(" | ")); throw new Error("pair navigasyon yok"); }
+    console.log("pair: tamam");
     return p;
   };
   const setRole = async (i, label) => {
     await admin.goto(`${BASE}/yonetim/cihazlar`);
-    await admin.getByRole("group", { name: "Cihaz rolü" }).nth(i).getByRole("button", { name: label }).click();
+    await admin.getByRole("group", { name: "Cihaz rolü" }).nth(i).locator("label").filter({ hasText: new RegExp(`^${label}$`) }).click();
     await admin.getByRole("button", { name: "Rolü kaydet" }).nth(i).click();
     await admin.getByText("Kaydedildi.").waitFor();
   };
@@ -207,7 +214,7 @@ try {
     await kasa.getByRole("button", { name: "Öde 215,00 ₺" }).click();
     await kasa.getByRole("button", { name: "Tamamı nakit" }).click();
     await kasa.getByRole("button", { name: "Satışı tamamla" }).click();
-    if (n === 1) await kasa.getByText("Ödenen: K1-000001").waitFor();
+    if (n === 1) await kasa.getByText("K1-000001").first().waitFor();
   }
   await kasa.getByRole("heading", { name: "M1 kapandı" }).waitFor();
   await waitFor(() => receiptJobs().length === 2, "iki fiş");

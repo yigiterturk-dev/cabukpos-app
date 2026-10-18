@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeSearchText } from "@/lib/core/search";
 import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
 
@@ -85,7 +85,9 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 /** Sidebar menüsü: arama ile filtrele + gruplu liste. Masaüstü ve mobil çekmecede aynı. */
-export function Nav({ vertical, onNavigate }: { vertical: "restoran" | "market"; onNavigate?: () => void }) {
+export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "restoran" | "market"; onNavigate?: () => void }) {
+  const drawerClose = useContext(DrawerCloseContext);
+  const onNavigate = onNavigateProp ?? drawerClose ?? undefined;
   const path = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -173,8 +175,12 @@ export function Nav({ vertical, onNavigate }: { vertical: "restoran" | "market";
   );
 }
 
-/** Mobil: üst çubuktaki düğme + soldan çekmece. Rota değişince kapanır. */
-export function MobileNav({ children }: { children: (onNavigate: () => void) => React.ReactNode }) {
+/** Mobil: üst çubuktaki düğme + soldan çekmece. Rota değişince kapanır.
+ *  children düz elemandır (RSC sınırında fonksiyon children serileştirilemez — E2E provasında yakalandı);
+ *  çekmece kapatma çağrısı context ile iner, Nav kendi kendine alır. */
+const DrawerCloseContext = createContext<(() => void) | null>(null);
+
+export function MobileNav({ children }: { children: React.ReactNode }) {
   // Açıldığı rotayı tutar: rota değişince kendiliğinden kapalı sayılır (efektte setState yok).
   const path = usePathname();
   const [openAt, setOpenAt] = useState<string | null>(null);
@@ -252,7 +258,9 @@ export function MobileNav({ children }: { children: (onNavigate: () => void) => 
             <button ref={closeRef} type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-11 place-items-center rounded-[10px] text-cream-muted outline-none hover:bg-surface/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">
               <X aria-hidden className="size-5" />
             </button>
-            {children(close)}
+            <DrawerCloseContext.Provider value={close}>
+              {children}
+            </DrawerCloseContext.Provider>
           </div>
         </div>
       )}

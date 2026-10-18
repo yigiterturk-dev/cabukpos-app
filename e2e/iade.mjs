@@ -45,7 +45,7 @@ const localNumber = (kasa, receiptNo) => kasa.evaluate((no) => new Promise((res)
 }), receiptNo);
 const refundOne = async (kasa, no, product) => {
   await kasa.getByRole("button", { name: "İade" }).click();
-  await kasa.getByLabel("İade fiş no").fill(no);
+  await kasa.getByLabel("Fiş numarası").fill(no);
   await kasa.getByRole("button", { name: "Fişi bul" }).click();
   await kasa.getByRole("button", { name: `${product} iade artır` }).click();
   await kasa.getByRole("button", { name: "İadeyi onayla" }).click();
@@ -57,7 +57,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `iade-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -68,20 +68,20 @@ try {
   for (const [name, price] of [["Adana", "300"], ["Ayran", "50"]]) {
     await admin.fill("input[name=name]", name);
     await admin.fill("input[name=price]", price);
-    await admin.getByRole("button", { name: "%10", exact: true }).click();
+    await admin.locator("label").filter({ hasText: /^%10$/ }).click();
     await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
     await admin.getByRole("cell", { name, exact: true }).waitFor();
   }
   await admin.goto(`${BASE}/yonetim/personel`);
   for (const [name, role, p] of [["Ayşe Kasiyer", null, "5820"], ["Mehmet Müdür", "Müdür", "7391"]]) {
     await admin.fill("input[name=name]", name);
-    if (role) await admin.getByRole("button", { name: role, exact: true }).click();
+    if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();
     await admin.fill("input[name=pin]", p);
     await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-    await admin.getByRole("cell", { name }).waitFor();
+    await admin.getByRole("cell", { name, exact: true }).waitFor();
   }
   await admin.goto(`${BASE}/yonetim/mali`);
-  await admin.getByRole("group", { name: "Kasa (hızlı satış)" }).getByRole("button", { name: "e-Arşiv" }).click();
+  await admin.getByRole("group", { name: "Kasa (hızlı satış)" }).locator("label").filter({ hasText: "e-Arşiv" }).click();
   await admin.fill("input[name=taxId]", "1234567890");
   await admin.fill("input[name=taxOffice]", "Kadıköy");
   await admin.fill("textarea[name=address]", "Moda Cd. 1, Kadıköy / İstanbul");
@@ -147,7 +147,7 @@ try {
   await admin.goto(`${BASE}/yonetim/raporlar?sekme=inceleme`);
   const bi = admin.getByTestId("buyer-invoices");
   await bi.getByText("Alıcının iade faturası bekleniyor (1)").waitFor();
-  await bi.getByLabel("Alıcının fatura no").fill("ACM2026000000042");
+  await bi.getByLabel("Alıcının fatura no").locator("visible=true").last().fill("ACM2026000000042");
   await bi.getByRole("button", { name: "Kaydet" }).click();
   await admin.getByTestId("buyer-invoices").waitFor({ state: "detached" });
   const [r3] = await refundsOf("K1-000003");
@@ -159,7 +159,7 @@ try {
   await admin.getByRole("link", { name: "Alıcı iade faturası ACM2026000000042" }).waitFor();
   await admin.getByRole("link", { name: "İade tutanağı" }).click();
   const a4 = admin.getByTestId("refund-a4");
-  for (const t of ["İADE TUTANAĞI", d1.number, "Ayran", "Müşteri imza"]) await a4.getByText(t, { exact: false }).first().waitFor();
+  for (const t of ["İADE TUTANAĞI", d1.number, "Ayran", "Müşteri imza"]) await a4.getByText(t, { exact: false }).locator("visible=true").first().waitFor();
   step("Mali → Belgeler: tutanak ve alıcı faturası bağlantıları, A4 tutanak");
 
   if (errors.length) throw new Error(`sayfa hataları: ${errors.join(" | ")}`);

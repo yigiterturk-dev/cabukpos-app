@@ -28,7 +28,7 @@ export function AreaForm() {
   }, [state.error, state.field, state.savedAt]);
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="flex flex-wrap items-start gap-2">
-      <div><Field label="Bölge adı" hint="1–40 karakter"><Input key={state.savedAt ?? 0} name="name" disabled={pending} maxLength={40} pattern=".*\\S.*" placeholder="Ör. Salon, Bahçe" className="w-64" required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
+      <div><Field label="Bölge adı" hint="1–40 karakter"><Input key={state.savedAt ?? 0} name="name" disabled={pending} maxLength={40} pattern=".*\S.*" placeholder="Ör. Salon, Bahçe" className="w-64" required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
       <Button type="submit" disabled={pending}>{pending ? "Ekleniyor…" : "Bölge ekle"}</Button>
       {pending && <span className="sr-only" role="status" aria-live="polite">Salon bölgesi ekleniyor.</span>}
     </form>
@@ -60,7 +60,7 @@ export function SalonSetup() {
       <p className="text-sm text-muted">Bölümlerini yaz, masa sayısını gir — masa planı kasaya ve garson tabletine otomatik düşer. Masa adları bölümün baş harfine göre verilir (S1…, B1…).</p>
       {rows.map((r, i) => (
         <div key={i} className="flex items-start gap-2">
-          <div className="min-w-0 flex-1"><Field label="Bölüm adı"><Input name="zone" disabled={pending} value={r.name} onChange={(e) => duzenle(i, { name: e.target.value })} placeholder="Salon, Bahçe, Teras…" aria-label={`${i + 1}. bölge adı`} maxLength={40} pattern=".*\\S.*" required {...errorProps(displayState, "zone")} /></Field></div>
+          <div className="min-w-0 flex-1"><Field label="Bölüm adı"><Input name="zone" disabled={pending} value={r.name} onChange={(e) => duzenle(i, { name: e.target.value })} placeholder="Salon, Bahçe, Teras…" aria-label={`${i + 1}. bölge adı`} maxLength={40} pattern=".*\S.*" required {...errorProps(displayState, "zone")} /></Field></div>
           <div className="w-28 shrink-0"><Field label="Masa sayısı" hint="1–80"><Input name="count" type="number" disabled={pending} value={r.count} onChange={(e) => duzenle(i, { count: e.target.value.replace(/\D/g, "") })} inputMode="numeric" min={1} max={80} step={1} aria-label={`${i + 1}. bölge masa sayısı (1–80)`} {...errorProps(displayState, "count")} /></Field></div>
           <button type="button" disabled={pending} onClick={() => { setEdited(true); setRows((rs) => rs.filter((_, k) => k !== i)); requestAnimationFrame(() => { const zones = formRef.current?.querySelectorAll<HTMLInputElement>('input[name="zone"]'); (zones?.[Math.min(i, zones.length - 1)] ?? addZoneRef.current)?.focus(); }); }} aria-label={`${r.name} bölümünü kaldır`}
             className={`flex size-11 items-center justify-center rounded-lg border border-line text-muted outline-none hover:text-bad focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${rows.length === 1 ? "invisible" : ""}`}>×</button>
@@ -98,7 +98,7 @@ export function TablesForm({ areaId, areaName }: { areaId: string; areaName: str
   }, [state.error, state.field, state.savedAt]);
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="flex flex-wrap items-start gap-2">
-      <div><Input key={state.savedAt ?? 0} name="names" disabled={pending} placeholder="M1-M12 ya da Bahçe 1, Bahçe 2" aria-label={`${areaName} masa adları`} aria-invalid={displayState.field === "names" && !!displayState.error || undefined} aria-describedby={displayState.field === "names" && displayState.error ? `${hintId} ${errorId}` : hintId} className="w-72" pattern=".*\\S.*" required /><span id={hintId} className="mt-1 block text-xs text-muted">Virgülle ayırın veya M1-M12 gibi aralık yazın; işlem başına en çok 200 masa, ad başına 20 karakter.</span><Err s={displayState} f="names" id={errorId} /><Err s={displayState} /></div>
+      <div><Input key={state.savedAt ?? 0} name="names" disabled={pending} placeholder="M1-M12 ya da Bahçe 1, Bahçe 2" aria-label={`${areaName} masa adları`} aria-invalid={displayState.field === "names" && !!displayState.error || undefined} aria-describedby={displayState.field === "names" && displayState.error ? `${hintId} ${errorId}` : hintId} className="w-72" pattern=".*\S.*" required /><span id={hintId} className="mt-1 block text-xs text-muted">Virgülle ayırın veya M1-M12 gibi aralık yazın; işlem başına en çok 200 masa, ad başına 20 karakter.</span><Err s={displayState} f="names" id={errorId} /><Err s={displayState} /></div>
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Ekleniyor…" : "Masa ekle"}</Button>
       {pending && <span className="sr-only" role="status" aria-live="polite">Masalar ekleniyor.</span>}
     </form>
@@ -129,7 +129,7 @@ export function StationForm({ initial, printers }: { initial?: { id: string; nam
   }, [isEditing, pending, state.error, state.field, state.savedAt]);
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="flex flex-wrap items-end gap-3">
-        <div><Field label="İstasyon adı" hint="1–40 karakter"><Input key={initial?.id ?? state.savedAt ?? 0} name="name" maxLength={40} pattern=".*\\S.*" disabled={pending} defaultValue={initial?.name} placeholder="Izgara" required aria-invalid={displayState.field === "name" && !!displayState.error || undefined} aria-describedby={displayState.field === "name" && displayState.error ? nameErrorId : undefined} /></Field><Err s={displayState} f="name" id={nameErrorId} /></div>
+        <div><Field label="İstasyon adı" hint="1–40 karakter"><Input key={initial?.id ?? state.savedAt ?? 0} name="name" maxLength={40} pattern=".*\S.*" disabled={pending} defaultValue={initial?.name} placeholder="Izgara" required aria-invalid={displayState.field === "name" && !!displayState.error || undefined} aria-describedby={displayState.field === "name" && displayState.error ? nameErrorId : undefined} /></Field><Err s={displayState} f="name" id={nameErrorId} /></div>
       <div className="w-56">
         <Field label="Mutfak yazıcısı"><Select key={initial?.id ?? state.savedAt ?? 0} disabled={pending} name="printer" options={[{ value: "", label: "Yazıcı yok (yalnız ekran)" }, ...printers]} defaultValue={initial?.printer ?? ""} placeholder="Yazıcı yok (yalnız ekran)" onChange={() => setEdited(true)} aria-invalid={displayState.field === "printer" && !!displayState.error || undefined} aria-describedby={displayState.field === "printer" && displayState.error ? printerErrorId : undefined} /></Field>
         <Err s={displayState} f="printer" id={printerErrorId} />
@@ -209,7 +209,7 @@ export function OptionGroupForm({ initial, currencyUnit }: { initial?: GroupInit
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="space-y-3">
       <div key={initial?.id ?? state.savedAt ?? 0} className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] lg:grid-cols-2">
-        <div className="lg:col-span-2"><Field label="Grup adı" hint="1–40 karakter"><Input name="name" maxLength={40} pattern=".*\\S.*" disabled={pending} defaultValue={initial?.name} placeholder="Pişirme" required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
+        <div className="lg:col-span-2"><Field label="Grup adı" hint="1–40 karakter"><Input name="name" maxLength={40} pattern=".*\S.*" disabled={pending} defaultValue={initial?.name} placeholder="Pişirme" required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
         <Field label="En az" hint="0–30 · 0 = isteğe bağlı"><Input name="min" type="number" disabled={pending} inputMode="numeric" min={0} max={30} step={1} defaultValue={initial?.min ?? 0} /></Field>
         <div><Field label="En çok" hint="1–30 · en az değerinden küçük olamaz"><Input name="max" type="number" disabled={pending} inputMode="numeric" min={1} max={30} step={1} defaultValue={initial?.max ?? 1} {...errorProps(displayState, "max")} /></Field><Err s={displayState} f="max" /></div>
         <div className="sm:col-span-3 lg:col-span-2">

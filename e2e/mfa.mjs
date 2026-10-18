@@ -35,7 +35,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", "E2E 2FA");
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `mfa-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");

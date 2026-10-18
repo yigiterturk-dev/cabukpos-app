@@ -161,7 +161,7 @@ export function NewDelivery({ meta, staffId, add, onCreated, onBack, autoFocusPh
           <p className="text-sm text-muted" data-testid="customer-status" role="status" aria-live="polite" aria-atomic="true">
             {found.customer ? `Kayıtlı müşteri · ${formatPhone(phone)}` : lookupFailed ? "Müşteri kaydı alınamadı; bilgileri elle girin." : offline ? "Bağlantı yok: müşteri defterine bakılamadı, bilgileri elle girin." : "Yeni müşteri"}
           </p>
-          <Field label="Ad soyad" hint="Zorunlu · 2–120 karakter"><Input ref={nameRef} id="delivery-name" name="name" autoComplete="name" value={name} onChange={(e) => { setName(e.target.value); clearError(); }} aria-invalid={errorField === "name" || undefined} aria-describedby={errorField === "name" ? "delivery-error" : undefined} minLength={2} maxLength={120} pattern=".*\\S.*" required /></Field>
+          <Field label="Ad soyad" hint="Zorunlu · 2–120 karakter"><Input ref={nameRef} id="delivery-name" name="name" autoComplete="name" value={name} onChange={(e) => { setName(e.target.value); clearError(); }} aria-invalid={errorField === "name" || undefined} aria-describedby={errorField === "name" ? "delivery-error" : undefined} minLength={2} maxLength={120} pattern=".*\S.*" required /></Field>
           {errorField === "name" && error && <p id="delivery-error" className="break-words text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
           {found.addresses.length > 0 && (
             <fieldset className="m-0 border-0 p-0">

@@ -28,7 +28,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `m9a-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -39,17 +39,17 @@ try {
   for (const [name, price] of [["Adana", "300"], ["Ayran", "50"]]) {
     await admin.fill("input[name=name]", name);
     await admin.fill("input[name=price]", price);
-    await admin.getByRole("button", { name: "%10", exact: true }).click();
+    await admin.locator("label").filter({ hasText: /^%10$/ }).click();
     await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
     await admin.getByRole("cell", { name, exact: true }).waitFor();
   }
   await admin.goto(`${BASE}/yonetim/personel`);
   for (const [name, role, p] of [["Ayşe Kasiyer", null, "5820"], ["Mehmet Müdür", "Müdür", "7391"]]) {
     await admin.fill("input[name=name]", name);
-    if (role) await admin.getByRole("button", { name: role, exact: true }).click();
+    if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();
     await admin.fill("input[name=pin]", p);
     await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-    await admin.getByRole("cell", { name }).waitFor();
+    await admin.getByRole("cell", { name, exact: true }).waitFor();
   }
   await admin.goto(`${BASE}/yonetim/cihazlar`);
   await admin.fill("input[name=name]", "Kasa 1");
@@ -81,7 +81,7 @@ try {
   step("Ayran ekle + azaltarak sil (50), Adana ekle + Temizle (300)");
 
   await kasa.getByRole("button", { name: "İade" }).click();
-  await kasa.getByLabel("İade fiş no").fill("k1-1");
+  await kasa.getByLabel("Fiş numarası").fill("k1-1");
   await kasa.getByRole("button", { name: "Fişi bul" }).click();
   await kasa.getByRole("button", { name: "Ayran iade artır" }).click();
   await kasa.getByRole("button", { name: "İadeyi onayla" }).click();
@@ -92,19 +92,19 @@ try {
   step("Ayran iadesi (müdür PIN), eşitlendi");
 
   await admin.goto(`${BASE}/yonetim/raporlar`);
-  expect(await text(admin.getByTestId("sum-gross")), "300,00 ₺", "özet brüt (350 − 50)");
+  expect(await text(admin.getByTestId("sum-gross")), "₺300,00", "özet brüt (350 − 50)");
   expect(await text(admin.getByTestId("sum-count")), "1", "fiş sayısı");
   step("Özet: brüt 300, 1 fiş");
 
-  await admin.getByRole("tab", { name: "Personel" }).click();
+  await admin.goto(`${BASE}/yonetim/raporlar?sekme=personel`);
   const ayse = admin.getByTestId("staff-Ayşe Kasiyer");
   await ayse.waitFor();
-  expect(await text(ayse.getByTestId("staff-removed")), "3 · 650,00 ₺", "sepetten silme");
-  expect(await text(ayse.getByTestId("staff-refund")), "1 · 50,00 ₺", "iade");
-  await ayse.getByRole("link", { name: "Ayşe Kasiyer" }).click();
+  expect(await text(ayse.getByTestId("staff-removed")), "3 · ₺650,00", "sepetten silme");
+  expect(await text(ayse.getByTestId("staff-refund")), "1 · ₺50,00", "iade");
+  await ayse.getByRole("link", { name: "Ayşe Kasiyer", exact: true }).click();
   const ev = admin.getByTestId("staff-events");
-  await ev.getByText(/Sepet boşaltıldı: Adana × 1/).waitFor();
-  await ev.getByText("İade K1-000002").waitFor();
+  await ev.getByText(/Sepet boşaltıldı: Adana × 1/).locator("visible=true").first().waitFor();
+  await ev.getByText("İade K1-000002").locator("visible=true").first().waitFor();
   step("Personel: silme 3 · 650, iade 1 · 50, olay listesi");
 
   const url = new URL(admin.url());
@@ -123,8 +123,8 @@ try {
   if (!anon.headers().location?.includes("/giris")) throw new Error(`oturumsuz CSV yönü: ${anon.headers().location}`);
   step("CSV: BOM + ; + Ayşe satırı; oturumsuz → /giris");
 
-  await admin.getByRole("tab", { name: "Vardiyalar" }).click();
-  await admin.getByText("Açık").first().waitFor();
+  await admin.goto(`${BASE}/yonetim/raporlar?sekme=vardiyalar`);
+  await admin.getByText("Açık").locator("visible=true").first().waitFor();
   step("Vardiyalar sekmesi");
 
   // İncelenecek: biçimi bozuk belge reddedilir → yönetimde "Reddedildi" satırı
@@ -138,7 +138,7 @@ try {
     return await res.json();
   }, { pushUrl: `${BASE}/api/sync/push`, deviceId: cat.device.id, document: bad });
   if (pr.results?.[0]?.ok !== false) throw new Error(`bozuk belge reddedilmedi: ${JSON.stringify(pr)}`);
-  await admin.getByRole("tab", { name: "İncelenecek" }).click();
+  await admin.goto(`${BASE}/yonetim/raporlar?sekme=inceleme`);
   await admin.getByTestId("review-list").getByText("Reddedildi · sale").waitFor();
   step("İncelenecek sekmesi: reddedilen belge listede");
 

@@ -20,7 +20,7 @@ function ListFields({ categories, state, pending, onEdit }: { categories: Option
   return (
     <>
       <div className="flex flex-wrap items-end gap-3">
-        <div><Field label="Liste adı" hint="1–60 karakter"><Input name="name" disabled={pending} maxLength={60} pattern=".*\\S.*" placeholder="Happy Hour" className="w-44" required {...errorProps(state, "name")} /></Field><Err s={state} f="name" /></div>
+        <div><Field label="Liste adı" hint="1–60 karakter"><Input name="name" disabled={pending} maxLength={60} pattern=".*\S.*" placeholder="Happy Hour" className="w-44" required {...errorProps(state, "name")} /></Field><Err s={state} f="name" /></div>
         <div className="w-48">
           <Field label="Tür"><Select disabled={pending} name="kind" defaultValue="fiyat" onChange={(v) => { onEdit(); setKind(v as "fiyat" | "yuzde"); }} options={[
             { value: "fiyat", label: "Ürün başı fiyat" },

@@ -128,7 +128,7 @@ export function SupplierForm({ initial }: { initial?: SupplierInitial }) {
   }, [isEditing, pending, state.error, state.savedAt]);
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} key={initial ? initial.id : state.savedAt ?? 0} aria-busy={pending} className="grid gap-4 sm:grid-cols-2">
-      <div><Field label="Ad" hint="2–80 karakter"><Input name="name" minLength={2} maxLength={80} pattern=".*\\S.*\\S.*" defaultValue={initial?.name} disabled={pending} required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
+      <div><Field label="Ad" hint="2–80 karakter"><Input name="name" minLength={2} maxLength={80} pattern=".*\S.*\S.*" defaultValue={initial?.name} disabled={pending} required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
       <div><Field label="Telefon" hint="İsteğe bağlı · en fazla 30 karakter"><Input name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={30} defaultValue={initial?.phone ?? ""} disabled={pending} /></Field></div>
       <div><Field label="Vergi / TC no" hint="İsteğe bağlı; yalnızca 10 haneli VKN veya 11 haneli TCKN"><Input name="taxNo" inputMode="numeric" maxLength={11} pattern="[0-9]{10,11}" defaultValue={initial?.taxNo ?? ""} disabled={pending} {...errorProps(displayState, "taxNo")} /></Field><Err s={displayState} f="taxNo" /></div>
       <div><Field label="Not" hint="İsteğe bağlı · en fazla 200 karakter"><Input name="note" maxLength={200} defaultValue={initial?.note ?? ""} disabled={pending} /></Field></div>

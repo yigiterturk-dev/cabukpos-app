@@ -39,7 +39,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `m6-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -63,10 +63,10 @@ try {
   await admin.goto(`${BASE}/yonetim/personel`);
   for (const [name, role, p] of [["Ali Kasiyer", null, "4613"], ["Kemal Kurye", "Kurye", "6284"]]) {
     await admin.fill("input[name=name]", name);
-    if (role) await admin.getByRole("button", { name: role, exact: true }).click();
+    if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();
     await admin.fill("input[name=pin]", p);
     await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-    await admin.getByRole("cell", { name }).waitFor();
+    await admin.getByRole("cell", { name, exact: true }).waitFor();
   }
   step("ürün Lahmacun 60 TL; personel: kasiyer, kurye");
 
@@ -98,7 +98,7 @@ try {
   };
   const setRole = async (i, label) => {
     await admin.goto(`${BASE}/yonetim/cihazlar`);
-    await admin.getByRole("group", { name: "Cihaz rolü" }).nth(i).getByRole("button", { name: label }).click();
+    await admin.getByRole("group", { name: "Cihaz rolü" }).nth(i).locator("label").filter({ hasText: new RegExp(`^${label}$`) }).click();
     await admin.getByRole("button", { name: "Rolü kaydet" }).nth(i).click();
     await admin.getByText("Kaydedildi.").waitFor();
   };

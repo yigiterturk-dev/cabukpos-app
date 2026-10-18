@@ -31,7 +31,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `m7-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -131,7 +131,7 @@ try {
   await admin.fill("input[name=name]", "Ali Kasiyer");
   await admin.fill("input[name=pin]", "4613");
   await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-  await admin.getByRole("cell", { name: "Ali Kasiyer" }).waitFor();
+  await admin.getByRole("cell", { name: "Ali Kasiyer", exact: true }).waitFor();
   await admin.goto(`${BASE}/yonetim/cihazlar`);
   await admin.fill("input[name=name]", "Kasa 1");
   await admin.fill("input[name=receiptPrefix]", "K1");

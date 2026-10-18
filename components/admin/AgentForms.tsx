@@ -38,7 +38,7 @@ export function AgentCreateForm() {
   return (
     <form ref={formRef} onSubmit={onSubmit} aria-busy={pending}>
       <div className="flex flex-wrap items-start gap-3">
-        <div><Field label="Bilgisayar adı" hint="2–40 karakter"><Input key={state.code ?? "agent-name"} name="name" minLength={2} maxLength={40} pattern=".*\\S.*\\S.*" placeholder="Kasa PC" required disabled={pending} aria-invalid={state.field === "name" && !!state.error || undefined} aria-describedby={state.field === "name" && state.error ? "agent-name-error" : undefined} /></Field>{state.field === "name" && <p id="agent-name-error" className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}</div>
+        <div><Field label="Bilgisayar adı" hint="2–40 karakter"><Input key={state.code ?? "agent-name"} name="name" minLength={2} maxLength={40} pattern=".*\S.*\S.*" placeholder="Kasa PC" required disabled={pending} aria-invalid={state.field === "name" && !!state.error || undefined} aria-describedby={state.field === "name" && state.error ? "agent-name-error" : undefined} /></Field>{state.field === "name" && <p id="agent-name-error" className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{state.error}</p>}</div>
         <Button type="submit" disabled={pending} className="mt-6">{pending ? "Ekleniyor…" : "Ajan ekle"}</Button>
       </div>
       <CodeBox s={state} />

@@ -19,7 +19,7 @@ const step = (m) => console.log("•", m);
 const admin = await page();
 await admin.goto(`${BASE}/kayit`);
 await admin.fill("input[name=businessName]", "E2E Dönerci");
-await admin.getByRole("button", { name: "Restoran" }).click();
+await admin.getByText("Restoran", { exact: true }).click();
 await admin.fill("input[name=name]", "Yiğit Test");
 await admin.fill("input[name=email]", `m1-${stamp}@ornek.com`);
 await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -34,7 +34,7 @@ await admin.getByText("Ana yemek").first().waitFor();
 for (const [name, price, vat] of [["Döner", "180,00", "10"], ["Ayran", "25", "10"], ["Su", "10", "20"]]) {
   await admin.fill("input[name=name]", name);
   await admin.fill("input[name=price]", price);
-  await admin.getByRole("button", { name: `%${vat}`, exact: true }).click();
+  await admin.locator("label").filter({ hasText: new RegExp(`^%${vat}$`) }).click();
   await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
   await admin.getByRole("cell", { name, exact: true }).waitFor();
 }
@@ -51,7 +51,7 @@ await admin.getByRole("button", { name: "Personeli kaydet" }).click();
 await admin.getByText("Bu PIN kolay tahmin edilir; başka bir PIN seçin.").waitFor();
 await admin.fill("input[name=pin]", "4826");
 await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-await admin.getByRole("cell", { name: "Ali Kasiyer" }).waitFor();
+await admin.getByRole("cell", { name: "Ali Kasiyer", exact: true }).waitFor();
 await admin.goto(`${BASE}/yonetim/cihazlar`);
 await admin.fill("input[name=name]", "Kasa 1");
 await admin.fill("input[name=receiptPrefix]", "K1");
@@ -62,6 +62,7 @@ step(`personel (kolay PIN reddedildi) + cihaz, eşleme kodu ${code}`);
 
 const kasa = await page(1280);
 await kasa.goto(`${BASE}/kasa`);
+await kasa.getByText("Kasa eşlemesini başlat").click();
 await kasa.waitForURL(`${BASE}/kasa/eslestir`);
 await kasa.fill("input[name=code]", "YANLIS22");
 await kasa.getByRole("button", { name: "Eşle" }).click();
@@ -115,14 +116,14 @@ await kasa.getByTestId("sync-pending").waitFor({ state: "detached" });
 step("gün sonu: beklenen 695, sayılan 690, fark -5; kasiyer oturumu kapandı");
 
 await admin.goto(`${BASE}/yonetim/raporlar?sekme=vardiyalar`);
-await admin.getByText("395,00 ₺").first().waitFor();
-await admin.getByText("-5,00 ₺").first().waitFor();
+await admin.getByText("₺395,00").locator("visible=true").first().waitFor();
+await admin.getByText("−₺5,00").locator("visible=true").first().waitFor();
 step("yönetim raporunda vardiya");
 
 const other = await page();
 await other.goto(`${BASE}/kayit`);
 await other.fill("input[name=businessName]", "E2E Market");
-await other.getByRole("button", { name: "Market" }).click();
+await other.getByText("Market", { exact: true }).click();
 await other.fill("input[name=name]", "Başka Sahip");
 await other.fill("input[name=email]", `m1b-${stamp}@ornek.com`);
 await other.fill("input[name=password]", "Cabukpos2026y");

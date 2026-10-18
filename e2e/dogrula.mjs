@@ -26,7 +26,7 @@ try {
   const p = await page();
   await p.goto(`${BASE}/kayit`);
   await p.fill("input[name=businessName]", `E2E Doğrula ${stamp}`);
-  await p.getByRole("button", { name: "Restoran" }).click();
+  await p.getByText("Restoran", { exact: true }).click();
   await p.fill("input[name=name]", "Yiğit Test");
   await p.fill("input[name=email]", email);
   await p.fill("input[name=password]", "Cabukpos2026x");

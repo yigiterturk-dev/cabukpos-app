@@ -61,13 +61,11 @@ export default async function YonetimLayout({ children }: { children: React.Reac
         <div className="relative pt-4">{footer}</div>
       </aside>
       <header className="sticky top-0 z-40 flex min-w-0 items-center gap-2 border-b border-line bg-surface px-3 py-2 print:hidden md:hidden">
-        <MobileNav>{(close) => (
-          <>
-            <div className="mb-5">{brand(true)}</div>
-            <div className="flex-1"><Nav vertical={a.vertical} onNavigate={close} /></div>
-            <div className="mt-5">{footer}</div>
-          </>
-        )}</MobileNav>
+        <MobileNav>
+          <div className="mb-5">{brand(true)}</div>
+          <div className="flex-1"><Nav vertical={a.vertical} /></div>
+          <div className="mt-5">{footer}</div>
+        </MobileNav>
         {brand(false)}
         <div className="ml-auto flex items-center gap-2">
           {storeLink()}

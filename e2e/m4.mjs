@@ -50,7 +50,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", "E2E Manav");
-  await admin.getByRole("button", { name: "Market" }).click();
+  await admin.getByText("Market", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `m4-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -60,14 +60,14 @@ try {
   await admin.goto(`${BASE}/yonetim/urunler`);
   await admin.fill("input[name=name]", "Ekmek");
   await admin.fill("input[name=price]", "10");
-  await admin.getByRole("button", { name: "%1", exact: true }).click();
+  await admin.locator("label").filter({ hasText: /^%1$/ }).click();
   await admin.getByLabel("Kasada hızlı tuş").check();
   await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
   await admin.getByRole("cell", { name: /^Ekmek/ }).waitFor();
   await admin.fill("input[name=name]", "Domates");
-  await admin.getByRole("button", { name: "Tartılı (kg)" }).click();
+  await admin.locator("label").filter({ hasText: "Tartılı (kg)" }).click();
   await admin.fill("input[name=price]", "80");
-  await admin.getByRole("button", { name: "%1", exact: true }).click();
+  await admin.locator("label").filter({ hasText: /^%1$/ }).click();
   await admin.getByLabel("Kasada hızlı tuş").check();
   await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
   await admin.getByRole("cell", { name: /^Domates/ }).waitFor();
@@ -76,12 +76,12 @@ try {
   await admin.fill("input[name=name]", "Ayşe Kasiyer");
   await admin.fill("input[name=pin]", "5820");
   await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-  await admin.getByRole("cell", { name: "Ayşe Kasiyer" }).waitFor();
+  await admin.getByRole("cell", { name: "Ayşe Kasiyer", exact: true }).waitFor();
   await admin.fill("input[name=name]", "Mehmet Müdür");
-  await admin.getByRole("button", { name: "Müdür", exact: true }).click();
+  await admin.locator("label").filter({ hasText: /^Müdür$/ }).click();
   await admin.fill("input[name=pin]", "7391");
   await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-  await admin.getByRole("cell", { name: "Mehmet Müdür" }).waitFor();
+  await admin.getByRole("cell", { name: "Mehmet Müdür", exact: true }).waitFor();
   step("işletme, ürünler (Ekmek, Domates tartılı), personel");
 
   // — Donanım: ajan ekle, eşle, yapılandır, çalıştır —

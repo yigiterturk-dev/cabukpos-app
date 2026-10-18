@@ -30,7 +30,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Mobil Test");
   await admin.fill("input[name=email]", `m54-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -56,7 +56,7 @@ try {
   await admin.getByText("Mobil kategori").first().waitFor();
   await admin.fill("input[name=name]", "Mobil Tost");
   await admin.fill("input[name=price]", "45");
-  await admin.getByRole("button", { name: "%10", exact: true }).click();
+  await admin.locator("label").filter({ hasText: /^%10$/ }).click();
   await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
   await admin.getByRole("cell", { name: "Mobil Tost", exact: true }).waitFor();
   step("ürün eklendi");

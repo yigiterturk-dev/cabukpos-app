@@ -47,7 +47,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", "E2E Köfteci");
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `m5-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -112,10 +112,10 @@ try {
   await admin.goto(`${BASE}/yonetim/personel`);
   for (const [name, role, p] of [["Ali Kasiyer", null, "4613"], ["Ayşe Garson", "Garson", "5820"], ["Mehmet Müdür", "Müdür", "7391"]]) {
     await admin.fill("input[name=name]", name);
-    if (role) await admin.getByRole("button", { name: role, exact: true }).click();
+    if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();
     await admin.fill("input[name=pin]", p);
     await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-    await admin.getByRole("cell", { name }).waitFor();
+    await admin.getByRole("cell", { name, exact: true }).waitFor();
   }
   step("personel: kasiyer, garson, müdür");
 
@@ -135,7 +135,7 @@ try {
   };
   const setRole = async (i, label) => {
     await admin.goto(`${BASE}/yonetim/cihazlar`);
-    await admin.getByRole("group", { name: "Cihaz rolü" }).nth(i).getByRole("button", { name: label }).click();
+    await admin.getByRole("group", { name: "Cihaz rolü" }).nth(i).locator("label").filter({ hasText: new RegExp(`^${label}$`) }).click();
     await admin.getByRole("button", { name: "Rolü kaydet" }).nth(i).click();
     await admin.getByText("Kaydedildi.").waitFor();
   };
@@ -194,7 +194,8 @@ try {
   await mutfak.locator("[data-ticket][data-status=hazir]", { hasText: "Köfte" }).waitFor();
   step("mutfak: bilet LAN'dan geldi → hazırlanıyor → hazır");
 
-  await kasa.getByRole("button", { name: "Salon", exact: true }).click();
+  try { await kasa.getByRole("button", { name: /^Salon/ }).click({ timeout: 8000 }); }
+  catch { console.log("kasa URL:", kasa.url()); console.log("kasa butonlar:", (await kasa.locator("button:visible").allTextContents()).map(t=>t.trim()).filter(Boolean).slice(0,14).join(" | ")); throw new Error("Salon düğmesi yok"); }
   await kasa.locator("[data-status=hazir]", { hasText: "M1" }).waitFor({ timeout: 10000 });
   await waitFor(() => kitchenJobs().length === 1, "kasa mutfak fişini LAN'dan basar");
   step("kasa: M1 'Hazır bekliyor' + tek mutfak fişi (internetsiz)");

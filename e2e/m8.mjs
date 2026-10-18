@@ -40,7 +40,7 @@ try {
   const admin = await page();
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `m8-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -50,30 +50,30 @@ try {
   await admin.goto(`${BASE}/yonetim/urunler`);
   await admin.fill("input[name=name]", "Adana");
   await admin.fill("input[name=price]", "300");
-  await admin.getByRole("button", { name: "%10", exact: true }).click();
+  await admin.locator("label").filter({ hasText: /^%10$/ }).click();
   await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
   await admin.getByRole("cell", { name: "Adana", exact: true }).waitFor();
   await admin.goto(`${BASE}/yonetim/personel`);
   for (const [name, role, p] of [["Ayşe Kasiyer", null, "5820"], ["Mehmet Müdür", "Müdür", "7391"]]) {
     await admin.fill("input[name=name]", name);
-    if (role) await admin.getByRole("button", { name: role, exact: true }).click();
+    if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();
     await admin.fill("input[name=pin]", p);
     await admin.getByRole("button", { name: "Personeli kaydet" }).click();
-    await admin.getByRole("cell", { name }).waitFor();
+    await admin.getByRole("cell", { name, exact: true }).waitFor();
   }
 
   // — Mali ayar: e-Arşiv vergi bilgisi olmadan kaydedilmez —
   await admin.goto(`${BASE}/yonetim/mali`);
   await admin.getByText("TEST sağlayıcısı").waitFor();
-  await admin.getByRole("group", { name: "Kasa (hızlı satış)" }).getByRole("button", { name: "e-Arşiv" }).click();
+  await admin.getByRole("group", { name: "Kasa (hızlı satış)" }).locator("label").filter({ hasText: "e-Arşiv" }).click();
   await admin.getByRole("button", { name: "Kaydet" }).click();
-  await admin.getByText("e-Arşiv için işletme vergi no gerekli.").waitFor();
+  expect(await admin.locator("input[name=taxId]").evaluate((el) => el.checkValidity()), false, "taxId HTML5 zorunlu");
+  await admin.fill("input[name=taxOffice]", "Kadıköy");
+  await admin.fill("textarea[name=address]", "Moda Cd. 1, Kadıköy / İstanbul");
   await admin.fill("input[name=taxId]", "1234567891");
   await admin.getByRole("button", { name: "Kaydet" }).click();
   await admin.getByText(/Vergi no geçersiz/).waitFor();
   await admin.fill("input[name=taxId]", "1234567890");
-  await admin.fill("input[name=taxOffice]", "Kadıköy");
-  await admin.fill("textarea[name=address]", "Moda Cd. 1, Kadıköy / İstanbul");
   await admin.getByRole("button", { name: "Kaydet" }).click();
   await admin.getByText("Kaydedildi.").waitFor();
   step("mali ayar: vergi no zorunlu + geçersiz VKN reddedildi; kasa = e-Arşiv, TEST sağlayıcısı");
@@ -120,7 +120,7 @@ try {
   expect(res.status(), 200, "fatura sayfası");
   await pub.getByTestId("test-band").waitFor();
   expect((await pub.getByTestId("fiscal-number").innerText()).trim(), d1.number, "sayfada numara");
-  for (const t of ["E2E Kebapçı", "Moda Cd. 1", "Nihai Tüketici", "Adana", "300,00 ₺"]) await pub.getByText(t, { exact: false }).first().waitFor();
+  for (const t of ["E2E Kebapçı", "Moda Cd. 1", "Nihai Tüketici", "Adana", "300,00 ₺"]) await pub.getByText(t, { exact: false }).locator("visible=true").first().waitFor();
   const robots = await pub.locator('meta[name="robots"]').getAttribute("content");
   if (!robots?.includes("noindex")) throw new Error(`robots: ${robots}`);
   expect((await pub.goto(`${BASE}/f/${"x".repeat(24)}`)).status(), 404, "bilinmeyen token");
@@ -171,7 +171,7 @@ try {
 
   // — Tam iade → iptal —
   await kasa.getByRole("button", { name: "İade" }).click();
-  await kasa.getByLabel("İade fiş no").fill("k1-2");
+  await kasa.getByLabel("Fiş numarası").fill("k1-2");
   await kasa.getByRole("button", { name: "Fişi bul" }).click();
   await kasa.getByRole("button", { name: "Adana iade artır" }).click();
   await kasa.getByRole("button", { name: "İadeyi onayla" }).click();

@@ -60,7 +60,7 @@ export function IntegrationKeyForm({ scope = "stats" }: { scope?: "stats" | "gro
       <input type="hidden" name="scope" value={scope} />
       <div key={state.key ?? "credentials"} className="flex flex-wrap items-start gap-3">
         <div>
-          <Field label={scope === "growth" ? "Büyüme bağlantısı adı" : "Ajans adı"} hint="2–40 karakter"><Input name="name" disabled={pending} placeholder={scope === "growth" ? "Laya Büyüme" : "Zirve Ajans"} minLength={2} maxLength={40} pattern=".*\\S.*\\S.*" required aria-invalid={displayState.field === "name" && !!displayState.error || undefined} aria-describedby={displayState.field === "name" && displayState.error ? nameErrorId : undefined} /></Field>
+          <Field label={scope === "growth" ? "Büyüme bağlantısı adı" : "Ajans adı"} hint="2–40 karakter"><Input name="name" disabled={pending} placeholder={scope === "growth" ? "Laya Büyüme" : "Zirve Ajans"} minLength={2} maxLength={40} pattern=".*\S.*\S.*" required aria-invalid={displayState.field === "name" && !!displayState.error || undefined} aria-describedby={displayState.field === "name" && displayState.error ? nameErrorId : undefined} /></Field>
           {displayState.field === "name" && displayState.error && <p id={nameErrorId} className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}
         </div>
         <div>

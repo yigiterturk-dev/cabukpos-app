@@ -25,7 +25,7 @@ export function SignupForm() {
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="space-y-3 sm:space-y-4">
       <p className="text-xs text-muted">Tüm alanlar zorunludur.</p>
-      <Field label="İşletme adı" hint="2–80 karakter"><Input ref={first} name="businessName" disabled={pending} autoComplete="organization" minLength={2} maxLength={80} pattern=".*\\S.*\\S.*" defaultValue={state.values?.businessName} required aria-invalid={displayState.field === "businessName" && !!displayState.error || undefined} aria-describedby={displayState.field === "businessName" && displayState.error ? "signup-businessName-error" : undefined} /></Field>
+      <Field label="İşletme adı" hint="2–80 karakter"><Input ref={first} name="businessName" disabled={pending} autoComplete="organization" minLength={2} maxLength={80} pattern=".*\S.*\S.*" defaultValue={state.values?.businessName} required aria-invalid={displayState.field === "businessName" && !!displayState.error || undefined} aria-describedby={displayState.field === "businessName" && displayState.error ? "signup-businessName-error" : undefined} /></Field>
       <Err s={displayState} f="businessName" />
       <fieldset disabled={pending} aria-describedby={displayState.field === "vertical" && displayState.error ? "signup-vertical-error" : undefined} className="m-0 grid grid-cols-2 gap-2 border-0 p-0">
         <legend className="col-span-2 mb-1.5 text-sm font-medium">İşletme türü <span aria-hidden="true">*</span></legend>
@@ -37,7 +37,7 @@ export function SignupForm() {
         ))}
         <div className="col-span-2"><Err s={displayState} f="vertical" /></div>
       </fieldset>
-      <Field label="Ad soyad" hint="2–120 karakter"><Input name="name" disabled={pending} defaultValue={state.values?.name} autoComplete="name" minLength={2} maxLength={120} pattern=".*\\S.*\\S.*" required aria-invalid={displayState.field === "name" && !!displayState.error || undefined} aria-describedby={displayState.field === "name" && displayState.error ? "signup-name-error" : undefined} /></Field>
+      <Field label="Ad soyad" hint="2–120 karakter"><Input name="name" disabled={pending} defaultValue={state.values?.name} autoComplete="name" minLength={2} maxLength={120} pattern=".*\S.*\S.*" required aria-invalid={displayState.field === "name" && !!displayState.error || undefined} aria-describedby={displayState.field === "name" && displayState.error ? "signup-name-error" : undefined} /></Field>
       <Err s={displayState} f="name" />
       <Field label="E-posta" hint="En fazla 254 karakter"><Input name="email" disabled={pending} type="email" maxLength={254} defaultValue={state.values?.email} autoComplete="email" required aria-invalid={displayState.field === "email" && !!displayState.error || undefined} aria-describedby={displayState.field === "email" && displayState.error ? "signup-email-error" : undefined} /></Field>
       <Err s={displayState} f="email" />

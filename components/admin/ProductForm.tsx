@@ -61,7 +61,7 @@ function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: C
   const qtyFormatHint = u === "adet" ? "tam sayı · en fazla 999.999" : `en fazla 999.999,999 ${u} · 3 ondalık hane`;
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-      <div><Field label="Ürün adı" hint="2–80 karakter"><Input name="name" defaultValue={initial?.name} minLength={2} maxLength={80} pattern=".*\\S.*\\S.*" required {...fieldErrorProps(s, "name")} /></Field><Err s={s} f="name" /></div>
+      <div><Field label="Ürün adı" hint="2–80 karakter"><Input name="name" defaultValue={initial?.name} minLength={2} maxLength={80} pattern=".*\S.*\S.*" required {...fieldErrorProps(s, "name")} /></Field><Err s={s} f="name" /></div>
       <div>
         <RadioCards name="sellable" value={sellable ? "true" : "false"} set={(v) => { setSellable(v === "true"); setUnitValuesReviewed(false); }} label="Kasada satılır" items={[["true", "Evet"], ["false", "Hayır (hammadde / ara ürün)"]]} />
       </div>
@@ -180,7 +180,7 @@ export function CategoryForm() {
   }, [state.error, state.savedAt]);
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} aria-busy={pending} className="flex flex-wrap items-start gap-2">
-      <div><Input key={state.savedAt ?? 0} name="categoryName" placeholder="Yeni kategori" aria-label="Kategori adı" aria-invalid={displayState.field === "categoryName" && !!displayState.error || undefined} aria-describedby={`catalog-categoryName-hint${displayState.field === "categoryName" && displayState.error ? " catalog-categoryName-error" : ""}`} maxLength={40} minLength={2} pattern=".*\\S.*\\S.*" disabled={pending} required className="w-48 disabled:cursor-wait disabled:opacity-50" /><span id="catalog-categoryName-hint" className="mt-1 block text-xs text-muted">2–40 karakter</span><Err s={displayState} f="categoryName" /></div>
+      <div><Input key={state.savedAt ?? 0} name="categoryName" placeholder="Yeni kategori" aria-label="Kategori adı" aria-invalid={displayState.field === "categoryName" && !!displayState.error || undefined} aria-describedby={`catalog-categoryName-hint${displayState.field === "categoryName" && displayState.error ? " catalog-categoryName-error" : ""}`} maxLength={40} minLength={2} pattern=".*\S.*\S.*" disabled={pending} required className="w-48 disabled:cursor-wait disabled:opacity-50" /><span id="catalog-categoryName-hint" className="mt-1 block text-xs text-muted">2–40 karakter</span><Err s={displayState} f="categoryName" /></div>
       <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Ekleniyor…" : "Kategori ekle"}</Button>
       {pending && <span className="sr-only" role="status" aria-live="polite">Kategori ekleniyor. Lütfen bekleyin.</span>}
       {displayState.error && !displayState.field && <p className="break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}

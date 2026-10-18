@@ -19,7 +19,7 @@ try {
   admin.on("pageerror", (e) => errors.push(e.message));
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `m9c-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -63,14 +63,14 @@ try {
   await admin.getByTestId("key-row").getByText(/son kullanım/).waitFor();
   // #8: yıkıcı iptal şifreli re-auth ister (RevokeForm)
   await admin.getByTestId("key-row").getByLabel("Şifreniz").fill("Cabukpos2026x");
-  await admin.getByRole("button", { name: "İptal et" }).click();
+  await admin.getByTestId("key-row").getByRole("button", { name: /Entegrasyon anahtarını iptal et/ }).click();
   await admin.getByTestId("key-row").getByText("İptal", { exact: true }).waitFor();
   expect((await api(key)).status, 401, "iptal sonrası");
   step("son kullanım görünür; İptal et → 401");
 
   await admin.goto(`${BASE}/yonetim/denetim`);
-  await admin.getByText("integration_key.create", { exact: true }).waitFor();
-  await admin.getByText("integration_key.revoke", { exact: true }).waitFor();
+  await admin.getByText("integration_key.create", { exact: true }).locator("visible=true").first().waitFor();
+  await admin.getByText("integration_key.revoke", { exact: true }).locator("visible=true").first().waitFor();
   step("Denetim: anahtar oluşturma ve iptal kayıtları görünür");
 
   if (errors.length) throw new Error(`sayfa hataları: ${errors.join(" | ")}`);

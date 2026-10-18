@@ -52,7 +52,7 @@ export function StaffForm({ initial }: { initial?: { id: string; name: string; r
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="space-y-3">
       <div key={initial?.id ?? state.savedAt ?? 0} className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-        <div><Field label="Ad soyad" hint="2–60 karakter"><Input name="name" disabled={pending} minLength={2} maxLength={60} pattern=".*\\S.*\\S.*" defaultValue={initial?.name} required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
+        <div><Field label="Ad soyad" hint="2–60 karakter"><Input name="name" disabled={pending} minLength={2} maxLength={60} pattern=".*\S.*\S.*" defaultValue={initial?.name} required {...errorProps(displayState, "name")} /></Field><Err s={displayState} f="name" /></div>
         <div>
           <fieldset disabled={pending} aria-describedby={displayState.field === "role" && displayState.error ? "staff-device-role-error" : undefined} className="m-0 border-0 p-0">
             <legend className="mb-1.5 text-sm font-medium">Rol</legend>
@@ -112,7 +112,7 @@ export function DeviceForm() {
   return (
     <form ref={formRef} onSubmit={onSubmit}>
       <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-40 flex-1"><Field label="Cihaz adı" hint="2–40 karakter"><Input name="name" disabled={pending} minLength={2} maxLength={40} pattern=".*\\S.*\\S.*" placeholder="Kasa 1" required {...errorProps(state, "name")} /></Field><Err s={state} f="name" /></div>
+        <div className="min-w-40 flex-1"><Field label="Cihaz adı" hint="2–40 karakter"><Input name="name" disabled={pending} minLength={2} maxLength={40} pattern=".*\S.*\S.*" placeholder="Kasa 1" required {...errorProps(state, "name")} /></Field><Err s={state} f="name" /></div>
         <div><Field label="Fiş öneki" hint="1-4 harf/rakam"><Input name="receiptPrefix" disabled={pending} placeholder="K1" maxLength={4} className="w-24 uppercase" required {...errorProps(state, "receiptPrefix")} /></Field><Err s={state} f="receiptPrefix" /></div>
         <Button type="submit" disabled={pending} className="mt-6">{pending ? "Ekleniyor…" : "Cihaz ekle"}</Button>
         {pending && <span className="sr-only" role="status" aria-live="polite">Kasa cihazı ekleniyor.</span>}

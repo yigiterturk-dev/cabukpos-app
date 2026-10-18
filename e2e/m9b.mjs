@@ -20,7 +20,7 @@ const addProduct = async (p, name) => {
   await p.goto(`${BASE}/yonetim/urunler`);
   await p.fill("input[name=name]", name);
   await p.fill("input[name=price]", "100");
-  await p.getByRole("button", { name: "%10", exact: true }).click();
+  await p.locator("label").filter({ hasText: /^%10$/ }).click();
   await p.getByRole("button", { name: "Ürünü kaydet" }).click();
 };
 
@@ -29,7 +29,7 @@ try {
   admin.on("pageerror", (e) => errors.push(e.message));
   await admin.goto(`${BASE}/kayit`);
   await admin.fill("input[name=businessName]", tenant);
-  await admin.getByRole("button", { name: "Restoran" }).click();
+  await admin.getByText("Restoran", { exact: true }).click();
   await admin.fill("input[name=name]", "Yiğit Test");
   await admin.fill("input[name=email]", `m9b-${stamp}@ornek.com`);
   await admin.fill("input[name=password]", "Cabukpos2026x");
@@ -38,7 +38,7 @@ try {
 
   await admin.goto(`${BASE}/yonetim/abonelik`);
   expect(await text(admin.getByTestId("billing-state")), "Deneme", "yeni işletme");
-  if (!(await text(admin.getByTestId("billing-ends"))).includes("(14 gün)")) throw new Error("deneme 14 gün değil");
+  if (!(await text(admin.getByTestId("billing-ends"))).includes("14 gün kaldı")) throw new Error("deneme 14 gün değil");
   if (await admin.getByTestId("billing-banner").count()) throw new Error("denemenin başında bant olmamalı");
   step("kayıt: Deneme, 14 gün, bant yok");
 
