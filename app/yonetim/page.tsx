@@ -84,6 +84,9 @@ export default async function Bugun() {
   ];
   const setupDone = setupSteps.filter((step) => step.done).length;
   const nextSetupStep = setupSteps.find((step) => !step.done);
+  // Türkiye saatiyle selam: panoya her gelişte küçük bir sıcaklık dokunuşu.
+  const hour = Number(new Intl.DateTimeFormat("tr-TR", { hour: "numeric", hour12: false, timeZone: "Europe/Istanbul" }).format(new Date()));
+  const selam = hour >= 5 && hour < 12 ? "Günaydın" : hour >= 12 && hour < 18 ? "İyi günler" : hour >= 18 && hour < 23 ? "İyi akşamlar" : "İyi geceler";
 
   return (
     <>
@@ -98,10 +101,16 @@ export default async function Bugun() {
         }
       />
       {setupSteps.every((step) => step.done) && recent.length <= 1 && (
-        <Card className="mb-6 border-ok/40 bg-ok-soft/30" data-testid="setup-done">
-          <div className="flex items-center gap-3 px-5 py-4">
+        <Card className="relative mb-6 overflow-hidden border-ok/40 bg-ok-soft/30" data-testid="setup-done">
+          {/* Tek seferlik kutlama: küçük konfeti serpintisi (najis-hareket tercihine saygılı). */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 motion-reduce:hidden">
+            {[["6%", "bg-ok"], ["18%", "bg-brand"], ["32%", "bg-brand-action"], ["46%", "bg-ok"], ["60%", "bg-brand"], ["74%", "bg-brand-action"], ["88%", "bg-ok"]].map(([left, dot], i) => (
+              <span key={i} style={{ left, animationDelay: `${i * 90}ms` }} className={`absolute top-1.5 size-1.5 rounded-full opacity-0 ${dot} [animation:setupConfetti_1.3s_ease-out_1_forwards]`} />
+            ))}
+          </div>
+          <div className="relative flex items-center gap-3 px-5 py-4">
             <CheckCircle2 aria-hidden className="size-5 shrink-0 text-ok" />
-            <p className="text-sm text-ink-2"><strong className="font-semibold">Kurulum tamam, kasa satışa hazır.</strong> Bu pano artık günlük işlerini izler; aklına takılan olursa yan menüdeki Yardım ve kurulum sayfasında adım adım anlatım var.</p>
+            <p className="text-sm text-ink-2"><strong className="font-semibold">Kurulum tamam, kasa satışa hazır — Bravo {a.name.split(/\s+/)[0]}!</strong> Bu pano artık günlük işlerini izler; aklına takılan olursa yan menüdeki Yardım ve kurulum sayfasında adım adım anlatım var.</p>
           </div>
         </Card>
       )}
@@ -109,7 +118,7 @@ export default async function Bugun() {
         <Card className="mb-6 overflow-hidden border-brand-ring bg-brand-soft/30" data-testid="setup-guide">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-ring/70 px-5 py-4">
             <div className="min-w-0 flex-1">
-              <h2 className="break-words font-semibold">Merhaba {a.name.split(/\s+/)[0]} <span className="ml-1 text-sm font-normal text-muted">({setupDone}/{setupSteps.length} adım tamam)</span></h2>
+              <h2 className="break-words font-semibold">{selam}, {a.name.split(/\s+/)[0]} <span className="ml-1 text-sm font-normal text-muted">({setupDone}/{setupSteps.length} adım tamam)</span></h2>
               <p className="mt-1 break-words text-sm text-ink-2">Kasayı satışa hazırlamak için {setupSteps.length - setupDone} kısa adım kaldı. {nextSetupStep ? `Sıradaki: ${nextSetupStep.label}.` : ""} Her adım bir sayfa — doldur, dön, devam et.</p>
               {!setup.product && <div className="mt-3"><OrnekMenuButton /></div>}
             </div>

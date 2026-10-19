@@ -99,6 +99,9 @@ body {
 @keyframes pageIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .page-enter { animation: pageIn 0.26s ease-out both; }
 
+/* Kurulum tamamı konfetisi: küçük serpinti, tek tur */
+@keyframes setupConfetti { 0% { opacity: 0; transform: translateY(-4px) rotate(0deg); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(56px) rotate(220deg); } }
+
 .tabular { font-variant-numeric: tabular-nums; }
 
 /* Fiş ayracı: kesik makbuz çizgisi */
