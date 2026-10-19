@@ -76,10 +76,10 @@ export default async function Bugun() {
   const dateLabel = new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Istanbul" });
   const setupSteps = [
     { label: "Şube oluştur", href: "/yonetim/subeler", done: Boolean(storeId), Icon: Package },
-    { label: "Personel PIN'i oluştur", href: "/yonetim/personel", done: setup.staff, Icon: UserPlus },
-    { label: "Ürün ekle veya CSV aktar", href: "/yonetim/urunler", done: setup.product, Icon: Plus },
-    { label: "Kasa cihazını eşleştir", href: "/yonetim/cihazlar", done: setup.device, Icon: Monitor },
-    { label: "Kasaya gir, vardiya aç ve ilk satışı yap", href: "/kasa", done: setup.sale, Icon: CheckCircle2 },
+    { label: "Personel ekle, kasiyer PIN'i belirle", href: "/yonetim/personel", done: setup.staff, Icon: UserPlus },
+    { label: "Ürünleri ekle (tek tek veya CSV ile)", href: "/yonetim/urunler", done: setup.product, Icon: Plus },
+    { label: "Kasa tabletini bağla", href: "/yonetim/cihazlar", done: setup.device, Icon: Monitor },
+    { label: "Kasayı aç ve ilk satışı yap", href: "/kasa", done: setup.sale, Icon: CheckCircle2 },
   ];
   const setupDone = setupSteps.filter((step) => step.done).length;
   const nextSetupStep = setupSteps.find((step) => !step.done);
@@ -96,12 +96,20 @@ export default async function Bugun() {
           </div>
         }
       />
+      {setupSteps.every((step) => step.done) && recent.length <= 1 && (
+        <Card className="mb-6 border-ok/40 bg-ok-soft/30" data-testid="setup-done">
+          <div className="flex items-center gap-3 px-5 py-4">
+            <CheckCircle2 aria-hidden className="size-5 shrink-0 text-ok" />
+            <p className="text-sm text-ink-2"><strong className="font-semibold">Kurulum tamam, kasa satışa hazır.</strong> Bu pano artık günlük işlerini izler; aklına takılan olursa yan menüdeki Yardım ve kurulum sayfasında adım adım anlatım var.</p>
+          </div>
+        </Card>
+      )}
       {!setupSteps.every((step) => step.done) && (
         <Card className="mb-6 overflow-hidden border-brand-ring bg-brand-soft/30" data-testid="setup-guide">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-ring/70 px-5 py-4">
             <div className="min-w-0 flex-1">
-              <h2 className="break-words font-semibold">İlk kurulumu tamamlayın <span className="ml-1 text-sm font-normal text-muted">({setupDone}/{setupSteps.length})</span></h2>
-              <p className="mt-1 break-words text-sm text-ink-2">İlk defa kullanıyorsanız sırayla ilerleyin: önce şube, ardından personel PIN’i ve ürünler. Sonra kasa eşlemesi yapıp vardiya açarak ilk satışı gerçekleştirin.</p>
+              <h2 className="break-words font-semibold">Merhaba {a.name.split(/\s+/)[0]} <span className="ml-1 text-sm font-normal text-muted">({setupDone}/{setupSteps.length} adım tamam)</span></h2>
+              <p className="mt-1 break-words text-sm text-ink-2">Kasayı satışa hazırlamak için {setupSteps.length - setupDone} kısa adım kaldı. {nextSetupStep ? `Sıradaki: ${nextSetupStep.label}.` : ""} Her adım bir sayfa — doldur, dön, devam et.</p>
             </div>
             <Link href={nextSetupStep?.href ?? "/kasa"} aria-label={nextSetupStep ? `Kuruluma devam et: ${nextSetupStep.label}` : "Kasayı aç"} className={`${buttonClass("primary", "lg")} shrink-0`}>Kuruluma devam et<ArrowRight aria-hidden className="size-4" /></Link>
           </div>
