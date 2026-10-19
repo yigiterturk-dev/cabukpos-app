@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { asc, desc } from "drizzle-orm";
+import { UserPlus } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { StaffActiveForm, StaffForm } from "@/components/admin/StaffDeviceForms";
@@ -23,7 +24,7 @@ export default async function Personel({ searchParams }: { searchParams: Promise
           </Panel>
         }
         list={<>
-      {rows.length === 0 ? <Empty>Henüz personel yok.</Empty> : (
+      {rows.length === 0 ? <Empty icon={<UserPlus aria-hidden className="size-8" />}>Henüz personel yok. Formdan ilk personeli ekleyin ve kasiyere PIN verin — kasa vardiyası bu PIN ile açılır.</Empty> : (
         <>
         <Card className="overflow-hidden lg:hidden">
           <ul aria-label="Personel listesi" className="divide-y divide-line">

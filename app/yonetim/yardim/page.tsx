@@ -5,10 +5,10 @@ import { Card, PageHeader, buttonClass } from "@/components/ui";
 export const metadata = { title: "Yardım ve kurulum — ÇabukPOS" };
 
 const steps = [
-  ["Personel PIN'i verin", "Kasiyer ve yöneticileri ekleyin; herkes kendi PIN'iyle giriş yapsın.", "/yonetim/personel"],
-  ["Ürünleri ekleyin", "Ürünler sayfasından tek tek ekleyin veya CSV şablonuyla toplu aktarın.", "/yonetim/urunler"],
-  ["Kasayı bağlayın", "Cihazlar bölümünden Windows ajanını kurup bu işletmeye eşleyin.", "/yonetim/cihazlar"],
-  ["Test satışı yapın", "Kasa ekranında vardiya açın, örnek satış yapın ve fişi kontrol edin.", "/kasa"],
+  ["Personel ekleyin, PIN belirleyin", "Kasiyer ve yöneticileri ekleyin; herkes kendi PIN'iyle giriş yapsın.", "/yonetim/personel"],
+  ["Ürünleri ekleyin", "Tek tek ekleyin veya CSV şablonuyla toplu aktarın.", "/yonetim/urunler"],
+  ["Kasa tabletini bağlayın", "Cihazlar bölümünden cihazı ekleyip eşleme kodunu tablette /kasa adresine yazın.", "/yonetim/cihazlar"],
+  ["İlk satışı yapın", "Kasa ekranında vardiya açın, örnek satış yapın ve fişi kontrol edin.", "/kasa"],
 ] as const;
 
 const topics = [
@@ -26,7 +26,7 @@ export default function Yardim() {
       <Card className="mb-6 overflow-hidden border-brand-ring bg-brand-soft/20">
         <div className="border-b border-brand-ring/70 px-5 py-4">
           <h2 className="font-semibold">İlk satış kontrol listesi</h2>
-          <p className="mt-1 text-sm text-ink-2">Aşağıdaki dört adım tamamlandığında pilot işletme temel operasyon için hazırdır.</p>
+          <p className="mt-1 text-sm text-ink-2">Bu dört adım tamamlandığında işletmeniz günlük satışa hazırdır.</p>
         </div>
         <ol className="grid gap-px bg-brand-ring/60 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map(([title, text, href], index) => (

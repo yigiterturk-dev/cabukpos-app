@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
+import { Monitor } from "lucide-react";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { scopedStoreId } from "@/lib/admin/store-scope";
@@ -28,7 +29,7 @@ export default async function Cihazlar() {
       <SplitView
         panel={<Panel title="Cihaz ekle" desc={activeStoreId ? "Yeni cihaz seçili şubeye atanır. Eşleme kodunu cihazda /kasa adresine yazın." : undefined}>{activeStoreId ? <DeviceForm /> : <div className="space-y-3 text-sm text-muted"><p>Cihaz eklemeden önce bir şube oluşturun.</p><Link href="/yonetim/subeler" className={buttonClass("primary")}>Şube ekle</Link></div>}</Panel>}
         list={<>
-      {rows.length === 0 ? <Empty>Henüz cihaz yok.</Empty> : (
+      {rows.length === 0 ? <Empty icon={<Monitor aria-hidden className="size-8" />}>Henüz cihaz yok. Formdan kasa tabletini ekleyin, sonra eşleme kodunu tablette &quot;/kasa&quot; adresine yazın.</Empty> : (
         <Card className="divide-y divide-line">
           {rows.map((d) => (
             <div key={d.id} className="flex min-w-0 flex-wrap items-center gap-3 p-4">
