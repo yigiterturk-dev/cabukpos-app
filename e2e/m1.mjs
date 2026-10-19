@@ -3,6 +3,7 @@
 // → gün sonu (beklenen/fark) → yönetim raporu; ikinci işletme ilk işletmenin ürününü görmez.
 // Kullanım: node --env-file=.env.local e2e/m1.mjs (sunucu :3800: npm run build && PORT=3800 npm start)
 // Kayıt sınırı IP başına saatte 5 (her koşu 2 kayıt): gerekirse yerel DB'de delete from login_attempts where key like 'signup:%'
+// Uzak DB (Neon) boşta askıya alınır: koşu öncesi "select 1" ile ısıtın — soğuk başlangıç ilk aksiyonları 30-60 sn geciktirir.
 import { chromium } from "playwright-core";
 
 const BASE = process.env.BASE ?? "http://localhost:3800";
@@ -41,7 +42,11 @@ for (const [name, price, vat] of [["Döner", "180,00", "10"], ["Ayran", "25", "1
 }
 await admin.fill("input[name=name]", "Hatalı");
 await admin.fill("input[name=price]", "abc");
-await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
+// Sunucu doğrulaması transport kuyruğunda gecikebiliyor (uzak DB günü): yanıt gelmezse kaydı yeniden dene.
+for (let i = 0; i < 3; i++) {
+  await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
+  if (await admin.getByText("Fiyat geçersiz (ör. 25,00).").isVisible({ timeout: 20000 }).catch(() => false)) break;
+}
 await admin.getByText("Fiyat geçersiz (ör. 25,00).").waitFor();
 step("3 ürün eklendi; geçersiz fiyat reddedildi");
 
