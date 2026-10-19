@@ -14,6 +14,7 @@ import { foldTabs } from "@/lib/core/tab";
 import { initialEvents } from "@/lib/tabs/stream";
 import { Badge, buttonClass, Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
+import { OrnekMenuButton } from "@/components/admin/OrnekMenuButton";
 
 export const dynamic = "force-dynamic";
 const CHANNEL: Record<string, string> = { kasa: "Kasa", masa: "Masa", paket: "Paket", platform: "Platform" };
@@ -110,6 +111,7 @@ export default async function Bugun() {
             <div className="min-w-0 flex-1">
               <h2 className="break-words font-semibold">Merhaba {a.name.split(/\s+/)[0]} <span className="ml-1 text-sm font-normal text-muted">({setupDone}/{setupSteps.length} adım tamam)</span></h2>
               <p className="mt-1 break-words text-sm text-ink-2">Kasayı satışa hazırlamak için {setupSteps.length - setupDone} kısa adım kaldı. {nextSetupStep ? `Sıradaki: ${nextSetupStep.label}.` : ""} Her adım bir sayfa — doldur, dön, devam et.</p>
+              {!setup.product && <div className="mt-3"><OrnekMenuButton /></div>}
             </div>
             <Link href={nextSetupStep?.href ?? "/kasa"} aria-label={nextSetupStep ? `Kuruluma devam et: ${nextSetupStep.label}` : "Kasayı aç"} className={`${buttonClass("primary", "lg")} shrink-0`}>Kuruluma devam et<ArrowRight aria-hidden className="size-4" /></Link>
           </div>

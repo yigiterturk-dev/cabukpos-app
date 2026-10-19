@@ -14,6 +14,7 @@ import { ProductImportForm } from "@/components/admin/ProductImportForm";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { PendingActionForm } from "@/components/admin/PendingActionForm";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
+import { OrnekMenuButton } from "@/components/admin/OrnekMenuButton";
 import { Plus } from "lucide-react";
 import { Badge, buttonClass, Card, Empty, Input, PageHeader, Panel, SplitView, TABLE_HEAD } from "@/components/ui";
 
@@ -88,7 +89,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
         </nav>
       </div>
       {shown.length === 0 ? (
-        <Empty action={q.trim() ? <Link href={raw ? "/yonetim/urunler?tur=hammadde" : "/yonetim/urunler"} className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 font-medium text-brand outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aramayı temizle</Link> : undefined}>{q.trim() ? `“${q.trim()}” ile eşleşen ürün yok.` : raw ? "Hammadde yok. Formda “Kasada satılır: Hayır” seçin." : "Henüz ürün yok."}</Empty>
+        <Empty action={q.trim() ? <Link href={raw ? "/yonetim/urunler?tur=hammadde" : "/yonetim/urunler"} className="inline-flex min-h-11 items-center rounded-lg border border-line bg-surface px-3 font-medium text-brand outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aramayı temizle</Link> : <OrnekMenuButton />}>{q.trim() ? `“${q.trim()}” ile eşleşen ürün yok.` : raw ? "Hammadde yok. Formda “Kasada satılır: Hayır” seçin." : "Henüz ürün yok."}</Empty>
       ) : (
         <>
         <Card className="overflow-hidden lg:hidden">
