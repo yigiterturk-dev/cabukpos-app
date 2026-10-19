@@ -11,7 +11,8 @@ const browser = await chromium.launch({ channel: "chrome", headless: true });
 const errors = [];
 const page = async (w = 1280) => {
   const p = await (await browser.newContext({ viewport: { width: w, height: 900 } })).newPage();
-  p.on("pageerror", (e) => errors.push(e.message));  
+  p.on("pageerror", (e) => errors.push(e.message));
+  p.setDefaultTimeout(45000); // uzak DB gecikmesine karşı yalancı kırmızıyı azalt
   return p;
 };
 const step = (m) => console.log("•", m);

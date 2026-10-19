@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { addProduct, lineTotal, MAX_CART_LINE_QTY_MILLI, removedLines, setQty, totals, type CartLine, type RemovedLine } from "@/lib/core/cart";
 import type { Currency } from "@/lib/core/money";
 import { currencyUnit, kasaFmt } from "./kasa-format";
@@ -694,6 +695,7 @@ export function SaleScreen({ categories, products, priceLists = [], market, onPa
               <span className="grid size-12 place-items-center rounded-2xl bg-surface-3 text-line-strong"><ShoppingBasket aria-hidden className="size-6" /></span>
               <p className="text-sm text-muted">{emptyResultText}</p>
               {(q || cat !== null) && <button type="button" onClick={() => { setQ(""); setCat(null); setScanError(null); refocus(); }} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-brand underline underline-offset-4 outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">Aramayı ve kategoriyi temizle</button>}
+              {!q && cat === null && <Link href="/yonetim/urunler" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-brand underline underline-offset-4 outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yönetim panelinden ürün ekle</Link>}
             </div>
           )}
         </div>
