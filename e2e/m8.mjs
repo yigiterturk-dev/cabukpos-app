@@ -120,7 +120,7 @@ try {
   expect(res.status(), 200, "fatura sayfası");
   await pub.getByTestId("test-band").waitFor();
   expect((await pub.getByTestId("fiscal-number").innerText()).trim(), d1.number, "sayfada numara");
-  for (const t of ["E2E Kebapçı", "Moda Cd. 1", "Nihai Tüketici", "Adana", "₺300,00"]) await pub.getByText(t, { exact: false }).locator("visible=true").first().waitFor();
+  for (const t of ["E2E Kebapçı", "Moda Cd. 1", "Nihai Tüketici", "Adana", "300,00 ₺"]) await pub.getByText(t, { exact: false }).locator("visible=true").first().waitFor();
   const robots = await pub.locator('meta[name="robots"]').getAttribute("content");
   if (!robots?.includes("noindex")) throw new Error(`robots: ${robots}`);
   expect((await pub.goto(`${BASE}/f/${"x".repeat(24)}`)).status(), 404, "bilinmeyen token");

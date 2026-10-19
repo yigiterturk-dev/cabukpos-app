@@ -1496,3 +1496,9 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - Tedarikçi telefonları mobil listede aranabiliyorken masaüstü tabloda ve seçili tedarikçi özetinde düz metindi; biçimsiz geçersiz numaralar da boş `tel:` adresine dönüşebilirdi. Ortak güvenli telefon URI'si kullanıldı; geçerli numaralar tüm görünümlerde 44 px hedefle aranabilir, geçersiz olanlar düz metin kalır. Hedefli ESLint ve diff kontrolü geçti; tam TypeScript kontrolü mevcut yeni test dosyasındaki mudir rol yazımı nedeniyle hata veriyor.
 - Üretim ve reçete ekranları ara ürün bulunmayınca gereken ürün oluşturma adımını tarif ediyor ama oraya götürmüyordu. Ara ürün filtresine doğrudan bağlantılar, üretim boş durumunda da reçete sayfasına devam bağlantısı eklendi.
 - Zincir merkezi ve sadakat ekranları sırasıyla şube veya satış gerektiğini yazıyor, ama boş durumda sonraki adıma yönlendirmiyordu. Şube oluşturma ve kasaya gitme bağlantıları eklendi.
+
+## Tam doğrulama turu · 19.10.2026
+
+- Tüm kapılar tek turda doğrulandı: `qa:static` temiz (`/api/kasa/onay` içindeki kullanılmayan `getDb` içe aktarımı kaldırıldı), 417 birim testi yeşil, production build başarılı.
+- 18 E2E suite'in tamamı yeşil. İki gerçek E2E iddiası düzeltildi: m4 fiş içeriği `"70,00 ₺"` → `"70,00 TL"` (ESC/POS kodlayıcı ₺'yi yazıcıya "TL" olarak basar — latin1 bayt akışında ₺ mümkün değil) ve m8 `/f` fatura sayfası `"₺300,00"` → `"300,00 ₺"` (sayfa formatTL sonekli biçim kullanıyor). İkisi de 1f33aa9 hizalama turunda yanlış çevrilmişti; önceki "18/18" sayısı m4/m8 için doğrulanmamıştı. Diğer suite'lerdeki önekli `"₺…"` beklentileri doğru: yönetim ekranları formatMoney önekli biçim kullanıyor.
+- E2E koşu notu: arka arkaya suite koşarken yerel hız sınırları (signup/pair, `login_attempts` tablosunda `:yerel` ekli anahtarlar) suite başına temizlenmeli; aksi halde sınıra takılan kayıt/eşleme adımları akışın ilerisinde yanıltıcı zaman aşımı hataları üretiyor.

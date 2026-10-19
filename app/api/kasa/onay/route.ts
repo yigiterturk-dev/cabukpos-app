@@ -1,6 +1,6 @@
 // Kasa müdür onayı ve kurye hesap kapatma: PIN sunucuda doğrulanır; yalnız müdür işlemi imzalı belirteç alır.
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb, schema, withTenant } from "@/db";
+import { schema, withTenant } from "@/db";
 import { getDevice as requireAuthDevice } from "@/lib/auth/kasa";
 import { verifyPin } from "@/lib/auth/pin";
 import { signJwt } from "@/lib/auth/jwt";

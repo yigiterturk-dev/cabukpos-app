@@ -142,7 +142,7 @@ try {
   if (!j1.subarray(0, 5).equals(DRAWER)) throw new Error("nakit satışta çekmece darbesi yok");
   if (!j1.subarray(-4).equals(CUT)) throw new Error("fiş kesilmedi");
   const t1 = j1.toString("latin1");
-  if (!t1.includes("K1-000001") || !t1.includes("TOPLAM") || !t1.includes("70,00 ₺")) throw new Error(`fiş içeriği: ${t1.slice(0, 300)}`);
+  if (!t1.includes("K1-000001") || !t1.includes("TOPLAM") || !t1.includes("70,00 TL")) throw new Error(`fiş içeriği: ${t1.slice(0, 300)}`);
   step("terazi 0,750 kg + Ekmek, nakit 70 TL → fiş (K1-000001, TOPLAM, kes) + çekmece darbesi");
 
   // Yazıcı kapalı: satış kaydolur, fiş başarısız, sonra yeniden dene
