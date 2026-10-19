@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { normalizeSearchText } from "@/lib/core/search";
 import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
 
@@ -56,6 +56,15 @@ const groups: { title: string; items: Item[] }[] = [
     { href: "/yonetim/abonelik", label: "Abonelik", icon: CreditCard },
   ] },
 ];
+
+/** Günlük görünüm: işletmecinin her gün baktıkları, işletme türü filtresiyle birlikte. Sıra bu listedeki sıra. */
+const GUNLUK = ["/yonetim", "/yonetim/salon", "/yonetim/urunler", "/yonetim/stok", "/yonetim/raporlar", "/yonetim/personel", "/yonetim/yardim"];
+
+const NAV_MODE_KEY = "cabukpos:nav";
+const navModeListeners = new Set<() => void>();
+const subscribeNavMode = (fn: () => void) => { navModeListeners.add(fn); return () => { navModeListeners.delete(fn); }; };
+const getAllMode = (): boolean => { try { return window.localStorage.getItem(NAV_MODE_KEY) === "tumu"; } catch { return false; } };
+const getServerAllMode = () => false;
 
 function NavItem({ item, path, onSelect }: { item: Item; path: string; onSelect?: () => void }) {
   const on = item.exact ? path === item.href : path.startsWith(item.href);
@@ -116,8 +125,27 @@ export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "resto
     () => groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.only || i.only === vertical) })).filter((g) => g.items.length),
     [vertical],
   );
+  // Varsayılan görünüm "Günlük işler": yeni işletmeci paneli açtığında yalnız her gün baktığı sayfaları görür.
+  // Seçim kalıcıdır (localStorage); arama her iki görünümde de bütün menüyü tarar.
+  const allMode = useSyncExternalStore(subscribeNavMode, getAllMode, getServerAllMode);
+  const [modeNotice, setModeNotice] = useState("");
+  const setMode = (all: boolean) => {
+    try { window.localStorage.setItem(NAV_MODE_KEY, all ? "tumu" : "gunluk"); } catch { /* yok say */ }
+    for (const fn of navModeListeners) fn();
+    setModeNotice(all ? "Tüm menü gösteriliyor." : "Günlük işler gösteriliyor.");
+  };
+  const flat = useMemo(() => visible.flatMap((g) => g.items), [visible]);
+  const gunlukItems = useMemo(() => GUNLUK.map((h) => flat.find((i) => i.href === h)).filter((i): i is Item => Boolean(i)), [flat]);
+  const activeItem = flat.find((i) => (i.exact ? path === i.href : path.startsWith(i.href)));
+  const shown = useMemo(() => {
+    if (allMode) return visible;
+    const out: { title: string; items: Item[] }[] = [];
+    if (activeItem && !gunlukItems.includes(activeItem)) out.push({ title: "Bulunduğun sayfa", items: [activeItem] });
+    out.push({ title: "Günlük işler", items: gunlukItems });
+    return out;
+  }, [allMode, visible, gunlukItems, activeItem]);
   const needle = normalizeSearchText(q.trim());
-  const matches = needle ? visible.flatMap((g) => g.items).filter((i) => normalizeSearchText(i.label).includes(needle)) : [];
+  const matches = needle ? flat.filter((i) => normalizeSearchText(i.label).includes(needle)) : [];
   useEffect(() => {
     if (!needle) return;
     const timer = window.setTimeout(() => setMatchNotice({ query: needle, text: matches.length === 0 ? "Menüde sonuç yok." : `${matches.length} menü sonucu bulundu.` }), 450);
@@ -151,8 +179,27 @@ export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "resto
       </div>
 
       <p className="sr-only" role="status" aria-live="polite">
-        {matchNotice?.query === needle ? matchNotice.text : ""}
+        {matchNotice?.query === needle ? matchNotice.text : modeNotice}
       </p>
+
+      <div role="group" aria-label="Menü görünümü" className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.06] p-1">
+        <button
+          type="button"
+          aria-pressed={!allMode}
+          onClick={() => setMode(false)}
+          className={`min-h-9 rounded-lg px-2 py-1.5 text-xs outline-none transition-[background-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-brand-ring/60 ${!allMode ? "bg-white/[0.12] font-semibold text-cream shadow-rest" : "font-medium text-cream-muted hover:text-cream"}`}
+        >
+          Günlük
+        </button>
+        <button
+          type="button"
+          aria-pressed={allMode}
+          onClick={() => setMode(true)}
+          className={`min-h-9 rounded-lg px-2 py-1.5 text-xs outline-none transition-[background-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-brand-ring/60 ${allMode ? "bg-white/[0.12] font-semibold text-cream shadow-rest" : "font-medium text-cream-muted hover:text-cream"}`}
+        >
+          Tümü
+        </button>
+      </div>
 
       {needle ? (
         <ul className="space-y-0.5">
@@ -161,7 +208,7 @@ export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "resto
         </ul>
       ) : (
         <div className="space-y-5">
-          {visible.map((g) => (
+          {shown.map((g) => (
             <div key={g.title}>
               <GroupLabel>{g.title}</GroupLabel>
               <ul className="space-y-0.5">
@@ -169,6 +216,7 @@ export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "resto
               </ul>
             </div>
           ))}
+          {!allMode && <p className="px-3 text-[11px] leading-relaxed text-cream-muted">Aradığın sayfa burada yok mu? Yukarıda aramayı dene ya da “Tümü”ne geç.</p>}
         </div>
       )}
     </nav>
