@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { normalizeSearchText } from "@/lib/core/search";
-import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
+import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, ChevronDown, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
 
 type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
 const groups: { title: string; items: Item[] }[] = [
@@ -89,8 +89,22 @@ function NavItem({ item, path, onSelect }: { item: Item; path: string; onSelect?
   );
 }
 
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-muted">{children}</h2>;
+function GroupLabel({ children, open, onToggle }: { children: React.ReactNode; open?: boolean; onToggle?: () => void }) {
+  const cls = "text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-muted";
+  if (!onToggle) return <h2 className={`mb-1.5 px-3 ${cls}`}>{children}</h2>;
+  return (
+    <h2>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className={`flex min-h-11 w-full items-center justify-between rounded-xl px-3 outline-none transition-[background-color,color,box-shadow] hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${cls}`}
+      >
+        {children}
+        <ChevronDown aria-hidden className={`size-3.5 shrink-0 transition-transform duration-200 ${open ? "" : "-rotate-90"}`} />
+      </button>
+    </h2>
+  );
 }
 
 /** Sidebar menüsü: arama ile filtrele + gruplu liste. Masaüstü ve mobil çekmecede aynı. */
@@ -137,6 +151,7 @@ export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "resto
   const flat = useMemo(() => visible.flatMap((g) => g.items), [visible]);
   const gunlukItems = useMemo(() => GUNLUK.map((h) => flat.find((i) => i.href === h)).filter((i): i is Item => Boolean(i)), [flat]);
   const activeItem = flat.find((i) => (i.exact ? path === i.href : path.startsWith(i.href)));
+  const activeGroupTitle = useMemo(() => (activeItem ? visible.find((g) => g.items.includes(activeItem))?.title : undefined), [visible, activeItem]);
   const shown = useMemo(() => {
     if (allMode) return visible;
     const out: { title: string; items: Item[] }[] = [];
@@ -146,6 +161,11 @@ export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "resto
   }, [allMode, visible, gunlukItems, activeItem]);
   const needle = normalizeSearchText(q.trim());
   const matches = needle ? flat.filter((i) => normalizeSearchText(i.label).includes(needle)) : [];
+  // Tümü görünümü katlanabilir ağaçtır: gruplar kapalı durur, yalnız ilgili olan açılır (ihtiyaç anında çıkarılır).
+  // Açıklık durumu türetilir: kullanıcının açtıkları + her zaman aktif sayfanın grubu (effect'siz, SSR tutarlı).
+  const [manualOpen, setManualOpen] = useState<string[]>([]);
+  const toggleGroup = (title: string) => setManualOpen((prev) => (prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]));
+  const isGroupOpen = (title: string) => manualOpen.includes(title) || title === activeGroupTitle;
   useEffect(() => {
     if (!needle) return;
     const timer = window.setTimeout(() => setMatchNotice({ query: needle, text: matches.length === 0 ? "Menüde sonuç yok." : `${matches.length} menü sonucu bulundu.` }), 450);
@@ -208,14 +228,20 @@ export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "resto
         </ul>
       ) : (
         <div className="space-y-5">
-          {shown.map((g) => (
-            <div key={g.title}>
-              <GroupLabel>{g.title}</GroupLabel>
-              <ul className="space-y-0.5">
-                {g.items.map((i) => <li key={i.href}><NavItem item={i} path={path} onSelect={() => { setQ(""); onNavigate?.(); }} /></li>)}
-              </ul>
-            </div>
-          ))}
+          {shown.map((g) => {
+            const collapsible = allMode && g.title !== "Bulunduğun sayfa";
+            const open = !collapsible || isGroupOpen(g.title);
+            return (
+              <div key={g.title}>
+                <GroupLabel open={open} onToggle={collapsible ? () => toggleGroup(g.title) : undefined}>{g.title}</GroupLabel>
+                {open && (
+                  <ul className="space-y-0.5">
+                    {g.items.map((i) => <li key={i.href}><NavItem item={i} path={path} onSelect={() => { setQ(""); onNavigate?.(); }} /></li>)}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
           {!allMode && <p className="px-3 text-[11px] leading-relaxed text-cream-muted">Aradığın sayfa burada yok mu? Yukarıda aramayı dene ya da “Tümü”ne geç.</p>}
         </div>
       )}
