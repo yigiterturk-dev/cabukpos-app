@@ -67,7 +67,7 @@ export function StaffForm({ initial }: { initial?: { id: string; name: string; r
             <Err s={displayState} f="role" />
           </fieldset>
         </div>
-        <div><Field label="PIN" hint={initial ? "Boş bırakırsanız değişmez · yenisi 4-6 rakam" : "4-6 hane rakam"}><Input name="pin" disabled={pending} inputMode="numeric" autoComplete="off" minLength={4} maxLength={6} pattern="[0-9]{4,6}" required={!initial} {...errorProps(displayState, "pin")} /></Field><Err s={displayState} f="pin" /></div>
+        <div><Field label="PIN" hint={initial ? "Boş bırakırsanız değişmez · yenisi 4-6 rakam" : "4-6 hane rakam"}><PasswordInput name="pin" disabled={pending} inputMode="numeric" autoComplete="new-password" minLength={4} maxLength={6} pattern="[0-9]{4,6}" required={!initial} {...errorProps(displayState, "pin")} /></Field><Err s={displayState} f="pin" /></div>
       </div>
       {initial && (
         <div className="max-w-xs">

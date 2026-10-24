@@ -15,8 +15,8 @@ import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { PendingActionForm } from "@/components/admin/PendingActionForm";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { OrnekMenuButton } from "@/components/admin/OrnekMenuButton";
-import { Plus } from "lucide-react";
-import { Badge, buttonClass, Card, Empty, Input, PageHeader, Panel, SplitView, TABLE_HEAD } from "@/components/ui";
+import { ListWorkspace } from "@/components/admin/ListWorkspace";
+import { Badge, buttonClass, Card, Empty, Input, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -56,14 +56,10 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
   const productInitial = editing && { stationId: productStationForStore(editing.id, editing.stationId, editing.categoryId ? categoryStations.get(editing.categoryId) ?? null : null, routes), optionGroupIds: links.filter((l) => l.productId === editing.id).map((l) => l.groupId), id: editing.id, name: editing.name, price: editing.price, vatRate: editing.vatRate, categoryId: editing.categoryId, barcodes: editing.barcodes, kind: editing.kind, plu: editing.plu, trackStock: editing.trackStock, quick: editing.quick, sellable: editing.sellable, unit: editing.unit, cost: editing.cost, minStock: editing.minStock, yieldMilli: editing.yieldMilli };
   return (
     <>
-      <PageHeader title="Ürünler" desc="Fiyatlar KDV dahil. Kasada satıştaki ürünler görünür." actions={editing && <Link href="/yonetim/urunler" className={buttonClass("secondary")}><Plus aria-hidden className="size-4" />Yeni ürün</Link>} />
-      <SplitView wide panel={
-        <div className="space-y-4">
-          <ProductImportForm />
-          <Panel title={editing ? `Düzenle: ${editing.name}` : "Ürün ekle"} tone={editing ? "edit" : undefined}>
-            <ProductForm key={editing?.id ?? "yeni"} categories={options} salon={salon} initial={productInitial} currencyUnit={currencyUnit} />
-          </Panel>
-          <Panel title="Kategoriler" desc="Kasadaki sekmeler. Ürünü olan kategori silinince ürünler kategorisiz kalır.">
+      <ListWorkspace key={editing?.id ?? "new"} title="Ürünler" description="Fiyatlar KDV dahil. Kasada satıştaki ürünler görünür." editing={Boolean(editing)} closeHref={raw ? `/yonetim/urunler?tur=hammadde${querySuffix}` : soldTabHref} panels={[
+        { id: "product", label: "Ürün ekle", title: editing ? `Düzenle: ${editing.name}` : "Ürün ekle", size: "lg", content: <ProductForm key={editing?.id ?? "yeni"} categories={options} salon={salon} initial={productInitial} currencyUnit={currencyUnit} /> },
+        { id: "import", label: "CSV aktar", title: "Toplu ürün aktar", size: "lg", content: <ProductImportForm /> },
+        { id: "categories", label: "Kategoriler", title: "Kategoriler", size: "lg", content: <><p className="mb-4 text-sm text-muted">Kasadaki sekmeler. Kategori silinince ürünler kategorisiz kalır.</p>
             {cats.length > 0 && (
               <div className="mb-3 flex flex-wrap gap-2">
                 {cats.map((c) => (
@@ -75,9 +71,8 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
               </div>
             )}
             <CategoryForm />
-          </Panel>
-        </div>
-      } list={<>
+        </> },
+      ]}>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <form className="flex min-w-48 flex-1 items-end gap-2 sm:max-w-sm" role="search">
           <div className="min-w-0 flex-1"><Input name="q" defaultValue={q} maxLength={80} placeholder="Ürün veya barkod ara" aria-label="Ürün veya barkod ara" />{tur && <input type="hidden" name="tur" value={tur} />}</div>
@@ -129,7 +124,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
           <HorizontalScrollRegion label="Ürün kataloğu, yatay kaydırılabilir" className="rounded-2xl">
           <table aria-label="Ürün kataloğu" className="w-full min-w-[680px] text-sm 2xl:min-w-[900px]">
             <thead className={TABLE_HEAD}>
-              <tr><th scope="col" className="px-4 py-2.5 font-medium">Ürün</th><th scope="col" className="px-4 py-2.5 font-medium">Kategori</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Fiyat</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Maliyet</th><th scope="col" className="hidden px-4 py-2.5 font-medium 2xl:table-cell">KDV</th><th scope="col" className="hidden px-4 py-2.5 font-medium 2xl:table-cell">Barkod</th><th scope="col" className="px-4 py-2.5 font-medium">Durum</th><th scope="col" className="sticky right-0 z-20 bg-surface-2 px-4 py-2.5 text-right font-medium shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.45)]">Aksiyonlar</th></tr>
+              <tr><th scope="col" className="px-4 py-2.5 font-medium">Ürün</th><th scope="col" className="px-4 py-2.5 font-medium">Kategori</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Fiyat</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Maliyet</th><th scope="col" className="hidden px-4 py-2.5 font-medium 2xl:table-cell">KDV</th><th scope="col" className="hidden px-4 py-2.5 font-medium 2xl:table-cell">Barkod</th><th scope="col" className="px-4 py-2.5 font-medium">Durum</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Aksiyonlar</th></tr>
             </thead>
             <tbody className="divide-y divide-line">
               {shown.map((p) => (
@@ -141,7 +136,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
                   <td className="hidden px-4 py-2.5 2xl:table-cell">%{p.vatRate}</td>
                   <td className="hidden px-4 py-2.5 text-muted 2xl:table-cell">{p.barcodes.length || "—"}</td>
                   <td className="px-4 py-2.5"><span className="flex flex-wrap gap-1">{p.active ? <Badge tone="ok">{p.sellable ? "Satışta" : "Aktif"}</Badge> : <Badge>Kapalı</Badge>}{hidden.has(p.id) && <Badge tone="warn">Bu şubede gizli</Badge>}</span></td>
-                  <td className={`sticky right-0 whitespace-nowrap px-4 py-2.5 text-right shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.35)] ${p.id === duzenle ? "bg-brand-soft/90" : "bg-surface"}`}>
+                  <td className={`whitespace-nowrap px-4 py-2.5 text-right ${p.id === duzenle ? "bg-brand-soft/90" : "bg-surface"}`}>
                     <Link href={`/yonetim/urunler?duzenle=${p.id}${tur ? `&tur=${tur}` : ""}${querySuffix}`} aria-label={`Düzenle: ${p.name}`} className="mr-1 inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
                     <PendingActionForm action={setProductActive.bind(null, p.id, !p.active)} label={p.active ? "Satıştan kaldır" : "Satışa aç"} pendingLabel="Kaydediliyor…" ariaLabel={`${p.active ? "Satıştan kaldır" : "Satışa aç"}: ${p.name}`} pendingStatus={`${p.name} ürününün satış durumu kaydediliyor.`} formClassName="inline" buttonClassName="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" />
                     {storeId && <PendingActionForm action={setStoreProductHidden.bind(null, p.id, !hidden.has(p.id))} label={hidden.has(p.id) ? "Bu şubede göster" : "Bu şubede gizle"} pendingLabel="Kaydediliyor…" ariaLabel={`${hidden.has(p.id) ? "Bu şubede göster" : "Bu şubede gizle"}: ${p.name}`} pendingStatus={`${p.name} ürününün şube görünürlüğü kaydediliyor.`} formClassName="inline" buttonClassName="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" />}
@@ -154,7 +149,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
         </Card>
         </>
       )}
-      </>} />
+      </ListWorkspace>
     </>
   );
 }

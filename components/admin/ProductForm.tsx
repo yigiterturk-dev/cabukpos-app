@@ -60,7 +60,7 @@ function Fields({ s, initial, categories, salon, pending, currencyUnit }: { s: C
   const qtyMaxLength = u === "adet" ? 6 : 10;
   const qtyFormatHint = u === "adet" ? "tam sayı · en fazla 999.999" : `en fazla 999.999,999 ${u} · 3 ondalık hane`;
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+    <div className="grid gap-4 sm:grid-cols-2">
       <div><Field label="Ürün adı" hint="2–80 karakter"><Input name="name" defaultValue={initial?.name} minLength={2} maxLength={80} pattern=".*\S.*\S.*" required {...fieldErrorProps(s, "name")} /></Field><Err s={s} f="name" /></div>
       <div>
         <RadioCards name="sellable" value={sellable ? "true" : "false"} set={(v) => { setSellable(v === "true"); setUnitValuesReviewed(false); }} label="Kasada satılır" items={[["true", "Evet"], ["false", "Hayır (hammadde / ara ürün)"]]} />

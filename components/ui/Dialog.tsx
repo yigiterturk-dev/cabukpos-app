@@ -108,7 +108,7 @@ export function Dialog({ label, title, aside, onClose, closeDisabled = false, si
       <div ref={ref} tabIndex={-1} style={visualFrame ? { maxHeight: visualFrame.maxHeight } : undefined} className={`flex max-h-[92vh] w-full ${WIDTH[size]} flex-col overflow-hidden rounded-[20px] bg-surface shadow-pop outline-none`}>
         {title !== undefined && (
           <div className="flex min-w-0 shrink-0 flex-wrap items-start justify-between gap-3 border-b border-line px-6 py-4">
-            <h2 id={titleId} className="min-w-0 basis-full break-words text-lg font-semibold tracking-tight sm:flex-1 sm:basis-auto">{title}</h2>
+            <h2 id={titleId} className="min-w-0 flex-1 break-words text-lg font-semibold tracking-tight">{title}</h2>
             <div className="ml-auto flex shrink-0 items-start gap-2">
               {aside && <div>{aside}</div>}
               {onClose && <button type="button" aria-label="Pencereyi kapat" title="Kapat" disabled={closeDisabled} onClick={onClose} className="grid size-12 place-items-center rounded-[10px] text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-not-allowed disabled:opacity-40"><X aria-hidden className="size-5" /></button>}

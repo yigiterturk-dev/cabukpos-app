@@ -1,6 +1,6 @@
 "use server";
 // Kasa personeli: ad, rol, PIN. PIN kimliği belirler → aynı kiracıda iki aktif kişi aynı PIN'i taşıyamaz.
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
@@ -32,6 +32,7 @@ export async function saveStaff(id: string | null, _: StaffState, form: FormData
   }
   if (reauthErr) return { error: reauthErr, field: "sifre" };
   const err = await withTenant(a.tenantId, async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${a.tenantId}), 9271)`);
     if (pin) {
       const others = await tx.select({ pinHash: schema.staff.pinHash }).from(schema.staff).where(id ? and(eq(schema.staff.active, true), ne(schema.staff.id, id)) : eq(schema.staff.active, true));
       for (const o of others) if (await verifyPin(pin, o.pinHash)) return "Bu PIN başka birinde kullanılıyor.";

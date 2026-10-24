@@ -705,9 +705,10 @@ export function KasaApp() {
   if (!meta.device) {
     if (status.syncing) return <Center title="Kasa açılıyor…" />;
     return (
-      <Center logo title="Bu kasayı tanımla" sub={status.online ? "Yönetim panelindeki 8 haneli eşleme kodunu girerek bu cihazı işletmene bağla." : "İlk tanımlama için internet bağlantısı gerekir."} card>
+      <Center logo title="Bu kasayı tanımla" sub={status.online ? "İlk girişte kendi PIN’ini belirleyerek bu tarayıcıyı kasaya bağla. Başka bir cihaz için eşleme kodu da kullanabilirsin." : "İlk tanımlama için internet bağlantısı gerekir."} card>
         <div className="space-y-3">
-          <Link href="/kasa/eslestir" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-action px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kasa eşlemesini başlat</Link>
+          <Link href="/kasa/kurulum" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-action px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kendi kasamı kur ve PIN belirle</Link>
+          <Link href="/kasa/eslestir" className="flex min-h-11 items-center justify-center rounded-xl border border-line px-4 text-sm text-brand">Eşleme koduyla bağla</Link>
           <p className="text-center text-xs text-muted">Yönetim → Cihazlar → Kasa ekle</p>
         </div>
       </Center>
@@ -777,8 +778,8 @@ export function KasaApp() {
   }
   if (meta.catalog.staff.length === 0) {
     return (
-      <Center logo title="Önce personel ekleyin" sub="Kasaya girmek için en az bir kasiyer veya müdür PIN’i gerekiyor." card>
-        <Link href="/yonetim/personel" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-action px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Personel ve PIN oluştur</Link>
+      <Center logo title="İlk kasa PIN’inizi belirleyin" sub="PIN’inizi seçip ilk kasa kullanıcınızı oluşturun. Daha sonra Personel ekranından değiştirebilirsiniz." card>
+        <Link href="/kasa/kurulum" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-action px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kasa PIN’imi belirle</Link>
       </Center>
     );
   }
@@ -786,7 +787,7 @@ export function KasaApp() {
     return <>{header}<GunSonu meta={meta} closed onClose={async () => {}} onBack={() => setView({ name: "home" })} /></>;
   }
   if (!cashier) {
-    return <>{header}<Center logo title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} autoFocusFirst /></Center></>;
+    return <>{header}<Center logo title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} autoFocusFirst /><Link href="/kasa/kurulum" className="mt-4 inline-flex min-h-11 items-center justify-center text-sm text-brand underline">İlk kullanım: PIN belirle / PIN’imi değiştir</Link></Center></>;
   }
   if (restoran && role === "kurye") {
     const kHeader = (
