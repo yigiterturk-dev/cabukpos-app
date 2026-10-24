@@ -8,6 +8,8 @@ import type { SaleDoc, TabDoc } from "@/lib/sync/docs";
 
 const EMAIL = process.argv[2] ?? "m9a-1790938395311@ornek.com";
 const DAYS = Number(process.env.DAYS ?? 30);
+const DEVICE_NAME = process.env.DEMO_DEVICE_NAME ?? "Kasa 1";
+const latestToday = new Date(Date.now() - 40 * 60_000); // leave room for refund timestamps
 const uuid = () => crypto.randomUUID();
 const rnd = (n: number) => Math.floor(Math.random() * n);
 const iso = (d: Date) => d.toISOString();
@@ -26,13 +28,14 @@ if (mevcut.length > 3 && process.env.FORCE !== "1") {
 const [store] = await withTenant(tenantId, (tx) => tx.select({ id: schema.stores.id }).from(schema.stores).orderBy(schema.stores.createdAt).limit(1));
 if (!store) throw new Error("store yok");
 const [device] = await db.select({ id: schema.devices.id, receiptPrefix: schema.devices.receiptPrefix }).from(schema.devices)
-  .where(and(eq(schema.devices.tenantId, tenantId), eq(schema.devices.name, "Kasa 1")));
-if (!device) throw new Error("Kasa 1 cihazı yok");
+  .where(and(eq(schema.devices.tenantId, tenantId), eq(schema.devices.name, DEVICE_NAME)));
+if (!device) throw new Error("Demo satış cihazı yok");
 const ctx = { tenantId, storeId: store.id, deviceId: device.id, receiptPrefix: device.receiptPrefix };
 
-const staff = await withTenant(tenantId, (tx) => tx.select({ id: schema.staff.id, role: schema.staff.role }).from(schema.staff));
-const kasiyer = staff.find((s) => s.role === "kasiyer") ?? staff[0]!;
-const mudur = staff.find((s) => s.role === "mudur");
+const staff = await withTenant(tenantId, (tx) => tx.select({ id: schema.staff.id, name: schema.staff.name, role: schema.staff.role }).from(schema.staff));
+const selectedStaff = process.env.DEMO_STAFF_PREFIX ? staff.filter((s) => s.name.startsWith(process.env.DEMO_STAFF_PREFIX!)) : staff;
+const kasiyer = selectedStaff.find((s) => s.role === "kasiyer") ?? selectedStaff[0]!;
+const mudur = selectedStaff.find((s) => s.role === "mudur");
 if (!mudur) throw new Error("müdür yok");
 
 const ekstra: Array<[string, number]> = [["Lahmacun", 18000], ["Pide", 16000], ["Künefe", 22000], ["Çay", 2000]];
@@ -44,7 +47,7 @@ await withTenant(tenantId, async (tx) => {
 });
 const menu = await withTenant(tenantId, (tx) =>
   tx.select({ id: schema.products.id, name: schema.products.name, price: schema.products.price }).from(schema.products)
-    .where(eq(schema.products.tenantId, tenantId)));
+    .where(and(eq(schema.products.tenantId, tenantId), eq(schema.products.sellable, true), eq(schema.products.active, true), eq(schema.products.vatRate, 10))));
 if (menu.length < 3) throw new Error("menü çok boş");
 const AGIRLIK: Array<[string, number]> = [["Adana", 5], ["Lahmacun", 4], ["Pide", 2], ["Künefe", 2], ["Ayran", 3], ["Çay", 4]];
 const havuz = menu.map((m) => ({ m, w: AGIRLIK.find(([n]) => n === m.name)?.[1] ?? 1 }));
@@ -81,7 +84,7 @@ for (let d = DAYS; d >= 0; d--) {
   const gun = new Date();
   gun.setHours(0, 0, 0, 0);
   gun.setDate(gun.getDate() - d);
-  const saat = (h: number, m: number) => { const t = new Date(gun); t.setHours(h, m, rnd(60)); return t; };
+  const saat = (h: number, m: number) => { const t = new Date(gun); t.setHours(h, m, rnd(60)); return d === 0 && t > latestToday ? new Date(latestToday) : t; };
 
   const shiftId = uuid();
   const shiftDoc = { kind: "shift_open" as const, id: shiftId, staffId: kasiyer.id, at: iso(saat(10, rnd(20))), openingCash: 50000 };
@@ -140,8 +143,8 @@ for (let d = DAYS; d >= 0; d--) {
     iade++;
   }
 
-  if (d > 0) {
-    const r5 = await applyDoc(ctx, { kind: "shift_close", id: shiftId, staffId: kasiyer.id, at: iso(saat(23, rnd(50))), countedCash: nakit } as never);
+  if (d > 0 || process.env.DEMO_CLOSE_TODAY === "1") {
+    const r5 = await applyDoc(ctx, { kind: "shift_close", id: shiftId, staffId: kasiyer.id, at: iso(d === 0 ? new Date() : saat(23, rnd(50))), countedCash: nakit } as never);
     if (!r5.ok) throw new Error(`shift_close: ${r5.error}`);
   }
   console.log(`gün -${d}: ${adet} satış`);
