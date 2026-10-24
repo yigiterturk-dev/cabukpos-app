@@ -8,13 +8,14 @@ import postgres from "postgres";
 
 const BASE = process.env.BASE ?? "http://localhost:3800";
 const stamp = Date.now();
+const testHeaders = { "x-vercel-forwarded-for": `198.51.100.${(stamp % 250) + 1}` };
 const email = `sifre-${stamp}@ornek.com`;
 const step = (m) => console.log("•", m);
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const sql = postgres(process.env.MIGRATE_DATABASE_URL ?? process.env.DATABASE_URL, { max: 1 });
 const errors = [];
-const newPage = async () => { const p = await (await browser.newContext()).newPage(); p.on("pageerror", (e) => errors.push(e.message)); return p; };
+const newPage = async () => { const p = await (await browser.newContext({ extraHTTPHeaders: testHeaders })).newPage(); p.setDefaultTimeout(45000); p.on("pageerror", (e) => errors.push(e.message)); return p; };
 const login = async (p, pw) => {
   await p.goto(`${BASE}/giris`);
   await p.fill("input[name=email]", email);
@@ -43,9 +44,9 @@ try {
   await b.getByText(/şifre yenileme bağlantısı gönderdik|E-posta gönderimi şu an kapalı/).waitFor();
   step("istek: yanıt göründü");
 
-  const [u] = await sql`select id, password_hash from users where email = ${email}`;
+  const [u] = await sql`select id, password_hash, token_version from users where email = ${email}`;
   const ph = createHash("sha256").update(u.password_hash).digest("base64url").slice(0, 16);
-  const token = await new SignJWT({ sub: u.id, ph }).setProtectedHeader({ alg: "HS256" }).setAudience("reset").setIssuedAt().setExpirationTime("3600s")
+  const token = await new SignJWT({ sub: u.id, ph, v: u.token_version }).setProtectedHeader({ alg: "HS256" }).setAudience("reset").setIssuedAt().setExpirationTime("3600s")
     .sign(new TextEncoder().encode(`${process.env.AUTH_SECRET}|reset`));
 
   await b.goto(`${BASE}/sifre-yenile?t=${token}`);
@@ -78,5 +79,7 @@ try {
   console.log("ŞİFRE OK");
 } finally {
   await browser.close();
+  const [user] = await sql`select tenant_id from users where email = ${email}`;
+  if (user) await sql`delete from tenants where id = ${user.tenant_id}`;
   await sql.end();
 }

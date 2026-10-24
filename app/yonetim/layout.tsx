@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ArrowRight, Bell, LogOut, Monitor, Store, TriangleAlert } from "lucide-react";
-import { eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { bannerText } from "@/lib/core/billing";
 import { bildirimler } from "@/lib/admin/bildirim";
 import { scopedStoreId } from "@/lib/admin/store-scope";
+import { openTabCounts } from "@/lib/admin/tabs";
 import { logout } from "@/lib/auth/actions";
 import { LogoMark } from "@/components/ui";
 import { PanelOffline } from "@/components/yonetim/panel-offline";
@@ -14,11 +14,13 @@ import { ThemeToggle } from "@/components/admin/Preferences";
 
 export default async function YonetimLayout({ children }: { children: React.ReactNode }) {
   const a = await requireAdmin();
-  const activeStore = await withTenant(a.tenantId, async (tx) => {
-    const id = await scopedStoreId(tx, a.tenantId);
-    if (!id) return null;
-    const [store] = await tx.select({ id: schema.stores.id, name: schema.stores.name }).from(schema.stores).where(eq(schema.stores.id, id)).limit(1);
-    return store ?? null;
+  const { activeStore, storeCount, openTabs } = await withTenant(a.tenantId, async (tx) => {
+    const id = await scopedStoreId(tx, a.tenantId, a.storeId);
+    if (!id) return { activeStore: null, storeCount: 0, openTabs: 0 };
+    const rows = await tx.select({ id: schema.stores.id, name: schema.stores.name }).from(schema.stores);
+    // Menüdeki sayaç: yalnız restoran ve seçili şube; markette adisyon yok.
+    const openTabs = a.vertical === "restoran" ? (await openTabCounts(tx, [id])).get(id)?.open ?? 0 : 0;
+    return { activeStore: rows.find((r) => r.id === id) ?? null, storeCount: rows.length, openTabs };
   });
   const bildirim = activeStore ? (await bildirimler(a.tenantId, activeStore.id)).length : 0;
   const brand = (dark: boolean) => (
@@ -30,7 +32,11 @@ export default async function YonetimLayout({ children }: { children: React.Reac
       </span>
     </Link>
   );
-  const storeLink = (dark = false) => (
+  const storeLink = (dark = false) => a.storeId ? (
+    <span aria-label={activeStore ? `Şubeniz: ${activeStore.name}` : "Şube"} className={`inline-flex min-h-10 max-w-[112px] items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium ${dark ? "border-white/15 text-cream-muted" : "border-line text-ink-2"}`}>
+      <Store aria-hidden className="size-3.5 shrink-0" /><span className="truncate">{activeStore?.name ?? "Şube"}</span>
+    </span>
+  ) : (
     <Link href="/yonetim/subeler" aria-label={activeStore ? `Aktif şube: ${activeStore.name}. Şubeleri yönet` : "Şube oluştur"} className={`inline-flex min-h-10 max-w-[112px] items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${dark ? "border-white/15 text-cream-muted hover:bg-white/5" : "border-line text-ink-2 hover:bg-surface-2"}`}>
       <Store aria-hidden className="size-3.5 shrink-0" /><span className="truncate">{activeStore?.name ?? "Şube oluştur"}</span>
     </Link>
@@ -57,13 +63,13 @@ export default async function YonetimLayout({ children }: { children: React.Reac
       <aside className="relative hidden overflow-hidden bg-espresso print:hidden md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:p-4 md:shadow-[inset_-1px_0_0_rgb(255_255_255/0.06)]">
         <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-48 bg-[radial-gradient(60%_100%_at_50%_0%,rgb(224_90_16/0.16),transparent)]" />
         <div className="relative mb-4 border-b border-white/10 pb-4">{brand(true)}<div className="mt-3 px-1">{storeLink(true)}</div></div>
-        <div className="relative min-h-0 flex-1 overflow-y-auto"><Nav vertical={a.vertical} /></div>
+        <div className="relative min-h-0 flex-1 overflow-y-auto"><Nav vertical={a.vertical} storeCount={storeCount} allStores={!a.storeId} openTabs={openTabs} /></div>
         <div className="relative pt-4">{footer}</div>
       </aside>
       <header className="sticky top-0 z-40 flex min-w-0 items-center gap-2 border-b border-line bg-surface px-3 py-2 print:hidden md:hidden">
         <MobileNav>
           <div className="mb-5">{brand(true)}</div>
-          <div className="flex-1"><Nav vertical={a.vertical} /></div>
+          <div className="flex-1"><Nav vertical={a.vertical} storeCount={storeCount} allStores={!a.storeId} openTabs={openTabs} /></div>
           <div className="mt-5">{footer}</div>
         </MobileNav>
         {brand(false)}

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { count, desc, eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { seesAllStores } from "@/lib/core/access";
 import { createGiftCard, giftCardCancel, giftCardLoad } from "@/lib/admin/loyalty-actions";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { GiftCardCreateForm, GiftCardLoadForm } from "@/components/admin/GiftCardFormsPending";
@@ -18,6 +20,7 @@ const eventLabel: Record<string, string> = { yukleme: "Bakiye yükleme", iptal: 
 const PAGE_SIZE = 50;
 export default async function HediyeKarti({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; id?: string; page?: string }> }) {
   const a = await requireAdmin();
+  if (!seesAllStores(a)) redirect("/yonetim");
   const money = await moneyFormatter(a.tenantId);
   const currency = await tenantCurrency(a.tenantId);
   const unit = currencySymbol(currency);

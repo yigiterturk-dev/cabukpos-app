@@ -28,6 +28,7 @@ function ListFields({ categories, state, pending, onEdit }: { categories: Option
           ]} /></Field>
         </div>
         {kind === "yuzde" && <div><Field label="İndirim %" hint="1–100 arasında tam sayı"><Input name="percent" disabled={pending} inputMode="numeric" pattern="[0-9]{1,3}" maxLength={3} placeholder="20" className="w-24 text-right" required {...errorProps(state, "percent")} /></Field><Err s={state} f="percent" /></div>}
+        <div className="w-44"><Field label="Şube kapsamı" hint="Tüm şubeler = merkezden fiyat"><Select disabled={pending} name="scope" defaultValue="store" options={[{ value: "store", label: "Bu şube" }, { value: "all", label: "Tüm şubeler" }]} /></Field></div>
         <div>
           <div className="mb-1.5 text-sm font-medium">Günler</div>
           <p className="mb-1 text-xs text-muted">Gün seçmezsen her gün uygulanır.</p>

@@ -4,6 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
+import { canManageStores } from "@/lib/core/access";
 import { audit } from "@/lib/audit";
 import { FISCAL_CHANNELS, validateTaxId, type ChannelModes } from "@/lib/core/fiscal";
 import { OKC_PROVIDERS } from "@/lib/core/okc";
@@ -19,6 +20,7 @@ const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 export async function saveFiscalSettings(_: FiscalState, form: FormData): Promise<FiscalState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Mali ayarlar ve belgeler yalnız sahip ve zincir merkezinde." };
   const taxId = str(form, "taxId"), taxOffice = str(form, "taxOffice"), address = str(form, "address");
   const series = str(form, "series").toUpperCase();
   const modes = Object.fromEntries(FISCAL_CHANNELS.map((c) => [c, str(form, `mode-${c}`) === "earsiv" ? "earsiv" : "info"])) as ChannelModes;
@@ -73,6 +75,7 @@ async function docById(tenantId: string, id: string) {
 
 export async function retryFiscal(id: string): Promise<FiscalState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Mali ayarlar ve belgeler yalnız sahip ve zincir merkezinde." };
   const d = await docById(a.tenantId, id);
   if (!d) return { error: "Belge bulunamadı." };
   const r = await issueOne(a.tenantId, d.saleId, { force: true });
@@ -85,6 +88,7 @@ export async function retryFiscal(id: string): Promise<FiscalState> {
 
 export async function resendFiscalMail(id: string): Promise<FiscalState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Mali ayarlar ve belgeler yalnız sahip ve zincir merkezinde." };
   const d = await docById(a.tenantId, id);
   if (!d) return { error: "Belge bulunamadı." };
   if (d.status !== "issued") return { error: "Yalnız kesilmiş belge gönderilir." };
@@ -97,6 +101,7 @@ export async function resendFiscalMail(id: string): Promise<FiscalState> {
 /** VKN'li alıcının düzenlediği iade faturasını kaydeder → kayıt kapanır. */
 export async function resolveBuyerInvoice(_: FiscalState, form: FormData): Promise<FiscalState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Mali ayarlar ve belgeler yalnız sahip ve zincir merkezinde." };
   const id = str(form, "id"), no = str(form, "no"), date = str(form, "date");
   if (!UUID.test(id)) return { error: "Kayıt bulunamadı." };
   return withTenant(a.tenantId, async (tx) => {
@@ -118,6 +123,7 @@ export async function resolveBuyerInvoice(_: FiscalState, form: FormData): Promi
 /** #19: zarf gönderimi + GİB durum sorgusunu elle tetikle (cron zaten periyodik çalışır). */
 export async function queryEnvelopes(): Promise<void> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return;
   await processEnvelopes(a.tenantId, 20);
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "fiscal.envelope.query", {}));
   revalidatePath("/yonetim/mali");
@@ -126,6 +132,7 @@ export async function queryEnvelopes(): Promise<void> {
 /** #18: gün sonu Z raporu — çözücüde mali gün kapanışı; sonuç audit'e yazılır. */
 export async function takeZReport(): Promise<FiscalState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Mali ayarlar ve belgeler yalnız sahip ve zincir merkezinde." };
   const r = await okcZReport(a.tenantId).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : "ÖKC hatası" }));
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "fiscal.okc.z", r.ok ? { no: r.no, zNo: r.zNo } : { error: r.error }));
   revalidatePath("/yonetim/mali");

@@ -62,7 +62,7 @@ export async function saveProduct(id: string | null, _: CatalogState, form: Form
   const groupIds = [...new Set(form.getAll("optionGroups").map(String))];
   if ((stationId && !UUID.test(stationId)) || groupIds.some((g) => !UUID.test(g))) return { error: "İstasyon/seçenek geçersiz.", field: "" };
   const err = await withTenant(a.tenantId, async (tx): Promise<{ error: string; field: string } | null> => {
-    const storeId = salon ? await scopedStoreId(tx, a.tenantId) : null;
+    const storeId = salon ? await scopedStoreId(tx, a.tenantId, a.storeId) : null;
     if (salon && stationId && !storeId) return { error: "İstasyon atamak için önce bir şube seçin.", field: "" };
     if (stationId) {
       const [st] = await tx.select({ id: schema.stations.id }).from(schema.stations).where(and(eq(schema.stations.id, stationId), storeId ? eq(schema.stations.storeId, storeId) : sql`false`));
@@ -196,6 +196,22 @@ export async function setProductActive(id: string, active: boolean) {
   await withTenant(a.tenantId, async (tx) => {
     await tx.update(schema.products).set({ active: active === true }).where(and(eq(schema.products.id, id)));
     await audit(tx, a.tenantId, `user:${a.id}`, "product.active", { id, active });
+  });
+  revalidatePath("/yonetim/urunler");
+}
+
+/** Şube bazlı görünürlük: gizle → bu şubede kasa/menü/platform dışı; göster → kiracı varsayılanı. Satır silinmez (şube eşiği korunur). */
+export async function setStoreProductHidden(productId: string, hidden: boolean) {
+  const a = await requireWriter();
+  if (!UUID.test(productId)) return;
+  await withTenant(a.tenantId, async (tx) => {
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
+    if (!storeId) return;
+    const [p] = await tx.select({ id: schema.products.id }).from(schema.products).where(eq(schema.products.id, productId));
+    if (!p) return;
+    await tx.insert(schema.storeProductSettings).values({ tenantId: a.tenantId, storeId, productId, active: hidden !== true })
+      .onConflictDoUpdate({ target: [schema.storeProductSettings.storeId, schema.storeProductSettings.productId], set: { active: hidden !== true, updatedAt: new Date() } });
+    await audit(tx, a.tenantId, `user:${a.id}`, "product.store_visibility", { productId, storeId, hidden: hidden === true });
   });
   revalidatePath("/yonetim/urunler");
 }

@@ -2,11 +2,13 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { ArrowRight, CreditCard } from "lucide-react";
 import { requireAdmin } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { isBranchManager } from "@/lib/core/access";
 import { getDb, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { formatTL } from "@/lib/core/money";
 import { PERIODS, STATE_LABEL, planBreakdown, refundWindowOk } from "@/lib/core/billing";
-import { unitPrices, salesContact } from "@/lib/billing/plans";
+import { unitPrices, salesContact, manualPayment } from "@/lib/billing/plans";
 import { getBillingProvider } from "@/lib/billing/provider";
 import { paymentsOf, salesSincePayment, tenantUnits } from "@/lib/billing/service";
 import { removeStoredCard } from "@/lib/billing/renewal";
@@ -25,8 +27,9 @@ const REASON_LABEL: Record<string, string> = { hatali: "Hatalı/mükerrer çekim
 
 export default async function Abonelik({ searchParams }: { searchParams: Promise<{ kilit?: string; sonuc?: string; iade?: string; id?: string }> }) {
   const a = await requireAdmin();
+  if (isBranchManager(a)) redirect("/yonetim");
   const sp = await searchParams;
-  const b = a.billing, provider = getBillingProvider(), contact = salesContact();
+  const b = a.billing, provider = getBillingProvider(), contact = salesContact(), manual = manualPayment();
   const pays = await paymentsOf(a.tenantId), units = await tenantUnits(a.tenantId);
   const [card] = await getDb().select({ cardMark: schema.tenants.cardMark }).from(schema.tenants).where(eq(schema.tenants.id, a.tenantId));
   const sel = pays.find(({ p }) => p.id === sp.id);
@@ -73,6 +76,18 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
           </Link>
         </div>
       </Card>
+      {manual && (
+        <Card className="mb-6 p-4" data-testid="manual-payment">
+          <h2 className="font-semibold">Havale / EFT ile ödeme</h2>
+          <p className="mt-1 text-sm text-muted">Aşağıdaki hesaba dönem bedelini gönderin; açıklamaya <b>işletme adı ve kayıt e-postanızı</b> yazın. Ödeme kontrol edilince abonelik manuel olarak açılır.</p>
+          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            {manual.bank && <div><dt className="text-xs text-muted">Banka</dt><dd>{manual.bank}</dd></div>}
+            <div><dt className="text-xs text-muted">Hesap sahibi</dt><dd>{manual.account}</dd></div>
+            <div className="sm:col-span-2"><dt className="text-xs text-muted">IBAN</dt><dd className="tabular break-all font-medium">{manual.iban}</dd></div>
+          </dl>
+          {contact && <p className="mt-3 text-xs text-muted">Ödeme bildirimi: <a className="underline" href={`mailto:${contact}`}>{contact}</a></p>}
+        </Card>
+      )}
       <section id="odeme" tabIndex={-1} aria-labelledby="payment-options-heading" className="scroll-mt-6 rounded-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/40">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <div>

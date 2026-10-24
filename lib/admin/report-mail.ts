@@ -1,6 +1,6 @@
 // lib/admin/report-mail.ts — #41 zamanlanmış rapor e-postası: dünün/geçen haftanın özeti, aktif sahip+müdüre.
 // Posta yapılandırılmamışsa atlar; hiçbir durumda hata fırlatmaz.
-import { and, eq, gte, isNotNull, lt, sql, type SQL } from "drizzle-orm";
+import { and, eq, gte, isNotNull, isNull, lt, sql, type SQL } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { appUrl, mailReady, sendEmail } from "@/lib/mail";
 import { digestContent, type DigestData } from "@/lib/core/digest";
@@ -79,7 +79,7 @@ export async function sendReportMail(tenantId: string, kind: ReportKind, { force
     if (!st) return { ok: false, skipped: "bos" } as ReportSend;
     if (!force && !(kind === "gunluk" ? st.daily : kind === "haftalik" ? st.weekly : st.monthly)) return { ok: false, skipped: "bos" } as ReportSend;
     const to = (await tx.select({ email: schema.users.email }).from(schema.users)
-      .where(and(eq(schema.users.active, true), isNotNull(schema.users.emailVerifiedAt)))).map((u) => u.email);
+      .where(and(eq(schema.users.tenantId, tenantId), eq(schema.users.active, true), isNull(schema.users.storeId), isNotNull(schema.users.emailVerifiedAt)))).map((u) => u.email);
     if (!to.length) return { ok: false, skipped: "alici" } as ReportSend;
     const [t] = await tx.select({ name: schema.tenants.name }).from(schema.tenants).where(eq(schema.tenants.id, tenantId));
     const content = digestContent(kind, t?.name ?? "", await collect(tx, r, tenantId, kind), `${appUrl()}/yonetim/raporlar?${new URLSearchParams({ sekme: "ozet", bas: r.bas, bit: r.bit })}`);

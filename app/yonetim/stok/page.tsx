@@ -8,11 +8,12 @@ import { normalizeSearchText } from "@/lib/core/search";
 import { formatQty, isCriticalRow, stockUnitOf } from "@/lib/admin/stock-view";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { StockForm } from "@/components/admin/StockForm";
+import { StockThresholdForm } from "@/components/admin/StockThresholdForm";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { Badge, buttonClass, Card, Empty, Input, PageHeader, Panel, SplitView, TABLE_HEAD } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
-const KIND_LABEL = { satis: "Satış", iade: "İade", alis: "Alış", sayim: "Sayım", fire: "Fire", recete: "Reçete", uretim: "Üretim" } as const;
+const KIND_LABEL = { satis: "Satış", iade: "İade", alis: "Alış", sayim: "Sayım", fire: "Fire", recete: "Reçete", uretim: "Üretim", transfer: "Transfer" } as const;
 const dt = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" });
 const MOVE_PAGE_SIZE = 50;
 
@@ -25,7 +26,7 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
   const movePageNo = Number.isSafeInteger(requestedMovePage) && requestedMovePage > 0 ? requestedMovePage : 1;
   const M = schema.stockMovements;
   const { rows, moves, moveTotal, storeId } = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await scopedStoreId(tx, a.tenantId);
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     if (!storeId) return { rows: [], moves: [], moveTotal: 0, storeId: null };
     const movementWhere = and(eq(M.storeId, storeId), urun ? eq(M.productId, urun) : undefined);
     const [{ moveTotal }] = await tx.select({ moveTotal: count() }).from(M).where(movementWhere);
@@ -65,6 +66,9 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
         panel={sel ? (
           <Panel title={sel.name} tone="edit" desc={<>Şu an: <span className="tabular">{formatQty(sel.level, sel.unit)}</span></>} action={<Link href={closePanelHref} className="text-sm text-muted hover:text-ink hover:underline">kapat</Link>}>
             <StockForm key={sel.id} productId={sel.id} unit={sel.unit} />
+            <div className="mt-4 border-t border-line pt-4">
+              <StockThresholdForm key={sel.id} productId={sel.id} unit={sel.unit} current={sel.minStock} override={sel.minStockOverride} />
+            </div>
           </Panel>
         ) : (
           <Panel title="Sayım ve fire">

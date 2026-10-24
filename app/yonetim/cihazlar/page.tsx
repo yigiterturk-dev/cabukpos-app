@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Monitor } from "lucide-react";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { canUseStore } from "@/lib/core/access";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { newPairing, revokeDevice } from "@/lib/admin/device-actions";
 import { RevokeForm } from "@/components/admin/RevokeForms";
@@ -15,8 +16,8 @@ const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyl
 
 export default async function Cihazlar() {
   const a = await requireAdmin();
-  const activeStoreId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
-  const rows = await getDb().select().from(schema.devices).where(eq(schema.devices.tenantId, a.tenantId)).orderBy(asc(schema.devices.createdAt));
+  const activeStoreId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
+  const rows = (await getDb().select().from(schema.devices).where(eq(schema.devices.tenantId, a.tenantId)).orderBy(asc(schema.devices.createdAt))).filter((r) => canUseStore(a, r.storeId));
   const restoran = a.vertical === "restoran";
   const [stores, stationRows] = await withTenant(a.tenantId, (tx) => Promise.all([
     tx.select({ id: schema.stores.id, name: schema.stores.name }).from(schema.stores),

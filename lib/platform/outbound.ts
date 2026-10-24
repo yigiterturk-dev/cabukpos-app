@@ -17,11 +17,13 @@ export async function pushStoreCatalog(tenantId: string, storeId: string, platfo
   if (!source?.pushCatalog) return { error: "unsupported" };
 
   const items = await withTenant(tenantId, async (tx) => {
-    const C = schema.productPlatformCodes, P = schema.products;
-    const rows = await tx.select({ code: C.code, id: P.id, name: P.name, price: P.price, active: P.active, sellable: P.sellable })
-      .from(C).innerJoin(P, eq(P.id, C.productId)).where(and(eq(C.storeId, storeId), eq(C.platform, platform), eq(P.sellable, true)));
+    const C = schema.productPlatformCodes, P = schema.products, S = schema.storeProductSettings;
+    const rows = await tx.select({ code: C.code, id: P.id, name: P.name, price: P.price, active: P.active, sellable: P.sellable, storeActive: S.active })
+      .from(C).innerJoin(P, eq(P.id, C.productId))
+      .leftJoin(S, and(eq(S.productId, P.id), eq(S.storeId, storeId)))
+      .where(and(eq(C.storeId, storeId), eq(C.platform, platform), eq(P.sellable, true)));
     const stock = new Map((await stockLevels(tx, storeId)).map((s) => [s.id, s.level]));
-    return rows.map((r): OutboundItem => ({ code: r.code, name: r.name, price: r.price, stock: stock.get(r.id) ?? null, active: r.active }));
+    return rows.map((r): OutboundItem => ({ code: r.code, name: r.name, price: r.price, stock: stock.get(r.id) ?? null, active: r.active && r.storeActive !== false }));
   });
   if (!items.length) return { error: "no_items" };
 

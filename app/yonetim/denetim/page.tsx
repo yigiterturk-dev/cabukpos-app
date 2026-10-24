@@ -3,6 +3,8 @@ import { count, desc } from "drizzle-orm";
 import { ShieldCheck } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { seesAllStores } from "@/lib/core/access";
 import { Badge, Card, Empty, PageHeader, TABLE_HEAD } from "@/components/ui";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 
@@ -13,6 +15,7 @@ const actor = (v: string) => v.startsWith("user:") ? `Kullanıcı · ${v.slice(5
 
 export default async function Denetim({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const a = await requireAdmin();
+  if (!seesAllStores(a)) redirect("/yonetim");
   const { page } = await searchParams;
   const requestedPage = Number(page);
   const pageNo = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;

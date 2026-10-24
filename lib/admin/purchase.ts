@@ -12,7 +12,10 @@ const P = schema.products, Pu = schema.purchases, PL = schema.purchaseLines;
 /** Kaydeder; kiracıda olmayan ürün/tedarikçi → hata metni. */
 export async function recordPurchase(tx: Tx, tenantId: string, userId: string | null, input: PurchaseInput): Promise<{ id: string } | { error: string }> {
   const ids = [...new Set(input.lines.map((l) => l.productId))];
-  const prods = await tx.select({ id: P.id, trackStock: P.trackStock, costAt: P.costAt, vatRate: P.vatRate }).from(P).where(inArray(P.id, ids));
+  // Maliyet tarihini kilit altında oku: eşzamanlı eski fiş yeni maliyeti ezmesin.
+  // Ters sırada ürün içeren fişler de kilitleri aynı sırada alır.
+  const prods = await tx.select({ id: P.id, trackStock: P.trackStock, costAt: P.costAt, vatRate: P.vatRate })
+    .from(P).where(inArray(P.id, ids)).orderBy(P.id).for("update");
   if (prods.length !== ids.length) return { error: "Ürün bulunamadı." };
   if (prods.some((p) => !p.trackStock)) return { error: "Alışta yalnız stok takipli ürün olur." };
   if (input.supplierId && !(await tx.select({ id: schema.suppliers.id }).from(schema.suppliers).where(eq(schema.suppliers.id, input.supplierId))).length) return { error: "Tedarikçi bulunamadı." };

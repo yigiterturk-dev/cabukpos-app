@@ -1510,3 +1510,179 @@ Spec `docs/superpowers/specs/2026-09-29-cabukpos-lan-merkez-design.md`, plan `do
 - "Örnek menüyle dene": boş işletme için tek tıkla dikeye göre örnek kategori + ürün seti (restoran 4 kategori/15 ürün, market 3 kategori/15 ürün + tartılı Domates örneği). Saf veri `lib/core/ornek-menu.ts` (2 birim test), action `lib/admin/sample-menu.ts` (requireWriter + withTenant + denetim kaydı; yalnız ürün listesi boşken — dolu listeye asla dokunmaz), düğme Bugün kurulum kartında (ürün adımı tamamlanana dek) ve Ürünler boş durumunda. Taze market+restoran hesabıyla uçtan uca prova: düğme → kart adım güncellemesi → ürün listesi; m1/m54 yeşil.
 - Tam E2E kapısı (yeni konum + bugünkü tüm değişiklikler): 18/18 yeşil. m1'in gün içindeki aralıklı zaman aşımlarının kökü bulundu: kod değil, uzak DB'nin (Neon) boşta askıya alınması — soğuk başlangıç ilk sunucu aksiyonlarını 30-60 sn geciktiriyor; DB ısınınca geçiyor. Önlem: m1'e koşu öncesi ısıtma notu + "Fiyat geçersiz" doğrulama adımına yanıt gelmezse tek yeniden deneme. Not: Drive/USB'deki yedek bu noktadan itibaren geride, güncel durum GitHub'da.
 - Sıcaklık dokunuşları: Bugün kurulum kartı Türkiye saatiyle selamlıyor ("Günaydın / İyi günler / İyi akşamlar / İyi geceler, {ad}"); "Kurulum tamam" kapanış kartına tek seferlik küçük konfeti serpintisi (7 nokta, brand renkleri, globals'da setupConfetti keyframes; prefers-reduced-motion'da hem global sıfırlama hem motion-reduce:hidden ile kapalı). m54 yeşil, taze hesapla selam kontrolü ("İyi günler, Ayşe").
+
+## HQ stok transferi · 22.10.2026
+
+- Şubeler arası stok transferi eklendi: `stock_kind`'a `transfer` değeri, `stock_transfers` + `stock_transfer_lines` (RLS'li) ve `stock_movements.transfer_id`. Kaynak şubeden (−) ve hedef şubeye (+) iki hareket yazılır; stok seviyesi aynı "son sayım + hareketler" kuralıyla güncellenir, fire/satış raporlarına karışmaz.
+- `lib/core/transfer.ts` saf kuralları (aynı şube, pozitif miktar, kaynak stok yeterliliği) + `tests/transfer.test.ts`. Sunucu aksiyonu `createTransfer`: requireWriter + withTenant + ürün satırı `for update` kilidi (eşzamanlı transfer yarışı), denetim kaydı `stock.transfer`, stok/HQ/transfer sayfaları revalidate.
+- `/yonetim/transferler`: kaynak/hedef şube seçimi (URL), kaynak stoka göre ürün listesi, miktar/not formu ve son 20 transfer. Nav'da Stok grubuna, HQ sayfasına "Şubeler arası stok transferi" bağlantısı. Stok hareket listesinde "Transfer" etiketi.
+- Yerel doğrulama: `tests/transfer.test.ts` + `qa:static` + production build. Not: canlıya çıkmadan önce `db:push` (yeni tablolar/enum) ve `db:rls` gerekir.
+- HQ canlı operasyon tablosu: şube başına açık vardiya, bekleyen garson çağrısı, kritik stok, aktif cihaz, çevrimiçi ajan ve son satış (`lib/admin/hq-ops.ts`; devices/agents RLS dışı olduğu için kiracı koşulu açık). HQ sayfasında mobil kart + masaüstü tablo; ayrıca son 30 gün fire maliyeti (maliyetli fire satırları) şube bazında görünür.
+- Merkezden fiyat listesi: fiyat listesi formuna "Şube kapsamı" eklendi; "Tüm şubeler" seçilince `price_lists.store_id = null` yazılır ve kasa kataloğu listeyi tüm şubelere uygular (şema/katalog zaten destekliyordu, UI eksikti). Listede "Bu şube / Tüm şubeler" rozeti. Denetim kaydı storeId taşır.
+- Tek şubede HQ ve Transferler menüden gizlenir (`Nav` `minStores: 2`; layout şube sayısını taşır, şube oluşturunca layout yenilenir). Sayfalara doğrudan giriş boş durum gösterir.
+
+## Manuel tahsilat + KVKK paketi · 22.10.2026
+
+- `npm run billing:manual -- --email=... --months=N [--dry-run] [--confirm]`: havale/EFT sonrası aboneliği uzatır (`paid_until`, hatırlatma sıfırlanır) ve `audit_log`'a `billing.manual` yazar; production'da yazma için `--confirm` zorunlu.
+- Abonelik sayfasına manuel ödeme kartı: `BANK_IBAN` + `BANK_ACCOUNT_NAME` (+ opsiyonel `BANK_NAME`) tanımlıysa hesap/IBAN ve "açıklamaya işletme adı + e-posta" yönlendirmesi görünür.
+- `docs/KVKK-PAKETI.md`: veri envanteri, alt işleyen listesi, avukat brief'i/sorular, DPA iskeleti, işletme→son müşteri aydınlatma taslağı ve uygulama kontrol listesi (hukuki görüş değildir; avukat onayı şart).
+- Doğrulama: `qa:static` + production build + 422/422 test; manuel tahsilat betiği yerel dry-run ile denendi.
+
+## Şube bazlı ürün gizleme (86) · 22.10.2026
+
+- Yeni `store_product_settings` (RLS'li): satır yoksa ürün şubede satışta; `active=false` yalnız o şubede gizler. Ürünler sayfasında "Bu şubede gizle/göster" ve "Bu şubede gizli" rozeti; action `product.store_visibility` denetimi yazar.
+- Gizleme tüm satış yüzeylerine uygulanır: kasa kataloğu (`/api/sync/catalog`), QR menü (`public_menu_by_store`), marka menüsü (`public_menu_by_brand`), kiosk sipariş doğrulaması (`lib/kiosk.ts`) ve pazaryeri katalog push'u (gizli ürün `active=false` gider).
+- `tests/store-visibility-db.test.ts`: gizli ürün public menüden düşer, diğer ürün kalır. Yerel + test DB'ye `db:push`/`db:rls` uygulandı; production'da aynı iki komut gerekir.
+- Doğrulama: 423/423 test, lint + typecheck, production build.
+
+## Şube bazlı kritik stok eşiği · 22.10.2026
+
+- `store_product_settings.min_stock` eklendi; `stockLevels` artık `coalesce(şube eşiği, ürün varsayılanı)` döndürür ve `minStockOverride` taşır. Kritik stok; stok sayfası, Bugün, raporlar, HQ operasyonu ve rapor e-postasında aynı eşiği kullanır.
+- Stok sayfasında ürün panelinde "Kritik stok eşiği — bu şube" formu: boş = ürün varsayılanı; kayıt `product.store_stock_threshold` denetimi yazar. Ürün gizleme satırı artık silinmez, böylece görünürlük ve eşik birbirini ezmez.
+- `tests/store-visibility-db.test.ts` eşik geçersiz kılma + varsayılana dönüş SQL'ini doğrular.
+
+## HQ kritik stok listesi · 22.10.2026
+
+- HQ sayfasına "Kritik stoklar — tüm şubeler" eklendi: ürün, şube, mevcut stok ve eşik; her satırdan "Bu şubeye transfer" bağlantısı transfer sayfasını hedef şubeyle açar (`lib/admin/hq-ops.ts` → `hqCriticalStock`, stok seviyesi ve şube eşiği aynı kuralla).
+
+## HQ / şube müdürü yetkisi · 22.10.2026
+
+- `users.store_id` eklendi: `mudur` + dolu şube = şube müdürü (tek şubeye kilitli), `mudur` + null = zincir merkezi (HQ, tüm şubeler), `sahip` = işletme sahibi. Rol enum'u değişmedi.
+- `lib/core/access.ts` saf kurallar (şube kapsamı, rol ataması, hesap değişikliği) + `tests/access.test.ts`. `scopedStoreId(tx, tenantId, actorStoreId)` şube müdüründe çerezi yok sayıp kendi şubesine sabitliyor; tüm panel çağrıları güncellendi.
+- Çapraz şube kapıları: transfer kaynağı, rezervasyon oluşturma/durum, cihaz/ajan eşleme-iptal-yapılandırma, platform bağlantısı/kod/sipariş, fiyat listesi "tüm şubeler", şube oluşturma/düzenleme/geçiş. Platform bağlantıları, cihazlar, ajanlar ve transfer geçmişi şube müdürüne yalnız kendi şubesiyle sınırlı listeleniyor.
+- Sayfa/menü kapıları: HQ, Şubeler, Abonelik, Kullanıcılar, Mali, Denetim, Veriler, Entegrasyonlar ve muhasebe export'u yalnız tüm şubeleri görene açık; para birimi ve rapor e-postası ayarları aynı kapıda.
+- `/yonetim/kullanicilar`: sahip + HQ hesap açar, rol/şube atar, pasifleştirir, 3 günlük davet bağlantısı gönderir (posta kapalıysa bağlantıyı kopyalanabilir gösterir). Şube müdürü kullanıcı açamaz; HQ yalnız şube müdürü açabilir; son aktif sahip korunur; değişiklikte hedefin oturumları düşer (`tokenVersion`).
+- Güvenlik düzeltmesi: rapor e-postası alıcı sorgusu `tenant_id` filtresi ve `store_id is null` (sahip/HQ) olmadan tüm kiracıların kullanıcılarına gidebiliyordu; kiracı + tüm-şube koşulu eklendi.
+- Doğrulama: 429/429 test, lint + typecheck, production build. Yerel dev/test DB'ye `db:push` uygulandı; yayında şema adımı gerekir.
+
+## Merkez depo + merkezi satın alma · 22.10.2026
+
+- `stores.kind` (`sube` | `depo`). Depo satış yapmayan şube: kasa cihazı bağlanamaz (`deviceProblem`), satış/cihaz geçmişi olan şube depoya çevrilemez (`kindChangeProblem`, `tests/store.test.ts`).
+- Şubeler ekranında tür seçimi ve "Depo" rozeti; HQ alış formunda şube/depo seçici (şube müdüründe yok, kendi şubesine sabit). Alışlar listesi sahip/HQ'da tüm şubeler + şube sütunu.
+- `/yonetim/depo`: depo stoğu ve maliyet değeri, kritik eşik altı, son alışlar ve son transferler; "Depoya alış" (`/yonetim/alislar?store=`) ve "Şubelere dağıt" (`/yonetim/transferler?from=`) kısayolları. Menüde Stok → Merkez depo, HQ sayfasından bağlantı.
+- Transfer ekranı depoyu kaynak olarak etiketler; şube müdürünün şube listelerinde depo görünmez. `tests/depot-db.test.ts` alış→depo stoğu→transfer dağıtımını doğrular.
+- Doğrulama: 434/434 test, lint + typecheck, production build. `db:push` yerel dev/test DB'ye uygulandı; yayında şema adımı gerekir.
+
+## Açık adisyon sayacı · 22.10.2026
+
+- `lib/admin/tabs.ts` → `openTabCounts`: son 30 günde hareket görmüş adisyonların tüm olayları katlanır (kapanış/ödeme/ikram kuralı fold'da); şube bazında açık, masa/paket ve tahsil edilecek tutar. Eski açık adisyonun olayları pencereden bağımsız eksiksiz okunur.
+- HQ canlı operasyon tablosuna (mobil kart + masaüstü) "Açık adisyon" sütunu eklendi: sayı + kalan tutar; depo/şube ayrımı yok, 0 ise "—".
+- Menüde Salon öğesine canlı sayaç rozeti (restoran, seçili şube; 99+ kırpma, erişilebilir ad). Sayaç layout'ta tek sorguyla hesaplanır; markette kapalı.
+- `tests/open-tabs-db.test.ts`: kapanan adisyon sayılmaz; masa/paket ayrımı ve kalan tutar doğrulanır.
+- Doğrulama: 435/435 test, lint + typecheck, production build. Şema değişikliği yok.
+
+## Franchise raporu · 22.10.2026
+
+- `stores.royalty_bps` (baz puan, 500 = %5) + `stores.monthly_fee` (kuruş) eklendi; Şubeler formunda ciro payı ve aylık sabit bedel alanları (depoda yok sayılır).
+- `lib/core/franchise.ts`: ciro payı (net ciro × bps), ayın kendi gün sayısıyla oranlanan sabit bedel (ay sınırını aşan aralıkta ay ay), form doğrulaması. `tests/franchise.test.ts`.
+- `/yonetim/franchise`: dönem seçimi (bu ay/geçen ay/son 30 gün/bu yıl + serbest aralık), şube başına net ciro, iade, adet, kâr, ciro payı hakedişi, sabit bedel, toplam; depo hariç, tanımsız şubeler işaretli; toplam satırı.
+- `GET /yonetim/franchise/csv` (sahip/HQ): Türkçe Excel CSV (BOM + ';', formül korumalı); ekranda Yazdır/PDF ve CSV. Menüde İşletme → Franchise.
+- `tests/franchise-db.test.ts`: depo rapora girmez, ciro payı satıştan hesaplanır, CSV.
+- Doğrulama: 440/440 test, lint + typecheck, production build. `db:push` yerel dev/test DB'ye uygulandı; yayında şema adımı gerekir.
+
+## Yetki sertleştirme: şube kapsamlı aksiyonlar · 22.10.2026
+
+- Eksik kalan çapraz şube yazmaları kapatıldı: alış iptali (`purchase_id` → şube), stok sayımı satır/kapanış/iptal, fiyat listesi düzenleme/toggle/silme ve kalem işlemleri, marka güncelleme/toggle/menü, müşteri adresi silme — hepsi `canUseStore`/`canManageStores` ile.
+- Zincir düzeyi ekranların aksiyonları da sayfa kapısıyla hizalandı: mali ayarlar/belgeler (sahip/HQ), abonelik ödeme/iade başlatma (sahip/HQ), sadakat programı/kupon/hediye kartı (sahip/HQ), müşteri CRM sayfası ve adres düzenleme.
+- Menüde zincir düzeyi öğeler `allStores` ile gizlendi (Müşteriler, Sadakat grubu); rapor e-postası kartı şube müdürüne gösterilmiyor; Veriler sayfası kapılandı.
+- Doğrulama: 440/440 test, lint + typecheck, production build. Şema değişikliği yok.
+
+## Uçtan uca tarayıcı provası: yetki + depo + franchise · 22.10.2026
+
+- Yerel prod build'de (Chrome) uçtan uca prova: kayıt → depo + satış şubesi → franchise koşulları (%5 + 1.500,00) → kullanıcı açma/davet → davetle şube müdürü ve HQ şifresi → menü/sayfa kapıları → açık adisyon sayacı. Tüm adımlar geçti; test kiracısı temizlendi.
+- **Bulgu/düzeltme:** davet bağlantısı `resetToken` Promise'ini `await` etmiyordu → `?t=[object%20Promise]`, davetler geçersizdi. `lib/auth/invite.ts` çıkarıldı; `tests/invite.test.ts` jetonun çözüldüğünü ve 3 gün TTL'i doğruluyor.
+- Şube müdürü: şube rozeti sabit; HQ/Franchise/Kullanıcılar/Şubeler/Müşteriler/Kuponlar/Mali/Denetim/Veriler kapalı, kendi stoğu açık. HQ: zincir ekranları açık, sahip rolü atanamıyor. Menüde açık adisyon rozeti 1 göründü.
+- Doğrulama: 441/441 test, lint + typecheck, production build.
+
+## Kalıcı e2e: zincir yetkisi + depo + franchise · 22.10.2026
+
+- `e2e/hq.mjs` + `npm run e2e:hq`: kayıt → depo/satış şubesi → franchise koşulları → iki davetli kullanıcı → şube müdürü/HQ kapıları → menüde açık adisyon sayacı. Hatalar biriktirilir, `pageerror` varsa koşu kırmızı.
+- Davet bağlantısı yakalama, önceki kullanıcının linkini almayacak şekilde yeni `code` bekliyor (bu yarış, elle provada HQ davetini geçersiz kılmıştı).
+- `MIGRATE_DATABASE_URL` varsa adisyon olayını yazar ve koşu sonunda test kiracısını siler; yoksa sayaç adımını atlar (m1 gibi veri bırakır).
+- Yerel koşu: TEMİZ; kayıt limiti anahtarı temizlendi. Doğrulama: lint + typecheck (e2e ayrı koşulur).
+
+## Stok sayımı: satır kapsamı ve eşzamanlı kapanış · 24.10.2026
+
+- `setCountedLine` yalnız doğrulanan sayım oturumuna ait satırı okuyup günceller. Önceden kendi açık sayımının kimliğiyle aynı kiracıdaki başka bir şubenin (veya başka bir oturumun) satırını değiştirmek mümkündü.
+- `lib/admin/stock-count.ts`: şube yetkisi + açık durum kontrolü oturum satırını `FOR UPDATE` ile kilitler. Satır kaydı, kapanış ve iptal aynı kilidi kullanır; çift kapanış ve kapanış sonrası satır değişimi engellenir.
+- `tests/stock-count-db.test.ts`: farklı şube/oturum satırı reddi, yetkisiz oturum reddi, normal miktar kaydı ve kapanan oturuma eşzamanlı yazım kontrolü. Eski satır eşleştirmesi geçici olarak geri konunca regresyon testi kırmızı; düzeltmeyle yeşil (gerçek yerel PostgreSQL).
+- Lint + typecheck ve production build geçti. Şema değişikliği yok.
+- Aynı incelemede çift sayım açılışı da düzeltildi: `openStockCount` şube satırını kilitleyerek açık oturum kontrolünü, stok anlık görüntüsünü ve oluşturmayı sıraya sokar. Dört eşzamanlı istekte yalnız bir sayım oluşur; kilit kaldırılınca regresyon testi iki sayım oluşturarak kırmızıya döndü. Hedefli DB testleri 3/3 geçti.
+- Son doğrulama (iki düzeltme birlikte): 444/444 test, `npm run qa:static`, production build ve `git diff --check` geçti. Canlıya dağıtım yapılmadı.
+
+## Eşzamanlı alış fişlerinde maliyet doğruluğu · 24.10.2026
+
+- Kanıt: `recordPurchase` maliyet tarihini kilitsiz okuyordu. Yeni tarihli alış henüz commit olmamışken eski fiş bu tarihi eski haliyle okuyup bekliyor, sonra yeni maliyeti ezebiliyordu. Gerçek PostgreSQL regresyonunda 20 Ekim tarihli 30 TL maliyet, 10 Ekim tarihli 20 TL maliyetle ezildi.
+- Düzeltme: ürünler maliyet tarihi okunurken `FOR UPDATE` ile kilitlenir; çok kalemli fişlerde ürün kimliği sırasıyla kilit alınır. Yeni tarihli fiş maliyeti korunur, her iki fişin stok ve finans kayıtları ayrı ayrı yazılmaya devam eder.
+- `tests/purchase-cost-db.test.ts`: kilitte bekleme `pg_stat_activity` üzerinden gözlenir; eski davranışta kırmızı, düzeltmeyle yeşil. İkinci test ters ürün sıralı dört eşzamanlı fişi, son tarihli maliyeti, aynı fişte son kalem kuralını ve stok toplamlarını doğrular. Hedefli testler 2/2 geçti.
+- Şema değişikliği yok; dağıtım yapılmadı.
+- Son doğrulama: 446/446 test, lint + typecheck, production build ve `git diff --check` geçti.
+
+## Kullanıcı erişimi: sahip koruması ve HQ sınırı · 24.10.2026
+
+- Gerçek PostgreSQL provasında iki sahip eşzamanlı birbirini pasifleştirerek aktif sahip sayısını sıfırlayabiliyordu. `lib/admin/user-access.ts` değişiklikleri kiracı satırı kilidiyle sıraya alır; kilit alındıktan sonra aktörün güncel aktifliği ve yetkisi yeniden okunur. Beklerken pasifleştirilen aktörün isteği reddedilir.
+- Erişim değişikliği, oturum sürümü artışı ve `user.access` denetim kaydı artık tek `withTenant` işlemi içinde atomik yazılır. Başarısız işlemde hepsi geri alınır; değişmeyen erişim oturum sürümünü artırmaz.
+- HQ'nun başka bir HQ hesabını şube müdürüne çevirme/pasifleştirme açığı kapatıldı. `canManageUser` kuralı erişim aksiyonu, davet kapısı ve kullanıcı ekranında ortak kullanılır: sahip her hesabı, HQ yalnız şube müdürlerini yönetir; kendi erişimini değiştirme yasağı korunur.
+- Kullanıcı ekranı HQ'ya sahip/HQ hesabı düzenleme ve davet düğmelerini göstermez; hesap açma/düzenlemede sahip rolü ve tüm-şube kapsamı seçenekleri kaldırıldı. `e2e/hq.mjs` bu seçenekleri ve izinli şube müdürü erişimini kaydetmeyi denetler.
+- `tests/user-access-db.test.ts`: sahip yarışı ve HQ akran yönetimi testleri eski davranışta kırmızı, düzeltmeyle yeşil. Ayrıca kiracı/aktör/hedef/şube sınırları, kendi hesabını değiştirme reddi, oturum sürümü, normal HQ→şube müdürü düzenlemesi ve işlem geri alma doğrulanır.
+- Doğrulama: 450/450 test, lint + typecheck, production build, `git diff --check`. Şema değişikliği yok; canlıya dağıtılmadı.
+- Chrome E2E: `e2e:hq` yerel test DB + e-posta kapalı sunucuda TEMİZ. Kayıt/davet, şube müdürü kapıları, HQ rol/şube seçenekleri, korunan sahip hesabı, izinli erişim kaydı ve açık adisyon sayacı geçti; test kiracısı silindi. Sayacın veri hazırlığı RLS kiracı bağlamına alındı, böylece prova uygulama DB rolüyle de çalışır.
+
+## Davet / şifre yenileme: tek kullanım ve erişim sürümü · 24.10.2026
+
+- Gerçek PostgreSQL regresyonunda aynı bağlantıyı kullanan iki eşzamanlı istek de şifreyi değiştirebiliyordu. `applyPasswordReset` artık doğrulanan şifre özeti, aktiflik ve oturum sürümünü koşullu UPDATE içinde yeniden kontrol eder; yalnız bir istek kazanır.
+- Reset ve davet jetonları `tokenVersion` taşır. Rol/şube değişikliği, pasifleştirme veya yeniden açma öncesindeki bağlantılar kullanılamaz. Yeni bağlantı üretimi ve tüm test üreticileri güncellendi; sürüm taşımayan eski bağlantılar bilinçli olarak reddedilir, yeni bağlantı istenir.
+- Şifre, oturum sürümü, denetim kaydı ve başarısız giriş sayaçlarının temizliği aynı işlemde tamamlanır. Transaction geri alınırsa bağlantı da kullanılabilir kalır. Geçersiz bağlantı bcrypt öncesinde elenir; kayıt sırasında tekrar kontrol edilir.
+- Kullanıcı erişimi sıralama kilidi `NO KEY UPDATE` kullanır: aynı işletmedeki erişim değişiklikleri sıraya girerken kimlik işlemlerinin kiracı foreign-key kontrolü engellenmez.
+- Yeni DB testleri iki eşzamanlı reset, yetki değişmiş davet, doğrulamadan sonra değişen erişim sürümü ve rollback'i kapsar. Eşzamanlılık ve sürüm regresyonları eski davranışta kırmızı, düzeltmeyle yeşil. Şema değişikliği ve dağıtım yok.
+- Doğrulama: 456/456 test, lint + typecheck, production build, `git diff --check`. Chrome `e2e:sifre`: ŞİFRE OK (yeni şifreyle giriş, eski şifre reddi, eski oturumun kapanması, bağlantının ikinci kez reddi). Test kiracısı temizlenir.
+- Chrome `e2e:hq`: TEMİZ; yeni sürümlü davet bağlantılarıyla şube müdürü ve HQ şifreleri oluşturuldu, yetki kapıları ve sayaç doğrulandı. Her iki prova yerel test veritabanında, e-posta kapalı çalıştı; test kiracıları temizlendi ve test sunucusu kapatıldı.
+
+## Hesap oluşturma: güncel yetki ve atomik kayıt · 24.10.2026
+
+- `createUser` isteğin başındaki aktör bilgisiyle rol kontrolü yapıp şifre özeti hazırladıktan sonra kullanıcıyı doğrudan yazıyordu. Bu arada pasifleştirilen veya şube müdürlüğüne indirgenen bir hesabın eski sahip yetkisiyle yeni sahip açabildiği regresyon testlerinde doğrulandı.
+- `createManagedUser` kayıt anında `lockManagementActor` ile işletme bazında erişim değişikliklerini bekler, aktörün güncel aktifliğini ve rolünü DB'den okur. Aynı yardımcı `changeUserAccess` tarafından da kullanılır; şifre özeti hesaplama kilit dışında kalır.
+- Hesap ve `user.create` denetimi tek `withTenant` işleminde yazılır. E-posta çakışması yalnız ilgili unique anahtarda `ON CONFLICT DO NOTHING` ile karşılanır; eşzamanlı iki istekte tek hesap ve tek denetim kaydı oluşur.
+- `tests/user-create-db.test.ts`: pasif/eski rol, farklı kiracı aktörü/şubesi, canlı kilitte bekleyen hesap açma, aynı e-postalı eşzamanlı istek, HQ→şube müdürü sınırı ve rollback. İlk üç regresyon eski davranışta kırmızı, düzeltmeyle yeşil; yeni altı test ve mevcut dört erişim testi geçti.
+- Şema değişikliği yok; dağıtım yapılmadı.
+- Son doğrulama: 462/462 test, lint + typecheck, production build ve `git diff --check` geçti. Chrome `e2e:hq`: TEMİZ (hesap oluşturma/davet, davetle şifre belirleme, şube/HQ kapıları ve adisyon sayacı). Prova yalnız yerel test DB üzerinde, e-posta kapalı çalıştı; test kiracısı silindi ve test sunucusu kapatıldı.
+
+## Yeniden davet: güncel aktör ve hedef yetkisi · 24.10.2026
+
+- `sendUserInvite` isteğin başındaki aktör yetkisine güveniyordu. Pasifleştirme/şubeye indirgeme sonrasındaki eski istek bilgisiyle bağlantı üretilebildiği regresyon testinde doğrulandı.
+- `issueUserInvite` kullanıcı yönetiminin ortak işletme kilidini alır; aktörün güncel aktifliğini/rolünü ve hedefin kiracısını/aktifliğini/rolünü kontrol eder. Erişim değişikliğiyle eşzamanlı davet isteği kilidi bekleyip yeni role göre değerlendirilir.
+- Bağlantı üretimi ve denetim kaydı tek transaction içinde; e-posta gönderimi commit sonrasında yapılır. `user.invite` kaydında `stage: issued` bağlantının üretildiğini belirtir, e-posta teslim kanıtı değildir. Jeton, şifre özeti ve bağlantı audit'e yazılmaz.
+- `tests/user-invite-db.test.ts`: eski aktör, aktör/hedef kiracı sınırı, HQ→şube müdürü sınırı, pasif hedef, canlı rol değişikliği sırasında bekleyen davet ve rollback. Üç regresyon eski davranışta kırmızı, düzeltmeyle yeşil; dört yeni test ve on mevcut kullanıcı yönetimi testi geçti.
+- `e2e/hq.mjs` mevcut kullanıcıya "Davet gönder" düğmesini çalıştırıp üretilen yeni bağlantıyla şifre belirlemeyi de doğrular. Şema değişikliği ve dağıtım yok.
+- Son doğrulama: 466/466 test, lint + typecheck, production build, `git diff --check`. Chrome `e2e:hq` yeniden davet üretimi ve bu bağlantıyla şifre belirleme dahil TEMİZ. İlk koşu yerel `signup:yerel` sayacı 6 olduğu için kayıt limitinde kaldı; yalnız `cabukpos_test` içindeki bu test sayacı temizlendikten sonra geçti.
+- E2E hız düzeltmesi: ilk davet henüz yokken `innerText().catch(...)` 45 saniyelik zaman aşımını bekliyordu. Önce `count()` ile varlık kontrolü yapılıyor; güncellenmiş prova tekrar TEMİZ, ölçülen toplam süre 10,68 saniye. Test kiracıları silindi ve yerel test sunucusu kapatıldı.
+
+## Çok kalemli stok transferi · 24.10.2026
+
+- Kaynak/hedef aynı kalırken tek fişte en fazla 20 farklı ürün aktarılır. Önceki form yalnız tek ürünü destekliyordu; mevcut transfer başlığı/kalem şeması çoklu ürünü zaten desteklediği için yeni migration yok.
+- `lib/admin/transfer.ts` tüm ürünleri kimlik sırasıyla kilitler, tek kaynak stok okumasıyla bütün kalemleri doğrular, ardından bir başlık + kalemler + iki yönlü hareketler + denetim kaydını aynı transaction içinde yazar. Bir kalem hatalı/yetersizse hiçbir ürün aktarılmaz; tekrar eden ürün ve 20 kalem üstü istek reddedilir.
+- Formda ürün ekle/kaldır, kalem bazlı stok ipucu, aynı ürünün ikinci seçimini engelleme, sunucu hatasında ilgili miktara/ürüne odaklanma, hata halinde girdileri koruma ve başarı sonrası form sıfırlama var. Mobilde kalemler tek sütuna iner. Kaynak/hedef değişiminde form da sıfırlanır.
+- Transfer geçmişi birden fazla kalemi gösterir; aynı adlı ürünlerde React anahtarı ürün kimliğiyle ayrılır. Kg/lt miktarlarında yinelenen birim eki kaldırıldı. Transfer sonrası depo ve Bugün stok bilgileri de yenilenir.
+- `tests/transfer-db.test.ts`: kg+adet stok/maliyet doğruluğu, son kalemde yetersizlikte atomiklik, miktar/tekrar/satır sınırı, şube/kiracı sınırı, ters sıralı eşzamanlı transfer ve rollback geçti. `e2e/transfer.mjs` + `npm run e2e:transfer` form düzenleme, hata odağı, kısmi kayıt olmaması, mobil taşma, form sıfırlama ve sonradan hata halinde girdi korumayı denetler.
+- Doğrulama: tam suite 472/472 geçti; ardından eklenen tam 20 farklı ürün sınır testi dahil transfer DB suite 7/7 geçti (20 kalem + 40 hareket). Production build başarılı. Kullanılmayan import uyarısı temizlendi.
+- Chrome `e2e:transfer`: TRANSFER TEMİZ; 390 px mobil ve masaüstünde taşma yok, yetersiz ikinci kalemde sıfır fiş, başarılı aktarımda iki kalemin dört stok bakiyesi doğru, başarı sonrası form boş ve sonraki hatada giriş korunuyor. Mobil ekran `/tmp/cabukpos-transfer-mobile.png` üzerinden görsel kontrol edildi. Prova yerel test DB üzerinde, e-posta kapalı çalıştı; test kiracısı silindi ve sunucu kapatıldı.
+- Son eklenen sınır testi ve import temizliği sonrası `qa:static` tekrar uyarısız geçti; `git diff --check` temiz. Canlıya dağıtım yapılmadı.
+
+## Transfer detay, yazdırma ve CSV · 24.10.2026
+
+- Transfer geçmişinden `/yonetim/transferler/[id]` detayına gidilir: işletme, tam transfer kimliği, İstanbul tarihi, kaynak/hedef, ürün ve miktarlar, not, gönderen/teslim alan kontrol alanları. Yazdır / PDF mevcut tarayıcı yazdırma akışını kullanır; navigasyon ve butonlar kağıtta gizlenir.
+- `transferDocument` iki yüzeyde ortak veri/yetki kapısıdır: sahip/HQ tümünü, şube müdürü yalnız kaynak veya hedefi kendi şubesi olan transferi görebilir. Hatalı/bilinmeyen kimlik, ilgisiz şube ve başka kiracı için veri döndürmez. Sayfa `notFound()`; CSV 404 döner.
+- `/yonetim/transferler/[id]/csv`: oturum kapılı, önbelleksiz, UTF-8 BOM + noktalı virgül, TR ondalık, ayrı birim sütunu ve ortak `csvCell` koruması. Dosya adında DB'den doğrulanan transfer kimliği bulunur.
+- Yeni iki birim ve iki DB testi: İstanbul gün sınırı, kg/adet biçimi, CSV formül/ayraç/tırnak/satır sonu, kaynak/hedef/HQ erişimi, ilgisiz şube ve kiracı ayrımı. Tam suite 477/477, lint + typecheck, production build ve `git diff --check` geçti.
+- Chrome `e2e:transfer`: detay, gerçek CSV indirme/dosya adı/BOM/cache başlıkları, hedef şube erişimi, ilgisiz şubede bulunamadı ekranı + CSV 404, oturumsuz CSV reddi ve mobil taşma kontrolleri dahil TRANSFER TEMİZ. Next.js dokümanındaki akışlı `notFound()` davranışı nedeniyle sayfa HTTP 200 dönebilir; test bulunamadı ekranını ve döküm/veri yokluğunu doğrular.
+- Yazdırma CSS görünümü `/tmp/cabukpos-transfer-print.png` üzerinden görsel kontrol edildi. Testler yalnız yerel test DB'de, e-posta kapalı çalıştı; test kiracıları silindi ve test sunucusu kapatıldı. Şema değişikliği ve canlı dağıtım yok.
+
+## Kapsam dondurma ve teknik kapanış · 24.10.2026
+
+- Kullanıcı talebiyle yeni özellik geliştirmesi durduruldu; sürüm `release/hq-stock-20261024` dalında paketlenir. Kapanış notu `docs/RELEASE-2026-10-24.md`, açılış listesi güncellendi.
+- Node 22.23.4 üzerinde `npm ci`, 477/477 test, lint + typecheck ve production build doğrulandı. Eski E2E stok sayımı seçicisi `Kaydet` için exact eşleşmeye alındı. Pilot ve yeni E2E'ler kayıt limitini paylaşmayan test IP'lerine ayrıldı; üretim limitleri değiştirilmedi.
+- Eklemeli SQL geçişi `db/releases/2026-10-24-hq-stock.sql`: eski Git HEAD şeması ve sentetik mevcut veriyle izole PostgreSQL 16.13 üzerinde prova edildi. Şema + RLS tek transaction uygulandı; eski kullanıcı/şube/ürün/stok, yeni tablo yazımı ve FORCE RLS doğrulandı. Yeni veriler varken ikinci uygulama da geçti. Production ölçeği/restore/operatör onayı için staged kararı sürüm notunda açıklanır.
+- Kapanış dependency taraması Next 16.4.0 ve Zod 4.6.5 açıklarını yakaladı; Next 16.4.1, Zod 4.6.6, eslint-config-next 16.4.1 ve follow-redirects 1.16.1'e geçildi. Son web production taraması 0 açık; tam audit'te yamasız node-forge nedeniyle acme-client/node-forge için 2 high kaydı kalır. Ajan modern `acme.crypto` arayüzünü kullanır, ancak forge bundle'a girdiğinden uyarı gizlenmez; sürüm notunda takip edilir.
+- Vercel production ayar adları güncel olarak kontrol edildi: yalnız APP_URL, DATABASE_URL, AUTH_SECRET, CRON_SECRET ve iki plan fiyatı görüldü. Değerler alınmadı/çıktılanmadı. Canlı ödeme/mali sağlayıcı, alarm/e-posta, yasal iletişim ve fiziksel pilot dış bağımlılıktır.
+- CI'ye şifre, HQ ve transfer browser akışları eklendi; YAML sözdizimi doğrulandı. Yerel kontroller uzak GitHub CI koşusu olarak sunulmaz.
+- Son yamalı paket: Next 16.4.1 + Zod 4.6.6 + follow-redirects 1.16.1; Node 22’de 477/477 test, production build ve runtime audit geçti. 12 browser akışının tümü doğrulandı: M8, M9a, iade, M9b, M9c, M3, M5, LAN, M54, şifre, HQ, transfer. Eski pilotların test IP başlığı yalnız uygulama origin’ine uygulanır; yerel ajanın CORS isteklerine taşınmaz. Web audit 0, tam audit 2 high (acme-client/node-forge) kayıtlı. Yerel release sunucusu kapatıldı.

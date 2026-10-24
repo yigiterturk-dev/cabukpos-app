@@ -17,7 +17,7 @@ export default async function Uretim() {
   const a = await requireAdmin();
   if (a.vertical !== "restoran") notFound();
   const P = schema.products;
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   const [prods, recent] = await Promise.all([
     withTenant(a.tenantId, (tx) => tx.selectDistinct({ id: P.id, name: P.name, unit: P.unit, yieldMilli: P.yieldMilli }).from(P).innerJoin(schema.recipeItems, eq(schema.recipeItems.productId, P.id)).where(and(eq(P.sellable, false), isNotNull(P.yieldMilli), eq(P.active, true))).orderBy(asc(P.name))),
     recentProductions(a.tenantId, storeId),

@@ -4,6 +4,7 @@
   "private": true,
   "license": "UNLICENSED",
   "overrides": {
+    "follow-redirects": "1.16.1",
     "@esbuild-kit/core-utils": {
       "esbuild": "^0.25.12"
     }
@@ -35,6 +36,7 @@
     "db:restore:rehearsal": "node scripts/rehearse-restore.mjs",
     "audit:runtime": "node scripts/runtime-audit.mjs",
     "launch:check": "node --env-file-if-exists=.env.local scripts/launch-check.mjs",
+    "billing:manual": "node --env-file-if-exists=.env.local scripts/manual-payment.mjs",
     "growth:webhook:smoke": "node scripts/growth-webhook-smoke.mjs",
     "db:push": "sh -c 'DATABASE_URL=$(grep ^MIGRATE_DATABASE_URL .env.local | cut -d= -f2-) node node_modules/drizzle-kit/bin.cjs push --force' && npm run db:rls",
     "db:rls": "node --env-file=.env.local scripts/db-rls.mjs",
@@ -49,7 +51,9 @@
     "e2e:m4": "node --env-file-if-exists=.env.local e2e/m4.mjs",
     "e2e:m6": "node --env-file-if-exists=.env.local e2e/m6.mjs",
     "e2e:m7": "node --env-file-if-exists=.env.local e2e/m7.mjs",
-    "e2e:sifre": "node --env-file-if-exists=.env.local e2e/sifre.mjs"
+    "e2e:sifre": "node --env-file-if-exists=.env.local e2e/sifre.mjs",
+    "e2e:hq": "node --env-file-if-exists=.env.local e2e/hq.mjs",
+    "e2e:transfer": "node --env-file-if-exists=.env.local e2e/transfer.mjs"
   },
   "engines": {
     "node": ">=20 <23"
@@ -60,12 +64,12 @@
     "drizzle-orm": "^0.45.3",
     "jose": "^6.2.12",
     "lucide-react": "^1.48.0",
-    "next": "^16.4.0",
+    "next": "16.4.1",
     "postgres": "^3.4.9",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "^4.6.5"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -78,7 +82,7 @@
     "drizzle-kit": "^0.31.11",
     "esbuild": "^0.28.2",
     "eslint": "^9",
-    "eslint-config-next": "16.3.6",
+    "eslint-config-next": "16.4.1",
     "fake-indexeddb": "^6.2.5",
     "playwright-core": "^1.63.0",
     "tailwindcss": "^4",

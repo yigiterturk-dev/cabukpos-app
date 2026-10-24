@@ -7,6 +7,7 @@ import { audit } from "@/lib/audit";
 import { requireWriter } from "@/lib/auth/session";
 import { isBrandSlug, slugify } from "@/lib/brands";
 import { scopedStoreId } from "@/lib/admin/store-scope";
+import { canUseStore } from "@/lib/core/access";
 
 export type BrandState = { error?: string; field?: string; savedAt?: number; info?: string };
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
@@ -20,7 +21,7 @@ export async function createBrand(_: BrandState, f: FormData): Promise<BrandStat
   if (!isBrandSlug(slug)) return { error: "Adres 2–40 karakter: küçük harf, rakam, tire.", field: "slug" };
   try {
     const id = await withTenant(a.tenantId, async (tx) => {
-      const storeId = await scopedStoreId(tx, a.tenantId);
+      const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
       if (!storeId) throw new Error("Şube yok.");
       const [b] = await tx.insert(schema.brands).values({ tenantId: a.tenantId, storeId, name, slug }).returning();
       await audit(tx, a.tenantId, `user:${a.id}`, "brand.create", { id: b.id, name, slug });
@@ -44,7 +45,9 @@ export async function saveBrand(id: string, _: BrandState, f: FormData): Promise
   if (!isBrandSlug(slug)) return { error: "Adres 2–40 karakter: küçük harf, rakam, tire.", field: "slug" };
   try {
     await withTenant(a.tenantId, async (tx) => {
-      await tx.update(schema.brands).set({ name, slug }).where(and(eq(schema.brands.id, id), eq(schema.brands.tenantId, a.tenantId)));
+      const [b] = await tx.select({ storeId: schema.brands.storeId }).from(schema.brands).where(and(eq(schema.brands.id, id), eq(schema.brands.tenantId, a.tenantId)));
+      if (!b || !canUseStore(a, b.storeId)) throw new Error("Marka bulunamadı.");
+      await tx.update(schema.brands).set({ name, slug }).where(eq(schema.brands.id, id));
       await audit(tx, a.tenantId, `user:${a.id}`, "brand.update", { id, name, slug });
     });
   } catch (e) {
@@ -59,8 +62,8 @@ export async function toggleBrand(id: string, active: boolean) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
-    await tx.update(schema.brands).set({ active }).where(and(eq(schema.brands.id, id), eq(schema.brands.tenantId, a.tenantId)));
-    await audit(tx, a.tenantId, `user:${a.id}`, "brand.toggle", { id, active });
+    const [b] = await tx.update(schema.brands).set({ active }).where(and(eq(schema.brands.id, id), eq(schema.brands.tenantId, a.tenantId), a.storeId ? eq(schema.brands.storeId, a.storeId) : undefined)).returning({ id: schema.brands.id });
+    if (b) await audit(tx, a.tenantId, `user:${a.id}`, "brand.toggle", { id, active });
   });
   revalidatePath("/yonetim/markalar");
 }
@@ -72,8 +75,8 @@ export async function setBrandProducts(brandId: string, _: BrandState, f: FormDa
   const ids = [...new Set(f.getAll("product").map((v) => String(v)).filter((v) => UUID.test(v)))];
   try {
     await withTenant(a.tenantId, async (tx) => {
-      const [b] = await tx.select({ id: schema.brands.id }).from(schema.brands).where(and(eq(schema.brands.id, brandId), eq(schema.brands.tenantId, a.tenantId)));
-      if (!b) throw new Error("Marka bulunamadı.");
+      const [b] = await tx.select({ id: schema.brands.id, storeId: schema.brands.storeId }).from(schema.brands).where(and(eq(schema.brands.id, brandId), eq(schema.brands.tenantId, a.tenantId)));
+      if (!b || !canUseStore(a, b.storeId)) throw new Error("Marka bulunamadı.");
       await tx.delete(schema.brandProducts).where(eq(schema.brandProducts.brandId, brandId));
       if (ids.length) await tx.insert(schema.brandProducts).values(ids.map((productId) => ({ brandId, productId })));
       await audit(tx, a.tenantId, `user:${a.id}`, "brand.products", { brandId, count: ids.length });

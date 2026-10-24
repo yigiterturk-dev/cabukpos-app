@@ -8,6 +8,8 @@ import { checkReauth } from "@/lib/auth/reauth";
 import { newPairingCode } from "@/lib/auth/tokens";
 import { audit } from "@/lib/audit";
 import { scopedStoreId } from "@/lib/admin/store-scope";
+import { canUseStore } from "@/lib/core/access";
+import { deviceProblem } from "@/lib/core/store";
 
 export type DeviceState = { error?: string; field?: string; code?: string; expiresAt?: string; deviceName?: string };
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -33,8 +35,16 @@ export async function createDevice(_: DeviceState, form: FormData): Promise<Devi
   const prefix = String(form.get("receiptPrefix") ?? "").trim().toUpperCase();
   if (name.length < 2 || name.length > 40) return { error: "Cihaz adı 2-40 karakter.", field: "name" };
   if (!/^[A-Z0-9]{1,4}$/.test(prefix)) return { error: "Fiş öneki 1-4 harf/rakam (ör. K1).", field: "receiptPrefix" };
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
-  if (!storeId) return { error: "Önce bir şube oluşturun." };
+  const store = await withTenant(a.tenantId, async (tx) => {
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
+    if (!storeId) return null;
+    const [s] = await tx.select({ id: schema.stores.id, kind: schema.stores.kind }).from(schema.stores).where(eq(schema.stores.id, storeId));
+    return s ?? null;
+  });
+  if (!store) return { error: "Önce bir şube oluşturun." };
+  const dp = deviceProblem(store.kind);
+  if (dp) return { error: dp, field: "name" };
+  const storeId = store.id;
   const [dup] = await getDb().select({ id: schema.devices.id }).from(schema.devices).where(and(eq(schema.devices.tenantId, a.tenantId), eq(schema.devices.receiptPrefix, prefix)));
   if (dup) return { error: "Bu fiş öneki başka bir cihazda.", field: "receiptPrefix" };
   const [d] = await getDb().insert(schema.devices).values({ tenantId: a.tenantId, storeId, name, receiptPrefix: prefix }).returning({ id: schema.devices.id });
@@ -47,8 +57,8 @@ export async function createDevice(_: DeviceState, form: FormData): Promise<Devi
 export async function newPairing(deviceId: string): Promise<DeviceState> {
   const a = await requireWriter();
   if (!UUID.test(deviceId)) return { error: "Cihaz bulunamadı." };
-  const [d] = await getDb().select({ name: schema.devices.name }).from(schema.devices).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId)));
-  if (!d) return { error: "Cihaz bulunamadı." };
+  const [d] = await getDb().select({ name: schema.devices.name, storeId: schema.devices.storeId }).from(schema.devices).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId)));
+  if (!d || !canUseStore(a, d.storeId)) return { error: "Cihaz bulunamadı." };
   const c = await assignCode(a.tenantId, deviceId);
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "device.pair_code", { id: deviceId }));
   revalidatePath("/yonetim/cihazlar");
@@ -59,7 +69,7 @@ export async function revokeDevice(deviceId: string, state: { error?: string } =
   const a = await requireWriter();
   if (!UUID.test(deviceId)) return {};
   if (form && (await checkReauth(a.id, form))) { void state; return { error: "Şifre hatalı ya da boş; cihaz iptal edilmedi." }; }
-  await getDb().update(schema.devices).set({ revokedAt: sql`now()`, tokenHash: null, prevTokenHash: null, pairingCode: null }).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId)));
+  await getDb().update(schema.devices).set({ revokedAt: sql`now()`, tokenHash: null, prevTokenHash: null, pairingCode: null }).where(and(eq(schema.devices.id, deviceId), eq(schema.devices.tenantId, a.tenantId), a.storeId ? eq(schema.devices.storeId, a.storeId) : undefined));
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "device.revoke", { id: deviceId }));
   revalidatePath("/yonetim/cihazlar");
   return {};

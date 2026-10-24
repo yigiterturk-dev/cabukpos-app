@@ -7,6 +7,7 @@ import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { parseTL } from "@/lib/core/money";
 import { scopedStoreId } from "@/lib/admin/store-scope";
+import { canUseStore } from "@/lib/core/access";
 
 export type PriceListState = { error?: string; field?: string; savedAt?: number };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,15 +40,23 @@ export async function savePriceList(id: string | null, _: PriceListState, form: 
   if (kind === "yuzde" && (percent === null || !Number.isFinite(percent) || percent < 1 || percent > 100)) return { error: "İndirim yüzdesi 1-100 arası olmalı.", field: "percent" };
   const categoryIds = form.getAll("cat").map((v) => String(v)).filter((v) => UUID.test(v));
   const days = formDays(form);
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
-  if (!storeId) return { error: "Şube yok." };
-  const vals = { name, days, startMin, endMin, kind, percent: kind === "yuzde" ? percent : null, categoryIds: kind === "yuzde" && categoryIds.length ? categoryIds : null };
-  await withTenant(a.tenantId, async (tx) => {
+  const allStores = !a.storeId && str(form, "scope") === "all";
+  const storeId = allStores ? null : await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
+  if (!allStores && !storeId) return { error: "Şube yok." };
+  const vals = { name, days, startMin, endMin, kind, percent: kind === "yuzde" ? percent : null, categoryIds: kind === "yuzde" && categoryIds.length ? categoryIds : null, storeId };
+  const err = await withTenant(a.tenantId, async (tx): Promise<string | null> => {
     const L = schema.priceLists;
-    if (id) await tx.update(L).set(vals).where(eq(L.id, id));
+    if (id) {
+      const [cur] = await tx.select({ storeId: L.storeId }).from(L).where(eq(L.id, id));
+      if (!cur) return "Liste bulunamadı.";
+      if (!canUseStore(a, cur.storeId)) return "Bu fiyat listesini düzenleme yetkiniz yok.";
+      await tx.update(L).set(vals).where(eq(L.id, id));
+    }
     else await tx.insert(L).values({ tenantId: a.tenantId, ...vals, sort: ((await tx.select({ n: sql<number>`count(*)` }).from(L))[0]?.n ?? 0) + 1 });
-    await audit(tx, a.tenantId, `user:${a.id}`, id ? "pricelist.update" : "pricelist.create", { id, name, kind, percent: vals.percent, categoryIds: vals.categoryIds, days, startMin, endMin });
+    await audit(tx, a.tenantId, `user:${a.id}`, id ? "pricelist.update" : "pricelist.create", { id, name, kind, percent: vals.percent, categoryIds: vals.categoryIds, days, startMin, endMin, storeId: vals.storeId });
+    return null;
   });
+  if (err) return { error: err };
   revalidatePath("/yonetim/fiyatlistesi");
   return { savedAt: Date.now() };
 }
@@ -56,8 +65,9 @@ export async function togglePriceList(id: string, active: boolean) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
-    await tx.update(schema.priceLists).set({ active }).where(eq(schema.priceLists.id, id));
-    await audit(tx, a.tenantId, `user:${a.id}`, "pricelist.active", { id, active });
+    const L = schema.priceLists;
+    const [row] = await tx.update(L).set({ active }).where(and(eq(L.id, id), a.storeId ? eq(L.storeId, a.storeId) : undefined)).returning({ id: L.id });
+    if (row) await audit(tx, a.tenantId, `user:${a.id}`, "pricelist.active", { id, active });
   });
   revalidatePath("/yonetim/fiyatlistesi");
 }
@@ -66,8 +76,9 @@ export async function deletePriceList(id: string) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
-    await tx.delete(schema.priceLists).where(eq(schema.priceLists.id, id)); // kalemler cascade
-    await audit(tx, a.tenantId, `user:${a.id}`, "pricelist.delete", { id });
+    const L = schema.priceLists;
+    const [row] = await tx.delete(L).where(and(eq(L.id, id), a.storeId ? eq(L.storeId, a.storeId) : undefined)).returning({ id: L.id }); // kalemler cascade
+    if (row) await audit(tx, a.tenantId, `user:${a.id}`, "pricelist.delete", { id });
   });
   revalidatePath("/yonetim/fiyatlistesi");
 }
@@ -80,6 +91,9 @@ export async function savePriceItem(listId: string, _: PriceListState, form: For
   const price = str(form, "price") === "" ? null : parseTL(str(form, "price"));
   if (price === null || price <= 0 || price > 2_147_483_647) return { error: "Fiyat 0'dan büyük ve en çok 21.474.836,47 olmalı.", field: "price" };
   const err = await withTenant(a.tenantId, async (tx) => {
+    const [list] = await tx.select({ storeId: schema.priceLists.storeId }).from(schema.priceLists).where(eq(schema.priceLists.id, listId));
+    if (!list) return "Liste bulunamadı.";
+    if (!canUseStore(a, list.storeId)) return "Bu fiyat listesini düzenleme yetkiniz yok.";
     const [p] = await tx.select({ id: schema.products.id }).from(schema.products).where(eq(schema.products.id, productId));
     if (!p) return "Ürün bulunamadı.";
     await tx.insert(schema.priceListItems).values({ tenantId: a.tenantId, listId, productId, price })
@@ -96,6 +110,8 @@ export async function deletePriceItem(listId: string, id: string) {
   const a = await requireWriter();
   if (!UUID.test(listId) || !UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
+    const [list] = await tx.select({ storeId: schema.priceLists.storeId }).from(schema.priceLists).where(eq(schema.priceLists.id, listId));
+    if (!list || !canUseStore(a, list.storeId)) return;
     await tx.delete(schema.priceListItems).where(and(eq(schema.priceListItems.id, id), eq(schema.priceListItems.listId, listId)));
     await audit(tx, a.tenantId, `user:${a.id}`, "pricelist.item.delete", { listId, id });
   });

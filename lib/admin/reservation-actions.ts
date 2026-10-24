@@ -6,6 +6,7 @@ import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { RES_STATUSES, timeToAt, validateReservation, type ResStatus } from "@/lib/core/reservation";
+import { canUseStore } from "@/lib/core/access";
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -27,6 +28,7 @@ export async function createReservation(_: ResState, form: FormData): Promise<Re
   if (!at) return { error: "Tarih/saat geçersiz.", field: "time" };
   const storeId = str(form, "storeId");
   if (!UUID.test(storeId)) return { error: "Şube seçin." };
+  if (!canUseStore(a, storeId)) return { error: "Bu şubede rezervasyon oluşturamazsınız.", field: "storeId" };
   const tableId = str(form, "tableId");
   await withTenant(a.tenantId, async (tx) => {
     await tx.insert(schema.reservations).values({
@@ -46,8 +48,10 @@ export async function setReservationStatus(_: ResState, form: FormData): Promise
   let updated = false;
   try {
     updated = await withTenant(a.tenantId, async (tx) => {
-      const r = await tx.update(schema.reservations).set({ status: status as ResStatus }).where(and(eq(schema.reservations.id, id))).returning({ id: schema.reservations.id });
-      if (!r.length) return false;
+      const [r] = await tx.update(schema.reservations).set({ status: status as ResStatus })
+        .where(and(eq(schema.reservations.id, id), a.storeId ? eq(schema.reservations.storeId, a.storeId) : undefined))
+        .returning({ id: schema.reservations.id });
+      if (!r) return false;
       await audit(tx, a.tenantId, `user:${a.id}`, "rezervasyon.durum", { id, status });
       return true;
     });

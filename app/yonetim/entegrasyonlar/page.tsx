@@ -1,4 +1,6 @@
 import { requireAdmin } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { seesAllStores } from "@/lib/core/access";
 import { listKeys } from "@/lib/integrations/keys";
 import { revokeIntegrationKey } from "@/lib/admin/integration-actions";
 import { RevokeForm } from "@/components/admin/RevokeForms";
@@ -10,6 +12,7 @@ const dt = (d: Date) => d.toLocaleString("tr-TR", { dateStyle: "short", timeStyl
 
 export default async function Entegrasyonlar() {
   const a = await requireAdmin();
+  if (!seesAllStores(a)) redirect("/yonetim");
   const owner = a.role === "sahip";
   const rows = await listKeys(a.tenantId);
   return (

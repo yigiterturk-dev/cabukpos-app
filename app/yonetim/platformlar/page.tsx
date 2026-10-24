@@ -6,6 +6,7 @@ import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { acceptPlatformOrder, deleteCode, rejectPlatformOrder } from "@/lib/admin/delivery-actions";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
+import { canUseStore } from "@/lib/core/access";
 import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import QRCode from "qrcode";
 import { foldTabs, type TabState } from "@/lib/core/tab";
@@ -143,15 +144,15 @@ export default async function Platformlar() {
   const a = await requireAdmin();
   const money = await moneyFormatter(a.tenantId);
   const P = schema.platformConnections;
-  const conns = await getDb().select().from(P).where(eq(P.tenantId, a.tenantId)).orderBy(asc(P.createdAt));
+  const conns = (await getDb().select().from(P).where(eq(P.tenantId, a.tenantId)).orderBy(asc(P.createdAt))).filter((c) => canUseStore(a, c.storeId));
   const [storeId, stores] = await withTenant(a.tenantId, (tx) => Promise.all([
-    scopedStoreId(tx, a.tenantId),
+    scopedStoreId(tx, a.tenantId, a.storeId),
     tx.select({ id: schema.stores.id, name: schema.stores.name }).from(schema.stores),
   ]));
   const storeNames = new Map(stores.map((s) => [s.id, s.name]));
   const [codes, products] = await withTenant(a.tenantId, (tx) => Promise.all([
     tx.select({ id: schema.productPlatformCodes.id, platform: schema.productPlatformCodes.platform, storeId: schema.productPlatformCodes.storeId, code: schema.productPlatformCodes.code, product: schema.products.name })
-      .from(schema.productPlatformCodes).innerJoin(schema.products, eq(schema.products.id, schema.productPlatformCodes.productId)).orderBy(asc(schema.productPlatformCodes.code)),
+      .from(schema.productPlatformCodes).innerJoin(schema.products, eq(schema.products.id, schema.productPlatformCodes.productId)).orderBy(asc(schema.productPlatformCodes.code)).then((rows) => rows.filter((c) => canUseStore(a, c.storeId))),
     tx.select({ value: schema.products.id, label: schema.products.name }).from(schema.products).where(and(eq(schema.products.active, true))).orderBy(asc(schema.products.name)),
   ]));
   const h = await headers();

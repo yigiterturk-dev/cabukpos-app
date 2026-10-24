@@ -21,7 +21,7 @@ export default async function Rezervasyonlar({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const gun = isValidCalendarDay(sp.gun) ? sp.gun : istToday();
   const rows = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await scopedStoreId(tx, a.tenantId);
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     const from = new Date(`${gun}T00:00:00+03:00`);
     return {
       list: await tx.select().from(schema.reservations)

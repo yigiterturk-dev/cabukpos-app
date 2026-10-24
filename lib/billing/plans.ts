@@ -16,3 +16,11 @@ export const planPriceFor = (p: BillingPeriod, c: UnitCounts): number | null => 
 // Production launch zaten LEGAL_EMAIL ister; ayrı bir satış adresi yoksa
 // fiyatlandırma ve teklif CTA'ları tamamen kaybolmasın.
 export const salesContact = () => process.env.SALES_CONTACT || process.env.LEGAL_EMAIL || null;
+
+/** Havale/EFT bilgisi; ikisi de tanımlıysa panelde manuel ödeme kartı görünür. */
+export const manualPayment = () => {
+  const iban = process.env.BANK_IBAN?.trim();
+  const account = process.env.BANK_ACCOUNT_NAME?.trim();
+  if (!iban || !account) return null;
+  return { iban, account, bank: process.env.BANK_NAME?.trim() || null };
+};

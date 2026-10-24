@@ -14,12 +14,12 @@ const errorProps = (s: PurchaseState, f: string) => s.field === f && s.error
   ? { "aria-invalid": true as const, "aria-describedby": `purchase-${f}-error` }
   : {};
 
-export function PurchaseForm({ products, suppliers, today, currency = "TRY" }: { products: (Option & { unit: StockUnit })[]; suppliers: Option[]; today: string; currency?: Currency }) {
+export function PurchaseForm({ products, suppliers, today, currency = "TRY", stores, defaultStore }: { products: (Option & { unit: StockUnit })[]; suppliers: Option[]; today: string; currency?: Currency; stores?: Option[]; defaultStore?: string }) {
   const { state, pending, onSubmit } = useFormAction(savePurchase, {} as PurchaseState);
-  return <PurchaseFields key={state.savedAt ?? 0} state={state} pending={pending} onSubmit={onSubmit} products={products} suppliers={suppliers} today={today} currency={currency} />;
+  return <PurchaseFields key={state.savedAt ?? 0} state={state} pending={pending} onSubmit={onSubmit} products={products} suppliers={suppliers} today={today} currency={currency} stores={stores} defaultStore={defaultStore} />;
 }
 
-function PurchaseFields({ state, pending, onSubmit, products, suppliers, today, currency = "TRY" }: { state: PurchaseState; pending: boolean; onSubmit: (e: React.FormEvent<HTMLFormElement>) => void; products: (Option & { unit: StockUnit })[]; suppliers: Option[]; today: string; currency?: Currency }) {
+function PurchaseFields({ state, pending, onSubmit, products, suppliers, today, currency = "TRY", stores, defaultStore }: { state: PurchaseState; pending: boolean; onSubmit: (e: React.FormEvent<HTMLFormElement>) => void; products: (Option & { unit: StockUnit })[]; suppliers: Option[]; today: string; currency?: Currency; stores?: Option[]; defaultStore?: string }) {
   const formRef = useRef<HTMLFormElement>(null);
   const addRowRef = useRef<HTMLButtonElement>(null);
   const unitOf = new Map(products.map((p) => [p.value, p.unit]));
@@ -57,6 +57,9 @@ function PurchaseFields({ state, pending, onSubmit, products, suppliers, today, 
   }, [state.error, state.field]);
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} aria-busy={pending} className="space-y-4">
+      {stores && stores.length > 0 && (
+        <div className="max-w-sm"><Field label="Şube / depo" hint="Alış bu şubenin stoğuna ve maliyetine işler"><Select name="storeId" disabled={pending} options={stores} defaultValue={defaultStore ?? stores[0]?.value ?? ""} placeholder="Şube seçin" onChange={() => setEdited(true)} aria-required {...errorProps(displayState, "storeId")} /></Field><Err s={displayState} f="storeId" /></div>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         <div><Field label="Tedarikçi"><Select name="supplierId" disabled={pending} options={[{ value: "", label: "Tedarikçisiz" }, ...suppliers]} defaultValue="" placeholder="Tedarikçisiz" onChange={() => setEdited(true)} {...errorProps(displayState, "supplierId")} /></Field><Err s={displayState} f="supplierId" /></div>
         <div><Field label="Belge no" hint="Fatura / irsaliye no · en fazla 40 karakter"><Input name="docNo" maxLength={40} disabled={pending} className="disabled:cursor-wait disabled:opacity-50" /></Field></div>
@@ -93,7 +96,7 @@ function PurchaseFields({ state, pending, onSubmit, products, suppliers, today, 
         <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{rowAnnouncement}</span>
       </div>
       <Field label="Not" hint="İsteğe bağlı · en fazla 200 karakter"><Input name="note" maxLength={200} disabled={pending} className="disabled:cursor-wait disabled:opacity-50" /></Field>
-      {displayState.error && !["supplierId", "date", "lines"].includes(displayState.field ?? "") && <p className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}
+      {displayState.error && !["supplierId", "date", "lines", "storeId"].includes(displayState.field ?? "") && <p className="max-w-full break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}
       {pending && <p className="sr-only" role="status" aria-live="polite">Alış kaydı oluşturuluyor. Lütfen bekleyin.</p>}
       <div className="flex items-center gap-4">
         <Button type="submit" disabled={pending || !hasValidLine || hasIncompleteLine}>{pending ? "Kaydediliyor…" : "Alışı kaydet"}</Button>

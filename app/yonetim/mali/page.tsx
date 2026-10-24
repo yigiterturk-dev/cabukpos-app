@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { seesAllStores } from "@/lib/core/access";
 import { DEFAULT_MODES, FISCAL_CHANNELS } from "@/lib/core/fiscal";
 import { moneyFormatter } from "@/lib/admin/currency";
 import { FiscalRowActions, FiscalSettingsForm, OkcZReportForm } from "@/components/admin/FiscalForms";
@@ -31,6 +33,7 @@ const seg = (on: boolean) => `inline-flex min-h-11 shrink-0 items-center whitesp
 
 export default async function Mali({ searchParams }: { searchParams: Promise<{ sekme?: string; durum?: string; page?: string }> }) {
   const a = await requireAdmin();
+  if (!seesAllStores(a)) redirect("/yonetim");
   const money = await moneyFormatter(a.tenantId);
   const q = await searchParams;
   const requestedPage = Number(q.page);

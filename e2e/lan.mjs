@@ -13,6 +13,7 @@ import path from "node:path";
 
 const BASE = process.env.BASE ?? "http://localhost:3800";
 const stamp = Date.now();
+const testHeaders = { "x-vercel-forwarded-for": `198.51.100.${(stamp % 250) + 1}` };
 const step = (m) => console.log("•", m);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const waitFor = async (fn, what, ms = 15000) => { const until = Date.now() + ms; while (Date.now() < until) { if (await fn()) return; await sleep(200); } throw new Error(`zaman aşımı: ${what}`); };
@@ -29,7 +30,13 @@ const kitchenJobs = () => jobs.filter((j) => !text(j).includes("TOPLAM"));
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 // Chrome 142+ yerel ağ erişimi: https (canlı) sayfadan 127.0.0.1 ajanına istek izin ister; headless reddeder → izin ver.
-const agentContext = async (opts) => { const c = await browser.newContext(opts); await c.grantPermissions(["local-network-access"], { origin: new URL(BASE).origin }); return c; };
+const agentContext = async (opts = {}) => {
+  const c = await browser.newContext(opts);
+  // Test IP'sini yalnız bulut isteklerine ekle; yerel ajan CORS başlıklarını değiştirme.
+  await c.route(`${new URL(BASE).origin}/**`, (route) => route.continue({ headers: { ...route.request().headers(), ...testHeaders } }));
+  await c.grantPermissions(["local-network-access"], { origin: new URL(BASE).origin });
+  return c;
+};
 const errors = [];
 const page = async (viewport = { width: 1280, height: 900 }) => {
   const p = await (await agentContext({ viewport })).newPage();

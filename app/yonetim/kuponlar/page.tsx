@@ -2,6 +2,8 @@ import Link from "next/link";
 import { count, desc, ilike } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { seesAllStores } from "@/lib/core/access";
 import { createCoupon, setCouponStatus } from "@/lib/admin/loyalty-actions";
 import { CouponCreateForm } from "@/components/admin/CouponCreatePending";
 import { PendingActionForm } from "@/components/admin/PendingActionForm";
@@ -19,6 +21,7 @@ const valueLabel = (c: typeof schema.coupons.$inferSelect, money: (k: number) =>
 
 export default async function Kuponlar({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; q?: string; page?: string }> }) {
   const a = await requireAdmin();
+  if (!seesAllStores(a)) redirect("/yonetim");
   const money = await moneyFormatter(a.tenantId);
   const currency = await tenantCurrency(a.tenantId);
   const unit = currencySymbol(currency);

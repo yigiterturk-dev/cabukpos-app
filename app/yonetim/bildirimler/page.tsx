@@ -17,7 +17,7 @@ const gun = (at: string) => new Date(at).toLocaleDateString("tr-TR", { day: "num
 
 export default async function Bildirimler() {
   const a = await requireAdmin();
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   const liste = storeId ? await bildirimler(a.tenantId, storeId) : [];
   const sirali = [...liste].sort((x, y) => {
     const oncelik = { bad: 0, warn: 1, info: 2 } as const;

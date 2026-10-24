@@ -11,7 +11,7 @@ grant usage, select on all sequences in schema public to cabukpos_app; -- M5: ta
 alter default privileges in schema public grant usage, select on sequences to cabukpos_app;
 
 do $$ declare t text; begin
-  foreach t in array array['stores','staff','categories','products','shifts','sales','sale_lines','payments','stock_movements','audit_log','areas','tables','option_groups','options','product_option_groups','stations','category_station_routes','product_station_routes','tab_events','delivery_zones','customers','growth_campaigns','growth_recipient_refs','growth_campaign_events','customer_addresses','product_platform_codes','recipe_items','suppliers','purchases','purchase_lines','supplier_payments','productions','loyalty_settings','loyalty_events','gift_cards','gift_card_events','coupons','coupon_uses','reservations'] loop
+  foreach t in array array['stores','staff','categories','products','shifts','sales','sale_lines','payments','stock_movements','audit_log','areas','tables','option_groups','options','product_option_groups','stations','category_station_routes','product_station_routes','tab_events','delivery_zones','customers','growth_campaigns','growth_recipient_refs','growth_campaign_events','customer_addresses','product_platform_codes','recipe_items','suppliers','purchases','purchase_lines','supplier_payments','productions','loyalty_settings','loyalty_events','gift_cards','gift_card_events','coupons','coupon_uses','reservations','stock_transfers','stock_transfer_lines','store_product_settings'] loop
     execute format('alter table %I enable row level security', t);
     execute format('alter table %I force row level security', t);
     execute format('drop policy if exists tenant_isolation on %I', t);
@@ -31,7 +31,7 @@ end $$;
 
 -- FORCE RLS tablo sahibini de bağlar → SECURITY DEFINER fonksiyonlar (sahibi = bu betiği çalıştıran rol) okuyabilsin.
 do $$ declare t text; begin
-  foreach t in array array['fiscal_documents','fiscal_settings','sales','sale_lines','stores'] loop
+  foreach t in array array['fiscal_documents','fiscal_settings','sales','sale_lines','stores','store_product_settings'] loop
     execute format('drop policy if exists definer_read on %I', t);
     execute format('create policy definer_read on %I for select to %I using (true)', t, current_user);
   end loop;
@@ -66,7 +66,8 @@ language sql stable security definer set search_path = public as $f$
     'categories', coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name) order by c.sort, c.name) from categories c where c.tenant_id = st.tenant_id), '[]'::jsonb),
     'products', coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'price', p.price, 'categoryId', p.category_id, 'kind', p.kind) order by coalesce(c.sort, 9999), p.sort, p.name)
       from products p left join categories c on c.id = p.category_id
-      where p.tenant_id = st.tenant_id and p.active and p.sellable and p.price > 0), '[]'::jsonb),
+      where p.tenant_id = st.tenant_id and p.active and p.sellable and p.price > 0
+        and not exists (select 1 from store_product_settings sps where sps.store_id = st.id and sps.product_id = p.id and not sps.active)), '[]'::jsonb),
     'tables', coalesce((select jsonb_agg(jsonb_build_object('id', tb.id, 'name', a.name || ' · ' || tb.name) order by a.sort, tb.sort, tb.name)
       from tables tb join areas a on a.id = tb.area_id
       where tb.tenant_id = st.tenant_id and a.store_id = st.id and tb.active), '[]'::jsonb)
@@ -170,6 +171,7 @@ language sql stable security definer set search_path = public as $f$
     'products', coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'price', p.price, 'categoryId', p.category_id, 'kind', p.kind) order by coalesce(c.sort, 9999), p.sort, p.name)
       from products p left join categories c on c.id = p.category_id
       where p.tenant_id = st.tenant_id and p.active and p.sellable and p.price > 0
+        and not exists (select 1 from store_product_settings sps where sps.store_id = st.id and sps.product_id = p.id and not sps.active)
         and (b.id is null or not exists (select 1 from brand_products bp where bp.brand_id = b.id)
           or p.id in (select bp.product_id from brand_products bp where bp.brand_id = b.id))), '[]'::jsonb),
     'tables', coalesce((select jsonb_agg(jsonb_build_object('id', tb.id, 'name', a.name || ' · ' || tb.name) order by a.sort, tb.sort, tb.name)

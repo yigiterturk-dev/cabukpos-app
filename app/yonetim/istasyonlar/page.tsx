@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Istasyonlar() {
   const a = await requireAdmin();
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   const [[stations, cats], agents] = await Promise.all([
     withTenant(a.tenantId, (tx) => Promise.all([
       tx.select().from(schema.stations).where(storeId ? eq(schema.stations.storeId, storeId) : sql`false`).orderBy(asc(schema.stations.sort), asc(schema.stations.name)),

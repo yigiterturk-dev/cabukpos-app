@@ -3,9 +3,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { normalizeSearchText } from "@/lib/core/search";
-import { Armchair, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, ChevronDown, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Plug, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
+import { Armchair, ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, ChevronDown, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Percent, Plug, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, Warehouse, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
 
-type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean };
+type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean; minStores?: number; allStores?: boolean; badge?: number };
 const groups: { title: string; items: Item[] }[] = [
   { title: "Genel", items: [
     { href: "/yonetim", label: "Bugün", icon: LayoutDashboard, exact: true },
@@ -27,33 +27,37 @@ const groups: { title: string; items: Item[] }[] = [
     { href: "/yonetim/sayim", label: "Sayım & zayi", icon: ClipboardList },
     { href: "/yonetim/alislar", label: "Alışlar", icon: PackagePlus },
     { href: "/yonetim/tedarikciler", label: "Tedarikçiler", icon: Handshake },
+    { href: "/yonetim/transferler", label: "Transferler", icon: ArrowLeftRight, minStores: 2 },
+    { href: "/yonetim/depo", label: "Merkez depo", icon: Warehouse, allStores: true },
   ] },
   { title: "Satış kanalları", items: [
     { href: "/yonetim/salon", label: "Salon", icon: Armchair, only: "restoran" },
     { href: "/yonetim/rezervasyonlar", label: "Rezervasyon", icon: CalendarClock, only: "restoran" },
     { href: "/yonetim/istasyonlar", label: "İstasyonlar", icon: Flame, only: "restoran" },
     { href: "/yonetim/bolgeler", label: "Bölgeler", icon: MapPin, only: "restoran" },
-    { href: "/yonetim/musteriler", label: "Müşteriler", icon: Contact, only: "restoran" },
+    { href: "/yonetim/musteriler", label: "Müşteriler", icon: Contact, only: "restoran", allStores: true },
     { href: "/yonetim/buyume", label: "Büyüme Merkezi", icon: TrendingUp, only: "restoran" },
     { href: "/yonetim/platformlar", label: "Platformlar", icon: Globe, only: "restoran" },
     { href: "/yonetim/markalar", label: "Markalar", icon: Store, only: "restoran" },
   ] },
   { title: "Sadakat", items: [
-    { href: "/yonetim/sadakat", label: "Puan programı", icon: Star },
-    { href: "/yonetim/kuponlar", label: "Kuponlar", icon: Ticket },
-    { href: "/yonetim/hediyekarti", label: "Hediye kartı", icon: Gift },
+    { href: "/yonetim/sadakat", label: "Puan programı", icon: Star, allStores: true },
+    { href: "/yonetim/kuponlar", label: "Kuponlar", icon: Ticket, allStores: true },
+    { href: "/yonetim/hediyekarti", label: "Hediye kartı", icon: Gift, allStores: true },
   ] },
   { title: "İşletme", items: [
-    { href: "/yonetim/subeler", label: "Şubeler", icon: Building2 },
-    { href: "/yonetim/hq", label: "Zincir merkezi", icon: ChartColumn },
+    { href: "/yonetim/subeler", label: "Şubeler", icon: Building2, allStores: true },
+    { href: "/yonetim/hq", label: "Zincir merkezi", icon: ChartColumn, minStores: 2, allStores: true },
     { href: "/yonetim/personel", label: "Personel", icon: UserCog },
     { href: "/yonetim/cihazlar", label: "Cihazlar", icon: MonitorSmartphone },
     { href: "/yonetim/donanim", label: "Donanım", icon: Printer },
-    { href: "/yonetim/mali", label: "Mali", icon: Receipt },
-    { href: "/yonetim/veriler", label: "Veriler", icon: Database },
-    { href: "/yonetim/denetim", label: "Denetim", icon: ShieldCheck },
-    { href: "/yonetim/entegrasyonlar", label: "Entegrasyonlar", icon: Plug },
-    { href: "/yonetim/abonelik", label: "Abonelik", icon: CreditCard },
+    { href: "/yonetim/mali", label: "Mali", icon: Receipt, allStores: true },
+    { href: "/yonetim/franchise", label: "Franchise", icon: Percent, allStores: true },
+    { href: "/yonetim/veriler", label: "Veriler", icon: Database, allStores: true },
+    { href: "/yonetim/denetim", label: "Denetim", icon: ShieldCheck, allStores: true },
+    { href: "/yonetim/entegrasyonlar", label: "Entegrasyonlar", icon: Plug, allStores: true },
+    { href: "/yonetim/abonelik", label: "Abonelik", icon: CreditCard, allStores: true },
+    { href: "/yonetim/kullanicilar", label: "Kullanıcılar", icon: UserCog, allStores: true },
   ] },
 ];
 
@@ -84,7 +88,7 @@ function NavItem({ item, path, onSelect }: { item: Item; path: string; onSelect?
     >
       <Icon aria-hidden className={`size-[18px] shrink-0 ${on ? "text-brand" : "text-cream-muted/80 group-hover:text-cream"}`} />
       <span className="truncate">{item.label}</span>
-      {on && <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-action" />}
+      {item.badge ? <span aria-label={`${item.badge} açık adisyon`} className="ml-auto min-w-5 shrink-0 rounded-full bg-brand-action px-1.5 text-center text-[10px] font-semibold leading-5 text-white">{item.badge > 99 ? "99+" : item.badge}</span> : on && <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-action" />}
     </Link>
   );
 }
@@ -108,7 +112,7 @@ function GroupLabel({ children, open, onToggle }: { children: React.ReactNode; o
 }
 
 /** Sidebar menüsü: arama ile filtrele + gruplu liste. Masaüstü ve mobil çekmecede aynı. */
-export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "restoran" | "market"; onNavigate?: () => void }) {
+export function Nav({ vertical, storeCount, allStores, openTabs = 0, onNavigate: onNavigateProp }: { vertical: "restoran" | "market"; storeCount: number; allStores: boolean; openTabs?: number; onNavigate?: () => void }) {
   const drawerClose = useContext(DrawerCloseContext);
   const onNavigate = onNavigateProp ?? drawerClose ?? undefined;
   const path = usePathname();
@@ -136,8 +140,8 @@ export function Nav({ vertical, onNavigate: onNavigateProp }: { vertical: "resto
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
   const visible = useMemo(
-    () => groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.only || i.only === vertical) })).filter((g) => g.items.length),
-    [vertical],
+    () => groups.map((g) => ({ ...g, items: g.items.filter((i) => (!i.only || i.only === vertical) && (!i.minStores || storeCount >= i.minStores) && (!i.allStores || allStores)).map((i) => (i.href === "/yonetim/salon" ? { ...i, badge: openTabs } : i)) })).filter((g) => g.items.length),
+    [vertical, storeCount, allStores, openTabs],
   );
   // Varsayılan görünüm "Günlük işler": yeni işletmeci paneli açtığında yalnız her gün baktığı sayfaları görür.
   // Seçim kalıcıdır (localStorage); arama her iki görünümde de bütün menüyü tarar.

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
+import { canManageStores } from "@/lib/core/access";
 import { parseTL } from "@/lib/core/money";
 import { audit } from "@/lib/audit";
 import { newGiftCardCode, normalizeCouponCode } from "@/lib/loyalty";
@@ -29,6 +30,7 @@ const todayIstanbul = () => new Date().toLocaleDateString("sv-SE", { timeZone: "
 export type LoyaltyFormState = { error?: string; field?: string };
 export async function saveLoyaltySettings(_: LoyaltyFormState, form: FormData): Promise<LoyaltyFormState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Sadakat programı, kupon ve hediye kartı yalnız sahip ve zincir merkezinde yönetilir." };
   const enabled = text(form, "enabled") === "on";
   const kurusPerPoint = money(form, "kurusPerPoint");
   const kurusPerRedeem = money(form, "kurusPerRedeem");
@@ -52,6 +54,7 @@ export async function saveLoyaltySettings(_: LoyaltyFormState, form: FormData): 
 
 export async function adjustPoints(_: LoyaltyFormState, form: FormData): Promise<LoyaltyFormState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Sadakat programı, kupon ve hediye kartı yalnız sahip ve zincir merkezinde yönetilir." };
   const customerId = text(form, "customerId");
   const points = int(form, "points");
   const note = text(form, "note").slice(0, 200) || null;
@@ -74,6 +77,7 @@ export async function adjustPoints(_: LoyaltyFormState, form: FormData): Promise
 export type GiftCardState = { error?: string; field?: string };
 export async function createGiftCard(_: GiftCardState, form: FormData): Promise<GiftCardState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Sadakat programı, kupon ve hediye kartı yalnız sahip ve zincir merkezinde yönetilir." };
   const initial = money(form, "initial");
   const rawCode = text(form, "code");
   const code = rawCode ? normalizeCouponCode(rawCode) : newGiftCardCode();
@@ -93,6 +97,7 @@ export async function createGiftCard(_: GiftCardState, form: FormData): Promise<
 
 export async function giftCardLoad(_: GiftCardState, form: FormData): Promise<GiftCardState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Sadakat programı, kupon ve hediye kartı yalnız sahip ve zincir merkezinde yönetilir." };
   const cardId = text(form, "cardId");
   const amount = money(form, "amount");
   if (!cardId) return { error: "Hediye kartı seçilemedi; sayfayı yenileyip yeniden deneyin.", field: "amount" };
@@ -112,6 +117,7 @@ export async function giftCardLoad(_: GiftCardState, form: FormData): Promise<Gi
 
 export async function giftCardCancel(form: FormData) {
   const a = await requireWriter();
+  if (!canManageStores(a)) redirect("/yonetim");
   const cardId = text(form, "cardId");
   if (!cardId) redirect("/yonetim/hediyekarti");
   await withTenant(a.tenantId, async (tx) => {
@@ -130,6 +136,7 @@ export async function giftCardCancel(form: FormData) {
 export type CouponCreateState = { error?: string; field?: string };
 export async function createCoupon(_: CouponCreateState, form: FormData): Promise<CouponCreateState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Sadakat programı, kupon ve hediye kartı yalnız sahip ve zincir merkezinde yönetilir." };
   const code = text(form, "code") ? normalizeCouponCode(text(form, "code")) : null;
   const kindRaw = text(form, "kind");
   const kind = kindRaw === "yuzde" || kindRaw === "tutar" || kindRaw === "teslimat" ? kindRaw : null;
@@ -166,6 +173,7 @@ export async function createCoupon(_: CouponCreateState, form: FormData): Promis
 
 export async function setCouponStatus(form: FormData) {
   const a = await requireWriter();
+  if (!canManageStores(a)) redirect("/yonetim");
   const couponId = text(form, "couponId");
   const status = text(form, "status");
   const q = text(form, "q").replace(/[%_]/g, "").slice(0, 40);

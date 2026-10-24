@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function Salon() {
   const a = await requireAdmin();
   const { storeId, areas, tables } = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await scopedStoreId(tx, a.tenantId);
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     const areas = await tx.select().from(schema.areas)
       .where(storeId ? eq(schema.areas.storeId, storeId) : sql`false`)
       .orderBy(asc(schema.areas.sort), asc(schema.areas.name));

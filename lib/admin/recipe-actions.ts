@@ -80,7 +80,7 @@ export async function produce(_: RecipeState, form: FormData): Promise<RecipeSta
     if (moves.some((move) => !Number.isSafeInteger(move.qtyMilli) || Math.abs(move.qtyMilli) > MAX_DB_INT)) {
       return { error: "Bu reçete için parti sayısı çok yüksek; daha az parti girin.", field: "batches" };
     }
-    const storeId = await scopedStoreId(tx, a.tenantId);
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     if (!storeId) return { error: "Şube yok." };
     const [prod] = await tx.insert(schema.productions).values({ tenantId: a.tenantId, storeId, productId, batchesMilli, note, createdBy: a.id }).returning({ id: schema.productions.id });
     const actor = `user:${a.id}`;

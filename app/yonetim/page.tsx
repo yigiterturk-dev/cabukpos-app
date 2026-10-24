@@ -44,7 +44,7 @@ export default async function Bugun() {
   const restoran = a.vertical === "restoran";
   const formatTL = await moneyFormatter(a.tenantId); // #16: işletme para birimiyle biçimler
   const { sum, critical, recent, storeId, setup, attention, forecast } = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await scopedStoreId(tx, a.tenantId);
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     const S = schema.sales;
     const recent = await tx.select({ id: S.id, receiptNo: S.receiptNo, channel: S.channel, status: S.status, total: S.total, at: S.createdAt, staff: schema.staff.name })
       .from(S).innerJoin(schema.staff, eq(schema.staff.id, S.staffId)).where(and(inArray(S.status, ["kapandi", "iade"]), storeId ? eq(S.storeId, storeId) : sql`false`)).orderBy(desc(S.createdAt)).limit(8);

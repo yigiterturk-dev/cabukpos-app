@@ -3,12 +3,17 @@
 Bu liste, uygulamanın teknik olarak hazır olmasını gerçek mağaza açılışından ayırır.
 Her kutu kanıtla kapatılmadan genel satışa geçilmez.
 
+24 Ekim sürüm adayı: kapsam donduruldu. Güncel teknik teslim, veri geçişi ve
+kalan dış bağımlılıklar: [RELEASE-2026-10-24.md](RELEASE-2026-10-24.md).
+Bu aday henüz production’a dağıtılmadı; aşağıdaki eski production kanıtları
+24 Ekim değişikliklerinin canlı doğrulaması anlamına gelmez.
+
 ## Go / no-go
 
 ### Teknik kapı — mevcut durum
 
-- [x] Son kayıtlı kalite kapısı (2026-10-16): `npm ci`, `npm test` 401/401, lint + typecheck + Webpack build
-- [x] Production dependency audit: `npm audit --omit=dev` 0 vulnerability (2026-10-16)
+- [x] Son yerel kalite kapısı (2026-10-24): Node 22.23.4, `npm test` 477/477, lint + typecheck + production build
+- [x] Web production dependency audit: `npm audit --omit=dev` 0 vulnerability (2026-10-24; Next 16.4.1 + Zod 4.6.6). Tam audit sertifika ajanının acme-client/node-forge zincirinde 2 high kaydı içerir; yamasız uyarı ve kapsam RELEASE-2026-10-24.md içinde açıkça kayıtlıdır.
 - [x] `npm run qa:static`: lint + typecheck
 - [x] `npm run build`: Webpack production build
 - [x] Production `/api/health` ve `/api/ready`: `https://cabukpos-app.vercel.app` üzerinde health `ok:true`, ready `database:ok`

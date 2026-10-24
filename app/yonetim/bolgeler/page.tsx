@@ -16,7 +16,7 @@ export default async function Bolgeler() {
   const a = await requireAdmin();
   const currencyUnit = currencySymbol(await tenantCurrency(a.tenantId));
   const Z = schema.deliveryZones;
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   const zones = await withTenant(a.tenantId, (tx) => tx.select().from(Z).where(storeId ? eq(Z.storeId, storeId) : sql`false`).orderBy(desc(Z.active), asc(Z.sort), asc(Z.name)));
   return (
     <>

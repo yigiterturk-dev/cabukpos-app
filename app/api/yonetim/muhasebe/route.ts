@@ -1,5 +1,6 @@
 // app/api/yonetim/muhasebe/route.ts — #20: ayın yevmiyesini sağlayıcı CSV'si olarak indirir (sahip/müdür).
 import { requireApiAdmin, apiRole } from "@/lib/auth/api";
+import { seesAllStores } from "@/lib/core/access";
 import { isAccountingProvider, toProviderCsv, type AccountingProvider } from "@/lib/core/accounting";
 import { monthlyAccountingJournal } from "@/lib/admin/accounting";
 import { withTenant } from "@/db";
@@ -13,6 +14,7 @@ export async function GET(req: Request) {
   if (!g.ok) return g.res;
   const denied = apiRole(g.admin, ["sahip", "mudur"]);
   if (denied) return denied;
+  if (!seesAllStores(g.admin)) return new Response("Yetkisiz.", { status: 403 });
   const a = g.admin;
 
   const url = new URL(req.url);

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { and, count, desc, eq, gte, ilike, inArray, isNotNull, lt, or, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { seesAllStores } from "@/lib/core/access";
 import { deleteAddress } from "@/lib/admin/delivery-actions";
 import { formatPhone, normalizePhone } from "@/lib/core/delivery";
 import { normalizeSearchText } from "@/lib/core/search";
@@ -14,6 +16,7 @@ const PAGE_SIZE = 50;
 
 export default async function Musteriler({ searchParams }: { searchParams: Promise<{ q?: string; id?: string; page?: string }> }) {
   const a = await requireAdmin();
+  if (!seesAllStores(a)) redirect("/yonetim");
   const { q: rawQuery = "", id, page } = await searchParams;
   const q = rawQuery.slice(0, 80);
   const requestedPage = Number(page);

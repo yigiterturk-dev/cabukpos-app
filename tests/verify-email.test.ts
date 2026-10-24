@@ -26,5 +26,5 @@ test("pasif kullanıcı ve bozuk jeton reddedilir", async () => {
 
 test("reset amacındaki jeton doğrulamada kullanılamaz", async () => {
   const { resetToken } = await import("@/lib/auth/reset");
-  assert.equal((await checkDogrula(await resetToken({ id: u.id, passwordHash: "x" }), lookup(u))).durum, "bozuk");
+  assert.equal((await checkDogrula(await resetToken({ id: u.id, passwordHash: "x", tokenVersion: 0 }), lookup(u))).durum, "bozuk");
 });

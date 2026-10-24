@@ -2,6 +2,8 @@ import Link from "next/link";
 import { asc, count, desc, eq, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { seesAllStores } from "@/lib/core/access";
 import { adjustPoints, saveLoyaltySettings } from "@/lib/admin/loyalty-actions";
 import { LoyaltySettingsForm, PointsAdjustForm } from "@/components/admin/LoyaltyFormsPending";
 import { ActionResult } from "@/components/admin/ActionResult";
@@ -15,6 +17,7 @@ const eventLabel: Record<string, string> = { duzeltme: "Elle puan düzeltme", ka
 
 export default async function Sadakat({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; id?: string; page?: string }> }) {
   const a = await requireAdmin();
+  if (!seesAllStores(a)) redirect("/yonetim");
   const money = await moneyFormatter(a.tenantId);
   const currency = await tenantCurrency(a.tenantId);
   const unit = currencySymbol(currency);

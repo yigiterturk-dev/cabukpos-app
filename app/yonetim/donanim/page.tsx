@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { canUseStore } from "@/lib/core/access";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { newAgentPairing, revokeAgent } from "@/lib/admin/agent-actions";
 import { RevokeForm } from "@/components/admin/RevokeForms";
@@ -19,11 +20,11 @@ const future = (d: Date | null) => !!d && d.getTime() > Date.now();
 export default async function Donanim() {
   const u = await requireAdmin();
   const [activeStoreId, stores] = await withTenant(u.tenantId, (tx) => Promise.all([
-    scopedStoreId(tx, u.tenantId),
+    scopedStoreId(tx, u.tenantId, u.storeId),
     tx.select({ id: schema.stores.id, name: schema.stores.name }).from(schema.stores),
   ]));
   const storeNames = new Map(stores.map((s) => [s.id, s.name]));
-  const rows = await getDb().select().from(schema.agents).where(eq(schema.agents.tenantId, u.tenantId)).orderBy(asc(schema.agents.createdAt));
+  const rows = (await getDb().select().from(schema.agents).where(eq(schema.agents.tenantId, u.tenantId)).orderBy(asc(schema.agents.createdAt))).filter((r) => canUseStore(u, r.storeId));
   return (
     <>
       <PageHeader title="Donanım" desc="Kasadaki bilgisayarda çalışan ÇabukPOS ajanı fiş yazıcısını, para çekmecesini ve teraziyi yönetir." />

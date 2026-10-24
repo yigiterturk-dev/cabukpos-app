@@ -15,14 +15,15 @@ import { pushStoreCatalog } from "@/lib/platform/outbound";
 import { applyDoc, tabEventsOf } from "@/lib/sync/apply";
 import { foldTabs } from "@/lib/core/tab";
 import { scopedStoreId } from "@/lib/admin/store-scope";
+import { canManageStores, canUseStore } from "@/lib/core/access";
 
 export type DeliveryState = { error?: string; field?: string; savedAt?: number; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_KURUS = 2_147_483_647;
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
-async function firstStore(tenantId: string) {
-  const sid = await withTenant(tenantId, (tx) => scopedStoreId(tx, tenantId));
+async function firstStore(tenantId: string, actorStoreId: string | null) {
+  const sid = await withTenant(tenantId, (tx) => scopedStoreId(tx, tenantId, actorStoreId));
   if (!sid) throw new Error("Şube yok");
   return sid;
 }
@@ -60,7 +61,7 @@ export async function saveZone(id: string | null, _: DeliveryState, form: FormDa
   if (startMin !== null && endMin !== null && startMin === endMin) return { error: "Başlangıç ve bitiş aynı olamaz.", field: "end" };
   if (id && !UUID.test(id)) return { error: "Bölge bulunamadı." };
   let storeId: string;
-  try { storeId = await firstStore(a.tenantId); }
+  try { storeId = await firstStore(a.tenantId, a.storeId); }
   catch { return { error: "Önce bir şube oluşturun." }; }
   const err = await withTenant(a.tenantId, async (tx) => {
     const Z = schema.deliveryZones;
@@ -81,7 +82,7 @@ export async function toggleZone(id: string, active: boolean) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
   let storeId: string;
-  try { storeId = await firstStore(a.tenantId); }
+  try { storeId = await firstStore(a.tenantId, a.storeId); }
   catch { return; }
   await withTenant(a.tenantId, async (tx) => {
     const [row] = await tx.update(schema.deliveryZones).set({ active }).where(and(eq(schema.deliveryZones.id, id), eq(schema.deliveryZones.storeId, storeId))).returning({ id: schema.deliveryZones.id });
@@ -94,6 +95,7 @@ export async function toggleZone(id: string, active: boolean) {
 // — Müşteriler —
 export async function saveCustomer(id: string, _: DeliveryState, form: FormData): Promise<DeliveryState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Müşteri kayıtları yalnız sahip ve zincir merkezinde düzenlenir." };
   if (!UUID.test(id)) return { error: "Müşteri bulunamadı." };
   const name = str(form, "name");
   if (name.length < 1 || name.length > 120) return { error: "Ad 1-120 karakter.", field: "name" };
@@ -121,6 +123,7 @@ export async function saveCustomer(id: string, _: DeliveryState, form: FormData)
 
 export async function deleteAddress(id: string) {
   const a = await requireWriter();
+  if (!canManageStores(a)) return;
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
     await tx.update(schema.customerAddresses).set({ deleted: true }).where(eq(schema.customerAddresses.id, id));
@@ -136,7 +139,7 @@ export async function createConnection(_: DeliveryState, form: FormData): Promis
   const a = await requireWriter();
   const platform = str(form, "platform");
   if (!CONNECTABLE_PLATFORMS.includes(platform)) return { error: "Bu platform henüz desteklenmiyor.", field: "platform" };
-  const storeId = await firstStore(a.tenantId);
+  const storeId = await firstStore(a.tenantId, a.storeId);
   const [had] = await getDb().select({ id: P.id }).from(P).where(and(eq(P.tenantId, a.tenantId), eq(P.storeId, storeId), eq(P.platform, platform)));
   if (had) return { error: "Bu platform zaten bağlı.", field: "platform" };
   await getDb().insert(P).values({ tenantId: a.tenantId, storeId, platform, webhookSecret: newDeviceToken() });
@@ -148,20 +151,20 @@ export async function createConnection(_: DeliveryState, form: FormData): Promis
 export async function setConnection(id: string, patch: { autoAccept?: boolean; active?: boolean }) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
-  await getDb().update(P).set(patch).where(and(eq(P.id, id), eq(P.tenantId, a.tenantId)));
+  await getDb().update(P).set(patch).where(and(eq(P.id, id), eq(P.tenantId, a.tenantId), a.storeId ? eq(P.storeId, a.storeId) : undefined));
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.update", { id, ...patch }));
   revalidatePath("/yonetim/platformlar");
 }
 
-async function ownConnection(tenantId: string, id: string) {
+async function ownConnection(a: { tenantId: string; storeId: string | null; role: "sahip" | "mudur" }, id: string) {
   if (!UUID.test(id)) return null;
-  const [c] = await getDb().select().from(P).where(and(eq(P.id, id), eq(P.tenantId, tenantId)));
-  return c ?? null;
+  const [c] = await getDb().select().from(P).where(and(eq(P.id, id), eq(P.tenantId, a.tenantId)));
+  return c && canUseStore(a, c.storeId) ? c : null;
 }
 
 export async function saveCode(connectionId: string, _: DeliveryState, form: FormData): Promise<DeliveryState> {
   const a = await requireWriter();
-  const conn = await ownConnection(a.tenantId, connectionId);
+  const conn = await ownConnection(a, connectionId);
   if (!conn) return { error: "Bağlantı bulunamadı." };
   const code = str(form, "code");
   const productId = str(form, "productId");
@@ -185,7 +188,12 @@ export async function deleteCode(id: string) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
-    await tx.delete(schema.productPlatformCodes).where(eq(schema.productPlatformCodes.id, id));
+    const C = schema.productPlatformCodes;
+    if (a.storeId) {
+      const [row] = await tx.select({ id: C.id }).from(C).where(and(eq(C.id, id), eq(C.storeId, a.storeId)));
+      if (!row) return;
+    }
+    await tx.delete(C).where(eq(C.id, id));
     await audit(tx, a.tenantId, `user:${a.id}`, "platform.code.delete", { id });
   });
   revalidatePath("/yonetim/platformlar");
@@ -194,7 +202,7 @@ export async function deleteCode(id: string) {
 /** Deneme siparişi: eşlenmiş ilk kod (yoksa ilk ürün, eşlenmemiş) ile sahte platform siparişi — kasada onay kartı düşer. */
 export async function sendTestOrder(connectionId: string): Promise<DeliveryState> {
   const a = await requireWriter();
-  const conn = await ownConnection(a.tenantId, connectionId);
+  const conn = await ownConnection(a, connectionId);
   if (!conn || conn.platform !== "mock") return { error: "Deneme siparişi yalnız Deneme platformunda." };
   const pick = await withTenant(a.tenantId, async (tx) => {
     const C = schema.productPlatformCodes, Pr = schema.products;
@@ -217,7 +225,7 @@ export async function sendTestOrder(connectionId: string): Promise<DeliveryState
 /** #29: Eşlenmiş ürünleri (ad/fiyat/stok) platforma gönderir. */
 export async function pushCatalog(connectionId: string): Promise<DeliveryState> {
   const a = await requireWriter();
-  const conn = await ownConnection(a.tenantId, connectionId);
+  const conn = await ownConnection(a, connectionId);
   if (!conn) return { error: "Bağlantı bulunamadı." };
   const r = await pushStoreCatalog(a.tenantId, conn.storeId, conn.platform, `user:${a.id}`);
   if ("error" in r) {
@@ -236,7 +244,9 @@ export async function pushCatalog(connectionId: string): Promise<DeliveryState> 
 export async function acceptPlatformOrder(tabId: string): Promise<void> {
   const a = await requireWriter();
   if (!UUID.test(tabId)) return;
-  const storeId = await firstStore(a.tenantId);
+  const [tab] = await withTenant(a.tenantId, (tx) => tx.select({ storeId: schema.tabEvents.storeId }).from(schema.tabEvents).where(eq(schema.tabEvents.tabId, tabId)).limit(1));
+  if (!tab || !canUseStore(a, tab.storeId)) return;
+  const storeId = tab.storeId;
   const [device] = await getDb().select({ id: schema.devices.id, receiptPrefix: schema.devices.receiptPrefix }).from(schema.devices)
     .where(and(eq(schema.devices.tenantId, a.tenantId), eq(schema.devices.storeId, storeId), eq(schema.devices.role, "kasa"))).limit(1);
   const [staff] = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.active, true)).orderBy(sql`case when ${schema.staff.role} = 'mudur' then 0 else 1 end`).limit(1)); // audit temiz olsun: önce müdür
@@ -252,7 +262,9 @@ export async function acceptPlatformOrder(tabId: string): Promise<void> {
 export async function rejectPlatformOrder(tabId: string, reason: string): Promise<void> {
   const a = await requireWriter();
   if (!UUID.test(tabId)) return;
-  const storeId = await firstStore(a.tenantId);
+  const [tab] = await withTenant(a.tenantId, (tx) => tx.select({ storeId: schema.tabEvents.storeId }).from(schema.tabEvents).where(eq(schema.tabEvents.tabId, tabId)).limit(1));
+  if (!tab || !canUseStore(a, tab.storeId)) return;
+  const storeId = tab.storeId;
   const state = foldTabs(await withTenant(a.tenantId, (tx) => tabEventsOf(tx, tabId))).get(tabId);
   if (!state || state.closed || state.delivery.acceptedAt || state.delivery.rejected) return; // yalnız onay bekliyorken
   const [device] = await getDb().select({ id: schema.devices.id, receiptPrefix: schema.devices.receiptPrefix }).from(schema.devices)

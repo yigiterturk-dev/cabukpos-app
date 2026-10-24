@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
-import { deleteCategory, setProductActive } from "@/lib/admin/catalog-actions";
+import { deleteCategory, setProductActive, setStoreProductHidden } from "@/lib/admin/catalog-actions";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { moneyFormatter, tenantCurrency } from "@/lib/admin/currency";
 import { currencySymbol } from "@/lib/core/money";
@@ -28,16 +28,18 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
   const q = rawQuery.slice(0, 80);
   const raw = tur === "hammadde";
   const restoran = a.vertical === "restoran";
-  const storeId = restoran ? await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId)) : null;
-  const [cats, prods, stations, groups, links] = await withTenant(a.tenantId, (tx) =>
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
+  const [cats, prods, stations, groups, links, hiddenRows] = await withTenant(a.tenantId, (tx) =>
     Promise.all([
       tx.select().from(schema.categories).orderBy(asc(schema.categories.sort), asc(schema.categories.name)),
       tx.select().from(schema.products).orderBy(asc(schema.products.name)),
       restoran ? tx.select({ value: schema.stations.id, label: schema.stations.name }).from(schema.stations).where(storeId ? eq(schema.stations.storeId, storeId) : sql`false`).orderBy(asc(schema.stations.sort)) : [],
       restoran ? tx.select({ value: schema.optionGroups.id, label: schema.optionGroups.name }).from(schema.optionGroups).orderBy(asc(schema.optionGroups.sort), asc(schema.optionGroups.name)) : [],
       restoran ? tx.select().from(schema.productOptionGroups).orderBy(asc(schema.productOptionGroups.sort)) : [],
+      storeId ? tx.select({ productId: schema.storeProductSettings.productId }).from(schema.storeProductSettings).where(and(eq(schema.storeProductSettings.storeId, storeId), eq(schema.storeProductSettings.active, false))) : [],
     ]),
   );
+  const hidden = new Set(hiddenRows.map((r) => r.productId));
   const routes = restoran && storeId
     ? await withTenant(a.tenantId, (tx) => loadStoreStationRoutes(tx, storeId))
     : { stationIds: new Set<string>(), categories: new Map<string, string | null>(), products: new Map<string, string | null>() };
@@ -103,7 +105,10 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
                     {p.kind === "tartili" && <p className="text-xs text-muted">Kg{p.plu ? ` · PLU ${p.plu}` : ""}</p>}
                     {p.quick && <p className="text-xs text-brand">Kasada hızlı tuş</p>}
                   </div>
-                  {p.active ? <Badge tone="ok">{p.sellable ? "Satışta" : "Aktif"}</Badge> : <Badge>Kapalı</Badge>}
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {p.active ? <Badge tone="ok">{p.sellable ? "Satışta" : "Aktif"}</Badge> : <Badge>Kapalı</Badge>}
+                    {hidden.has(p.id) && <Badge tone="warn">Bu şubede gizli</Badge>}
+                  </div>
                 </div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <div><dt className="text-xs text-muted">Kategori</dt><dd className="break-words">{p.categoryId ? catName.get(p.categoryId) ?? "—" : "—"}</dd></div>
@@ -114,6 +119,7 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
                 <div className="flex flex-wrap items-center gap-1 border-t border-line pt-2">
                   <Link href={`/yonetim/urunler?duzenle=${p.id}${tur ? `&tur=${tur}` : ""}${querySuffix}`} aria-label={`Düzenle: ${p.name}`} className="inline-flex min-h-11 items-center rounded-lg px-3 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
                   <PendingActionForm action={setProductActive.bind(null, p.id, !p.active)} label={p.active ? "Satıştan kaldır" : "Satışa aç"} pendingLabel="Kaydediliyor…" ariaLabel={`${p.active ? "Satıştan kaldır" : "Satışa aç"}: ${p.name}`} pendingStatus={`${p.name} ürününün satış durumu kaydediliyor.`} buttonClassName="inline-flex min-h-11 items-center rounded-lg px-3 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" />
+                  {storeId && <PendingActionForm action={setStoreProductHidden.bind(null, p.id, !hidden.has(p.id))} label={hidden.has(p.id) ? "Bu şubede göster" : "Bu şubede gizle"} pendingLabel="Kaydediliyor…" ariaLabel={`${hidden.has(p.id) ? "Bu şubede göster" : "Bu şubede gizle"}: ${p.name}`} pendingStatus={`${p.name} ürününün şube görünürlüğü kaydediliyor.`} buttonClassName="inline-flex min-h-11 items-center rounded-lg px-3 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" />}
                 </div>
               </li>
             ))}
@@ -134,10 +140,11 @@ export default async function Urunler({ searchParams }: { searchParams: Promise<
                   <td className="tabular whitespace-nowrap px-4 py-2.5 text-right text-muted">{p.cost == null ? "—" : `${money(p.cost)}/${stockUnitOf(p)}`}</td>
                   <td className="hidden px-4 py-2.5 2xl:table-cell">%{p.vatRate}</td>
                   <td className="hidden px-4 py-2.5 text-muted 2xl:table-cell">{p.barcodes.length || "—"}</td>
-                  <td className="px-4 py-2.5">{p.active ? <Badge tone="ok">{p.sellable ? "Satışta" : "Aktif"}</Badge> : <Badge>Kapalı</Badge>}</td>
+                  <td className="px-4 py-2.5"><span className="flex flex-wrap gap-1">{p.active ? <Badge tone="ok">{p.sellable ? "Satışta" : "Aktif"}</Badge> : <Badge>Kapalı</Badge>}{hidden.has(p.id) && <Badge tone="warn">Bu şubede gizli</Badge>}</span></td>
                   <td className={`sticky right-0 whitespace-nowrap px-4 py-2.5 text-right shadow-[-8px_0_12px_-12px_rgb(40_24_8/0.35)] ${p.id === duzenle ? "bg-brand-soft/90" : "bg-surface"}`}>
                     <Link href={`/yonetim/urunler?duzenle=${p.id}${tur ? `&tur=${tur}` : ""}${querySuffix}`} aria-label={`Düzenle: ${p.name}`} className="mr-1 inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-brand outline-none hover:bg-brand-soft hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Düzenle</Link>
                     <PendingActionForm action={setProductActive.bind(null, p.id, !p.active)} label={p.active ? "Satıştan kaldır" : "Satışa aç"} pendingLabel="Kaydediliyor…" ariaLabel={`${p.active ? "Satıştan kaldır" : "Satışa aç"}: ${p.name}`} pendingStatus={`${p.name} ürününün satış durumu kaydediliyor.`} formClassName="inline" buttonClassName="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" />
+                    {storeId && <PendingActionForm action={setStoreProductHidden.bind(null, p.id, !hidden.has(p.id))} label={hidden.has(p.id) ? "Bu şubede göster" : "Bu şubede gizle"} pendingLabel="Kaydediliyor…" ariaLabel={`${hidden.has(p.id) ? "Bu şubede göster" : "Bu şubede gizle"}: ${p.name}`} pendingStatus={`${p.name} ürününün şube görünürlüğü kaydediliyor.`} formClassName="inline" buttonClassName="inline-flex min-h-11 items-center rounded-lg px-2 text-muted outline-none hover:bg-surface-3 hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" />}
                   </td>
                 </tr>
               ))}

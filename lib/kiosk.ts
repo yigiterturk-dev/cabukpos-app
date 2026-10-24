@@ -1,7 +1,7 @@
 // lib/kiosk.ts — #37: QR menü + self-order kiosko. Sipariş, platform hattıyla aynı tab olaylarına düşer;
 // kasiyer paneldeki paket hattından kabul eder (autoAccept açıksa otomatik). Kod menü URL'siyle gider (?k=).
 import { timingSafeEqual } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { getDb, schema, withTenant } from "@/db";
 import { isVatRate, type Kurus } from "@/lib/core/money";
 import { sendByStation, type MappedProduct } from "@/lib/core/platform";
@@ -80,7 +80,8 @@ export async function kioskOrder(conn: KioskConn, input: {
     if (!ids.length) return { ok: false as const, reason: "Sepet boş." };
     const rows = await tx.select({ id: P.id, name: P.name, price: P.price, vatRate: P.vatRate, categoryId: P.categoryId, stationId: P.stationId, catStation: K.stationId })
       .from(P).leftJoin(K, eq(K.id, P.categoryId))
-      .where(and(eq(P.tenantId, conn.tenantId), eq(P.active, true), eq(P.sellable, true), inArray(P.id, ids)));
+      .leftJoin(schema.storeProductSettings, and(eq(schema.storeProductSettings.productId, P.id), eq(schema.storeProductSettings.storeId, conn.storeId)))
+      .where(and(eq(P.tenantId, conn.tenantId), eq(P.active, true), eq(P.sellable, true), inArray(P.id, ids), or(isNull(schema.storeProductSettings.id), eq(schema.storeProductSettings.active, true))));
     const routes = await loadStoreStationRoutes(tx, conn.storeId);
     const categoryStations = new Map(rows.filter((p) => p.categoryId).map((p) => [p.categoryId!, categoryStationForStore(p.categoryId!, p.catStation, routes)]));
     const menu = new Map(rows.filter((p) => isVatRate(p.vatRate)).map((p) => [p.id, { id: p.id, name: p.name, vatRate: p.vatRate as MappedProduct["vatRate"], stationId: productStationForStore(p.id, p.stationId, p.categoryId ? categoryStations.get(p.categoryId) ?? null : null, routes), price: p.price }]));

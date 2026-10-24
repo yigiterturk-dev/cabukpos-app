@@ -2,6 +2,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { seesAllStores } from "@/lib/core/access";
 import { stockLevels } from "@/lib/admin/stock";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { formatQty, isCriticalRow } from "@/lib/admin/stock-view";
@@ -46,7 +47,7 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
   const sort = sp.sirala === "adet" ? "adet" : "ciro";
   const kisi = sp.kisi && UUID.test(sp.kisi) ? sp.kisi : null;
   const { storeId, storeName, critical } = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await scopedStoreId(tx, a.tenantId);
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     const [store] = storeId ? await tx.select({ name: schema.stores.name }).from(schema.stores).where(eq(schema.stores.id, storeId)).limit(1) : [];
     return { storeId, storeName: store?.name ?? null, critical: storeId ? (await stockLevels(tx, storeId)).filter(isCriticalRow) : [] };
   });
@@ -83,7 +84,7 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
       {tab.key === "musteriler" ? (
         <div className="mb-4"><Link className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 py-2 text-sm outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60" href="/yonetim/raporlar/csv?sekme=musteriler" download>CSV indir</Link></div>
       ) : tab.range ? <RangeBar sekme={tab.key} range={range} csv={tab.csv ? tab.key : null} print extra={tab.key === "urunler" ? { sirala: sp.sirala } : tab.key === "personel" ? { kisi: kisi ?? undefined } : {}} /> : null}
-      {mailSettings && <ReportMailCard initial={{ daily: mailSettings.daily, weekly: mailSettings.weekly, monthly: mailSettings.monthly }} />}
+      {mailSettings && seesAllStores(a) && <ReportMailCard initial={{ daily: mailSettings.daily, weekly: mailSettings.weekly, monthly: mailSettings.monthly }} />}
       {tab.key === "ozet" && <Card className="mb-6 p-4 text-sm"><a className="rounded px-1 font-medium text-brand outline-none hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60" href={`/yonetim/raporlar/konsolide?ay=${prevMonth()}`}>Aylık konsolide raporu aç ({prevMonth()})</a><span className="ml-2 text-muted">— yazdır/PDF; e-posta ayarı yukarıda.</span></Card>}
       {body}
     </>

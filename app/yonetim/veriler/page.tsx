@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { Download, ShieldCheck } from "lucide-react";
 import { requireAdmin } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { seesAllStores } from "@/lib/core/access";
 import { buttonClass, Card, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function Veriler() {
   const a = await requireAdmin();
+  if (!seesAllStores(a)) redirect("/yonetim");
   return (
     <>
       <PageHeader title="Veriler" desc="İşletmenizin taşınabilir veri kopyasını oluşturun." />

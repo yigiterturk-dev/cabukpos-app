@@ -6,10 +6,11 @@ import { chromium } from "playwright-core";
 
 const BASE = process.env.BASE ?? "http://localhost:3800";
 const stamp = Date.now();
+const testHeaders = { "x-vercel-forwarded-for": `198.51.100.${(stamp % 250) + 1}` };
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const errors = [];
 const page = async () => {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: testHeaders })).newPage();
   p.on("pageerror", (e) => errors.push(e.message));
   return p;
 };
@@ -151,7 +152,7 @@ expect(await stock(admin, "Domates"), "−1,250 kg", "Domates (alışsız, eksi)
 await admin.getByTestId("stok-Süt").getByRole("link", { name: "Hareket" }).click();
 await admin.locator("label").filter({ hasText: "Sayım (=)" }).click();
 await admin.fill("input[name=qty]", "20");
-await admin.getByRole("button", { name: "Kaydet" }).click();
+  await admin.getByRole("button", { name: "Kaydet", exact: true }).click();
 await admin.getByText("Kaydedildi.").waitFor();
 expect(await stock(admin, "Süt"), "20", "sayım sonrası");
 step("stok: Süt 7, Domates −1,250 kg; sayım → 20");

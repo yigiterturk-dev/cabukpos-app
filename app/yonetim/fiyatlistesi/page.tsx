@@ -19,7 +19,7 @@ export default async function FiyatListesi() {
   const currency = await tenantCurrency(a.tenantId);
   const money = (amount: number) => formatMoney(amount, currency);
   const unit = currencySymbol(currency);
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   const L = schema.priceLists, I = schema.priceListItems, P = schema.products, C = schema.categories;
   const [lists, items, prods, cats] = await withTenant(a.tenantId, (tx) =>
     Promise.all([
@@ -47,6 +47,7 @@ export default async function FiyatListesi() {
                 <div className="flex min-w-0 flex-wrap items-center gap-3">
                   <span className={`min-w-0 max-w-full break-words font-semibold ${l.active ? "" : "opacity-60"}`}>{l.name}</span>
                   {yuzde ? <Badge tone="brand">Yüzde %{l.percent}</Badge> : <Badge>Ürün başı fiyat</Badge>}
+                  <Badge tone={l.storeId ? "neutral" : "brand"}>{l.storeId ? "Bu şube" : "Tüm şubeler"}</Badge>
                   <Badge>{l.days.length === 0 ? "Her gün" : l.days.map((d) => GUNLER[d]).join(" · ")}</Badge>
                   <span className="text-sm tabular text-muted">{hm(l.startMin)} – {hm(l.endMin)}{l.endMin <= l.startMin ? " (ertesi gün)" : ""}</span>
                   <ListToggles id={l.id} name={l.name} active={l.active} />

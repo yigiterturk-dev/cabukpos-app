@@ -11,6 +11,7 @@ import { passwordProblemAsync } from "./password";
 import { failKey, shouldLock } from "./lockout";
 import { newTotpSecret, otpauthUrl, verifyTotp } from "./totp";
 import { checkReset, resetToken } from "./reset";
+import { applyPasswordReset } from "./reset-password";
 import { dogrulaToken } from "./verify-email";
 import { clearAdminSession, getAdmin, revokeCurrentSession, revokeOtherSessions, setAdminSession } from "./session";
 import { revokeAllSessions } from "./sessions";
@@ -207,19 +208,14 @@ export async function resetPassword(_: AuthState, form: FormData): Promise<AuthS
   const password = String(form.get("password") ?? "");
   const pw = await passwordProblemAsync(password);
   if (pw) return { error: pw, field: "password" };
+  // Geçersiz bağlantılarda pahalı bcrypt işini başlatma. Kayıt sırasında
+  // bağlantı yeniden doğrulanır ve eşzamanlı değişiklikler koşullu UPDATE ile korunur.
   const U = schema.users;
-  const userId = await checkReset(token, async (id) => (await getDb().select({ passwordHash: U.passwordHash, active: U.active }).from(U).where(eq(U.id, id)))[0] ?? null);
-  if (!userId) return { error: "Bağlantı geçersiz ya da süresi dolmuş. Yeni bağlantı isteyin." };
+  const candidate = await checkReset(token, async (id) => (await getDb().select({ passwordHash: U.passwordHash, active: U.active, tokenVersion: U.tokenVersion }).from(U).where(eq(U.id, id)))[0] ?? null);
+  if (!candidate) return { error: "Bağlantı geçersiz ya da süresi dolmuş. Yeni bağlantı isteyin." };
   const hash = await bcrypt.hash(password, 12);
-  // tokenVersion artar → diğer cihazlardaki yönetim oturumları düşer.
-  // Password reset revokes every previous session; the fresh session below is the only one kept.
-  const revokeSessions = getDb().update(U).set({ passwordHash: hash, tokenVersion: sql`${U.tokenVersion} + 1` }).where(eq(U.id, userId)).returning();
-  const [u] = await revokeSessions;
-  await getDb().transaction(async (tx) => {
-    await tx.execute(sql`select set_config('app.tenant_id', ${u.tenantId}, true)`);
-    await audit(tx, u.tenantId, `user:${u.id}`, "user.password_reset");
-  });
-  await getDb().delete(schema.loginAttempts).where(inArray(schema.loginAttempts.key, [`e:${u.email}`, failKey(u.email)]));
+  const u = await getDb().transaction((tx) => applyPasswordReset(tx, token, hash));
+  if (!u) return { error: "Bağlantı geçersiz ya da süresi dolmuş. Yeni bağlantı isteyin." };
   await setAdminSession(u.id, u.tenantId, u.tokenVersion);
   redirect("/yonetim");
 }

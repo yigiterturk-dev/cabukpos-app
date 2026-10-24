@@ -14,7 +14,7 @@ export const payMethod = pgEnum("pay_method", ["nakit", "kart", "yemek_karti", "
 export const saleChannel = pgEnum("sale_channel", ["kasa", "masa", "paket", "platform"]);
 export const saleStatus = pgEnum("sale_status", ["kapandi", "iptal", "iade"]);
 export const productKind = pgEnum("product_kind", ["adet", "tartili"]);
-export const stockKind = pgEnum("stock_kind", ["satis", "iade", "alis", "sayim", "fire", "recete", "uretim"]);
+export const stockKind = pgEnum("stock_kind", ["satis", "iade", "alis", "sayim", "fire", "recete", "uretim", "transfer"]);
 export const stockCountStatus = pgEnum("stock_count_status", ["acik", "kapandi"]);
 export const stockUnit = pgEnum("stock_unit", ["adet", "kg", "lt"]);
 export const purchaseStatus = pgEnum("purchase_status", ["kayitli", "iptal"]);
@@ -24,6 +24,7 @@ export const fiscalEnvelopeStatus = pgEnum("fiscal_envelope_status", ["hazir", "
 export const supplierPayMethod = pgEnum("supplier_pay_method", ["nakit", "havale", "kart"]);
 export const growthCampaignStatus = pgEnum("growth_campaign_status", ["taslak", "arsiv"]);
 export const growthCampaignEventType = pgEnum("growth_campaign_event_type", ["sent", "delivered", "converted", "opt_out", "failed"]);
+export const storeKind = pgEnum("store_kind", ["sube", "depo"]);
 
 const ts = (n: string) => timestamp(n, { withTimezone: true });
 const tenantRef = () => uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" });
@@ -52,6 +53,8 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
   role: userRole("role").notNull().default("sahip"),
+  // Şube müdürü: doluysa hesap yalnız bu şubeye kilitli. null = sahip ya da zincir merkezi (HQ).
+  storeId: uuid("store_id").references(() => stores.id, { onDelete: "restrict" }),
   active: boolean("active").notNull().default(true),
   tokenVersion: integer("token_version").notNull().default(0),
   emailVerifiedAt: ts("email_verified_at"), // e-posta doğrulama zamanı
@@ -127,6 +130,10 @@ export const stores = pgTable("stores", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: tenantRef(),
   name: text("name").notNull(),
+  kind: storeKind("kind").notNull().default("sube"), // depo: satış yapmaz; HQ alışı ve şubelere dağıtımın kaynağı
+  royaltyBps: integer("royalty_bps"), // franchise ciro payı, baz puan: 500 = %5
+  monthlyFee: integer("monthly_fee"), // franchise sabit aylık bedel (kuruş)
+
   address: text("address"),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
@@ -174,6 +181,17 @@ export const products = pgTable("products", {
   yieldMilli: integer("yield_milli"), // ara ürün: bir parti
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [index("products_tenant_idx").on(t.tenantId), uniqueIndex("products_plu_uq").on(t.tenantId, t.plu)]);
+
+/** Şube bazlı ürün görünürlüğü. Satır yoksa kiracı varsayılanı geçerli; active=false → yalnız bu şubede gizli (86). */
+export const storeProductSettings = pgTable("store_product_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  active: boolean("active").notNull().default(true),
+  minStock: integer("min_stock"), // şube bazlı kritik stok eşiği (qtyMilli); null = products.min_stock varsayılanı
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+}, (t) => [uniqueIndex("store_product_settings_uq").on(t.storeId, t.productId)]);
 
 export const shifts = pgTable("shifts", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -253,6 +271,7 @@ export const stockMovements = pgTable("stock_movements", {
   note: text("note"),
   purchaseId: uuid("purchase_id").references(() => purchases.id, { onDelete: "cascade" }),
   productionId: uuid("production_id").references(() => productions.id, { onDelete: "cascade" }),
+  transferId: uuid("transfer_id"), // şubeler arası transfer (FK yok: tablo bu tanımdan sonra geliyor, satırlar silinmez)
 }, (t) => [index("stock_product_idx").on(t.productId, t.at)]);
 
 export const auditLog = pgTable("audit_log", {
@@ -447,6 +466,25 @@ export const stockCountLines = pgTable("stock_count_lines", {
   expectedMilli: integer("expected_milli").notNull(), // açılış anındaki beklenen
   countedMilli: integer("counted_milli"), // null = henüz sayılmadı
 }, (t) => [uniqueIndex("stock_count_lines_uq").on(t.countId, t.productId)]);
+
+/** HQ: şubeler arası stok transferi. Her satır kaynak (−) ve hedef (+) iki hareket yazar. */
+export const stockTransfers = pgTable("stock_transfers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  fromStoreId: uuid("from_store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  toStoreId: uuid("to_store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  note: text("note"),
+  createdBy: text("created_by").notNull(), // "user:<id>"
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const stockTransferLines = pgTable("stock_transfer_lines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  transferId: uuid("transfer_id").notNull().references(() => stockTransfers.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  qtyMilli: integer("qty_milli").notNull(),
+}, (t) => [uniqueIndex("stock_transfer_lines_uq").on(t.transferId, t.productId)]);
 
 /** Müşteri defteri: kiracı + normalize telefon benzersiz. Bulut "order" olayından doldurur. */
 export const customers = pgTable("customers", {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
+import { canManageStores } from "@/lib/core/access";
 import { audit } from "@/lib/audit";
 import { sendReportMail } from "@/lib/admin/report-mail";
 
@@ -10,6 +11,7 @@ export type ReportMailState = { error?: string; info?: string; savedAt?: number 
 
 export async function saveReportMail(_: ReportMailState, form: FormData): Promise<ReportMailState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Rapor e-postası yalnız sahip ve zincir merkezinde ayarlanır." };
   const daily = form.get("daily") === "on";
   const weekly = form.get("weekly") === "on";
   const monthly = form.get("monthly") === "on";
@@ -25,6 +27,7 @@ export async function saveReportMail(_: ReportMailState, form: FormData): Promis
 /** Ayar ne olursa olsun dünün özetini dener (test gönderimi). */
 export async function sendTestReport(): Promise<ReportMailState> {
   const a = await requireWriter();
+  if (!canManageStores(a)) return { error: "Deneme raporu yalnız sahip ve zincir merkezinde gönderilir." };
   const r = await sendReportMail(a.tenantId, "gunluk", { force: true });
   revalidatePath("/yonetim/raporlar");
   if (r.ok) return { info: `Dünün özeti ${r.recipients} alıcıya gönderildi.` };

@@ -29,7 +29,7 @@ export async function salonSetup(_: SalonState, form: FormData): Promise<SalonSt
     used.add(fb!);
     return fb!;
   };
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   if (!storeId) return { error: "Önce bir şube oluşturun." };
   await withTenant(a.tenantId, async (tx) => {
     for (const [i, z] of list.entries()) {
@@ -48,7 +48,7 @@ export async function saveArea(_: SalonState, form: FormData): Promise<SalonStat
   const a = await requireWriter();
   const name = str(form, "name");
   if (name.length < 1 || name.length > 40) return { error: "Bölge adı 1-40 karakter.", field: "name" };
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   if (!storeId) return { error: "Önce bir şube oluşturun." };
   await withTenant(a.tenantId, async (tx) => {
     const n = (await tx.select({ id: schema.areas.id }).from(schema.areas).where(eq(schema.areas.storeId, storeId))).length;
@@ -62,7 +62,7 @@ export async function saveArea(_: SalonState, form: FormData): Promise<SalonStat
 export async function deleteArea(id: string) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   if (!storeId) return;
   await withTenant(a.tenantId, async (tx) => {
     const [area] = await tx.select({ id: schema.areas.id }).from(schema.areas).where(and(eq(schema.areas.id, id), eq(schema.areas.storeId, storeId)));
@@ -79,7 +79,7 @@ export async function addTables(areaId: string, _: SalonState, form: FormData): 
   const names = expandTableNames(str(form, "names"));
   if (!names) return { error: "Masa adları geçersiz (ör. M1-M12 ya da Bahçe 1, Bahçe 2).", field: "names" };
   const err = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await scopedStoreId(tx, a.tenantId);
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     if (!storeId) return "Önce bir şube oluşturun.";
     const [area] = await tx.select({ id: schema.areas.id }).from(schema.areas).where(and(eq(schema.areas.id, areaId), eq(schema.areas.storeId, storeId)));
     if (!area) return "Bölge bulunamadı.";
@@ -97,7 +97,7 @@ export async function addTables(areaId: string, _: SalonState, form: FormData): 
 export async function deleteTable(id: string) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   if (!storeId) return;
   await withTenant(a.tenantId, async (tx) => {
     const [table] = await tx.select({ id: schema.tables.id }).from(schema.tables)
@@ -118,7 +118,7 @@ export async function saveStation(id: string | null, _: SalonState, form: FormDa
   const printer = str(form, "printer") || null;
   if (name.length < 1 || name.length > 40) return { error: "İstasyon adı 1-40 karakter.", field: "name" };
   if (printer && !/^[a-z0-9-]{1,12}$/i.test(printer)) return { error: "Yazıcı geçersiz.", field: "printer" };
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   if (!storeId) return { error: "Önce bir şube oluşturun." };
   const err = await withTenant(a.tenantId, async (tx) => {
     if (id) {
@@ -136,7 +136,7 @@ export async function saveStation(id: string | null, _: SalonState, form: FormDa
 export async function deleteStation(id: string) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   if (!storeId) return;
   await withTenant(a.tenantId, async (tx) => {
     const [row] = await tx.delete(schema.stations).where(and(eq(schema.stations.id, id), eq(schema.stations.storeId, storeId))).returning({ id: schema.stations.id });
@@ -150,7 +150,7 @@ export async function setCategoryStation(categoryId: string, stationId: string):
   const a = await requireWriter();
   if (!UUID.test(categoryId) || (stationId && !UUID.test(stationId))) return false;
   const saved = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await scopedStoreId(tx, a.tenantId);
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     if (!storeId) return false;
     if (stationId) {
       const [s] = await tx.select({ id: schema.stations.id }).from(schema.stations).where(and(eq(schema.stations.id, stationId), eq(schema.stations.storeId, storeId)));

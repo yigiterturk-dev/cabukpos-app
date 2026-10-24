@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 // Bulut mutfak: tek mutfak, çok marka. Her markanın kendi QR menüsü vardır; mutfak/istasyon/stok şubede kalır.
 export default async function Markalar() {
   const a = await requireAdmin();
-  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId));
+  const storeId = await withTenant(a.tenantId, (tx) => scopedStoreId(tx, a.tenantId, a.storeId));
   if (!storeId) return <Empty>Marka menüsü hazırlamak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</Empty>;
   const B = schema.brands, BP = schema.brandProducts, P = schema.products, C = schema.categories;
   const [brands, products] = await withTenant(a.tenantId, (tx) => Promise.all([

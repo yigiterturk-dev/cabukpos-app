@@ -3,6 +3,8 @@ import { asc, count, sql } from "drizzle-orm";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { isBranchManager } from "@/lib/core/access";
 import { createStore, switchStore, updateStore } from "@/lib/admin/store-actions";
 import { StoreCreateForm, StoreSwitchForm, StoreUpdateForm } from "@/components/admin/StoreFormsPending";
 import { ActionResult } from "@/components/admin/ActionResult";
@@ -13,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Subeler({ searchParams }: { searchParams: Promise<{ ok?: string; hata?: string; id?: string }> }) {
   const a = await requireAdmin();
+  if (isBranchManager(a)) redirect("/yonetim");
   const { ok, hata, id } = await searchParams;
   const active = (await cookies()).get(STORE_COOKIE)?.value ?? null;
   const S = schema.stores;
@@ -38,6 +41,7 @@ export default async function Subeler({ searchParams }: { searchParams: Promise<
             <div key={s.id} className="p-4">
               <div className="flex min-w-0 flex-wrap items-baseline gap-3">
                 <span className="min-w-0 break-words font-medium">{s.name}</span>
+                {s.kind === "depo" && <Badge tone="warn">Depo</Badge>}
                 {current?.id === s.id && <Badge tone="brand">seçili</Badge>}
                 <span className="shrink-0 tabular text-sm text-muted">{deviceCount.find((d) => d.storeId === s.id)?.n ?? 0} cihaz</span>
                 <span className="shrink-0 tabular text-sm text-muted">30 günde {salesCount.find((d) => d.storeId === s.id)?.n ?? 0} satış</span>
@@ -48,7 +52,7 @@ export default async function Subeler({ searchParams }: { searchParams: Promise<
               </div>
               {s.address && <div className="mt-0.5 break-words text-sm text-muted">{s.address}</div>}
               {id === s.id && (
-                <StoreUpdateForm action={updateStore} storeId={s.id} name={s.name} address={s.address ?? ""} />
+                <StoreUpdateForm action={updateStore} storeId={s.id} name={s.name} address={s.address ?? ""} kind={s.kind} royaltyBps={s.royaltyBps} monthlyFee={s.monthlyFee} />
               )}
             </div>
           ))}

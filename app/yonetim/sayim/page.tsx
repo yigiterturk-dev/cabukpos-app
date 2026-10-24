@@ -21,7 +21,7 @@ export default async function Sayim({ searchParams }: { searchParams: Promise<{ 
   const money = await moneyFormatter(a.tenantId);
   const C = schema.stockCounts, L = schema.stockCountLines, M = schema.stockMovements, P = schema.products;
   const data = await withTenant(a.tenantId, async (tx) => {
-    const storeId = await scopedStoreId(tx, a.tenantId);
+    const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     if (!storeId) return null;
     const [open] = await tx.select().from(C).where(and(eq(C.storeId, storeId), eq(C.status, "acik"))).orderBy(desc(C.createdAt)).limit(1);
     const lines = open

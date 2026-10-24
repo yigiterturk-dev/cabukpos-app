@@ -1,5 +1,5 @@
 // lib/core/stock.ts — Stok = son sayım (mutlak) + sayım anından sonraki hareketler. Sayımsız: tüm hareketlerin toplamı.
-export const STOCK_KINDS = ["satis", "iade", "alis", "sayim", "fire", "recete", "uretim"] as const;
+export const STOCK_KINDS = ["satis", "iade", "alis", "sayim", "fire", "recete", "uretim", "transfer"] as const;
 export type StockKind = (typeof STOCK_KINDS)[number];
 export type StockMove = { kind: StockKind; qtyMilli: number; at: string };
 

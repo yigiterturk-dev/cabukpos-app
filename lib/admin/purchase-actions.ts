@@ -10,6 +10,7 @@ import { isValidCalendarDay } from "@/lib/core/report";
 import { parseQty, stockUnitOf } from "@/lib/core/stock";
 import { cancelPurchase as cancelTx, recordPurchase } from "./purchase";
 import { scopedStoreId } from "./store-scope";
+import { canUseStore } from "@/lib/core/access";
 
 export type PurchaseState = { error?: string; field?: string; savedAt?: number };
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -27,6 +28,7 @@ export async function savePurchase(_: PurchaseState, form: FormData): Promise<Pu
   if (supplierId && !UUID.test(supplierId)) return { error: "Tedarikçi geçersiz.", field: "supplierId" };
   const date = parseDate(str(form, "date"));
   if (!date) return { error: "Tarih geçersiz (ileri tarih olmaz).", field: "date" };
+  const storeRaw = str(form, "storeId");
   const docNo = str(form, "docNo").slice(0, 40) || null;
   const note = str(form, "note").slice(0, 200) || null;
   const pids = form.getAll("pid").map(String), qtys = form.getAll("qty").map(String), prices = form.getAll("price").map(String);
@@ -47,8 +49,10 @@ export async function savePurchase(_: PurchaseState, form: FormData): Promise<Pu
       if (unitCost === null || unitCost > 10_000_000) return { error: `${p.name}: birim fiyat geçersiz (ör. 20,00).`, field: "lines" };
       lines.push({ productId: l.pid, qtyMilli, unitCost });
     }
-    const storeId = await scopedStoreId(tx, a.tenantId);
-    if (!storeId) return { error: "Şube yok." };
+    const storeId = storeRaw ? (UUID.test(storeRaw) && canUseStore(a, storeRaw) ? storeRaw : null) : await scopedStoreId(tx, a.tenantId, a.storeId);
+    if (!storeId) return { error: "Şube seçin.", field: "storeId" };
+    const [store] = await tx.select({ id: schema.stores.id }).from(schema.stores).where(eq(schema.stores.id, storeId));
+    if (!store) return { error: "Şube bulunamadı; sayfayı yenileyip tekrar deneyin.", field: "storeId" };
     const r = await recordPurchase(tx, a.tenantId, a.id, { storeId, supplierId, docNo, date, note, lines });
     if ("error" in r) return { error: r.error, field: "lines" };
     await audit(tx, a.tenantId, `user:${a.id}`, "purchase.create", { id: r.id, supplierId, docNo, date, lines });
@@ -64,6 +68,8 @@ export async function cancelPurchase(id: string) {
   const a = await requireWriter();
   if (!UUID.test(id)) return;
   await withTenant(a.tenantId, async (tx) => {
+    const [pu] = await tx.select({ storeId: schema.purchases.storeId }).from(schema.purchases).where(eq(schema.purchases.id, id));
+    if (!pu || !canUseStore(a, pu.storeId)) return;
     if (await cancelTx(tx, a.id, id)) return;
     await audit(tx, a.tenantId, `user:${a.id}`, "purchase.cancel", { id });
   });

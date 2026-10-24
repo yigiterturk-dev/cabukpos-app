@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
+import { seesAllStores } from "@/lib/core/access";
 import type { BillingPeriod } from "@/lib/core/billing";
 import { planPriceFor } from "./plans";
 import { getBillingProvider } from "./provider";
@@ -12,9 +13,16 @@ import { clientIp } from "@/lib/ratelimit";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Abonelik sahip/HQ düzeyidir; şube müdürü ödeme/iade başlatamaz. */
+async function billingScope() {
+  const a = await requireAdmin();
+  if (!seesAllStores(a)) redirect("/yonetim");
+  return a;
+}
+
 export type CheckoutState = { error?: string; field?: string };
 export async function startCheckout(_: CheckoutState, form: FormData): Promise<CheckoutState> {
-  const a = await requireAdmin();
+  const a = await billingScope();
   const period: BillingPeriod = form.get("period") === "yillik" ? "yillik" : "aylik";
   const provider = getBillingProvider(), units = await tenantUnits(a.tenantId), amount = planPriceFor(period, units);
   const rawPhone = String(form.get("phone") ?? "");
@@ -36,7 +44,7 @@ export async function startCheckout(_: CheckoutState, form: FormData): Promise<C
 
 /** Yalnız sahte sağlayıcı: test ödeme sayfasının sonucu. */
 export async function fakeResult(form: FormData) {
-  const a = await requireAdmin();
+  const a = await billingScope();
   const id = String(form.get("id") ?? "");
   if (getBillingProvider()?.name !== "fake" || !UUID.test(id)) redirect("/yonetim/abonelik?sonuc=hata");
   const p = await paymentOf(a.tenantId, id);
@@ -54,7 +62,7 @@ const refundReason = (v: FormDataEntryValue | null): RefundReason | null => {
 
 export type RefundRequestState = { error?: string; field?: string };
 export async function requestRefundAction(_: RefundRequestState, form: FormData): Promise<RefundRequestState> {
-  const a = await requireAdmin();
+  const a = await billingScope();
   const id = String(form.get("id") ?? "");
   const reason = refundReason(form.get("reason"));
   const note = String(form.get("note") ?? "").trim().slice(0, 300) || null;
@@ -66,7 +74,7 @@ export async function requestRefundAction(_: RefundRequestState, form: FormData)
 }
 
 export async function withdrawRefundAction(form: FormData) {
-  const a = await requireAdmin();
+  const a = await billingScope();
   const id = String(form.get("id") ?? "");
   if (!UUID.test(id) || !(await paymentOf(a.tenantId, id))) redirect("/yonetim/abonelik?iade=hata");
   await withdrawRefund(id);
@@ -74,7 +82,7 @@ export async function withdrawRefundAction(form: FormData) {
 }
 
 export async function approveRefundAction(form: FormData) {
-  const a = await requireAdmin();
+  const a = await billingScope();
   const id = String(form.get("id") ?? "");
   const note = String(form.get("note") ?? "").trim().slice(0, 300) || null;
   if (a.role !== "sahip" || !UUID.test(id)) redirect("/yonetim/abonelik?iade=hata");
