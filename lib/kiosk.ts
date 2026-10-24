@@ -72,8 +72,8 @@ export async function kioskOrder(conn: KioskConn, input: {
   return withTenant(conn.tenantId, async (tx) => {
     const E = schema.tabEvents;
     const externalId = `k-${input.requestId ?? crypto.randomUUID()}`;
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${conn.storeId}:${externalId}`}))`);
-    const [duplicate] = await tx.select({ tabId: E.tabId }).from(E).where(and(eq(E.storeId, conn.storeId), eq(E.type, "order"), sql`${E.payload}->'source'->>'externalId' = ${externalId}`)).limit(1);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${JSON.stringify([conn.storeId, "kiosk", externalId])}))`);
+    const [duplicate] = await tx.select({ tabId: E.tabId }).from(E).where(and(eq(E.storeId, conn.storeId), eq(E.type, "order"), sql`${E.payload}->'source'->>'platform' = 'kiosk'`, sql`${E.payload}->'source'->>'externalId' = ${externalId}`)).limit(1);
     if (duplicate) return { ok: true as const, tabId: duplicate.tabId };
     const P = schema.products, K = schema.categories;
     const ids = input.lines.map((l) => l.productId).filter((i) => /^[0-9a-f-]{36}$/i.test(i));

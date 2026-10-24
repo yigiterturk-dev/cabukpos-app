@@ -417,7 +417,7 @@ export const tabEvents = pgTable("tab_events", {
 }, (t) => [
   index("tab_events_store_seq_idx").on(t.storeId, t.seq), index("tab_events_tab_idx").on(t.tabId),
   // M6: aynı platform siparişi (webhook tekrarı) ikinci kez yazılmaz
-  uniqueIndex("tab_events_platform_order_uq").on(t.storeId, sql`(${t.payload}->'source'->>'externalId')`).where(sql`${t.type} = 'order' and ${t.payload}->'source'->>'externalId' is not null`),
+  uniqueIndex("tab_events_platform_order_v2_uq").on(t.storeId, sql`coalesce(${t.payload}->'source'->>'platform', '')`, sql`(${t.payload}->'source'->>'externalId')`).where(sql`${t.type} = 'order' and ${t.payload}->'source'->>'externalId' is not null`),
 ]);
 
 // — M6: paket servis —

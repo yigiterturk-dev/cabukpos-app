@@ -1,5 +1,5 @@
 // lib/platform/ingest.ts — Platform siparişini adisyon olayı olarak yazar (sunucu kaynaklı: cihaz/personel boş).
-// Aynı externalId ikinci kez gelirse yazılmaz (kilit + kontrol; kısmi benzersiz indeks son savunma).
+// Aynı şube + platform + externalId ikinci kez gelirse yazılmaz (kilit + kontrol + benzersiz indeks).
 // Otomatik kabulde accept + istasyona göre send de yazılır, platform işlem sonrası bilgilendirilir.
 import { and, eq, sql } from "drizzle-orm";
 import { schema, withTenant, type Tx } from "@/db";
@@ -20,12 +20,10 @@ export async function ingestOrders(conn: Conn, orders: IncomingOrder[]): Promise
   for (const o of orders) {
     const out = await withTenant(conn.tenantId, async (tx) => {
       const E = schema.tabEvents;
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${conn.storeId}:${o.externalId}`}))`);
-      const [dup] = await tx.select({ tabId: E.tabId, payload: E.payload }).from(E).where(and(eq(E.storeId, conn.storeId), eq(E.type, "order"), sql`${E.payload}->'source'->>'externalId' = ${o.externalId}`));
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${JSON.stringify([conn.storeId, conn.platform, o.externalId])}))`);
+      const [dup] = await tx.select({ tabId: E.tabId }).from(E).where(and(eq(E.storeId, conn.storeId), eq(E.type, "order"), sql`${E.payload}->'source'->>'platform' = ${conn.platform}`, sql`${E.payload}->'source'->>'externalId' = ${o.externalId}`));
       if (dup) {
         // Reuse the persisted decision, never rebuild the order or send another kitchen ticket.
-        const source = (dup.payload as Extract<TabEv, { type: "order" }>).source;
-        if (source?.platform !== conn.platform) return null;
         const [accept] = await tx.select({ id: E.id, payload: E.payload }).from(E).where(and(eq(E.tabId, dup.tabId), eq(E.type, "accept"))).orderBy(E.at, E.id).limit(1);
         return { duplicate: true, unmapped: 0, tabId: dup.tabId, acceptId: accept?.id ?? null, prepMin: accept ? (accept.payload as Extract<TabEv, { type: "accept" }>).prepMin : AUTO_PREP_MIN };
       }

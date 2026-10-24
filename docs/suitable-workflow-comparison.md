@@ -60,6 +60,8 @@ Bildirim denetimleri artık adisyon kimliğine bağlıdır. Aynı dış sipariş
 
 Pasif bağlantıdan gönderim yapılmaz. İptal/red/teslim/yola çıkış sonrasında eski kabul yeniden gönderilmez. Yanlış adisyona ait olay kimliği ve yetki incelemesine düşen teslim gibi olaylar dış platforma iletilmez. Başarısız durum bildiriminde aynı sync belgesinin yeniden gönderilmesi de hata işaretini temizleyebilir.
 
-Sınırlar: Bu değişiklik zamanlayıcılı bir kuyruk eklemez; kabul tekrarı sağlayıcının webhook'u tekrar göndermesine, durum tekrarı sync belgesinin tekrarına bağlıdır. Eşzamanlı bildirimler veya ağ zaman aşımı için sağlayıcı tarafında idempotent işlem gerekir; tam olarak bir kez dış çağrı garantisi verilmez. Aynı şubede farklı platformların aynı dış numarayı kullanması için mevcut giriş tekillik indeksinin ayrıca platform kapsamına taşınması gerekir. Gerçek sağlayıcıyla test yapılmadı.
+Sınırlar: Bu değişiklik zamanlayıcılı bir kuyruk eklemez; kabul tekrarı sağlayıcının webhook'u tekrar göndermesine, durum tekrarı sync belgesinin tekrarına bağlıdır. Eşzamanlı bildirimler veya ağ zaman aşımı için sağlayıcı tarafında idempotent işlem gerekir; tam olarak bir kez dış çağrı garantisi verilmez. Gerçek sağlayıcıyla test yapılmadı.
 
 Bu devam değişikliğinin doğrulaması: 513/513 test geçti; ESLint, TypeScript ve diff boşluk kontrolü temiz.
+
+Sonraki düzeltme: aynı şubede farklı platformların aynı numarayı kullanması için alım, kiosk tekrar sorgusu, kilit ve veritabanı indeksi platform kapsamına taşındı. Yerel migration ve canlı geçiş sınırları `docs/platform-order-scope-migration.md` içinde. Aynı platformun tekrar isteği ikinci sipariş üretmez; farklı platformlar birbirini bastırmaz.
