@@ -39,10 +39,32 @@ export function take(l: PayLine, q: number): PayLine {
   return { ...l, qtyMilli: q, discount: Math.floor((l.discount * q) / l.qtyMilli) };
 }
 
+/** Keep the quantity ledger AND gross amount conserved at its 0.001-unit precision. */
+export function splitQuantity(l: PayLine, wanted: number): number {
+  const target = Math.min(l.qtyMilli, Math.max(0, Math.round(wanted)));
+  if (target === 0 || target === l.qtyMilli) return target;
+  const gross = lineGross(l);
+  const fits = (q: number) => q > 0 && q < l.qtyMilli && lineGross({ ...l, qtyMilli: q }) + lineGross({ ...l, qtyMilli: l.qtyMilli - q }) === gross;
+  if (fits(target)) return target;
+  // Integer unit prices repeat their rounding pattern in at most 1000 milli units.
+  for (let distance = 1; distance <= Math.min(1000, l.qtyMilli); distance++) {
+    if (fits(target - distance)) return target - distance;
+    if (fits(target + distance)) return target + distance;
+  }
+  return 0; // Below money/quantity precision: don't invent an unpaid rounding cent.
+}
+
+/** Select one share of a remaining line; the final share takes the full remainder. */
+export function lineShare(l: PayLine, partsLeft: number): PayLine | null {
+  if (!Number.isInteger(partsLeft) || partsLeft < 1 || partsLeft > 20) return null;
+  const q = partsLeft === 1 ? l.qtyMilli : splitQuantity(l, l.qtyMilli / partsLeft);
+  return q > 0 ? take(l, q) : null;
+}
+
 /** Eşit bölmede sıradaki parça: kalan her satırın 1/partsLeft'i (milli adet). Son parça kalanın tamamı. */
 export function equalPart(lines: PayLine[], partsLeft: number): PayLine[] {
   if (partsLeft <= 1) return lines;
-  return lines.map((l) => take(l, Math.round(l.qtyMilli / partsLeft))).filter((l) => l.qtyMilli > 0);
+  return lines.flatMap((l) => { const share = lineShare(l, partsLeft); return share ? [share] : []; });
 }
 
 /** Ürün seçerek: satır kimliği → milli adet. */
