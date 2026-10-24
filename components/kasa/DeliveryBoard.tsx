@@ -18,6 +18,8 @@ import { courierSummary, deliveryTimes, dispatchFilter, isDeliveryActive, readyD
 import { istToday } from "@/lib/core/report";
 import { StatCard } from "@/components/ui";
 import { DeliveryConnections } from "./DeliveryConnections";
+import { DeliverySoundControls, ALERT_VALUES, REPEAT_KEY } from "./DeliverySoundControls";
+import { useKasaSetting } from "./useKasaSetting";
 
 type Add = (list: NewTabEvent[]) => Promise<unknown>;
 const EMPTY_TABLES: NonNullable<Meta["catalog"]["tables"]> = [];
@@ -78,6 +80,8 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   const [view, setView] = useState<"board" | "orders" | "couriers">("board");
   const [query, setQuery] = useState("");
   const [autoAssign, setAutoAssign] = useState(false);
+  const [repeatAlert] = useKasaSetting(REPEAT_KEY, ALERT_VALUES, "acik");
+  const [soundAlert] = useKasaSetting("sesli_uyari", ALERT_VALUES, "acik");
   const { TL } = kasaFmt(meta);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -127,21 +131,21 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
     const previous = previousWaitingRef.current;
     if (previous) {
       const added = [...current].filter(([id]) => !previous.has(id)).map(([, tab]) => tab);
+      if (added.length) beep(true);
       if (added.length && announcementRef.current) {
         const messages = added.slice(0, 3).map((tab) => `Yeni onay bekleyen sipariş: ${tabLabel(tab, tables, PLATFORM_NAMES)}.`);
         announce(announcementRef.current, announcementFrameRef, messages.join(" ") + (added.length > 3 ? ` Ayrıca ${added.length - 3} yeni sipariş daha.` : ""));
       }
-    }
+    } else if (current.size) beep(true);
     previousWaitingRef.current = new Set(current.keys());
   }, [loaded, list, tables]);
 
   // Onay bekleyen platform siparişi varken 4 sn'de bir ses.
   useEffect(() => {
-    if (!waiting) return;
-    beep(true);
+    if (!waiting || repeatAlert !== "acik" || soundAlert !== "acik") return;
     const t = setInterval(() => beep(true), 4000);
     return () => clearInterval(t);
-  }, [waiting]);
+  }, [waiting, repeatAlert, soundAlert]);
   const ev = (tab: TabState, e: NewTabEvent["ev"], approvedBy: string | null = null, approvalToken?: string): NewTabEvent => ({ tabId: tab.id, tableId: null, staffId: waiter.id, approvedBy, approvalToken, ev: e });
   const openDialog = (next: Dialog) => { setActionError(null); setDialog(next); };
   const run = async (fn: () => Promise<unknown>, successNotice: string, actionKey = "dialog", pendingNotice = "Sipariş güncelleniyor.", focusOrderId?: string) => {
@@ -187,6 +191,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
         <button type="button" onClick={onNew} className="press ml-auto inline-flex min-h-12 items-center rounded-xl bg-brand-action px-4 text-sm font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">+ Yeni paket</button>
       </div>
       {view === "board" && <DeliveryConnections meta={meta} preview={!("id" in mainProps)} />}
+      {view === "board" && <DeliverySoundControls />}
       {view === "board" && <label className="mb-4 flex min-h-12 items-center gap-3 rounded-xl border border-line bg-surface px-4 text-sm"><input type="checkbox" checked={autoAssign} onChange={e => setAutoAssign(e.target.checked)} disabled={!couriers.length} className="size-5 accent-brand" /><span>Hazır düğmesinde en az aktif işi olan kuryeye ata <span className="text-xs text-muted">· bu oturumda, işletmenin paket siparişleri için</span></span></label>}
       {view === "board" && <div className="mb-4 grid gap-3 grid-cols-2 lg:grid-cols-4">
         <StatCard label="Onay bekliyor" value={loaded ? String(waiting) : "—"} tone={waiting ? "warn" : "neutral"} />
