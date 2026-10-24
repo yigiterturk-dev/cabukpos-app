@@ -21,8 +21,14 @@ export async function ingestOrders(conn: Conn, orders: IncomingOrder[]): Promise
     const out = await withTenant(conn.tenantId, async (tx) => {
       const E = schema.tabEvents;
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${conn.storeId}:${o.externalId}`}))`);
-      const [dup] = await tx.select({ id: E.id }).from(E).where(and(eq(E.storeId, conn.storeId), eq(E.type, "order"), sql`${E.payload}->'source'->>'externalId' = ${o.externalId}`));
-      if (dup) return null;
+      const [dup] = await tx.select({ tabId: E.tabId, payload: E.payload }).from(E).where(and(eq(E.storeId, conn.storeId), eq(E.type, "order"), sql`${E.payload}->'source'->>'externalId' = ${o.externalId}`));
+      if (dup) {
+        // Reuse the persisted decision, never rebuild the order or send another kitchen ticket.
+        const source = (dup.payload as Extract<TabEv, { type: "order" }>).source;
+        if (source?.platform !== conn.platform) return null;
+        const [accept] = await tx.select({ id: E.id, payload: E.payload }).from(E).where(and(eq(E.tabId, dup.tabId), eq(E.type, "accept"))).orderBy(E.at, E.id).limit(1);
+        return { duplicate: true, unmapped: 0, tabId: dup.tabId, acceptId: accept?.id ?? null, prepMin: accept ? (accept.payload as Extract<TabEv, { type: "accept" }>).prepMin : AUTO_PREP_MIN };
+      }
       const codes = await codeMap(tx, conn);
       const { events, unmapped } = toTabEvents(o, conn.platform, codes, () => crypto.randomUUID());
       const adds = events.filter((e): e is Extract<TabEv, { type: "add" }> => e.type === "add");
@@ -39,12 +45,13 @@ export async function ingestOrders(conn: Conn, orders: IncomingOrder[]): Promise
       await tx.insert(E).values(rows);
       const ord = all.find((e): e is Extract<TabEv, { type: "order" }> => e.type === "order")!;
       await upsertCustomer(tx, conn.tenantId, ord);
-      return { unmapped, tabId, acceptId: acceptId as string | null };
+      return { duplicate: false, unmapped, tabId, acceptId: acceptId as string | null, prepMin: AUTO_PREP_MIN };
     });
     if (!out) { r.duplicates++; continue; }
-    r.created++;
+    if (out.duplicate) r.duplicates++;
+    else r.created++;
     r.unmapped += out.unmapped;
-    if (out.acceptId) await notifyPlatform(conn.tenantId, out.acceptId, out.tabId, { type: "accept", prepMin: AUTO_PREP_MIN });
+    if (out.acceptId) await notifyPlatform(conn.tenantId, out.acceptId, out.tabId, { type: "accept", prepMin: out.prepMin });
   }
   return r;
 }

@@ -11,6 +11,7 @@ const { lookupCustomer } = await import("@/lib/delivery/customers");
 const { mockSource, sign } = await import("@/lib/platform/mock");
 const { ingestOrders } = await import("@/lib/platform/ingest");
 const { provisionConnection } = await import("@/lib/platform/provision");
+const { notifyPlatform, notifyPlatformStatus } = await import("@/lib/platform/notify");
 const { and, eq } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "PKT-T", vertical: "restoran" }).returning();
@@ -46,6 +47,74 @@ const orderEv = (address = "Atatürk Cad. 5") =>
 const lineEv = (lineId: string) => ({ type: "add", lineId, productId: s.lah.id, name: "Lahmacun", unitPrice: 6000, vatRate: 10, qtyMilli: 2000, options: [], note: null, stationId: null });
 const feeEv = (lineId: string) => ({ type: "add", lineId, productId: null, name: "Paket servis ücreti", unitPrice: 1500, vatRate: 10, qtyMilli: 1000, options: [], note: null, stationId: null });
 const reviewOf = async (id: string) => (await withTenant(t.id, (tx) => tx.select({ r: schema.tabEvents.review }).from(schema.tabEvents).where(eq(schema.tabEvents.id, id))))[0]?.r ?? null;
+
+const incoming = (externalId: string) => ({ externalId, customer: { name: "Demo", phone: "05550000111" }, address: "Örnek", directions: null, note: null, payIntent: "online" as const, deadline: null, lines: [{ code: "LAH", name: "Lahmacun", unitPrice: 6500, qtyMilli: 1000, note: null }] });
+const orderEvents = (storeId: string, externalId: string) => withTenant(t.id, async (tx) => {
+  const E = schema.tabEvents;
+  const orders = await tx.select().from(E).where(and(eq(E.storeId, storeId), eq(E.type, "order")));
+  const order = orders.find(r => (r.payload as { source?: { externalId: string } }).source?.externalId === externalId)!;
+  return tx.select().from(E).where(eq(E.tabId, order.tabId)).orderBy(E.at, E.id);
+});
+
+test("başarısız otomatik kabul tekrar webhook'ta düzelir; sipariş ve mutfak bileti çoğalmaz", async () => {
+  const order = incoming("RETRY-1");
+  process.env.MOCK_PLATFORM_FAIL = "1";
+  try { await ingestOrders(connObj, [order]); } finally { delete process.env.MOCK_PLATFORM_FAIL; }
+  const before = await orderEvents(s.store.id, order.externalId);
+  const accept = before.find(e => e.type === "accept")!;
+  assert.match(String(accept.review), /platform bildirimi başarısız/);
+  assert.deepEqual(await ingestOrders(connObj, [order]), { created: 0, duplicates: 1, unmapped: 0 });
+  const after = await orderEvents(s.store.id, order.externalId);
+  assert.equal(after.length, before.length);
+  assert.equal(after.filter(e => e.type === "send").length, 1);
+  assert.equal(await reviewOf(accept.id), null);
+  await ingestOrders(connObj, [order]);
+  const audits = await withTenant(t.id, tx => tx.select().from(schema.auditLog).where(eq(schema.auditLog.action, "platform.accept")));
+  assert.equal(audits.filter(a => (a.detail as { tabId?: string }).tabId === accept.tabId).length, 1);
+});
+
+test("tekrar webhook elle onay bekleyen siparişi kabul etmez; iptal edilmiş paketi canlandırmaz", async () => {
+  const order = incoming("RETRY-MANUAL");
+  await ingestOrders({ ...connObj, autoAccept: false }, [order]);
+  await ingestOrders(connObj, [order]);
+  assert.equal((await orderEvents(s.store.id, order.externalId)).filter(e => e.type === "accept").length, 0);
+  const cancelled = incoming("RETRY-CANCELLED");
+  process.env.MOCK_PLATFORM_FAIL = "1";
+  try { await ingestOrders(connObj, [cancelled]); } finally { delete process.env.MOCK_PLATFORM_FAIL; }
+  const rows = await orderEvents(s.store.id, cancelled.externalId);
+  const acc = rows.find(e => e.type === "accept")!;
+  await withTenant(t.id, tx => tx.insert(schema.tabEvents).values({ id: crypto.randomUUID(), tenantId: t.id, storeId: s.store.id, tabId: acc.tabId, at: new Date(Date.now() + 100), type: "cancel", payload: { type: "cancel", reason: "Vazgeçildi" } }));
+  await ingestOrders(connObj, [cancelled]);
+  assert.match(String(await reviewOf(acc.id)), /platform bildirimi başarısız/);
+  const audits = await withTenant(t.id, tx => tx.select().from(schema.auditLog).where(eq(schema.auditLog.action, "platform.accept")));
+  assert.equal(audits.filter(a => (a.detail as { tabId?: string }).tabId === acc.tabId).length, 0);
+});
+
+test("aynı dış numara farklı şubelerde kabul ve durum bildirimlerini engellemez", async () => {
+  const [store] = await withTenant(t.id, tx => tx.insert(schema.stores).values({ tenantId: t.id, name: "Diğer şube" }).returning());
+  const other = await provisionConnection(t.id, store.id, "mock", "test:admin");
+  assert.ok(other);
+  const order = incoming("SHARED-EXT-1");
+  await ingestOrders(connObj, [order]);
+  await ingestOrders(other, [order]);
+  const first = (await orderEvents(s.store.id, order.externalId))[0];
+  const second = (await orderEvents(store.id, order.externalId))[0];
+  for (const [tabId, storeId] of [[first.tabId, s.store.id], [second.tabId, store.id]]) {
+    const id = crypto.randomUUID();
+    await withTenant(t.id, tx => tx.insert(schema.tabEvents).values({ id, tenantId: t.id, storeId, tabId, at: new Date(Date.now() + 100), type: "out", payload: { type: "out" } }));
+    await notifyPlatformStatus(t.id, id, tabId, "picked");
+    await notifyPlatformStatus(t.id, id, tabId, "picked");
+  }
+  const audits = await withTenant(t.id, tx => tx.select().from(schema.auditLog));
+  for (const tabId of [first.tabId, second.tabId]) {
+    const scoped = audits.filter(a => (a.detail as { tabId?: string }).tabId === tabId);
+    assert.equal(scoped.filter(a => a.action === "platform.accept").length, 1);
+    assert.equal(scoped.filter(a => a.action === "platform.status").length, 1);
+  }
+  // An unrelated event ID must not be used to acknowledge another tab.
+  await notifyPlatform(t.id, first.id, second.tabId, { type: "accept", prepMin: 20 });
+  assert.equal(await reviewOf(first.id), null);
+});
 
 test("yeni bağlantı otomatik kabul eder; tekrar bağlama mevcut tercihi korur; başka kiracının şubesi bağlanamaz", async () => {
   assert.equal(connObj.autoAccept, true);
@@ -144,7 +213,7 @@ test("webhook: imza, idempotens, otomatik kabul → accept + send + platform.acc
   assert.equal(deliveryStatus(tab), "hazirlaniyor");
   assert.deepEqual(tab.lines.map((l) => [l.productId, l.name, l.unitPrice]), [[s.lah.id, "Lahmacun", 6500], [null, "Ayran", 1500]]);
   assert.equal(tab.tickets.length, 1);
-  const audits = await withTenant(t.id, (tx) => tx.select().from(schema.auditLog).where(eq(schema.auditLog.action, "platform.accept")));
+  const audits = (await withTenant(t.id, (tx) => tx.select().from(schema.auditLog).where(eq(schema.auditLog.action, "platform.accept")))).filter(a => (a.detail as { externalId?: string }).externalId === "M-1001");
   assert.equal(audits.length, 1);
   assert.equal((audits[0].detail as { externalId: string }).externalId, "M-1001");
   const ali = await lookupCustomer(t.id, s.store.id, "05551112233");
@@ -180,6 +249,7 @@ test("durum bildirimi: out→picked, delivered→delivered; idempotent; hata→r
 
   await ingestOrders(connObj, mockSource.parseWebhook(mk("M-3001"), new Headers({ "x-signature": sign(connObj.webhookSecret, mk("M-3001")) }), connObj) as never);
   const t3 = await tabOf("M-3001");
+  await applyDoc(kasa, doc(t3, { type: "courier", staffId: s.kurye.id }));
   const out = doc(t3, { type: "out" });
   await applyDoc(kasa, out);
   assert.equal(await reviewOf(out.id), null);
@@ -191,7 +261,9 @@ test("durum bildirimi: out→picked, delivered→delivered; idempotent; hata→r
   await applyDoc(kasa, out2);
   assert.equal((await statuses("M-3001")).length, 1);
   // Teslim → ikinci durum
-  await applyDoc(kasa, doc(t3, { type: "delivered", method: "online" }));
+  const delivered = doc(t3, { type: "delivered", method: "online" }, { staffId: s.kurye.id });
+  await applyDoc(kuryeCtx, delivered);
+  assert.equal(await reviewOf(delivered.id), null);
   rows = await statuses("M-3001");
   assert.equal(rows.length, 2);
   assert.ok(rows.some((a) => (a.detail as { status?: string }).status === "delivered"));
@@ -203,4 +275,32 @@ test("durum bildirimi: out→picked, delivered→delivered; idempotent; hata→r
   process.env.MOCK_PLATFORM_FAIL = "1";
   try { await applyDoc(kasa, out4); } finally { delete process.env.MOCK_PLATFORM_FAIL; }
   assert.match(String(await reviewOf(out4.id)), /platform durum bildirimi başarısız/);
+  await applyDoc(kasa, out4);
+  assert.equal(await reviewOf(out4.id), null);
+  assert.equal((await statuses("M-3002")).length, 1);
+});
+
+test("eski kapsam bilgisi olmayan başarılı audit tek siparişte yeniden bildirim oluşturmaz", async () => {
+  const order = incoming("LEGACY-1");
+  await ingestOrders({ ...connObj, autoAccept: false }, [order]);
+  const rows = await orderEvents(s.store.id, order.externalId);
+  const acc = { id: crypto.randomUUID(), tabId: rows[0].tabId };
+  await withTenant(t.id, async tx => {
+    await tx.insert(schema.tabEvents).values({ ...acc, tenantId: t.id, storeId: s.store.id, at: new Date(Date.now() + 100), type: "accept", payload: { type: "accept", prepMin: 20 } });
+    await tx.insert(schema.auditLog).values({ tenantId: t.id, actor: "system", action: "platform.accept", detail: { platform: "mock", externalId: order.externalId, prepMin: 20 } });
+  });
+  process.env.MOCK_PLATFORM_FAIL = "1";
+  try { await ingestOrders(connObj, [order]); } finally { delete process.env.MOCK_PLATFORM_FAIL; }
+  assert.equal(await reviewOf(acc.id), null);
+});
+
+test("incelemeye düşen yetkisiz teslim platforma iletilmez", async () => {
+  const order = incoming("INVALID-DELIVERY-1");
+  await ingestOrders(connObj, [order]);
+  const rows = await orderEvents(s.store.id, order.externalId);
+  const delivered = doc(rows[0].tabId, { type: "delivered", method: "online" });
+  await applyDoc(kasa, delivered);
+  assert.match(String(await reviewOf(delivered.id)), /atanmamış kurye/);
+  const audits = await withTenant(t.id, tx => tx.select().from(schema.auditLog).where(eq(schema.auditLog.action, "platform.status")));
+  assert.equal(audits.filter(a => (a.detail as { tabId?: string }).tabId === delivered.tabId).length, 0);
 });

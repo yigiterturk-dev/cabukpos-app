@@ -51,3 +51,15 @@ Buradaki “mevcut” kodda karşılığı bulunduğunu belirtir; her ekranın b
 Bu liste uygulama ve doğrulama kuyruğudur; tam özellik eşitliği veya canlı kullanım onayı değildir.
 
 Doğrulama sonucu: 508/508 test geçti; ESLint, TypeScript ve `git diff --check` temiz.
+
+## Bildirim hatası sonrası toparlanma
+
+25 Ekim devam değişikliği: tekrar webhook, mevcut kabul olayını yeniden kullanır. Yeni adisyon, ürün veya mutfak bileti oluşturmaz. Hazırlık süresi kayıtlı kabulden okunur; yeni istekteki değerle değiştirilmez. Başarılı kabul kaydı varsa tekrar gönderim atlanır; başarısız gönderim düzelince yalnız bildirim hatası temizlenir. Ürün eşleme ve yetki incelemeleri korunur.
+
+Bildirim denetimleri artık adisyon kimliğine bağlıdır. Aynı dış sipariş numarasının farklı şubelerde kullanılması birbirinin kabul/teslimat bildirimini bastırmaz. Eski, adisyon kimliği taşımayan denetim kayıtları yalnız kaynak platform ve numara tek bir siparişi belirliyorsa başarı kanıtı kabul edilir.
+
+Pasif bağlantıdan gönderim yapılmaz. İptal/red/teslim/yola çıkış sonrasında eski kabul yeniden gönderilmez. Yanlış adisyona ait olay kimliği ve yetki incelemesine düşen teslim gibi olaylar dış platforma iletilmez. Başarısız durum bildiriminde aynı sync belgesinin yeniden gönderilmesi de hata işaretini temizleyebilir.
+
+Sınırlar: Bu değişiklik zamanlayıcılı bir kuyruk eklemez; kabul tekrarı sağlayıcının webhook'u tekrar göndermesine, durum tekrarı sync belgesinin tekrarına bağlıdır. Eşzamanlı bildirimler veya ağ zaman aşımı için sağlayıcı tarafında idempotent işlem gerekir; tam olarak bir kez dış çağrı garantisi verilmez. Aynı şubede farklı platformların aynı dış numarayı kullanması için mevcut giriş tekillik indeksinin ayrıca platform kapsamına taşınması gerekir. Gerçek sağlayıcıyla test yapılmadı.
+
+Bu devam değişikliğinin doğrulaması: 513/513 test geçti; ESLint, TypeScript ve diff boşluk kontrolü temiz.
