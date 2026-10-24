@@ -157,7 +157,7 @@ try {
   await kasa.getByTestId("tab-remaining").getByText("380,00 ₺").waitFor();
   const send = kasa.getByRole("button", { name: /^Mutfağa gönder/ });
   if (await send.count()) await send.click();
-  await kasa.getByRole("button", { name: "Hesap", exact: true }).click();
+  await kasa.getByRole("button", { name: "Hesap al / böl", exact: true }).click();
   await kasa.getByRole("button", { name: "Öde 380,00 ₺" }).click();
   await kasa.getByRole("button", { name: "Tamamı nakit" }).click();
   await kasa.getByRole("button", { name: "Satışı tamamla" }).click();

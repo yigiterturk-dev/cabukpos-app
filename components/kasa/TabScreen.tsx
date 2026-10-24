@@ -383,7 +383,7 @@ export function TabScreen({ meta, onMeta, table, title, tabs, allTabs, waiter, c
               {table && <button type="button" disabled={busy} onClick={() => openDialog({ k: "merge" })} className={btn}>Birleştir</button>}
               <button type="button" disabled={busy} onClick={() => openDialog({ k: "approve", title: "Adisyon indirimi", discount: true, run: (by, reason, d, token) => [ev({ type: "discount", percent: d!.percent, amount: d!.amount, reason }, by, token)] })} className={btn}>İndirim</button>
               {!canPay && table && <button type="button" disabled={busy || tab.billRequested} onClick={(event) => void run([ev({ type: "bill" })], event.currentTarget)} className={btn}>{tab.billRequested ? "Hesap istendi" : "Hesap iste"}</button>}
-              {canPay && <button type="button" disabled={busy || (tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli))} onClick={() => onBill(tab.id)} className={`${btn} font-medium`}>Hesap</button>}
+              {canPay && <button type="button" disabled={busy || (tab.remaining === 0 && live.every((l) => l.comped || l.paidMilli >= l.qtyMilli))} onClick={() => onBill(tab.id)} className={`${strong} font-medium`}>Hesap al / böl</button>}
             </div>
           </div>
         )}

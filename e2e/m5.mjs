@@ -214,8 +214,8 @@ try {
   // — Kasa hesabı 2'ye eşit böler —
   await kasa.locator("[data-status=hazir]", { hasText: "M1" }).click();
   await kasa.getByRole("button", { name: "Hazır — teslim edildi" }).click();
-  await kasa.getByRole("button", { name: "Hesap", exact: true }).click();
-  await kasa.getByRole("button", { name: "Eşit böl" }).click();
+  await kasa.getByRole("button", { name: "Hesap al / böl", exact: true }).click();
+  await kasa.getByRole("button", { name: "Kişi sayısına böl" }).click();
   for (const n of [1, 2]) {
     await kasa.getByRole("button", { name: "Öde 215,00 ₺" }).click();
     await kasa.getByRole("button", { name: "Tamamı nakit" }).click();

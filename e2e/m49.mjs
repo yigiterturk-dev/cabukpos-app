@@ -164,7 +164,7 @@ try {
   await kasa.getByTestId("tab-remaining").getByText("180,00 ₺").waitFor();
 
   // — Bahşişli ödeme: 180 + 20 = 200 kart —
-  await kasa.getByRole("button", { name: "Hesap", exact: true }).click();
+  await kasa.getByRole("button", { name: "Hesap al / böl", exact: true }).click();
   await kasa.getByRole("button", { name: "Öde 180,00 ₺" }).click();
   await kasa.getByRole("textbox", { name: /Bahşiş/ }).fill("20");
   await kasa.getByRole("button", { name: "Tamamı kart" }).click();

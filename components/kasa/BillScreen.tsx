@@ -52,7 +52,7 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
         <span className="tabular order-last basis-full text-right text-lg font-semibold sm:order-none sm:ml-auto sm:basis-auto">Kalan {TL(tab.remaining)}</span>
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="Bölme">
-        {([["tumu", "Tümü"], ["esit", "Eşit böl"], ["sec", "Ürün seç"]] as const).map(([m, l]) => (
+        {([["tumu", "Hesabın tamamı"], ["esit", "Kişi sayısına böl"], ["sec", "Ürün seçerek öde"]] as const).map(([m, l]) => (
           <button key={m} type="button" aria-pressed={mode === m} onClick={() => { setMode(m); setDone(0); setPicks({}); }} className={`press min-h-12 rounded-[10px] border px-4 text-sm outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${mode === m ? "border-brand bg-brand-soft font-medium text-brand ring-2 ring-brand-ring" : "border-line bg-surface hover:border-line-strong"}`}>{l}</button>
         ))}
         {mode === "esit" && (
@@ -64,6 +64,7 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
           </span>
         )}
       </div>
+      <p className="mb-4 text-sm text-muted">{mode === "tumu" ? "Ödeme ekranında nakit ve kartı birlikte kullanabilirsiniz. Hesabı ayrı ayrı almak için kişi sayısına bölün veya ürün seçin." : mode === "esit" ? "Her kişinin payını ayrı nakit, kart veya karma ödeme ile alın. Kalan hesap masada açık kalır." : "Ödenecek ürünleri + ile seçin. Yalnız seçilen ürünler tahsil edilir; diğerleri masada açık kalır."}</p>
       <ul className="mb-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         {(mode === "sec" ? lines : part).map((l) => {
           const q = mode === "sec" ? picks[l.lineId] ?? 0 : l.qtyMilli;

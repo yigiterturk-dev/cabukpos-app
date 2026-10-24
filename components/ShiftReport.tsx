@@ -41,6 +41,13 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
         Açan {data.openedByName}, {dt(shift.openedAt)}
         {shift.closedAt && <> · Kapatan {data.closedByName}, {dt(shift.closedAt)}</>}
       </div>
+      <section aria-label="Ödeme türüne göre tahsilat" className="grid grid-cols-2 gap-3">
+        {shownMethods(s.byMethod).map((m) => <div key={m.value} className="rounded-xl border border-line bg-surface p-4">
+          <h2 className="text-sm font-medium text-ink-2">{m.value === "nakit" ? "Nakit tahsilat" : m.value === "kart" ? "Kart tahsilat" : m.label}</h2>
+          <p className="mt-1 break-words text-xl font-bold tabular-nums">{TL(s.byMethod[m.value])}</p>
+          {m.value === "nakit" && <p className="mt-1 text-xs text-muted">Para üstü ve iadeler düşülmüş</p>}
+        </div>)}
+      </section>
       <section>
         <h2 className="mb-1 font-display text-base font-bold tracking-tight">Satışlar</h2>
         <div className="divide-y divide-line border-y border-line">
@@ -71,7 +78,7 @@ export function ShiftReport({ data, deviceName, showSales = false }: { data: Shi
         <div className="divide-y divide-line border-y border-line">
           <Row label="Açılış nakdi" value={TL(shift.openingCash)} />
           {s.dropped > 0 && <Row label="Güvenli kasaya aktarılan" value={`-${TL(s.dropped)}`} />}
-          <Row label="Beklenen kasa" value={TL(expected)} strong />
+          <Row label="Beklenen çekmece nakdi" value={TL(expected)} strong />
           {shift.countedCash !== null && <Row label="Sayılan nakit" value={TL(shift.countedCash)} />}
           {diff !== null && <Row label="Fark" value={signedTL(diff, data.currency)} strong tone={diff < 0 ? "bad" : diff > 0 ? "ok" : undefined} />}
         </div>

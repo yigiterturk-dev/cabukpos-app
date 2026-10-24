@@ -38,7 +38,7 @@ export function BugunScreen({ meta, tabs, tabsLoaded, hasSalon, hasPaket, onGoSa
       setSummaryError(null);
     }).catch(() => { if (alive) setSummaryError(shiftId); });
     return () => { alive = false; };
-  }, [shiftId, openingCash, drops, summaryRetry]);
+  }, [shiftId, openingCash, drops, summaryRetry, meta.nextSeq]);
 
   const summary = shift && loaded?.shiftId === shift.id ? loaded : null;
   const hasSummaryError = !!shift && summaryError === shift.id;
@@ -73,6 +73,11 @@ export function BugunScreen({ meta, tabs, tabsLoaded, hasSalon, hasPaket, onGoSa
         <button type="button" onClick={() => { setSummaryError(null); setSummaryRetry((n) => n + 1); requestAnimationFrame(() => headingRef.current?.focus()); }} className="inline-flex min-h-11 items-center rounded-lg border border-warn/30 bg-surface px-3 font-medium text-ink outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Yeniden yükle</button>
       </div> : shift && !summary && <p className="mt-3 text-sm text-muted" role="status" aria-live="polite">Vardiya özeti yükleniyor…</p>}
 
+      {summary && <section aria-label="Vardiya tahsilatları" className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard label="Nakit tahsilat" value={TL(summary.sum.byMethod.nakit)} hint="Para üstü ve iadeler düşülmüş" />
+        <StatCard label="Kart tahsilat" value={TL(summary.sum.byMethod.kart)} />
+        <StatCard label="Beklenen çekmece nakdi" value={TL(summary.sum.expectedCash)} hint="Açılış nakdi dahil, kasa aktarımları düşülmüş" />
+      </section>}
       <h2 className="mb-3 mt-7 font-display text-base font-bold tracking-tight">Hızlı geçiş</h2>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <button type="button" data-testid="today-go-sale" onClick={onGoSale} className="press flex min-h-16 items-center gap-3 rounded-xl border border-brand bg-brand-soft px-4 text-left outline-none hover:border-brand hover:shadow-rest focus-visible:ring-4 focus-visible:ring-brand-ring/60">
