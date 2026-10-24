@@ -37,6 +37,34 @@ ardından tenants doluluğu, billing_invoices ve report_due_tenants doğrulanır
 Container ve geçici veriler sonunda kaldırılır. Bu kontrol uygulama release
 migrasyonu, RLS yeniden uygulaması veya uygulama readiness testinin yerine geçmez.
 
+### Release provası (elle, canlıya yazmaz)
+
+`maintenance.py release --release-dir /opt/cabukpos-ops/releases/2fd9d57`
+aynı şifreli yedeği tekrar izole container'a yükler; `release_check.py` ardından:
+
+1. Release SQL + RLS'yi tek transaction'da uygular ve ikinci uygulamayı da sınar.
+2. tenants/users/stores/products/sales/stock_movements sayılarıyla satış/stok
+   toplamlarını önce/sonra karşılaştırır.
+3. Dokuz tabloda FORCE RLS, uygulama rolünün superuser/bypassrls olmaması,
+   bağlamsız ve ilgisiz kiracıda sıfır satır, kendi kiracısında doğru sayıları sınar.
+4. Uygulamayı ayrı Node container'ında, yalnız ağsız DB'nin network namespace'ini
+   paylaşarak çalıştırır. Host portu açılmaz; üretim sağlayıcı anahtarları verilmez.
+5. Gerçek production build'in `/api/ready` yanıtını uygulama DB rolüyle doğrular;
+   `scripts/runtime-audit.mjs` kontrolünü çalıştırır. Geçici app/DB kaldırılır.
+
+Build snapshot'ı `git archive` üzerinden sır içermeden kopyalanır; lockfile ile
+`npm ci` ve `npm run build` mevcut Node 22 imajında, production ayarları olmadan
+çalıştırılır. Build aşamasının paket indirmek için ağı vardır; restore ve çalışma
+zamanı kontrollerinde dış ağ yoktur. Snapshot adı uygulama build commit'idir;
+SQL düzeltmesi aynı dizine ayrıca aktarılmıştır. Uygulama kodu değişmediği için
+build tekrarlanmadı. Denenen SQL'in kesin sürümü `migration_rls_sha256` ile kayıtlıdır.
+
+Son başarılı kayıtlar `/var/lib/cabukpos-ops/release-status.json` ve
+`release-evidence.json`; tablo/sütun metadata'sı `release-schema-inventory.json`
+altındadır. Bu dosyalara tenant satırları veya erişim anahtarları yazılmaz.
+Haftalık restore timer'ı temel restore kontrolünü sürdürür; release provası yeni
+her build/sürüm için ayrıca çalıştırılır.
+
 Mevcut PostgreSQL 18 imajı digest ile sabittir, iş sırasında image indirilmez:
 `postgres@sha256:edb0c08dc33befd0262ab3b5cf1c4f3f8cfd8b09e88c05b45adee29d6761ddb6`.
 Container başına 512 MB bellek ve 0.5 CPU sınırı vardır. DB bağlantısı
@@ -82,3 +110,10 @@ Bu komut yedekleri, anahtarı veya mevcut uygulama cron'larını silmez.
 - 2026-10-24 09:41 UTC: aynı şifreli yedek izole PostgreSQL 18'e tamamen geri
   yüklendi; gerekli tablo/fonksiyon ve tenants kontrolü başarılı, servis exit 0.
 - Yerel HMAC kontrolünde değiştirilmiş dosya reddedildi; Python derleme kontrolü geçti.
+- 2026-10-24 09:54 UTC: Linux production build + gerçek yedek üzerinde release
+  SQL/RLS iki uygulama, veri korunması, dokuz tabloda tenant görünürlüğü,
+  uygulama DB rolüyle readiness ve runtime audit PASS. Geçici container kalmadı.
+- İlk release denemesi eksik `category_station_routes` / `product_station_routes`
+  tablolarını buldu; sürüm SQL'ine schema.ts ile aynı FK ve unique index'lerle
+  eklemeli CREATE eklendi. Legacy mutfak yönlendirmesi uygulamada fallback olarak
+  korunur; eski ürün/satış satırları değiştirilmedi.

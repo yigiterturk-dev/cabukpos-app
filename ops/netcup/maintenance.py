@@ -125,7 +125,7 @@ def backup(config, work, backups, env):
     return path
 
 
-def restore(config, work, path, env):
+def restore(config, work, path, env, release_dir=None):
     verify(path, config["encryption_key"])
     name = "cabukpos-rehearsal-" + secrets.token_hex(8)
     data = work / "postgres"
@@ -175,6 +175,9 @@ def restore(config, work, path, env):
         if result != "OK":
             raise RuntimeError("restore smoke check incomplete")
         print(f"Restore verified: {path.name}; isolated PostgreSQL, required tables/functions present", flush=True)
+        if release_dir is not None:
+            from release_check import check_release
+            check_release(name, work, release_dir)
     finally:
         # Only the ephemeral container created by this invocation is removed.
         run(["docker", "rm", "--force", name])
@@ -182,9 +185,12 @@ def restore(config, work, path, env):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("job", choices=["backup", "restore"])
+    parser.add_argument("job", choices=["backup", "restore", "release"])
     parser.add_argument("--config", default="/etc/cabukpos-ops/config.json")
+    parser.add_argument("--release-dir", type=Path)
     args = parser.parse_args()
+    if args.job == "release" and args.release_dir is None:
+        parser.error("release requires --release-dir with a built, secret-free source snapshot")
     os.umask(0o077)
     config_path = Path(args.config)
     if config_path.stat().st_mode & 0o077:
@@ -206,7 +212,8 @@ def main():
                 candidates = sorted(backups.glob("cabukpos-*.dump.enc"))
                 if not candidates:
                     raise RuntimeError("no encrypted backup available")
-                restore(config, work, candidates[-1], env)
+                restore(config, work, candidates[-1], env,
+                        args.release_dir.resolve() if args.job == "release" else None)
         status = {"job": args.job, "ok": True, "completed_at": dt.datetime.now(dt.timezone.utc).isoformat()}
         (state / (args.job + "-status.json")).write_text(json.dumps(status) + "\n")
 

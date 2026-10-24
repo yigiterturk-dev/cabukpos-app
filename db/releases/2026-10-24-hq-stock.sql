@@ -5,6 +5,25 @@
 set local lock_timeout = '5s';
 set local statement_timeout = '60s';
 
+-- Existing production restores can predate branch-specific kitchen routing.
+-- These tables must exist before the current RLS script references them.
+create table if not exists public.category_station_routes (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null constraint category_station_routes_tenant_id_tenants_id_fk references public.tenants(id) on delete cascade,
+  store_id uuid not null constraint category_station_routes_store_id_stores_id_fk references public.stores(id) on delete cascade,
+  category_id uuid not null constraint category_station_routes_category_id_categories_id_fk references public.categories(id) on delete cascade,
+  station_id uuid constraint category_station_routes_station_id_stations_id_fk references public.stations(id) on delete set null
+);
+create unique index if not exists category_station_routes_store_category_uq on public.category_station_routes(store_id, category_id);
+create table if not exists public.product_station_routes (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null constraint product_station_routes_tenant_id_tenants_id_fk references public.tenants(id) on delete cascade,
+  store_id uuid not null constraint product_station_routes_store_id_stores_id_fk references public.stores(id) on delete cascade,
+  product_id uuid not null constraint product_station_routes_product_id_products_id_fk references public.products(id) on delete cascade,
+  station_id uuid constraint product_station_routes_station_id_stations_id_fk references public.stations(id) on delete set null
+);
+create unique index if not exists product_station_routes_store_product_uq on public.product_station_routes(store_id, product_id);
+
 alter type public.stock_kind add value if not exists 'transfer';
 do $$ begin
   if not exists (select 1 from pg_type t join pg_namespace n on n.oid = t.typnamespace where t.typname = 'store_kind' and n.nspname = 'public') then
