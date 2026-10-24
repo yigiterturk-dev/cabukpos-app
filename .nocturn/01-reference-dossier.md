@@ -50,6 +50,12 @@
 
 ## Gate
 
+### 2026-10-25 breadth review
+
+The public guide's 20-module contents were surveyed beyond courier screenshots. The operational comparison, repository evidence, unknowns and ordered gaps are recorded in `docs/suitable-workflow-comparison.md`. Detailed reading focused on provider setup, order controls, kitchen, payment and courier lifecycle. Stock/production sections were read separately because the first text extraction was truncated. This is not a claim that all 262 images or authenticated screens were inspected.
+
+User requirement corrected: newly provisioned platform connections auto-accept by default and issue kitchen tickets; the sample incoming platform order uses that workflow. Existing opt-outs are preserved. External courier dispatch remains a separate unimplemented integration.
+
 REFERENCE GATE: PASS
 
 Scope of pass: public functional analysis only. Desktop screenshots observed; mobile/live implementation explicitly unavailable. No premium-design handoff or production approval is granted.

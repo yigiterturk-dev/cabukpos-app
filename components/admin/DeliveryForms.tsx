@@ -95,6 +95,7 @@ export function ConnectionForm({ platforms }: { platforms: Option[] }) {
     <form ref={formRef} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="flex flex-wrap items-end gap-3">
       <div className="w-64"><Field label="Platform"><Select key={`${state.savedAt ?? 0}-${platforms.map((p) => p.value).join(",")}`} disabled={pending} name="platform" options={platforms} defaultValue={platforms[0]?.value} onChange={() => setEdited(true)} {...errorProps(displayState, "platform")} /></Field><Err s={displayState} f="platform" /></div>
       <Button type="submit" disabled={pending}>{pending ? "Bağlanıyor…" : "Bağla"}</Button>
+      <p className="basis-full text-sm text-muted">Yeni bağlantıda otomatik kabul açıktır. Gelen sipariş 20 dakika hazırlık süresiyle mutfağa iletilir; bu ayarı bağlantıdan değiştirebilirsiniz.</p>
       {pending && <span className="sr-only" role="status" aria-live="polite">Platform bağlantısı kaydediliyor.</span>}
       {state.savedAt && !edited && !pending && !state.error && <Saved s={state} />}
     </form>

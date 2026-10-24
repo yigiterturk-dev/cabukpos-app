@@ -22,7 +22,7 @@ function fixtures() {
     const id = `order-${i}`;
     const platform = i === 0 || i === 6;
     const evs: TabEv[] = [{ type: "open", guests: 0, kind: platform ? "platform" : "paket" }, { type: "order", name, customerId: null, phone: `000010000${i}`, address: `Örnek Mahallesi, Demo Sokak No: ${i + 1}`, zoneId: null, directions: "Örnek adres — teslimat için kullanmayın", note: i === 3 ? "Zili çalmayın" : null, payIntent: platform ? "online" : i % 2 ? "nakit" : "kart", promisedAt: null, source: platform ? { platform: i === 0 ? "yemeksepeti" : "trendyol", externalId: `DEMO-${4800 + i}`, deadline: new Date(NOW + 3 * 60000).toISOString() } : null }, { type: "add", lineId: `${id}-food`, productId: null, name: "Adana kebap", unitPrice: 28000, vatRate: 10, qtyMilli: 1000, stationId: null, options: [], note: null }, { type: "add", lineId: `${id}-drink`, productId: null, name: "Ayran", unitPrice: 3500, vatRate: 10, qtyMilli: 1000, stationId: null, options: [], note: null }];
-    if (i > 0) evs.push({ type: "accept", prepMin: 20 }, { type: "send", ticketId: `${id}-ticket`, lineIds: [`${id}-food`, `${id}-drink`], stationId: null });
+    evs.push({ type: "accept", prepMin: 20 }, { type: "send", ticketId: `${id}-ticket`, lineIds: [`${id}-food`, `${id}-drink`], stationId: null });
     if (i > 1 && i < 7) evs.push({ type: "kitchen", ticketId: `${id}-ticket`, status: "hazir" });
     if (i > 2 && i < 6) evs.push({ type: "courier", staffId: i % 2 ? "courier-a" : "courier-b" });
     if (i > 2 && i < 6) evs.push({ type: "out" });

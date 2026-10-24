@@ -6,11 +6,11 @@ import { revalidatePath } from "next/cache";
 import { getDb, schema, withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
-import { newDeviceToken } from "@/lib/auth/tokens";
 import { parseTL } from "@/lib/core/money";
 import { AUTO_PREP_MIN, type IncomingOrder } from "@/lib/core/platform";
 import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import { ingestOrders } from "@/lib/platform/ingest";
+import { provisionConnection } from "@/lib/platform/provision";
 import { pushStoreCatalog } from "@/lib/platform/outbound";
 import { applyDoc, tabEventsOf } from "@/lib/sync/apply";
 import { foldTabs } from "@/lib/core/tab";
@@ -140,10 +140,8 @@ export async function createConnection(_: DeliveryState, form: FormData): Promis
   const platform = str(form, "platform");
   if (!CONNECTABLE_PLATFORMS.includes(platform)) return { error: "Bu platform henüz desteklenmiyor.", field: "platform" };
   const storeId = await firstStore(a.tenantId, a.storeId);
-  const [had] = await getDb().select({ id: P.id }).from(P).where(and(eq(P.tenantId, a.tenantId), eq(P.storeId, storeId), eq(P.platform, platform)));
-  if (had) return { error: "Bu platform zaten bağlı.", field: "platform" };
-  await getDb().insert(P).values({ tenantId: a.tenantId, storeId, platform, webhookSecret: newDeviceToken() });
-  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.connect", { platform }));
+  const connection = await provisionConnection(a.tenantId, storeId, platform, `user:${a.id}`);
+  if (!connection) return { error: "Bu platform zaten bağlı.", field: "platform" };
   revalidatePath("/yonetim/platformlar");
   return { savedAt: Date.now() };
 }

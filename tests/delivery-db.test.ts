@@ -10,6 +10,7 @@ const { foldTabs, deliveryStatus } = await import("@/lib/core/tab");
 const { lookupCustomer } = await import("@/lib/delivery/customers");
 const { mockSource, sign } = await import("@/lib/platform/mock");
 const { ingestOrders } = await import("@/lib/platform/ingest");
+const { provisionConnection } = await import("@/lib/platform/provision");
 const { and, eq } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "PKT-T", vertical: "restoran" }).returning();
@@ -28,8 +29,9 @@ const [kasaDev] = await getDb().insert(schema.devices).values({ tenantId: t.id, 
 const [kuryeDev] = await getDb().insert(schema.devices).values({ tenantId: t.id, storeId: s.store.id, name: "Kurye", receiptPrefix: "R1", role: "kurye" }).returning();
 const kasa = { tenantId: t.id, storeId: s.store.id, deviceId: kasaDev.id, receiptPrefix: "K1" };
 const kuryeCtx = { tenantId: t.id, storeId: s.store.id, deviceId: kuryeDev.id, receiptPrefix: "R1" };
-const [conn] = await getDb().insert(schema.platformConnections).values({ tenantId: t.id, storeId: s.store.id, platform: "mock", webhookSecret: "gizli", autoAccept: true }).returning();
-const connObj = { id: conn.id, tenantId: t.id, storeId: s.store.id, platform: "mock", credentials: null, webhookSecret: "gizli", webhookToken: "webhook-token-0123456789abcd", autoAccept: true, active: true };
+const conn = await provisionConnection(t.id, s.store.id, "mock", "test:admin");
+assert.ok(conn);
+const connObj = conn;
 
 after(async () => {
   await getDb().delete(schema.tenants).where(eq(schema.tenants.id, t.id));
@@ -44,6 +46,25 @@ const orderEv = (address = "Atatürk Cad. 5") =>
 const lineEv = (lineId: string) => ({ type: "add", lineId, productId: s.lah.id, name: "Lahmacun", unitPrice: 6000, vatRate: 10, qtyMilli: 2000, options: [], note: null, stationId: null });
 const feeEv = (lineId: string) => ({ type: "add", lineId, productId: null, name: "Paket servis ücreti", unitPrice: 1500, vatRate: 10, qtyMilli: 1000, options: [], note: null, stationId: null });
 const reviewOf = async (id: string) => (await withTenant(t.id, (tx) => tx.select({ r: schema.tabEvents.review }).from(schema.tabEvents).where(eq(schema.tabEvents.id, id))))[0]?.r ?? null;
+
+test("yeni bağlantı otomatik kabul eder; tekrar bağlama mevcut tercihi korur; başka kiracının şubesi bağlanamaz", async () => {
+  assert.equal(connObj.autoAccept, true);
+  const P = schema.platformConnections;
+  await getDb().update(P).set({ autoAccept: false }).where(and(eq(P.id, connObj.id), eq(P.tenantId, t.id)));
+  try {
+    assert.equal(await provisionConnection(t.id, s.store.id, "mock", "test:admin"), null);
+    const [saved] = await getDb().select({ autoAccept: P.autoAccept }).from(P).where(and(eq(P.id, connObj.id), eq(P.tenantId, t.id)));
+    assert.equal(saved.autoAccept, false);
+    const [other] = await getDb().insert(schema.tenants).values({ name: "PKT-other", vertical: "restoran" }).returning();
+    try {
+      await assert.rejects(provisionConnection(other.id, s.store.id, "mock", "test:admin"), /Şube bulunamadı/);
+    } finally {
+      await getDb().delete(schema.tenants).where(eq(schema.tenants.id, other.id));
+    }
+  } finally {
+    await getDb().update(P).set({ autoAccept: true }).where(and(eq(P.id, connObj.id), eq(P.tenantId, t.id)));
+  }
+});
 
 test("paket: masasız adisyon, müşteri defteri, serbest ücret satırı, kurye teslimi → kanal paket", async () => {
   const tabId = crypto.randomUUID();
@@ -110,7 +131,7 @@ test("serbest satır masa adisyonunda review; müdürsüz iptal review; atanmam�
 test("webhook: imza, idempotens, otomatik kabul → accept + send + platform.accept audit; eşlenmeyen kod serbest satır", async () => {
   const body = JSON.stringify({ orders: [{ externalId: "M-1001", customer: { name: "Ali", phone: "0555 111 22 33" }, address: "Cumhuriyet Mah. 1", lines: [{ code: "LAH", name: "Lahmacun", unitPrice: 6500, qtyMilli: 1000 }, { code: "AYR", name: "Ayran", unitPrice: 1500, qtyMilli: 2000 }] }] });
   assert.deepEqual(mockSource.parseWebhook(body, new Headers({ "x-signature": sign("yanlış", body) }), connObj), { error: "İmza geçersiz.", status: 401 });
-  const orders = mockSource.parseWebhook(body, new Headers({ "x-signature": sign("gizli", body) }), connObj);
+  const orders = mockSource.parseWebhook(body, new Headers({ "x-signature": sign(connObj.webhookSecret, body) }), connObj);
   assert.ok(Array.isArray(orders));
   assert.deepEqual(await ingestOrders(connObj, orders), { created: 1, duplicates: 0, unmapped: 1 });
   assert.deepEqual(await ingestOrders(connObj, orders), { created: 0, duplicates: 1, unmapped: 0 });
@@ -133,7 +154,7 @@ test("webhook: imza, idempotens, otomatik kabul → accept + send + platform.acc
 test("elle kabul: kasa accept olayı → platforma bir kez bildirilir; hata → review", async () => {
   const manual = { ...connObj, autoAccept: false };
   const mk = (id: string) => JSON.stringify({ orders: [{ externalId: id, customer: { name: "Veli", phone: "05551112244" }, address: "X", lines: [{ code: "LAH", name: "Lahmacun", unitPrice: 6500, qtyMilli: 1000 }] }] });
-  for (const id of ["M-2001", "M-2002"]) await ingestOrders(manual, mockSource.parseWebhook(mk(id), new Headers({ "x-signature": sign("gizli", mk(id)) }), manual) as never);
+  for (const id of ["M-2001", "M-2002"]) await ingestOrders(manual, mockSource.parseWebhook(mk(id), new Headers({ "x-signature": sign(connObj.webhookSecret, mk(id)) }), manual) as never);
   const tabOf = async (ext: string) => (await withTenant(t.id, (tx) => tx.select().from(schema.tabEvents).where(eq(schema.tabEvents.type, "order")))).find((r) => (r.payload as { source?: { externalId: string } }).source?.externalId === ext)!.tabId;
   const t1 = await tabOf("M-2001");
   assert.equal(deliveryStatus(foldTabs(await withTenant(t.id, (tx) => tabEventsOf(tx, t1))).get(t1)!), "onay_bekliyor");
@@ -157,7 +178,7 @@ test("durum bildirimi: out→picked, delivered→delivered; idempotent; hata→r
   const tabOf = async (ext: string) =>
     (await withTenant(t.id, (tx) => tx.select().from(schema.tabEvents).where(eq(schema.tabEvents.type, "order")))).find((r) => (r.payload as { source?: { externalId?: string } }).source?.externalId === ext)!.tabId;
 
-  await ingestOrders(connObj, mockSource.parseWebhook(mk("M-3001"), new Headers({ "x-signature": sign("gizli", mk("M-3001")) }), connObj) as never);
+  await ingestOrders(connObj, mockSource.parseWebhook(mk("M-3001"), new Headers({ "x-signature": sign(connObj.webhookSecret, mk("M-3001")) }), connObj) as never);
   const t3 = await tabOf("M-3001");
   const out = doc(t3, { type: "out" });
   await applyDoc(kasa, out);
@@ -176,7 +197,7 @@ test("durum bildirimi: out→picked, delivered→delivered; idempotent; hata→r
   assert.ok(rows.some((a) => (a.detail as { status?: string }).status === "delivered"));
 
   // Sahte platform hatası → olaya review + audit'e platform.error (bildirim geri almaz)
-  await ingestOrders(connObj, mockSource.parseWebhook(mk("M-3002"), new Headers({ "x-signature": sign("gizli", mk("M-3002")) }), connObj) as never);
+  await ingestOrders(connObj, mockSource.parseWebhook(mk("M-3002"), new Headers({ "x-signature": sign(connObj.webhookSecret, mk("M-3002")) }), connObj) as never);
   const t4 = await tabOf("M-3002");
   const out4 = doc(t4, { type: "out" });
   process.env.MOCK_PLATFORM_FAIL = "1";
