@@ -13,6 +13,11 @@ import { PinPad } from "./PinPad";
 import { minutesSince } from "./useTabs";
 import { beep } from "./beep";
 import { useKasaMainProps } from "./KasaPreviewContext";
+import { DeliveryOperations } from "./DeliveryOperations";
+import { courierSummary, deliveryTimes, dispatchFilter, isDeliveryActive, readyDispatchEvents } from "@/lib/core/dispatch";
+import { istToday } from "@/lib/core/report";
+import { StatCard } from "@/components/ui";
+import { DeliveryConnections } from "./DeliveryConnections";
 
 type Add = (list: NewTabEvent[]) => Promise<unknown>;
 const EMPTY_TABLES: NonNullable<Meta["catalog"]["tables"]> = [];
@@ -36,7 +41,7 @@ const COLUMNS: { key: DeliveryStatus[]; title: string }[] = [
   { key: ["hazirlaniyor"], title: "Hazırlanıyor" },
   { key: ["hazir"], title: "Hazır" },
   { key: ["yolda"], title: "Yolda" },
-  { key: ["teslim", "iptal", "reddedildi"], title: "Son 12 saatte kapanan" },
+  { key: ["teslim", "iptal", "reddedildi"], title: "Teslim ve kapananlar" },
 ];
 const PREP = [10, 20, 30, 45];
 const REJECT = ["Ürün kalmadı", "Yoğunluk", "Kapalıyız", "Adres bölge dışı"];
@@ -70,6 +75,9 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
 }) {
   const mainProps = useKasaMainProps();
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [view, setView] = useState<"board" | "orders" | "couriers">("board");
+  const [query, setQuery] = useState("");
+  const [autoAssign, setAutoAssign] = useState(false);
   const { TL } = kasaFmt(meta);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -99,6 +107,9 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   const tables = meta.catalog.tables ?? EMPTY_TABLES;
   const zones = meta.catalog.deliveryZones ?? [];
   const couriers = meta.catalog.staff.filter((s) => s.role === "kurye");
+  const loads = courierSummary(tabs.values(), couriers, istToday(now), now);
+  const matches = new Set(dispatchFilter(list, { query }).map(t => t.id));
+  const unassigned = list.filter(t => t.kind === "paket" && isDeliveryActive(t) && !t.delivery.courierId).length;
   const staffName = (id: string | null) => meta.catalog.staff.find((s) => s.id === id)?.name ?? null;
   const waiting = list.filter((t) => deliveryStatus(t) === "onay_bekliyor").length;
   const active = list.filter((t) => !["teslim", "iptal", "reddedildi"].includes(deliveryStatus(t))).length;
@@ -169,18 +180,31 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
       {pendingMessage && !dialog && <p className="sr-only" role="status" aria-live="polite">{pendingMessage}</p>}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div>
-          <h2 ref={boardHeadingRef} tabIndex={-1} className="font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Paket siparişleri</h2>
-          <p role={loaded ? undefined : "status"} aria-live={loaded ? undefined : "polite"} className="mt-0.5 text-sm text-muted">{loaded ? `${active} aktif · ${closed} son 12 saatte kapanan` : "Siparişler yükleniyor…"}</p>
+          <h2 ref={boardHeadingRef} tabIndex={-1} className="font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Paket ve sevkiyat</h2>
+          <p role={loaded ? undefined : "status"} aria-live={loaded ? undefined : "polite"} className="mt-0.5 text-sm text-muted">{loaded ? `${active} aktif · ${closed} teslim / kapanan` : "Siparişler yükleniyor…"}</p>
         </div>
         {waiting > 0 && <span className="rounded-full bg-bad-action px-2.5 py-0.5 text-xs font-medium text-white" data-testid="waiting-count">{waiting} onay bekliyor</span>}
         <button type="button" onClick={onNew} className="press ml-auto inline-flex min-h-12 items-center rounded-xl bg-brand-action px-4 text-sm font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">+ Yeni paket</button>
       </div>
+      {view === "board" && <DeliveryConnections meta={meta} preview={!("id" in mainProps)} />}
+      {view === "board" && <label className="mb-4 flex min-h-12 items-center gap-3 rounded-xl border border-line bg-surface px-4 text-sm"><input type="checkbox" checked={autoAssign} onChange={e => setAutoAssign(e.target.checked)} disabled={!couriers.length} className="size-5 accent-brand" /><span>Hazır düğmesinde en az aktif işi olan kuryeye ata <span className="text-xs text-muted">· bu oturumda, işletmenin paket siparişleri için</span></span></label>}
+      {view === "board" && <div className="mb-4 grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Onay bekliyor" value={loaded ? String(waiting) : "—"} tone={waiting ? "warn" : "neutral"} />
+        <StatCard label="Hazır" value={loaded ? String(list.filter(t => deliveryStatus(t) === "hazir").length) : "—"} tone="ok" />
+        <StatCard label="Yolda" value={loaded ? String(list.filter(t => deliveryStatus(t) === "yolda").length) : "—"} tone="info" />
+        <StatCard label="Kurye atanmamış" value={loaded ? String(unassigned) : "—"} hint="İşletmenin paket siparişleri" tone={unassigned ? "warn" : "neutral"} />
+      </div>}
+      <div role="group" aria-label="Paket yönetimi görünümü" className="mb-4 flex flex-wrap gap-2">
+        {([["board", "Canlı akış"], ["orders", "Sipariş listesi"], ["couriers", "Kurye yönetimi"]] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)} className={`${btn} ${view === key ? "border-brand bg-brand-soft text-brand" : ""}`}>{label}</button>)}
+        {view === "board" && <label className="ml-auto flex min-w-0 items-center gap-2 text-sm text-muted">Ara<input aria-label="Canlı paketlerde ara" value={query} onChange={e => setQuery(e.target.value)} placeholder="Müşteri, telefon, ürün…" className="min-h-12 min-w-0 rounded-xl border border-line bg-surface px-3 outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" /></label>}
+      </div>
+      {view !== "board" && <DeliveryOperations meta={meta} tabs={tabs} now={now} view={view} onOpen={onOpen} preview={!("id" in mainProps)} />}
       {actionError && !dialog && <p ref={actionErrorRef} tabIndex={-1} className="mb-4 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{actionError}</p>}
-      <div aria-busy={!loaded || undefined} className="grid min-w-0 gap-3 md:min-h-0 md:flex-1 md:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] 2xl:grid-cols-[repeat(5,minmax(0,1fr))]">
+      {view === "board" && <div aria-busy={!loaded || undefined} className="grid min-w-0 gap-3 md:min-h-0 md:flex-1 md:grid-cols-[repeat(5,minmax(260px,1fr))] md:overflow-x-auto md:pb-3">
         {!loaded ? <div className="col-span-full min-h-24" aria-hidden="true" /> : list.length === 0 ? (
           <p className="col-span-full self-center rounded-2xl border border-dashed border-line-strong bg-surface-2/40 p-8 text-center text-sm text-muted">Henüz paket veya platform siparişi yok. Yeni siparişler geldikçe burada görünecek.</p>
         ) : COLUMNS.map((c) => {
-          const cards = list.filter((t) => c.key.includes(deliveryStatus(t))).sort((a, b) => {
+          const cards = list.filter((t) => matches.has(t.id) && c.key.includes(deliveryStatus(t))).sort((a, b) => {
             if (c.key[0] === "onay_bekliyor") {
               const aDeadline = deadlineInfo(a).at ?? Number.POSITIVE_INFINITY;
               const bDeadline = deadlineInfo(b).at ?? Number.POSITIVE_INFINITY;
@@ -188,7 +212,6 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
             }
             return a.openedAt.localeCompare(b.openedAt);
           });
-          if (c.key[0] === "onay_bekliyor" && !cards.length) return <div key={c.title} className="hidden lg:block" />;
           return (
             <section key={c.title} aria-label={c.title} className="min-w-0 rounded-2xl bg-surface-3/70 p-2 md:flex md:min-h-0 md:flex-col">
               <h3 className="mb-2 min-w-0 break-words px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted">{c.title} <span className="tabular">({cards.length})</span></h3>
@@ -218,7 +241,9 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                           {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
                         </div>
                         {courier && <div className="mt-1 break-words text-xs">Kurye: <span className="font-medium">{courier}</span></div>}
-                        {st === "yolda" && (() => { const e = etaFor(t); return e != null ? <div className="mt-1 text-xs font-medium text-ink-2" data-testid="eta">Tahmini teslim ~{e} dk</div> : null; })()}
+                        {deliveryTimes(t, now).late && <p className="mt-1 text-xs font-semibold text-bad">Hazırlık süresi aşıldı</p>}
+                        {t.remaining > 0 && st === "teslim" && <p className="mt-1 text-xs font-semibold text-warn">Açık hesap: {TL(t.remaining)}</p>}
+                        {st === "yolda" && (() => { const e = etaFor(t); return e != null ? <div className={`mt-1 text-xs font-medium ${e === 0 ? "text-warn" : "text-ink-2"}`} data-testid="eta">{e === 0 ? "Tahmini teslim süresi aşıldı" : `Tahmini teslim ~${e} dk`}</div> : null; })()}
                         {st === "onay_bekliyor" && deadline.provided && <div className={`mt-1 text-xs font-medium ${deadlineRemaining === null || deadlineRemaining <= 2 ? "text-bad" : "text-warn"}`}>
                           {deadlineRemaining === null ? "Onay süresi bilgisi okunamadı" : deadlineRemaining <= 0 ? "Onay süresi doldu" : `Onay için ${deadlineRemaining} dk`}
                         </div>}
@@ -234,6 +259,8 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                             </>
                           ) : st !== "yolda" && (
                             <>
+                              {st === "hazirlaniyor" && <button type="button" aria-label={`Hazır: ${orderLabel}`} disabled={busy} onClick={() => void run(() => add(readyDispatchEvents(t, tabs.values(), couriers, autoAssign, () => crypto.randomUUID(), now).map(event => ev(t, event))), "Sipariş hazır olarak kaydedildi.", `ready:${t.id}`, "Sipariş hazır olarak kaydediliyor.", t.id)} className={strong}>Hazır</button>}
+                              {st === "hazir" && t.kind === "paket" && t.delivery.courierId && <button type="button" aria-label={`Yola çıkar: ${orderLabel}`} disabled={busy} onClick={() => void run(() => add([ev(t, { type: "out" })]), "Sipariş yola çıktı olarak kaydedildi.", `out:${t.id}`, "Yola çıkış kaydediliyor.", t.id)} className={strong}>Yola çıkar</button>}
                               {t.kind === "paket" && couriers.length > 0 && <button type="button" aria-label={`${courier ? "Kurye değiştir" : "Kurye ata"}: ${orderLabel}`} disabled={busy} onClick={() => openDialog({ k: "courier", tab: t })} className={btn}>{courier ? "Kurye değiştir" : "Kurye ata"}</button>}
                               {t.kind === "platform" && <button type="button" aria-label={`${pendingAction === `handover:${t.id}` ? "Kurye teslimi kaydediliyor" : "Kuryeye verildi"}: ${orderLabel}`} disabled={busy} aria-busy={pendingAction === `handover:${t.id}` || undefined} onClick={() => void run(() => onHandover(t), "Sipariş kurye teslimine verildi.", `handover:${t.id}`, "Sipariş kurye teslimine veriliyor.", t.id)} className={strong}>{pendingAction === `handover:${t.id}` ? "Kurye teslimi kaydediliyor…" : "Kuryeye verildi"}</button>}
                               {t.kind === "paket" && !t.delivery.courierId && <button type="button" aria-label={`Hesap (gel-al): ${orderLabel}`} disabled={busy || t.remaining === 0} onClick={() => onBill(t.id)} className={btn}>Hesap (gel-al)</button>}
@@ -250,7 +277,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
             </section>
           );
         })}
-      </div>
+      </div>}
 
       {dialog?.k === "accept" && (
         <Modal label="Hazırlama süresi" onClose={() => setDialog(null)} closeDisabled={busy} statusMessage={pendingMessage}>
@@ -275,12 +302,12 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
       )}
       {dialog?.k === "courier" && (
         <Modal label="Kurye ata" onClose={() => setDialog(null)} closeDisabled={busy} statusMessage={pendingMessage}>
-          <p className="mb-4 text-sm text-muted">{tabLabel(dialog.tab, tables, PLATFORM_NAMES)} için kuryeyi seçin. Atama sipariş kartında görünür.</p>
+          <p className="mb-4 text-sm text-muted">{tabLabel(dialog.tab, tables, PLATFORM_NAMES)} için kuryeyi seçin. En az aktif işi olan kurye önce gösterilir.</p>
           {actionError && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{actionError}</p>}
           <div role="group" aria-label="Kurye seçimi" className="grid gap-2">
-            {couriers.map((c) => (
+            {[...couriers].sort((a, b) => (loads.find(c => c.id === a.id)?.active ?? 0) - (loads.find(c => c.id === b.id)?.active ?? 0)).map((c) => (
               <button key={c.id} type="button" aria-pressed={dialog.tab.delivery.courierId === c.id} disabled={busy} aria-busy={pendingAction === `courier:${dialog.tab.id}:${c.id}` || undefined} onClick={() => void run(() => add([ev(dialog.tab, { type: "courier", staffId: c.id })]), `${c.name} kurye olarak atandı.`, `courier:${dialog.tab.id}:${c.id}`, `${c.name} siparişe atanıyor.`, dialog.tab.id)}
-                className={`${btn} ${dialog.tab.delivery.courierId === c.id ? "border-brand font-medium text-brand" : ""}`}>{pendingAction === `courier:${dialog.tab.id}:${c.id}` ? "Atanıyor…" : c.name}</button>
+                className={`${btn} ${dialog.tab.delivery.courierId === c.id ? "border-brand font-medium text-brand" : ""}`}>{pendingAction === `courier:${dialog.tab.id}:${c.id}` ? "Atanıyor…" : `${c.name} · ${loads.find(load => load.id === c.id)?.active ?? 0} aktif iş`}</button>
             ))}
             {dialog.tab.delivery.courierId && <button type="button" disabled={busy} aria-busy={pendingAction === `courier:${dialog.tab.id}:remove` || undefined} onClick={() => void run(() => add([ev(dialog.tab, { type: "courier", staffId: null })]), "Siparişten kurye ataması kaldırıldı.", `courier:${dialog.tab.id}:remove`, "Kurye ataması kaldırılıyor.", dialog.tab.id)} className={btn}>{pendingAction === `courier:${dialog.tab.id}:remove` ? "Kaldırılıyor…" : "Kuryeyi kaldır"}</button>}
           </div>

@@ -3,6 +3,19 @@ import { EscPos, type Codepage, type PaperWidth } from "./escpos";
 import { formatTL, type Kurus } from "./money";
 import { qtyText } from "./receipt";
 import { lineGross, type OrderInfo, type PayIntent, type TabEv, type TabState } from "./tab";
+import { sendByStation } from "./platform";
+
+/** Whole-order Ready uses the same kitchen events as individual station tickets. */
+export function readyDeliveryEvents(tab: TabState, newId: () => string): TabEv[] {
+  if (tab.kind === "masa" || tab.closed || tab.delivery.deliveredAt || tab.delivery.outAt || tab.delivery.handedOver ||
+      (tab.kind === "platform" && !tab.delivery.acceptedAt)) return [];
+  const live = tab.lines.filter(line => !line.voided && !line.comped && line.paidMilli < line.qtyMilli);
+  if (!live.length) return [];
+  const ids = new Set(live.map(line => line.lineId));
+  const sends = sendByStation(live.filter(line => !line.sent), newId);
+  const tickets = [...tab.tickets.filter(ticket => ticket.lineIds.some(id => ids.has(id)) && ticket.status !== "hazir" && ticket.status !== "teslim").map(ticket => ticket.id), ...sends.map(ticket => ticket.ticketId)];
+  return [...sends, ...tickets.map(ticketId => ({ type: "kitchen" as const, ticketId, status: "hazir" as const }))];
+}
 
 /** "0532 123 45 67", "+90 532…", "5321234567" → "905321234567". Türkiye dışı/eksik → null. */
 export function normalizePhone(input: string): string | null {

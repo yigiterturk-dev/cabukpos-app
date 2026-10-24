@@ -12,6 +12,8 @@ import type { Cashier } from "./PinPad";
 import { Modal } from "./TabScreen";
 import { minutesSince } from "./useTabs";
 import { useKasaMainProps } from "./KasaPreviewContext";
+import { CourierLocationShare } from "./CourierLocationShare";
+import { beep } from "./beep";
 
 const btn = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-surface px-3 py-2 text-sm font-medium shadow-card outline-none hover:border-line-strong hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
 const strong = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] bg-espresso px-3 py-2 text-sm font-medium text-white shadow-card outline-none hover:bg-espresso-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
@@ -51,9 +53,16 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
   const mine = [...tabs.values()].filter((t) => t.kind === "paket" && t.delivery.courierId === courier.id && !t.delivery.cancelled);
   const active = mine.filter((t) => !t.delivery.deliveredAt).sort((a, b) => a.openedAt.localeCompare(b.openedAt));
   const done = mine.filter((t) => t.delivery.deliveredAt && Date.parse(t.delivery.deliveredAt) >= todayStart);
-  const waiting = active.filter((t) => !t.delivery.outAt);
+  const waiting = active.filter((t) => !t.delivery.outAt && deliveryStatus(t) === "hazir");
   const hasOutForDelivery = active.some((t) => t.delivery.outAt);
   const cash = courierCash(done, courier.id);
+  const previousReady = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!tabsLoaded) return;
+    const current = new Set(active.filter(t => deliveryStatus(t) === "hazir").map(t => t.id));
+    if (previousReady.current && [...current].some(id => !previousReady.current!.has(id))) beep(true);
+    previousReady.current = current;
+  }, [active, tabsLoaded]);
   const run = async (action: "out" | "deliver", fn: () => Promise<unknown>, success: string) => {
     if (busyRef.current) return false;
     busyRef.current = true;
@@ -78,6 +87,7 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
         <h1 id="courier-heading" tabIndex={-1} className="min-w-0 break-words rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Siparişlerim <span className="tabular text-muted">({tabsLoaded ? active.length : "—"})</span></h1>
         {tabsLoaded && waiting.length > 0 && <button type="button" disabled={busy !== null} aria-busy={busy === "out" || undefined} onClick={(e) => { lastActionButtonRef.current = e.currentTarget; void out(); }} className={`ml-auto shrink-0 ${strong}`}>{busy === "out" ? "Yola çıkış kaydediliyor…" : `Yola çıktım (${waiting.length})`}</button>}
       </div>
+      {"id" in mainProps && <CourierLocationShare staffId={courier.id} />}
       {!tabsLoaded && <p className="sr-only" role="status" aria-live="polite">Kurye siparişleri yükleniyor.</p>}
       {error && !deliver && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
       {busy && busy !== "deliver" && <p className="sr-only" role="status" aria-live="polite">Siparişlerin yola çıkışı kaydediliyor.</p>}

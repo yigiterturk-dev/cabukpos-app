@@ -598,7 +598,7 @@ export function KasaApp() {
   const lastReady = useRef<number | null>(null);
   useEffect(() => {
     if (!tabsApi.loaded) { lastReady.current = null; return; }
-    if (lastReady.current !== null && restoran && role !== "mutfak" && readyCount > lastReady.current) beep();
+    if (lastReady.current !== null && restoran && role !== "mutfak" && role !== "kurye" && readyCount > lastReady.current) beep();
     lastReady.current = readyCount;
   }, [readyCount, restoran, role, tabsApi.loaded]);
 
@@ -632,25 +632,28 @@ export function KasaApp() {
 
   // M6 platform: "Kuryeye verildi" → handover + kalan tutar online satış (ödeme platformda alındı).
   const onHandover = useCallback(async (tab: TabState) => {
-    if (!cashier) return;
-    await tabsApi.add([{ tabId: tab.id, tableId: null, staffId: cashier.id, ev: { type: "handover" } }]);
+    if (!cashier) throw new Error("Kasiyer oturumu gerekli.");
     const part = payableLines(tab);
-    if (!part.length) return;
-    const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
-    const r = await recordSaleLocal(cashier, part, [{ method: "online", amount: totals(part).total }], crypto.randomUUID(), { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part), kind: tab.kind });
+    if (part.length) {
+      const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
+      const r = await recordSaleLocal(cashier, part, [{ method: "online", amount: totals(part).total }], tab.id, { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part), kind: tab.kind });
+      if (!r.ok) throw new Error(r.error);
+      void afterSale(r.sale);
+    }
+    await tabsApi.add([{ tabId: tab.id, tableId: null, staffId: cashier.id, ev: { type: "handover" } }]);
     await tabsApi.reload();
-    if (r.ok) void afterSale(r.sale);
   }, [cashier, tabsApi, meta, afterSale]);
 
   // M6 kurye: "Teslim ettim" → delivered + kalan tutar seçilen yöntemle satış (kuryenin vardiyasına).
   const onDeliver = useCallback(async (tab: TabState, method: PayIntent) => {
-    if (!cashier) return;
-    await tabsApi.add([{ tabId: tab.id, tableId: null, staffId: cashier.id, ev: { type: "delivered", method } }]);
+    if (!cashier) throw new Error("Kurye oturumu gerekli.");
     const part = payableLines(tab);
     if (part.length) {
       const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
-      await recordSaleLocal(cashier, part, [{ method, amount: totals(part).total }], crypto.randomUUID(), { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part), kind: tab.kind });
+      const sale = await recordSaleLocal(cashier, part, [{ method, amount: totals(part).total }], tab.id, { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part), kind: tab.kind });
+      if (!sale.ok) throw new Error(sale.error);
     }
+    await tabsApi.add([{ tabId: tab.id, tableId: null, staffId: cashier.id, ev: { type: "delivered", method } }]);
     await tabsApi.reload();
     void sync.current?.kick();
   }, [cashier, tabsApi, meta]);

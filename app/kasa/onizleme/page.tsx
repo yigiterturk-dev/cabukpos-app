@@ -143,7 +143,7 @@ export default function OnizlemePage() {
       {frame("Salon (masa planı)", <SalonScreen areas={areas} tables={tables} tabs={tabs} now={now} onOpen={noop} callsEnabled={false} />, 480)}
       {frame("Adisyon (masa detayı)", <TabScreen meta={meta} onMeta={noop} table={tables[0]} title="M1" tabs={[masaTab]} allTabs={tabs} waiter={{ id: "s1", name: "Ayşe Garson", role: "garson" }} canPay add={noAdd} now={now} onBill={noop} onBack={noop} />, 640)}
       {frame("Mutfak ekranı", <KitchenScreen meta={meta} tabs={tabs} now={now} add={noAdd} />, 480)}
-      {frame("Paket panosu", <DeliveryBoard meta={meta} onMeta={noop} tabs={tabs} now={now} add={noAdd} waiter={{ id: "s2", name: "Mehmet Kasiyer", role: "kasiyer" }} onNew={noop} onOpen={noop} onBill={noop} onHandover={async () => {}} />, 560)}
+      {frame("Paket panosu", <DeliveryBoard loaded meta={meta} onMeta={noop} tabs={tabs} now={now} add={noAdd} waiter={{ id: "s2", name: "Mehmet Kasiyer", role: "kasiyer" }} onNew={noop} onOpen={noop} onBill={noop} onHandover={async () => {}} />, 560)}
       {frame("Kurye ekranı", <CourierScreen meta={meta} courier={{ id: "s3", name: "Ali Kurye" }} tabs={tabs} now={now} add={noAdd} onDeliver={async () => {}} onCloseShift={noop} />, 480)}
       {frame("İade", <RefundScreen meta={meta} cashier={{ id: "s2", name: "Mehmet Kasiyer" }} online onMeta={noop} onDone={noop} onBack={noop} autoFocusLookup={false} />, 480)}
       {frame("Yeni paket sipariş", <NewDelivery meta={meta} staffId="s2" add={noAdd} onCreated={noop} onBack={noop} autoFocusPhone={false} />, 560)}

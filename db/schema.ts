@@ -148,6 +148,20 @@ export const staff = pgTable("staff", {
   createdAt: ts("created_at").notNull().defaultNow(),
 });
 
+/** Latest voluntarily shared courier position; no location trail is stored. */
+export const courierLocations = pgTable("courier_locations", {
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  staffId: uuid("staff_id").notNull().references(() => staff.id, { onDelete: "cascade" }),
+  deviceId: uuid("device_id").notNull().references(() => devices.id, { onDelete: "cascade" }),
+  sessionId: uuid("session_id").notNull(),
+  active: boolean("active").notNull().default(false),
+  latitudeE6: integer("latitude_e6").notNull(),
+  longitudeE6: integer("longitude_e6").notNull(),
+  accuracy: integer("accuracy").notNull(),
+  observedAt: ts("observed_at").notNull(),
+}, t => [primaryKey({ columns: [t.tenantId, t.storeId, t.staffId] }), check("courier_latitude_range", sql`${t.latitudeE6} between -90000000 and 90000000`), check("courier_longitude_range", sql`${t.longitudeE6} between -180000000 and 180000000`), check("courier_accuracy_range", sql`${t.accuracy} between 0 and 100000`)]);
+
 export const categories = pgTable("categories", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: tenantRef(),
