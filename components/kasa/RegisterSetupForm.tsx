@@ -6,9 +6,17 @@ import { setupOwnRegister, type SetupState } from "@/lib/kasa/setup-actions";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
+import { inspectRegisterSwitch } from "@/lib/offline/register-switch";
 
-export function RegisterSetupForm({ name, paired }: { name: string; paired: boolean }) {
-  const { state, pending, onSubmit } = useFormAction(setupOwnRegister, {} as SetupState);
+export function RegisterSetupForm({ name, paired, pairedDeviceId }: { name: string; paired: boolean; pairedDeviceId: string | null }) {
+  const submit = async (state: SetupState, form: FormData): Promise<SetupState> => {
+    try {
+      const problem = await inspectRegisterSwitch(pairedDeviceId);
+      if (problem) return { error: problem };
+    } catch { return { error: "Yerel kasa durumu kontrol edilemedi. Veri silinmedi; yeniden deneyin." }; }
+    return setupOwnRegister(state, form);
+  };
+  const { state, pending, onSubmit } = useFormAction(submit, {} as SetupState);
   const [edited, setEdited] = useState(false);
   return <form onSubmit={event => { setEdited(false); onSubmit(event); }} onChangeCapture={() => setEdited(true)} className="space-y-4" aria-busy={pending}>
     <fieldset disabled={pending} className="m-0 min-w-0 space-y-4 border-0 p-0">

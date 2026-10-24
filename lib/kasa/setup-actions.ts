@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
-import { getDevice, setDeviceCookie } from "@/lib/auth/kasa";
+import { DEVICE_COOKIE, getDevice, setDeviceCookie } from "@/lib/auth/kasa";
 import { newDeviceToken, sha256 } from "@/lib/auth/tokens";
 import { canManageUsers } from "@/lib/core/access";
 import { scopedStoreId } from "@/lib/admin/store-scope";
@@ -12,6 +12,19 @@ import { setupPinProblem } from "./setup-pin";
 import { setupRegister } from "./setup";
 
 export type SetupState = { error?: string };
+
+/** Release only this browser's cookie, never revoke or modify the old business/device. */
+export async function releaseBrowserRegister(expectedDeviceId: string): Promise<SetupState> {
+  const admin = await requireWriter();
+  if (!canManageUsers(admin)) return { error: "İşletme sahibi veya HQ hesabı gerekli." };
+  const current = await getDevice();
+  if (!current) return {};
+  if (current.id !== expectedDeviceId) return { error: "Kasa eşlemesi değişti. Sayfayı yenileyip tekrar deneyin." };
+  const { cookies } = await import("next/headers");
+  (await cookies()).delete(DEVICE_COOKIE);
+  revalidatePath("/kasa/kurulum");
+  return {};
+}
 
 /** Authenticated owner/HQ creates their own PIN; never resets another staff PIN. */
 export async function setupOwnRegister(_: SetupState, form: FormData): Promise<SetupState> {
