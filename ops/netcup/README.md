@@ -65,6 +65,31 @@ altındadır. Bu dosyalara tenant satırları veya erişim anahtarları yazılma
 Haftalık restore timer'ı temel restore kontrolünü sürdürür; release provası yeni
 her build/sürüm için ayrıca çalıştırılır.
 
+### Kontrollü canlı SQL geçişi
+
+`apply_release.py --release-dir ... --expected-sha256 ...` önce yalnız okuma
+kontrolü yapar. Yazma için ayrıca `--apply` gerekir. Script üretim bağlantısını
+yalnız mevcut 0600 ayardan alır; parolayı komut argümanına yazmaz, verify-full
+kullanır. En fazla bir saatlik başarılı backup/release kaydı, şifreli dosyanın
+HMAC'i ve SQL'in prova kaydındaki hash'i eşleşmelidir. PG18 primary/owner rolü,
+app rolünün bypass yetkisi olmaması ve 30 saniyeyi aşan transaction bulunmaması
+kontrol edilir. Aktif oturum sayısı bilgi olarak kaydedilir; ölçüm anlıktır.
+
+Prova ve canlı aynı `release_transaction()` SQL üreticisini kullanır. Geçiş
+REPEATABLE READ transaction'ında, 5 sn lock / 60 sn statement limiti ve advisory
+kilidiyle yapılır. Geçiş öncesi sayılar/toplamlar geçici tabloda saklanır;
+karşılaştırma ve dokuz FORCE RLS tablosu kontrolü **COMMIT öncesi** yapılır.
+Başarılı sonuç `/var/lib/cabukpos-ops/production-release.json` içine yazılır.
+Bu script uygulamayı deploy etmez veya otomatik geri dönüş başlatmaz.
+
+`live_fixture.mjs create|cleanup <snapshot-dir>` yalnız işaretli, geçici tenant
+ve üç doğrulanmış `.invalid` test hesabını yönetir; kayıt/davet e-postası yoktur.
+Yerel `e2e/release-smoke.mjs`, BASE ve RELEASE_FIXTURE_FILE ile sahip/HQ/şube
+girişlerini ve erişim kapılarını sınar. Cleanup kullanıcıları, oturumlarını ve
+test tenant'ını kaldırır; başka tenant'a dokunmamak için ID+ad işareti doğrulanır.
+Yerel fixture dosyasını da test bittikten sonra kaldırın. DB bağlantısı root
+ayarını okuyabildiğinden fixture aracı yalnız kontrollü operatör çalıştırması içindir.
+
 Mevcut PostgreSQL 18 imajı digest ile sabittir, iş sırasında image indirilmez:
 `postgres@sha256:edb0c08dc33befd0262ab3b5cf1c4f3f8cfd8b09e88c05b45adee29d6761ddb6`.
 Container başına 512 MB bellek ve 0.5 CPU sınırı vardır. DB bağlantısı

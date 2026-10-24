@@ -18,10 +18,21 @@ COUNTS = """select json_build_array(
 )::text;"""
 
 
+def release_transaction(migration_rls):
+    totals = COUNTS.strip().removeprefix("select ").removesuffix(";")
+    protected = "'category_station_routes','product_station_routes','stores','products','sales','stock_movements','stock_transfers','stock_transfer_lines','store_product_settings'"
+    transaction = "BEGIN ISOLATION LEVEL REPEATABLE READ;\nSET LOCAL lock_timeout='5s';\nSET LOCAL statement_timeout='60s';\n"
+    transaction += "SELECT pg_advisory_xact_lock(20261024,1);\nCREATE TEMP TABLE cabukpos_release_before ON COMMIT DROP AS SELECT " + totals + " AS totals;\n"
+    transaction += migration_rls + "\nDO $gate$ BEGIN\nIF (SELECT totals FROM cabukpos_release_before) IS DISTINCT FROM (SELECT " + totals + ") THEN RAISE EXCEPTION 'release data totals changed'; END IF;\n"
+    transaction += "IF (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN (" + protected + ") AND c.relrowsecurity AND c.relforcerowsecurity) <> 9 THEN RAISE EXCEPTION 'release forced RLS incomplete'; END IF;\nEND $gate$;\nCOMMIT;\n"
+    return transaction
+
+
 def check_release(database_container, work, source):
     def sql(statement):
         result = sp.run(["docker", "exec", "-i", database_container, "psql", "-X", "-U", "rehearsal",
-                    "-d", "rehearsal", "-At", "-v", "ON_ERROR_STOP=1", "--single-transaction"],
+                    "-d", "rehearsal", "-At", "-v", "ON_ERROR_STOP=1",
+                    *([] if statement.startswith("BEGIN ") else ["--single-transaction"])],
                    input=statement.encode(), capture_output=True)
         if result.returncode:
             # Static schema diagnostics only; never print failing row data or SQL input.
@@ -43,7 +54,7 @@ def check_release(database_container, work, source):
     (work.parent / "release-schema-inventory.json").write_text(inventory + "\n")
     before = sql(COUNTS)
     for _ in range(2):
-        sql(migration + "\n" + rls)
+        sql(release_transaction(migration + "\n" + rls))
         if sql(COUNTS) != before:
             raise RuntimeError("release migration changed existing counts/totals")
     print("Release SQL + RLS: transaction and repeat application passed; data counts/totals preserved", flush=True)
