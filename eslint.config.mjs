@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored upstream code is checked by its provenance hashes and bundle gate.
+    "vendor/**",
   ]),
 ]);
 

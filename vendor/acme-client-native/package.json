@@ -1,0 +1,25 @@
+{
+  "name": "@cabukpos/acme-client-native",
+  "version": "5.4.0-cabukpos.1",
+  "private": true,
+  "description": "Controlled native-crypto-only derivative of acme-client 5.4.0; legacy forge API removed",
+  "license": "MIT",
+  "main": "src/index.js",
+  "types": "types/index.d.ts",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "src",
+    "types",
+    "LICENSE",
+    "UPSTREAM.json",
+    "README.md"
+  ],
+  "dependencies": {
+    "@peculiar/x509": "^1.11.0",
+    "asn1js": "^3.0.5",
+    "axios": "^1.7.2",
+    "debug": "^4.3.5"
+  }
+}

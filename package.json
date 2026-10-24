@@ -44,7 +44,7 @@
     "db:verify:billing-report": "node scripts/verify-billing-report-schema.mjs",
     "db:push:test": "DATABASE_URL=${TEST_DATABASE_URL:-postgres://yigiterturk@localhost:5432/cabukpos_test} node node_modules/drizzle-kit/bin.cjs push --force && npm run db:rls:test",
     "db:rls:test": "MIGRATE_DATABASE_URL=${TEST_DATABASE_URL:-postgres://yigiterturk@localhost:5432/cabukpos_test} node scripts/db-rls.mjs",
-    "agent:build": "esbuild agent/src/main.ts --bundle --platform=node --target=node20 --format=cjs --minify --legal-comments=none --outfile=public/indir/cabukpos-agent.cjs --alias:@=.",
+    "agent:build": "node scripts/build-agent.mjs",
     "agent:dev": "node --import ./tests/ts-resolve.mjs agent/src/main.ts",
     "e2e:m1": "node --env-file-if-exists=.env.local e2e/m1.mjs",
     "e2e:m2": "node --env-file-if-exists=.env.local e2e/m2.mjs",
@@ -78,7 +78,6 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "acme-client": "^5.4.0",
     "drizzle-kit": "^0.31.11",
     "esbuild": "^0.28.2",
     "eslint": "^9",
@@ -86,6 +85,7 @@
     "fake-indexeddb": "^6.2.5",
     "playwright-core": "^1.63.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@cabukpos/acme-client-native": "file:vendor/acme-client-native"
   }
 }

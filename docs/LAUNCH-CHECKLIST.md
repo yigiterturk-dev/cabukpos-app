@@ -12,8 +12,8 @@ Bu aday henüz production’a dağıtılmadı; aşağıdaki eski production kan�
 
 ### Teknik kapı — mevcut durum
 
-- [x] Son yerel kalite kapısı (2026-10-24): Node 22.23.4, `npm test` 477/477, lint + typecheck + production build
-- [x] Web production dependency audit: `npm audit --omit=dev` 0 vulnerability (2026-10-24; Next 16.4.1 + Zod 4.6.6). Tam audit sertifika ajanının acme-client/node-forge zincirinde 2 high kaydı içerir; yamasız uyarı ve kapsam RELEASE-2026-10-24.md içinde açıkça kayıtlıdır.
+- [x] Son yerel kalite kapısı (2026-10-24): Node 22.23.4, `npm test` 482/482, lint + typecheck + production build
+- [x] Web production dependency audit: `npm audit --omit=dev` 0 vulnerability (2026-10-24; Next 16.4.1 + Zod 4.6.6). Native-only ACME türevi sonrası tam dependency audit de 0; kaynak/lisans ve bundle kapısı RELEASE-2026-10-24.md içinde kayıtlıdır.
 - [x] `npm run qa:static`: lint + typecheck
 - [x] `npm run build`: Webpack production build
 - [x] Production `/api/health` ve `/api/ready`: `https://cabukpos-app.vercel.app` üzerinde health `ok:true`, ready `database:ok`

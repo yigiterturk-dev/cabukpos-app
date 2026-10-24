@@ -58,13 +58,25 @@ jobs:
         run: npm run db:backup
       - name: İzole Postgres 18'e restore provası
         run: npm run db:restore:rehearsal
+      - name: Restore edilen veride release şema ve RLS geçişi
+        run: |
+          set -euo pipefail
+          test "$REHEARSAL_DATABASE_URL" = "postgres://provali:provali@localhost:5432/provadb"
+          test "$REHEARSAL_DATABASE_URL" != "$MIGRATE_DATABASE_URL"
+          counts_sql="select json_build_array((select count(*) from tenants),(select count(*) from users),(select count(*) from stores),(select count(*) from products),(select count(*) from sales),(select coalesce(sum(total),0) from sales),(select count(*) from stock_movements),(select coalesce(sum(qty_milli),0) from stock_movements))::text"
+          before_counts="$(psql "$REHEARSAL_DATABASE_URL" -X -At -v ON_ERROR_STOP=1 -c "$counts_sql")"
+          psql "$REHEARSAL_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction \
+            -f db/releases/2026-10-24-hq-stock.sql -f db/rls.sql
+          after_counts="$(psql "$REHEARSAL_DATABASE_URL" -X -At -v ON_ERROR_STOP=1 -c "$counts_sql")"
+          test "$before_counts" = "$after_counts" || { echo "Restore sonrası release geçişinde veri toplamları değişti." >&2; exit 1; }
+          echo "Release şema + RLS uygulandı; mevcut veri sayıları ve toplamları korundu."
       - name: Restore edilen DB ile uygulama readiness provası
         run: |
           set -euo pipefail
-          npm run build
+          DATABASE_URL="postgres://cabukpos_app:dev-app-pass@localhost:5432/provadb" npm run build
           port=3199
           log_file=/tmp/cabukpos-restore-start.log
-          DATABASE_URL="$REHEARSAL_DATABASE_URL" \
+          DATABASE_URL="postgres://cabukpos_app:dev-app-pass@localhost:5432/provadb" \
             AUTH_SECRET="$(openssl rand -hex 32)" \
             CRON_SECRET="$(openssl rand -hex 32)" \
             APP_URL="http://127.0.0.1:${port}" \

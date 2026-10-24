@@ -2,7 +2,8 @@
 // DNS kayıtlarını (A = LAN IP, TXT = ACME) bulut yazar, yalnız bu ajanın adlarına. Bulutta DNS sağlayıcısı yoksa 501 → atlanır.
 import fs from "node:fs";
 import path from "node:path";
-import * as acme from "acme-client";
+import { createPrivateKey, X509Certificate } from "node:crypto";
+import * as acme from "@cabukpos/acme-client-native";
 import { setDns } from "./cloud";
 
 export type Tls = { key: string; cert: string; expiresAt: Date };
@@ -12,7 +13,10 @@ export function loadCert(dir: string): Tls | null {
   try {
     const cert = fs.readFileSync(path.join(dir, "lan.crt"), "utf8");
     const key = fs.readFileSync(path.join(dir, "lan.key"), "utf8");
-    return { key, cert, expiresAt: acme.crypto.readCertificateInfo(cert).notAfter };
+    const certificate = new X509Certificate(cert);
+    const expiresAt = new Date(certificate.validTo);
+    if (!certificate.checkPrivateKey(createPrivateKey(key)) || Date.parse(certificate.validFrom) > Date.now() || expiresAt.getTime() <= Date.now()) return null;
+    return { key, cert, expiresAt };
   } catch {
     return null;
   }
