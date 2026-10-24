@@ -1,0 +1,11 @@
+[Unit]
+Description=CabukPOS weekly restore rehearsal (Monday 04:30 UTC)
+
+[Timer]
+OnCalendar=Mon *-*-* 04:30:00 UTC
+Persistent=true
+RandomizedDelaySec=60
+Unit=cabukpos-restore.service
+
+[Install]
+WantedBy=timers.target

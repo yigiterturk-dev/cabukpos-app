@@ -1,0 +1,12 @@
+[Unit]
+Description=CabukPOS isolated restore rehearsal
+After=network-online.target docker.service cabukpos-backup.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/cabukpos-ops/maintenance.py restore
+UMask=0077
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=idle
