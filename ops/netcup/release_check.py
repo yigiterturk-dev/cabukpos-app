@@ -111,7 +111,10 @@ def check_release(database_container, work, source):
         if result.splitlines()[-len(protected):] != ["0"] * len(protected):
             raise RuntimeError("tenant context leaked business rows")
     tenant = str(uuid.UUID(sql("select id from tenants order by id limit 1;")))
-    scoped = "\n".join(f"select count(*) from {table} where tenant_id='{tenant}'::uuid;" for table in protected)
+    scoped = "\n".join(
+        f"select count(*) from {table} where " +
+        (f"brand_id in (select id from brands where tenant_id='{tenant}'::uuid)" if table == "brand_products"
+         else f"tenant_id='{tenant}'::uuid") + ";" for table in protected)
     expected = sql(scoped).splitlines()
     actual = sql("set local role cabukpos_app; select set_config('app.tenant_id', '" + tenant + "', true);\n" + queries)
     if actual.splitlines()[-len(protected):] != expected:
@@ -149,13 +152,26 @@ def check_release(database_container, work, source):
         if "PASS" not in audit:
             raise RuntimeError("runtime audit did not report PASS")
         print("Application: production Next.js ready with app DB role; runtime audit PASS", flush=True)
-        smoke = run(["docker", "exec", "-e", "BASE=http://127.0.0.1:3199", "-e", "RELEASE_REHEARSAL=isolated",
+        row_counts = """CREATE TEMP TABLE fixture_rows(t text,n bigint) ON COMMIT DROP;
+DO $rows$ DECLARE t text; n bigint; BEGIN
+ FOR t IN SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename LOOP
+  EXECUTE format('select count(*) from public.%I',t) INTO n;
+  INSERT INTO fixture_rows VALUES(t,n);
+ END LOOP;
+END $rows$;
+SELECT json_object_agg(t,n ORDER BY t)::text FROM fixture_rows;"""
+        fixture_before = sql(row_counts).splitlines()[-1]
+        smoke_result = sp.run(["docker", "exec", "-e", "BASE=http://127.0.0.1:3199", "-e", "RELEASE_REHEARSAL=isolated",
                      app_name, "node", "--experimental-strip-types", "--import", "./tests/ts-resolve.mjs",
-                     "ops/netcup/release_smoke.mjs"]).decode()
+                     "ops/netcup/release_smoke.mjs"], capture_output=True)
+        smoke = smoke_result.stdout.decode(errors="replace")
+        if smoke_result.returncode:
+            hints = [line for line in smoke.splitlines() if line.startswith(("Release stage:", "Release failure:"))]
+            raise RuntimeError("release workflow failed; " + " / ".join(hints)[-1500:])
         if "Release workflows PASS" not in smoke:
             raise RuntimeError("release business workflow checks failed")
         print("Release business workflows: partial receipts, expiry, PIN attendance, bookings, transfers and tenant scope PASS", flush=True)
-        if sql(COUNTS) != before:
+        if sql(COUNTS) != before or sql(row_counts).splitlines()[-1] != fixture_before:
             raise RuntimeError("workflow fixture cleanup did not preserve source counts/totals")
         (work.parent / "release-evidence.json").write_text(json.dumps({
             "source_snapshot": source.name, "build_id": build_id,

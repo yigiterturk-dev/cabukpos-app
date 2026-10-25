@@ -20,6 +20,8 @@ const url=new URL(process.env.DATABASE_URL??''),base=process.env.BASE;
 assert.equal(process.env.RELEASE_REHEARSAL,'isolated');
 assert.equal(url.hostname,'127.0.0.1');assert.equal(url.pathname,'/rehearsal');assert.equal(base,'http://127.0.0.1:3199');
 const db=getDb(),tenants=[],rateKeys=[];
+let stage='fixtures';
+const step=name=>{stage=name;console.log('Release stage: '+name);};
 const pin='849206',token=newDeviceToken();
 try{
  for(let i=0;i<2;i++){const[t]=await db.insert(schema.tenants).values({name:`Isolated release fixture ${randomUUID()}`,vertical:'restoran'}).returning();tenants.push(t.id);}
@@ -38,6 +40,7 @@ try{
  const storeId=f.stores[0].id,productId=f.products[0].id,orderId=randomUUID(),receiptId=randomUUID();
  const actor={id:f.owner.id,role:'sahip',storeId:null};
  rateKeys.push(`attendance-device:${f.device.id}`,`attendance-pin:${tid}:${f.person.id}`,`stock-check:${f.device.id}`,`onay:${f.device.id}`);
+ step('partial receipts');
  const part={id:receiptId,note:'First vehicle',lines:[{productId,qtyMilli:4000,lotCode:'FIRST',expiresOn:istToday(Date.now(),30)}]};
  await withTenant(tid,async tx=>{
   await createProcurement(tx,tid,storeId,`user:${actor.id}`,{id:orderId,supplierId:f.supplier.id,note:'Rehearsal',lines:[{productId,qtyMilli:10000,unitCost:2500,lotCode:'ORDER',expiresOn:null}]});
@@ -47,10 +50,12 @@ try{
  await withTenant(tid,async tx=>{const[o]=await tx.select().from(schema.procurementOrders).where(eq(schema.procurementOrders.id,orderId));const r=await tx.select().from(schema.procurementReceipts).where(eq(schema.procurementReceipts.orderId,orderId));assert.equal(r.length,1);assert.equal(remainingProcurement(o,r)[0].remainingMilli,6000);});
  await assert.rejects(withTenant(tid,tx=>receiveProcurementPart(tx,tid,storeId,actor.id,orderId,{...part,id:randomUUID(),lines:[{...part.lines[0],qtyMilli:7000}]})),/kalanını aşamaz/);
  await withTenant(tid,tx=>receiveProcurementPart(tx,tid,storeId,actor.id,orderId,{id:randomUUID(),note:'Second vehicle',lines:[{productId,qtyMilli:6000,lotCode:'SECOND',expiresOn:istToday(Date.now(),60)}]}));
+ step('shipments');
  const shipment=await withTenant(tid,tx=>recordTransfer(tx,tid,actor,{fromStoreId:storeId,toStoreId:f.stores[1].id,note:'Rehearsal transfer',lines:[{productId,qty:'2'}]}));assert.ok('id'in shipment);
  await withTenant(tid,async tx=>{assert.equal((await stockLevels(tx,f.stores[1].id)).find(p=>p.id===productId).level,0);assert.ok('id'in await changeShipment(tx,tid,actor,shipment.id,'yolda'));});
  await Promise.all([1,2].map(()=>withTenant(tid,tx=>changeShipment(tx,tid,actor,shipment.id,'teslim'))));
  await withTenant(tid,async tx=>{assert.equal((await stockLevels(tx,storeId)).find(p=>p.id===productId).level,8000);assert.equal((await stockLevels(tx,f.stores[1].id)).find(p=>p.id===productId).level,2000);});
+ step('bookings and plans');
  const booking={id:randomUUID(),name:'Fixture reservation',phone:'0000000000',guests:2,note:'Rehearsal',at:timeToAt(istToday(Date.now(),1),'19:00')};
  const ctx={tenantId:tid,storeId};
  assert.equal((await bookReservation(ctx,booking,'rehearsal')).id,booking.id);
@@ -58,6 +63,7 @@ try{
  await assert.rejects(bookReservation(ctx,{...booking,id:randomUUID()},'rehearsal'),/masa/);
  await saveStaffPlan({...ctx,actor},{id:randomUUID(),revision:null,staffId:f.person.id,kind:'vardiya',title:'Fixture plan',startsAt:booking.at,endsAt:new Date(booking.at.getTime()+2*3600000),breakMinutes:0,note:''});
  await withTenant(tid,tx=>saveSettlement(tx,tid,storeId,`user:${actor.id}`,{platform:'mock',fromDay:istToday(),toDay:istToday(),commissionBps:1000,commissionBase:'gross',courierCost:0,adjustment:0,actual:0,note:'Fixture ledger'}));
+ step('attendance HTTP');
  const request=async(path,body,{authenticated=true,origin=base}={})=>{
   const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',Origin:origin,...(authenticated?{Cookie:`cz_device=${token}`}:{})},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});return{status:r.status,body:await r.json()};
  };
@@ -68,12 +74,14 @@ try{
  assert.equal((await request('/api/kasa/attendance',{...staff,direction:'in',requestId:entry})).body.record.id,entry);
  assert.equal((await request('/api/kasa/attendance',{...staff,direction:'out',sessionId:entry})).status,200);
  assert.ok((await request('/api/kasa/attendance',{...staff,direction:'in',requestId:entry})).body.record.endsAt);
+ step('expiry HTTP');
  const expired=await withTenant(tid,async tx=>{await writeStock(tx,{tenantId:tid,storeId,productId:f.products[1].id,kind:'alis',qtyMilli:2000,actor:'rehearsal'});return labelStock(tx,tid,storeId,'rehearsal',{productId:f.products[1].id,qtyMilli:2000,code:'EXPIRED',expiresOn:istToday(Date.now(),-1)});});
  const check={lines:[{productId:f.products[1].id,qtyMilli:1000}]};
  assert.equal((await request('/api/kasa/stock-check',check,{authenticated:false})).status,401);
  assert.equal((await request('/api/kasa/stock-check',check)).status,409);
  const response=await fetch(base+'/api/sync/catalog',{headers:{Cookie:`cz_device=${token}`},signal:AbortSignal.timeout(20000)});assert.equal(response.status,200);const catalog=await response.json();assert.ok(catalog.catalog.expirySafety.lots.some(l=>l.productId===f.products[1].id));
  await withTenant(tid,tx=>disposeLot(tx,tid,storeId,'rehearsal',expired));assert.equal((await request('/api/kasa/stock-check',check)).status,200);
+ step('PIN approval and revocation');
  const approval=await request('/api/kasa/onay',{staffId:f.person.id,pin});assert.equal(approval.status,200);assert.ok(approval.body.token);
  const deviceCtx={...ctx,deviceId:f.device.id,receiptPrefix:f.device.receiptPrefix},tabId=randomUUID(),lineId=randomUUID();
  const doc=ev=>({kind:'tab',id:randomUUID(),tabId,tableId:null,staffId:f.person.id,approvedBy:null,at:new Date().toISOString(),ev});
@@ -83,12 +91,17 @@ try{
  assert.equal((await applyDoc(deviceCtx,comp())).ok,true);
  await withTenant(tid,tx=>tx.update(schema.staff).set({permissions:{comp:false}}).where(eq(schema.staff.id,f.person.id)));
  assert.equal((await applyDoc(deviceCtx,comp())).ok,false);
+ step('platform index and tenant isolation');
  const externalId=`fixture-${randomUUID()}`;
  for(const platform of ['mock','getir'])await withTenant(tid,tx=>tx.insert(schema.tabEvents).values({tenantId:tid,id:randomUUID(),tabId:randomUUID(),tableId:null,storeId,deviceId:f.device.id,staffId:f.person.id,at:new Date(),type:'order',payload:{source:{platform,externalId}}}));
  await assert.rejects(withTenant(tid,tx=>tx.insert(schema.tabEvents).values({tenantId:tid,id:randomUUID(),tabId:randomUUID(),tableId:null,storeId,deviceId:f.device.id,staffId:f.person.id,at:new Date(),type:'order',payload:{source:{platform:'mock',externalId}}})));
  await withTenant(tenants[1],async tx=>{for(const table of [schema.procurementReceipts,schema.stockLots,schema.attendance,schema.reservations,schema.platformSettlements,schema.staffPlans])assert.equal((await tx.select().from(table).where(eq(table.tenantId,tid))).length,0);});
  await assert.rejects(withTenant(tenants[1],tx=>tx.insert(schema.attendance).values({tenantId:tid,storeId,staffId:f.person.id,recordedBy:'rehearsal'})));
  console.log('Release workflows PASS');
+}catch(error){
+ const location=String(error.stack??'').match(/release_smoke\.mjs:\d+:\d+/)?.[0]??'';
+ console.log('Release failure: '+stage+' '+error.name+' '+(error.code??error.cause?.code??'')+' '+location);
+ throw error;
 }finally{
  if(rateKeys.length)await db.delete(schema.loginAttempts).where(inArray(schema.loginAttempts.key,rateKeys));
  if(tenants.length)await db.delete(schema.tenants).where(inArray(schema.tenants.id,tenants));
