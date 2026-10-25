@@ -1,17 +1,25 @@
 "use client";
+import { staffCan, permissionForTab } from "@/lib/core/staff-permissions";
+
 // lib/offline/tabs.ts — Adisyon olaylarının yerel deposu ve canlı akış (tarayıcı).
 // Yerel olay: tabEvents'e seq=null ile + giden kutusuna tek işlemde. Sunucu yankısı aynı kimlikle gelir, seq'li hâli kalır.
 import type { TabEv, TabEvent } from "@/lib/core/tab";
 import { foldTabs, lanMergePlan } from "@/lib/core/tab";
 import type { LanLink } from "@/lib/agent/config";
 import type { TabDoc } from "@/lib/sync/docs";
-import { kasaDb } from "./db";
+import { kasaDb, loadMeta } from "./db";
 
 export type NewTabEvent = { tabId: string; tableId: string | null; staffId: string | null; approvedBy?: string | null; approvalToken?: string | null; ev: TabEv };
 
 /** Olayları (sırayla) yerel depoya ve giden kutusuna yazar. Aynı milisaniyede sıra bozulmasın diye zaman 1 ms artar. */
 export async function addTabEvents(list: NewTabEvent[]): Promise<TabEvent[]> {
   const d = kasaDb();
+  const meta=await loadMeta();
+  const existing=foldTabs(await d.tabEvents.toArray());
+  for(const item of list){
+    const permission=permissionForTab(item.ev.type,item.ev.type==="void"&&!!existing.get(item.tabId)?.lines.find(l=>l.lineId===(item.ev as Extract<TabEv,{type:"void"}>).lineId)?.sent);
+    if(permission&&!staffCan(meta.catalog.staff.find(s=>s.id===(item.approvedBy??item.staffId)),permission))throw new Error("Bu işlem için personel yetkisi yok.");
+  }
   const base = Date.now();
   const events: TabEvent[] = list.map((e, i) => ({ id: crypto.randomUUID(), tabId: e.tabId, tableId: e.tableId, at: new Date(base + i).toISOString(), staffId: e.staffId, approvedBy: e.approvedBy ?? null, approvalToken: e.approvalToken ?? undefined, seq: null, ev: e.ev }));
   await d.transaction("rw", [d.tabEvents, d.outbox], async () => {

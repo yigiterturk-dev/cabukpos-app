@@ -8,7 +8,7 @@ import { scopedStoreId } from "@/lib/admin/store-scope";
 import { formatQty, isCriticalRow } from "@/lib/admin/stock-view";
 import { heatData, productData, staffData, staffEvents, summaryData } from "@/lib/admin/report";
 import { parseRange, REPORT_TABS, type ReportTab } from "@/lib/core/report";
-import { Card, PageHeader } from "@/components/ui";
+import { buttonClass, Card, PageHeader } from "@/components/ui";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 import { RangeBar, reportHref } from "@/components/reports/RangeBar";
 import { ReportMailCard } from "@/components/admin/ReportMailCard";
@@ -70,6 +70,7 @@ export default async function Raporlar({ searchParams }: { searchParams: Promise
   return (
     <>
       <PageHeader title="Raporlar" desc={`${DESC[tab.key]}${tab.key === "musteriler" ? " · İşletme geneli" : storeName ? ` · ${storeName}` : " · Şube oluşturun"}`} />
+      <div className="mb-4 flex flex-wrap gap-2"><Link href="/yonetim/platform-hesap" className={buttonClass("secondary")}>Platform hakedişi</Link><Link href="/yonetim/kurye-hesap" className={buttonClass("secondary")}>Kurye hesabı</Link></div>
       {critical.length > 0 && (
         <Card className="mb-6 border-bad/25 bg-bad-soft p-4" data-testid="critical-card">
           <div className="mb-2 flex items-baseline justify-between"><h2 className="font-semibold text-bad">Kritik stok ({critical.length})</h2><Link href="/yonetim/stok?kritik=1" className="rounded px-1 text-sm text-bad outline-none hover:underline focus-visible:ring-4 focus-visible:ring-bad/20">Stok</Link></div>

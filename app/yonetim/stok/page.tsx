@@ -62,6 +62,7 @@ export default async function Stok({ searchParams }: { searchParams: Promise<{ u
   return (
     <>
       <PageHeader title="Stok" desc="Stok takipli ürünler ve hammaddeler. Satışta reçeteye göre düşer; alış fişiyle girer; sayım o anki değeri yazar." />
+      <div className="mb-4 flex flex-wrap gap-2"><Link href="/yonetim/partiler" className={buttonClass("secondary")}>Parti / SKT</Link><Link href="/yonetim/tedarik" className={buttonClass("secondary")}>Tedarik siparişleri</Link><Link href="/yonetim/transferler" className={buttonClass("ghost")}>Sevkiyatlar</Link></div>
       <SplitView
         panel={sel ? (
           <Panel title={sel.name} tone="edit" desc={<>Şu an: <span className="tabular">{formatQty(sel.level, sel.unit)}</span></>} action={<Link href={closePanelHref} className="text-sm text-muted hover:text-ink hover:underline">kapat</Link>}>

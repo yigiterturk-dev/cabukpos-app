@@ -1,3 +1,5 @@
+"use client";
+import { staffCan } from "@/lib/core/staff-permissions";
 // lib/offline/db.ts — Kasa IndexedDB'si (Dexie). Yalnız tarayıcıda.
 // Satış, vardiya açma ve gün sonu tek işlemde hem yerel kayda hem giden kutusuna yazılır.
 import Dexie, { type Table } from "dexie";
@@ -64,6 +66,7 @@ export async function openShiftLocal(staffId: string, openingCash: number): Prom
   const d = kasaDb();
   return d.transaction("rw", [d.meta, d.outbox], async () => {
     const m = await loadMeta();
+    if (!staffCan(m.catalog.staff.find(s=>s.id===staffId),"shift")) throw new Error("Vardiya yetkisi yok.");
     if (m.shift) return m;
     const shift = { id: crypto.randomUUID(), openedBy: staffId, openedAt: new Date().toISOString(), openingCash };
     await enqueue({ kind: "shift_open", id: shift.id, staffId, at: shift.openedAt, openingCash });
@@ -84,6 +87,7 @@ export async function recordSaleLocal(staff: { id: string; name: string }, cart:
     const done = await d.sales.get(saleId);
     if (done) return { ok: true as const, sale: done };
     const m = await loadMeta();
+    if (!staffCan(m.catalog.staff.find(s=>s.id===staff.id),"sale")) return {ok:false as const,error:"Satış ve tahsilat yetkisi yok."};
     if (!m.device || !m.shift) return { ok: false as const, error: "Açık vardiya yok." };
     if (!cart.length) return { ok: false as const, error: "Sepet boş." };
     const t = totals(cart);
@@ -127,6 +131,7 @@ export async function recordRefundLocal(staff: { id: string; name: string }, app
     const done = await d.sales.get(refundId);
     if (done) return { ok: true as const, sale: done };
     const m = await loadMeta();
+    if (!staffCan(m.catalog.staff.find(s=>s.id===approvedBy),"refund")) return {ok:false as const,error:"İade onay yetkisi yok."};
     if (!m.device || !m.shift) return { ok: false as const, error: "Açık vardiya yok." };
     const picked = lines.filter((l) => l.qtyMilli > 0);
     if (!picked.length) return { ok: false as const, error: "İade edilecek ürün seçin." };
@@ -151,6 +156,7 @@ export async function shiftSales(shiftId: string) {
 export async function safeDropLocal(staffId: string, amount: number): Promise<Meta | null> {
   const d = kasaDb();
   const m = await loadMeta();
+    if (!staffCan(m.catalog.staff.find(s=>s.id===staffId),"safeDrop")) return null;
   if (!m.shift || amount <= 0) return null;
   const drop: CashDrop = { id: crypto.randomUUID(), at: new Date().toISOString(), amount, by: staffId };
   await enqueue({ kind: "safe_drop", id: drop.id, shiftId: m.shift.id, staffId, at: drop.at, amount });
@@ -162,6 +168,7 @@ export async function closeShiftLocal(staffId: string, countedCash: number): Pro
   const d = kasaDb();
   return d.transaction("rw", [d.meta, d.sales, d.outbox, d.rejected], async () => {
     const m = await loadMeta();
+    if (!staffCan(m.catalog.staff.find(s=>s.id===staffId),"shift")) throw new Error("Vardiya yetkisi yok.");
     if (!m.shift) return m;
     const sales = await d.sales.where("shiftId").equals(m.shift.id).toArray();
     const closedAt = new Date().toISOString();
@@ -185,6 +192,7 @@ export async function closeShiftLocal(staffId: string, countedCash: number): Pro
 
 /** Yetkili işlem kaydı (elle çekmece açma) → giden kutusu → audit_log. */
 export async function recordAuditLocal(staffId: string, approvedBy: string | null, action: "cekmece") {
+  const m=await loadMeta(); if(!staffCan(m.catalog.staff.find(s=>s.id===(approvedBy??staffId)),"drawer")) throw new Error("Çekmece yetkisi yok.");
   await enqueue({ kind: "audit", id: crypto.randomUUID(), staffId, approvedBy, at: new Date().toISOString(), action });
 }
 

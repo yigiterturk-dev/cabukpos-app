@@ -1,4 +1,5 @@
 "use server";
+import { writeStock } from "@/lib/admin/stock-lots";
 // Reçete (ürün / seçenek / ara ürün) ve üretim. Kural lib/core/recipe.ts; her yazma requireWriter + withTenant (RLS) + denetim kaydı.
 import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -84,7 +85,7 @@ export async function produce(_: RecipeState, form: FormData): Promise<RecipeSta
     if (!storeId) return { error: "Şube yok." };
     const [prod] = await tx.insert(schema.productions).values({ tenantId: a.tenantId, storeId, productId, batchesMilli, note, createdBy: a.id }).returning({ id: schema.productions.id });
     const actor = `user:${a.id}`;
-    await tx.insert(schema.stockMovements).values(moves.map((m) => ({ tenantId: a.tenantId, storeId, productId: m.productId, kind: "uretim" as const, qtyMilli: m.qtyMilli, productionId: prod.id, actor, note })));
+    await writeStock(tx, moves.map((m) => ({ tenantId: a.tenantId, storeId, productId: m.productId, kind: "uretim" as const, qtyMilli: m.qtyMilli, productionId: prod.id, actor, note })));
     const costs = new Map((await tx.select({ id: P.id, cost: P.cost }).from(P).where(inArray(P.id, items.map((i) => i.ingredientId)))).map((c) => [c.id, c.cost]));
     const cost = batchCost(items, (id) => costs.get(id), p.yieldMilli);
     if (cost !== null) await tx.update(P).set({ cost, costAt: new Date() }).where(eq(P.id, productId));

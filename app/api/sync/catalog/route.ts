@@ -37,7 +37,7 @@ export async function GET(req: Request) {
           .leftJoin(schema.storeProductSettings, and(eq(schema.storeProductSettings.productId, schema.products.id), eq(schema.storeProductSettings.storeId, device.storeId)))
           .where(and(eq(schema.products.active, true), eq(schema.products.sellable, true), or(isNull(schema.storeProductSettings.id), eq(schema.storeProductSettings.active, true))))
           .orderBy(asc(schema.products.sort), asc(schema.products.name)),
-        tx.select({ id: schema.staff.id, name: schema.staff.name, role: schema.staff.role, pinHash: schema.staff.pinHash }).from(schema.staff).where(eq(schema.staff.active, true)).orderBy(asc(schema.staff.id)),
+        tx.select({ id: schema.staff.id, name: schema.staff.name, role: schema.staff.role, permissions: schema.staff.permissions, pinHash: schema.staff.pinHash }).from(schema.staff).where(eq(schema.staff.active, true)).orderBy(asc(schema.staff.id)),
         tx.select({ id: sh.id, openedBy: sh.openedBy, openedAt: sh.openedAt, openingCash: sh.openingCash }).from(sh).where(and(eq(sh.deviceId, device.id), isNull(sh.closedAt))).orderBy(desc(sh.openedAt)).limit(1),
         tx.select({ modes: schema.fiscalSettings.channelModes, provider: schema.fiscalSettings.provider }).from(schema.fiscalSettings),
       ]),

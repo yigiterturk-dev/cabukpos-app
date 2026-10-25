@@ -1,3 +1,4 @@
+import { writeStock } from "@/lib/admin/stock-lots";
 // lib/admin/purchase.ts — Alış fişi ve tedarikçi (sunucu, tx içinde; RLS kiracıyı ayırır). Kural lib/core/purchase.ts.
 // Alış: kalem başına +alis hareketi (purchase_id), ürün maliyeti = birim fiyat (eski tarihli fiş ezmez).
 // İptal: ters alis hareketleri; maliyet geri alınmaz.
@@ -6,7 +7,7 @@ import { schema, type Tx } from "@/db";
 import { isVatRate } from "@/lib/core/money";
 import { purchaseLineTotal, purchaseTotal, shouldUpdateCost, supplierBalance } from "@/lib/core/purchase";
 
-export type PurchaseInput = { storeId: string; supplierId: string | null; docNo: string | null; date: string; note: string | null; lines: { productId: string; qtyMilli: number; unitCost: number }[] };
+export type PurchaseInput = { storeId: string; supplierId: string | null; docNo: string | null; date: string; note: string | null; receivedNow?: boolean; lines: { productId: string; qtyMilli: number; unitCost: number }[] };
 const P = schema.products, Pu = schema.purchases, PL = schema.purchaseLines;
 
 /** Kaydeder; kiracıda olmayan ürün/tedarikçi → hata metni. */
@@ -22,9 +23,9 @@ export async function recordPurchase(tx: Tx, tenantId: string, userId: string | 
   const vat = new Map(prods.map((p) => [p.id, isVatRate(p.vatRate) ? p.vatRate : null])); // KDV muhasebesi için satırda dondurulur
   const [pu] = await tx.insert(Pu).values({ tenantId, storeId: input.storeId, supplierId: input.supplierId, docNo: input.docNo, date: input.date, total: purchaseTotal(input.lines), note: input.note, createdBy: userId }).returning({ id: Pu.id });
   await tx.insert(PL).values(input.lines.map((l) => ({ tenantId, purchaseId: pu.id, ...l, vatRate: vat.get(l.productId) ?? null, total: purchaseLineTotal(l) })));
-  const at = new Date(`${input.date}T12:00:00+03:00`); // fiş günü; saat bilinmez → öğlen (İstanbul)
+  const at = input.receivedNow ? new Date() : new Date(`${input.date}T12:00:00+03:00`); // teslim alınan sipariş: sunucu anı
   const now = new Date();
-  await tx.insert(schema.stockMovements).values(input.lines.map((l) => ({ tenantId, storeId: input.storeId, productId: l.productId, kind: "alis" as const, qtyMilli: l.qtyMilli, at: at > now ? now : at, purchaseId: pu.id, actor: userId ? `user:${userId}` : "system" })));
+  await writeStock(tx, input.lines.map((l) => ({ tenantId, storeId: input.storeId, productId: l.productId, kind: "alis" as const, qtyMilli: l.qtyMilli, at: at > now ? now : at, purchaseId: pu.id, actor: userId ? `user:${userId}` : "system" })));
   // Maliyet gün bazında: fiş günü ≥ son maliyet günü ise ezer (aynı gün → sonra kaydedilen). Aynı üründe birden çok kalem → sonuncusu.
   const start = new Date(`${input.date}T00:00:00+03:00`);
   const costAt = new Map(prods.map((p) => [p.id, p.costAt]));
@@ -40,10 +41,17 @@ export async function recordPurchase(tx: Tx, tenantId: string, userId: string | 
 const dayOf = (d: Date) => new Date(d.getTime() + 3 * 3600_000).toISOString().slice(0, 10);
 
 export async function cancelPurchase(tx: Tx, userId: string | null, id: string): Promise<string | null> {
-  const [pu] = await tx.update(Pu).set({ status: "iptal" }).where(and(eq(Pu.id, id), eq(Pu.status, "kayitli"))).returning({ id: Pu.id, storeId: Pu.storeId, tenantId: Pu.tenantId });
+  const [pu] = await tx.select().from(Pu).where(and(eq(Pu.id, id), eq(Pu.status, "kayitli"))).for("update");
   if (!pu) return "Alış bulunamadı ya da zaten iptal.";
   const lines = await tx.select({ productId: PL.productId, qtyMilli: PL.qtyMilli }).from(PL).where(eq(PL.purchaseId, id));
-  if (lines.length) await tx.insert(schema.stockMovements).values(lines.map((l) => ({ tenantId: pu.tenantId, storeId: pu.storeId, productId: l.productId, kind: "alis" as const, qtyMilli: -l.qtyMilli, purchaseId: id, actor: userId ? `user:${userId}` : "system", note: "alış iptali" })));
+  if (lines.length) await tx.select({id:P.id}).from(P).where(inArray(P.id,lines.map(l=>l.productId))).orderBy(P.id).for("update");
+  const lots = await tx.select().from(schema.stockLots).where(eq(schema.stockLots.purchaseId,id));
+  for (const line of lines) {
+    const linked=lots.filter(l=>l.productId===line.productId);
+    if(linked.length&&linked.reduce((n,l)=>n+l.remaining,0)<line.qtyMilli)return "Bu alışın partisinden tüketim veya sevkiyat yapıldı. Alışı iptal etmek yerine uygun iade/düzeltme işlemini kaydedin.";
+  }
+  await tx.update(Pu).set({status:"iptal"}).where(eq(Pu.id,id));
+  if (lines.length) await writeStock(tx, lines.map((l) => ({ tenantId: pu.tenantId, storeId: pu.storeId, productId: l.productId, kind: "alis" as const, qtyMilli: -l.qtyMilli, purchaseId: id, actor: userId ? `user:${userId}` : "system", note: "alış iptali" })));
   return null;
 }
 

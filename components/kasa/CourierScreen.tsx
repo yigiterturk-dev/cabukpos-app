@@ -3,7 +3,9 @@
 // Beklenen nakit gerçek vardiya ödemelerinden hesaplanır; kapanış kasiyer/müdür PIN'i ister.
 import { useEffect, useRef, useState } from "react";
 import { kasaFmt } from "./kasa-format";
-import { deliveryStatus, type PayIntent, type TabState } from "@/lib/core/tab";
+import { deliveryStatus, type DeliveryMethod, type TabState } from "@/lib/core/tab";
+import type { Payment } from "@/lib/core/payment";
+import { CourierMixedPayment } from "./CourierMixedPayment";
 import { istToday } from "@/lib/core/report";
 import { formatPhone, intentLabel, phoneHref, PAY_INTENTS } from "@/lib/core/delivery";
 import { shiftSales } from "@/lib/offline/db";
@@ -22,7 +24,7 @@ const btn = "press inline-flex min-h-12 items-center justify-center gap-1.5 roun
 const strong = "press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] bg-espresso px-3 py-2 text-sm font-medium text-white shadow-card outline-none hover:bg-espresso-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40";
 export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add, onDeliver, onCloseShift }: {
   meta: Meta; courier: Cashier; tabs: Map<string, TabState>; tabsLoaded?: boolean; now: number; add: (list: NewTabEvent[]) => Promise<unknown>;
-  onDeliver: (tab: TabState, method: PayIntent) => Promise<void>; onCloseShift: () => void;
+  onDeliver: (tab: TabState, method: DeliveryMethod, payments?: Payment[]) => Promise<void>; onCloseShift: () => void;
 }) {
   const mainProps = useKasaMainProps();
   const { TL } = kasaFmt(meta);
@@ -167,6 +169,7 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
                 className={`${btn} ${deliver.order?.payIntent === p.value ? "border-brand font-medium text-brand" : ""}`}>{busy === "deliver" ? "Teslimat kaydediliyor…" : p.label}</button>
             ))}
           </div>
+          {deliver.remaining > 0 && <CourierMixedPayment total={deliver.remaining} meta={meta} busy={busy !== null} onPay={payments => { void run("deliver", () => onDeliver(deliver, "karma", payments), "Teslimat ve karma tahsilat kaydedildi."); }} />}
           <button type="button" disabled={busy !== null} onClick={() => setDeliver(null)} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 mt-4 w-full disabled:cursor-not-allowed disabled:opacity-40">Vazgeç</button>
         </Modal>
       )}

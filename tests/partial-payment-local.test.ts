@@ -11,7 +11,7 @@ test("ürün bazında kısmi karma ödeme: kalan masa açık, ikinci ödeme kapa
   const db = kasaDb();
   await db.delete(); await db.open();
   const at = new Date().toISOString();
-  await db.meta.put({ ...emptyMeta(), device: { id: "device", name: "Test", receiptPrefix: "T1", tenantName: "Test", vertical: "restoran", storeName: "Merkez", storeAddress: null, nextReceiptNo: 1 }, shift: { id: "shift", openedBy: "staff", openedAt: at, openingCash: 10000 } });
+  await db.meta.put({ ...emptyMeta(), catalog:{...emptyMeta().catalog,staff:[{id:"staff",name:"Test",role:"kasiyer"}]}, device: { id: "device", name: "Test", receiptPrefix: "T1", tenantName: "Test", vertical: "restoran", storeName: "Merkez", storeAddress: null, nextReceiptNo: 1 }, shift: { id: "shift", openedBy: "staff", openedAt: at, openingCash: 10000 } });
   const initial: TabEvent[] = [
     { id: "open", tabId: "tab", tableId: "table", at, staffId: "staff", approvedBy: null, seq: 1, ev: { type: "open", guests: 2 } },
     { id: "add", tabId: "tab", tableId: "table", at, staffId: "staff", approvedBy: null, seq: 2, ev: { type: "add", lineId: "food", productId: "food", name: "Yemek", unitPrice: 30000, vatRate: 10, qtyMilli: 2000, options: [], note: null, stationId: null } },

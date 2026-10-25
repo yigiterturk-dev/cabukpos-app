@@ -7,6 +7,7 @@ import type { LineOption } from "./options";
 export type KitchenStatus = "yeni" | "hazirlaniyor" | "hazir" | "teslim";
 export type TabKind = "masa" | "paket" | "platform";
 export type PayIntent = "nakit" | "kart" | "yemek_karti" | "online";
+export type DeliveryMethod = PayIntent | "karma";
 // M6: paket/platform siparişinin müşteri + teslimat bilgisi. Birden çok "order" olayı → son geçerli (düzeltme).
 export type OrderInfo = {
   customerId: string | null; name: string; phone: string; address: string; directions: string | null; zoneId: string | null;
@@ -39,7 +40,7 @@ export type TabEv =
   | { type: "reject"; reason: string }
   | { type: "courier"; staffId: string | null }
   | { type: "out" }
-  | { type: "delivered"; method: PayIntent }
+  | { type: "delivered"; method: DeliveryMethod }
   | { type: "handover" }
   | { type: "cancel"; reason: string };
 
@@ -49,7 +50,7 @@ export type TabLine = Extract<TabEv, { type: "add" }> & { addedAt: string; staff
 export type Ticket = { id: string; stationId: string | null; lineIds: string[]; at: string; staffId: string | null; status: KitchenStatus; readyAt: string | null; printed: boolean };
 export type Delivery = {
   courierId: string | null; acceptedAt: string | null; prepMin: number | null; rejected: string | null; cancelled: string | null;
-  outAt: string | null; deliveredAt: string | null; method: PayIntent | null; handedOver: boolean;
+  outAt: string | null; deliveredAt: string | null; method: DeliveryMethod | null; handedOver: boolean;
 };
 export type TabState = {
   id: string; tableId: string | null; kind: TabKind; order: OrderInfo | null; delivery: Delivery; openedAt: string; lastAt: string; guests: number; staffId: string | null;

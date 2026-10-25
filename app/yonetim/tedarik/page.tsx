@@ -1,0 +1,16 @@
+import Link from "next/link";
+import { randomUUID } from "node:crypto";
+import { desc, eq } from "drizzle-orm";
+import { schema, withTenant } from "@/db";
+import { requireAdmin } from "@/lib/auth/session";
+import { scopedStoreId } from "@/lib/admin/store-scope";
+import { stockLevels } from "@/lib/admin/stock";
+import { formatMoney } from "@/lib/core/money";
+import { formatQty } from "@/lib/core/stock";
+import { ProcurementForm, InventoryStatusForm } from "@/components/admin/InventoryForms";
+import { Card, Empty, PageHeader, buttonClass } from "@/components/ui";
+export const dynamic="force-dynamic";
+export default async function ProcurementPage(){const a=await requireAdmin();const data=await withTenant(a.tenantId,async tx=>{const id=await scopedStoreId(tx,a.tenantId,a.storeId);if(!id)return null;return{products:await stockLevels(tx,id),suppliers:await tx.select().from(schema.suppliers).orderBy(schema.suppliers.name),orders:await tx.select().from(schema.procurementOrders).where(eq(schema.procurementOrders.storeId,id)).orderBy(desc(schema.procurementOrders.createdAt)).limit(100)};});if(!data)return <Empty>Şube bulunamadı.</Empty>;
+ const low=data.products.filter(p=>!p.sellable&&p.minStock!==null&&p.level<p.minStock);
+ return <><PageHeader title="Tedarik siparişleri" desc="Düşük hammaddelerden sipariş oluşturun; teslim onayı alış fişi ve parti kaydını tek işlemde oluşturur."/><Link className={buttonClass("secondary")} href="/yonetim/partiler">Parti / SKT →</Link><details className="my-5 rounded-2xl border border-line bg-surface p-5"><summary className="cursor-pointer font-semibold text-brand">+ Düşük hammaddelerden sipariş ({low.length})</summary><div className="pt-4">{low.length?<ProcurementForm products={low} suppliers={data.suppliers} id={randomUUID()}/>:<Empty>Minimum seviyenin altında hammadde yok.</Empty>}</div></details><details className="mb-5 rounded-2xl border border-line bg-surface p-5"><summary className="cursor-pointer font-semibold text-brand">+ Diğer stok ürünlerinden sipariş</summary><div className="pt-4"><ProcurementForm products={data.products} suppliers={data.suppliers} id={randomUUID()}/></div></details><div className="space-y-4">{data.orders.map(o=><Card key={o.id} className="p-5"><h2 className="font-semibold">{data.suppliers.find(s=>s.id===o.supplierId)?.name} · {o.status==="siparis"?"Teslim bekliyor":o.status==="teslim"?"Teslim alındı":"İptal"}</h2><p className="text-xs text-muted">{o.id} · {o.createdAt.toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"})}</p><ul className="my-3 space-y-2">{o.lines.map(l=>{const p=data.products.find(p=>p.id===l.productId);return <li key={l.productId}>{p?.name??"Eski ürün"}: {formatQty(l.qtyMilli,p?.unit??"adet")} · {formatMoney(l.unitCost)} / birim · Parti {l.lotCode} · SKT {l.expiresOn??"—"}</li>;})}</ul><p>{o.note}</p>{o.status==="siparis"&&<div className="mt-3 flex flex-wrap gap-3"><InventoryStatusForm id={o.id} kind="receive" label="Tamamını teslim aldım · stoğa işle"/><InventoryStatusForm id={o.id} kind="cancel" label="Siparişi iptal et"/></div>}{o.purchaseId&&<Link className="mt-3 inline-block text-brand underline" href="/yonetim/alislar">Alış fişlerini görüntüle →</Link>}</Card>)}{!data.orders.length&&<Empty>Henüz tedarik siparişi yok.</Empty>}</div></>;
+}

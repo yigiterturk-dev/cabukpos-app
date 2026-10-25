@@ -2,7 +2,7 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 process.env.DATABASE_URL = "postgres://cabukpos_app:dev-app-pass@localhost:5432/cabukpos_test";
 const { getDb, withTenant, closeDb, schema } = await import("@/db");
-const { recordTransfer } = await import("@/lib/admin/transfer");
+const { recordTransfer, changeShipment } = await import("@/lib/admin/transfer");
 const { stockLevels } = await import("@/lib/admin/stock");
 const { MAX_TRANSFER_LINES } = await import("@/lib/core/transfer");
 const { eq, inArray } = await import("drizzle-orm");
@@ -36,6 +36,10 @@ test("transfer: kg ve adet tek fişte iki şubenin stoğuna yansır; maliyet de�
   const f = await fixture();
   const result = await withTenant(f.tenant.id, (tx) => recordTransfer(tx, f.tenant.id, f.actor, f.input));
   assert.ok("id" in result);
+  const pendingLevels = await withTenant(f.tenant.id, tx => stockLevels(tx, f.stores[1].id));
+  assert.ok(pendingLevels.every(p => p.level === 0), "hedef stok onaydan önce artmaz");
+  const received = await withTenant(f.tenant.id, tx => changeShipment(tx, f.tenant.id, f.actor, result.id, "teslim"));
+  assert.ok("id" in received);
   const saved = await records(f.tenant.id);
   assert.equal(saved.transfers.length, 1);
   assert.equal(saved.lines.length, 2);
@@ -58,6 +62,33 @@ test("transfer: ikinci kalemde yetersiz stok ilk kalemi de yazmaz", async () => 
   for (const rows of Object.values(saved)) assert.equal(rows.length, 0);
   const levels = await withTenant(f.tenant.id, (tx) => stockLevels(tx, f.stores[0].id));
   assert.ok(levels.every((p) => p.level === 10000));
+});
+
+test("sevkiyat: yalnız hedef teslim alır; eşzamanlı tekrar stoğu iki kez artırmaz", async () => {
+  const f = await fixture();
+  const created = await withTenant(f.tenant.id, tx => recordTransfer(tx, f.tenant.id, f.actor, f.input));
+  assert.ok("id" in created);
+  const source = { ...f.actor, role: "mudur" as const, storeId: f.stores[0].id };
+  const target = { ...f.actor, role: "mudur" as const, storeId: f.stores[1].id };
+  assert.ok("error" in await withTenant(f.tenant.id, tx => changeShipment(tx, f.tenant.id, source, created.id, "teslim")));
+  assert.ok("error" in await withTenant(f.tenant.id, tx => changeShipment(tx, f.tenant.id, target, created.id, "iptal")));
+  assert.ok("id" in await withTenant(f.tenant.id, tx => changeShipment(tx, f.tenant.id, source, created.id, "yolda")));
+  assert.equal((await records(f.tenant.id)).moves.length, 2);
+  const results = await Promise.all([1, 2].map(() => withTenant(f.tenant.id, tx => changeShipment(tx, f.tenant.id, target, created.id, "teslim"))));
+  assert.ok(results.every(r => "id" in r));
+  assert.equal((await records(f.tenant.id)).moves.length, 4);
+});
+
+test("sevkiyat iptali kaynağı bir kez geri yükler, hedefi artırmaz", async () => {
+  const f = await fixture();
+  const created = await withTenant(f.tenant.id, tx => recordTransfer(tx, f.tenant.id, f.actor, f.input));
+  assert.ok("id" in created);
+  for (let i = 0; i < 2; i++) assert.ok("id" in await withTenant(f.tenant.id, tx => changeShipment(tx, f.tenant.id, f.actor, created.id, "iptal")));
+  const source = await withTenant(f.tenant.id, tx => stockLevels(tx, f.stores[0].id));
+  const target = await withTenant(f.tenant.id, tx => stockLevels(tx, f.stores[1].id));
+  assert.ok(source.every(p => p.level === 10000)); assert.ok(target.every(p => p.level === 0));
+  assert.equal((await records(f.tenant.id)).moves.length, 4);
+  assert.ok("error" in await withTenant(f.tenant.id, tx => changeShipment(tx, f.tenant.id, f.actor, created.id, "teslim")));
 });
 
 test("transfer: tekrarlı ürün, boş/aşırı kalem, hatalı miktar ve aynı şube reddedilir", async () => {
@@ -95,7 +126,7 @@ test("transfer: ters kalem sıralı eşzamanlı fişler kaynak stoğu aşamaz", 
   assert.ok(levels.every((p) => p.level === 4000));
   const saved = await records(f.tenant.id);
   assert.equal(saved.transfers.length, 1);
-  assert.equal(saved.moves.length, 4);
+  assert.equal(saved.moves.length, 2);
 });
 
 test("transfer: transaction geri alınırsa tüm kalem ve stok hareketleri geri alınır", async () => {
@@ -121,5 +152,5 @@ test("transfer: sınırdaki 20 farklı ürün tek fişte aktarılabilir", async 
   const saved = await records(f.tenant.id);
   assert.equal(saved.transfers.length, 1);
   assert.equal(saved.lines.length, 20);
-  assert.equal(saved.moves.length, 40);
+  assert.equal(saved.moves.length, 20);
 });

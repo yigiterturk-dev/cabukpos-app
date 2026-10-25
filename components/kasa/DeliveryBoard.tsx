@@ -1,4 +1,5 @@
 "use client";
+import { staffCan } from "@/lib/core/staff-permissions";
 // Paket panosu: paket + platform siparişleri durum sütunlarında. Kabul/red (platform), kurye ata, kuryeye verildi, iptal (müdür).
 // Her işlem bir adisyon olayıdır; kurye tahsilatı kurye telefonunda (CourierScreen), gel-al paket kasada "Hesap" ile.
 import { useEffect, useRef, useState } from "react";
@@ -337,13 +338,13 @@ function CancelDialog({ meta, onMeta, waiter, busy, error, errorRef, statusMessa
           <label className="mb-4 block text-sm"><span className="mb-1 block font-medium">Gerekçe</span><input autoFocus required value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} aria-invalid={reasonInvalid || undefined} aria-describedby="delivery-cancel-reason-hint" className={`min-h-12 w-full rounded-[10px] border bg-surface px-3 py-2 outline-none focus:ring-4 ${reasonInvalid ? "border-bad focus:ring-bad/30" : "border-line focus:border-brand focus:ring-brand-ring/50"}`} /><span id="delivery-cancel-reason-hint" className={`mt-1 block text-xs ${reasonInvalid ? "text-bad" : "text-muted"}`}>{reasonInvalid ? "İptal gerekçesi en az 2 karakter olmalı." : "İptal gerekçesi kayda eklenir; en az 2 karakter girin."}</span></label>
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={onClose} className={`flex-1 ${btn}`}>Vazgeç</button>
-            <button type="button" disabled={busy || reason.trim().length < 2} onClick={() => (waiter.role === "mudur" ? onOk(null, reason.trim()) : setPin(true))} className="inline-flex min-h-12 flex-[2] items-center justify-center rounded-lg bg-bad-action px-4 py-2 text-sm font-medium text-white outline-none hover:bg-bad-action-hover focus-visible:ring-4 focus-visible:ring-bad/30 disabled:opacity-40">{busy ? "Gönderiliyor…" : waiter.role === "mudur" ? "İptal et" : "Müdür onayına"}</button>
+            <button type="button" disabled={busy || reason.trim().length < 2} onClick={() => (staffCan(meta.catalog.staff.find(s=>s.id===waiter.id),"cancel") ? onOk(null, reason.trim()) : setPin(true))} className="inline-flex min-h-12 flex-[2] items-center justify-center rounded-lg bg-bad-action px-4 py-2 text-sm font-medium text-white outline-none hover:bg-bad-action-hover focus-visible:ring-4 focus-visible:ring-bad/30 disabled:opacity-40">{busy ? "Gönderiliyor…" : staffCan(meta.catalog.staff.find(s=>s.id===waiter.id),"cancel") ? "İptal et" : "Müdür onayına"}</button>
           </div>
         </>
       ) : (
         <>
           {error && <p ref={errorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
-          <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m, token) => onOk(m.id, reason.trim(), token)} autoFocusFirst />
+          <PinPad meta={meta} onMeta={onMeta} only={(s) => staffCan(s,"cancel")} onOk={(m, token) => onOk(m.id, reason.trim(), token)} autoFocusFirst />
             <button type="button" disabled={busy} onClick={onClose} className="press inline-flex min-h-12 items-center justify-center gap-1.5 rounded-[10px] px-3 text-sm font-medium text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40 mt-4 w-full">Vazgeç</button>
         </>
       )}

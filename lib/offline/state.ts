@@ -12,7 +12,7 @@ import type { Buyer, ChannelModes } from "@/lib/core/fiscal";
 export type DeviceRole = "kasa" | "garson" | "mutfak" | "kurye";
 export type DeviceInfo = { id: string; name: string; receiptPrefix: string; tenantName: string; vertical: "restoran" | "market"; role?: DeviceRole; stations?: string[]; storeName: string; storeAddress: string | null; nextReceiptNo: number; billing?: { state: BillingState; daysLeft: number } | null; currency?: Currency }; // #16: fiş/rapor para birimi (eski kayıtlarda yok → TRY)
 export type KasaProduct = { id: string; name: string; price: number; vatRate: VatRate; categoryId: string | null; barcodes: string[]; kind: "adet" | "tartili"; plu: string | null; quick: boolean; stationId?: string | null; optionGroupIds?: string[] };
-export type KasaStaff = { id: string; name: string; role: "kasiyer" | "mudur" | "garson" | "kurye"; pinHash?: string };
+export type KasaStaff = { id: string; name: string; role: "kasiyer" | "mudur" | "garson" | "kurye"; pinHash?: string; permissions?: import("@/lib/core/staff-permissions").StaffPermissions | null };
 export type Area = { id: string; name: string };
 export type Table = { id: string; areaId: string; name: string };
 export type Station = { id: string; name: string; printer: string | null };

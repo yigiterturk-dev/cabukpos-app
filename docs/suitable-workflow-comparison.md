@@ -22,12 +22,12 @@ Buradaki “mevcut” kodda karşılığı bulunduğunu belirtir; her ekranın b
 | Dış kurye | `lib/platform/types.ts` mevcut platform adaptörü sınırını gösterir | Dış kurye firmasında iş açma / iptal / teslim webhook'u tamamlanmış değil. “Hazır” düğmesi bu hizmetleri çağırıyor denemez. |
 | Platformlar | `lib/platform/index.ts`, `notify.ts`, `outbound.ts` | Sağlayıcı sürücüleri sandbox ve varsayılan kapalı. Canlı sözleşme, kimlik ve karşılıklı durum testi olmadan entegrasyon hazır sayılmaz. |
 | Ödeme ve gün sonu | `lib/core/split.ts`, `lib/core/payment.ts`, `lib/kasa/shift-report.ts` | Nakit/kart karma tahsilat, kişi/ürün/pay bölme ve para üstü mevcut. Kurye sipariş tutarı gerçek kasa bakiyesi değildir. |
-| Rapor | `lib/admin/report.ts`, `app/yonetim/raporlar` | Tarih, ürün, personel ve konsolide rapor var. Platform komisyonu / hakediş / kurye masrafı mutabakatı ayrı geliştirme gerektirir. |
-| Personel | `lib/admin/staff-actions.ts`, `lib/admin/staff-plan.ts`, `lib/core/access.ts` | PIN, sabit roller, haftalık vardiya ve görev planlama mevcut. Özel rol matrisi, insan kaynakları dosyası, fiilî puantaj ve bordro ayrı eksiklerdir. |
+| Rapor | `lib/admin/report.ts`, `app/yonetim/raporlar` | Tarih, ürün, personel ve konsolide rapor var. Platform komisyonu, kurye gideri ve beklenen/gelen hakediş hesabı eklendi (`/yonetim/platform-hesap`); gerçek ödeme işletme tarafından girilir. |
+| Personel | `lib/admin/staff-actions.ts`, `lib/admin/staff-plan.ts`, `lib/core/access.ts` | PIN, haftalık plan/görevler, kişi bazında 9 işlem izni ve fiilî giriş/çıkış mevcut. İnsan kaynakları dosyası ve bordro kapsam dışındadır. |
 | Müşteri ve sadakat | `lib/delivery/customers.ts`, `lib/loyalty.ts`, `lib/admin/loyalty-actions.ts` | Kayıtlı adres, puan, kupon, hediye kartı karşılıkları var. Telefon hattı Caller ID entegrasyonu yok; garson çağrısı farklı bir özelliktir. Cari hesapta bire bir eşdeğerlik doğrulanmadı. |
-| Rezervasyon | `lib/admin/reservation-actions.ts`, `lib/core/reservation.ts` | Yönetimden kayıt/durum var. Müşteri rezervasyon portalı ve kapasiteye göre müsait saat motoru tamamlanmış sayılmaz. |
-| Depo ve sevkiyat | `app/yonetim/depo`, `lib/admin/transfer.ts`, `transfer-document.ts` | Depo, şubeler arası stok hareketi ve belge var. Yolda/teslim alındı onaylı lojistik süreciyle aynı değil. |
-| Reçete, üretim, sayım | `lib/core/recipe.ts`, `lib/admin/recipe-actions.ts`, `stock-count.ts`, `app/yonetim/uretim` | Maliyet, ara ürün, üretim ve sayım karşılıkları var. Otomatik tedarik siparişi ve SKT/lot yönetimi tamamlanmış değil. |
+| Rezervasyon | `lib/admin/reservation-actions.ts`, `lib/core/reservation.ts` | Masa kapasitesi, rezervasyon süresi, çakışma kontrolü ve açık müşteri rezervasyon formu eklendi. Portal yönetimden açılır. |
+| Depo ve sevkiyat | `app/yonetim/depo`, `lib/admin/transfer.ts`, `transfer-document.ts` | Gönderildi/yolda/teslim/iptal var. Hedef stok yalnız teslim onayında artar; parti kodu ve SKT taşınır. |
+| Reçete, üretim, sayım | `lib/core/recipe.ts`, `lib/admin/recipe-actions.ts`, `stock-count.ts`, `app/yonetim/uretim` | Maliyet, üretim, sayım, parti/SKT/FEFO ve düşük hammaddeden tedarik siparişi mevcut. Sipariş işletme onayıyla oluşturulur; tedarikçiye otomatik gönderim yoktur. |
 | QR ve kiosk | `lib/kiosk.ts`, `app/api/kiosk`, `app/api/menu` | Sipariş hattı mevcut; kendi tüketici pazaryeri / keşif uygulaması bulunmuyor. |
 | Çok şube / marka | `app/yonetim/hq`, `franchise`, `markalar`, `lib/core/access.ts` | Merkez ve şube kapsamları var. Ayrı mobil yönetici uygulaması yok. |
 | Donanım ve mali belge | `agent/src/printers.ts`, `scale.ts`, `app/api/fiscal` | Yazıcı/terazi köprüsü ve mali belge yolları var; Windows, fiziksel cihaz, ÖKC ve e-Arşiv saha doğrulaması bekliyor. |
@@ -69,3 +69,8 @@ Sonraki düzeltme: aynı şubede farklı platformların aynı numarayı kullanma
 Bağlantıdan bağımsız kurye hesap modülü eklendi: `/yonetim/kurye-hesap`, gerçek ödeme kayıtlarıyla günlük nakit/kart, para üstü/iade, açılış/safe drop, kapanış sayımı ve farkı gösterir. Kurye telefonundaki nakit göstergesi de sipariş tutarı yerine gerçek yerel vardiya hesabını izler. Mevcut vardiya kapanışını kullanır; yeni bir tahsilat yazmaz. Bu, platform hakedişi veya dış kurye hizmet bedeli mutabakatı değildir. Ayrıntılar `docs/courier-operations.md` içinde.
 
 Personel planlama ve görev yönetimi eklendi: `/yonetim/personel-plan`. Haftalık çalışma saatleri, mola, gece vardiyası, şubeler arası çakışma önleme, atanan görev ve durum değişimi, düzenleme, iptal ve yazdırma bulunur. Eski karşılaştırma tablosundaki planlama/görev eksikliği bu kapsamda kapatıldı. Fiilî puantaj, bordro, özel rol matrisi ve ayrı çalışan uygulaması hâlâ farklı kapsamlardır. Migration ve kanıtlar `docs/staff-planning.md` içinde.
+
+
+## 25 Ekim — yedi kod başlığının tamamlanması
+
+Kurye karma tahsilat, kapasiteye göre müşteri rezervasyonu, teslim onaylı sevkiyat, platform hakedişi, parti/SKT ve tedarik, ayrıntılı personel izinleri, fiilî giriş/çıkış eklendi. Önceki tarihli paragraftaki fiilî devam ve özel işlem izni eksikleri bu tanımlı kapsamda kapandı. Kanıt ve sınırlar `docs/feature-completion.md` içindedir. Bu sonuç Suitable'ın bütün kapalı ekranlarının veya canlı entegrasyonlarının eşdeğerlik doğrulaması değildir.

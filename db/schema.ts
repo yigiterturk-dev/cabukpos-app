@@ -144,6 +144,7 @@ export const staff = pgTable("staff", {
   name: text("name").notNull(),
   role: staffRole("role").notNull().default("kasiyer"),
   pinHash: text("pin_hash").notNull(),
+  permissions: jsonb("permissions").$type<import("../lib/core/staff-permissions").StaffPermissions>(),
   active: boolean("active").notNull().default(true),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
@@ -176,6 +177,39 @@ export const staffPlans = pgTable("staff_plans", {
 ]);
 
 /** Latest voluntarily shared courier position; no location trail is stored. */
+export const stockLots = pgTable("stock_lots", {
+ id: uuid("id").primaryKey().defaultRandom(), tenantId: tenantRef(), storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+ productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }), code: text("code").notNull(), expiresOn: date("expires_on"), purchaseId: uuid("purchase_id").references(() => purchases.id, { onDelete: "set null" }),
+ remaining: integer("remaining").notNull().default(0), createdAt: ts("created_at").notNull().defaultNow(),
+}, t => [check("stock_lots_remaining",sql`${t.remaining} >= 0`)]);
+export const stockLotEvents = pgTable("stock_lot_events", {
+ id: uuid("id").primaryKey().defaultRandom(), tenantId: tenantRef(), lotId: uuid("lot_id").notNull().references(() => stockLots.id, { onDelete: "cascade" }),
+ movementId: uuid("movement_id").references(() => stockMovements.id, { onDelete: "cascade" }), qtyMilli: integer("qty_milli").notNull(), actor: text("actor").notNull(), at: ts("at").notNull().defaultNow(), note: text("note").notNull(),
+});
+export const procurementOrders = pgTable("procurement_orders", {
+ id:uuid("id").primaryKey(),tenantId:tenantRef(),storeId:uuid("store_id").notNull().references(()=>stores.id,{onDelete:"cascade"}),supplierId:uuid("supplier_id").notNull().references(()=>suppliers.id),
+ status:text("status").notNull().default("siparis"),lines:jsonb("lines").notNull().$type<{productId:string;qtyMilli:number;unitCost:number;lotCode:string;expiresOn:string|null}[]>(),
+ note:text("note").notNull(),createdBy:text("created_by").notNull(),createdAt:ts("created_at").notNull().defaultNow(),receivedAt:ts("received_at"),purchaseId:uuid("purchase_id").references(()=>purchases.id),
+});
+
+export const platformSettlements = pgTable("platform_settlements", {
+  id: uuid("id").primaryKey().defaultRandom(), tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(), fromDay: date("from_day").notNull(), toDay: date("to_day").notNull(),
+  commissionBps: integer("commission_bps").notNull(), commissionBase: text("commission_base").notNull(),
+  courierCost: integer("courier_cost").notNull(), adjustment: integer("adjustment").notNull(), actual: integer("actual").notNull(),
+  gross: integer("gross").notNull(), online: integer("online").notNull(), expected: integer("expected").notNull(),
+  fingerprint: text("fingerprint").notNull(), note: text("note").notNull(), createdBy: text("created_by").notNull(), createdAt: ts("created_at").notNull().defaultNow(), voidedAt: ts("voided_at"),
+});
+
+export const attendance = pgTable("attendance", {
+  id: uuid("id").primaryKey().defaultRandom(), tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  staffId: uuid("staff_id").notNull().references(() => staff.id, { onDelete: "cascade" }),
+  startsAt: ts("starts_at").notNull().defaultNow(), endsAt: ts("ends_at"),
+  recordedBy: text("recorded_by").notNull(), endedBy: text("ended_by"),
+}, t => [uniqueIndex("attendance_open_staff").on(t.tenantId, t.staffId).where(sql`${t.endsAt} is null`), check("attendance_period", sql`${t.endsAt} is null or ${t.endsAt} >= ${t.startsAt}`)]);
+
 export const courierLocations = pgTable("courier_locations", {
   tenantId: tenantRef(),
   storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
@@ -340,6 +374,7 @@ export const tables = pgTable("tables", {
   name: text("name").notNull(),
   sort: integer("sort").notNull().default(0),
   active: boolean("active").notNull().default(true),
+  seats: integer("seats").notNull().default(4),
 }, (t) => [index("tables_area_idx").on(t.areaId)]);
 
 // Garson çağrısı: QR menüden gelir, kasada/salonda görünür. Çözülmemiş çağrı masa başına tektir.
@@ -508,7 +543,7 @@ export const stockCountLines = pgTable("stock_count_lines", {
   countedMilli: integer("counted_milli"), // null = henüz sayılmadı
 }, (t) => [uniqueIndex("stock_count_lines_uq").on(t.countId, t.productId)]);
 
-/** HQ: şubeler arası stok transferi. Her satır kaynak (−) ve hedef (+) iki hareket yazar. */
+/** Shipments debit source on dispatch and credit destination on receipt. Legacy rows stay received. */
 export const stockTransfers = pgTable("stock_transfers", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: tenantRef(),
@@ -517,6 +552,10 @@ export const stockTransfers = pgTable("stock_transfers", {
   note: text("note"),
   createdBy: text("created_by").notNull(), // "user:<id>"
   createdAt: ts("created_at").notNull().defaultNow(),
+  status: text("status").notNull().default("teslim"),
+  receivedAt: ts("received_at"),
+  receivedBy: text("received_by"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 
 export const stockTransferLines = pgTable("stock_transfer_lines", {
@@ -951,8 +990,22 @@ export const reservations = pgTable("reservations", {
   phone: text("phone").notNull(),
   guests: integer("guests").notNull(),
   at: ts("at").notNull(),
+  durationMinutes: integer("duration_minutes").notNull().default(90),
   tableId: uuid("table_id").references(() => tables.id, { onDelete: "set null" }),
   status: reservationStatus("status").notNull().default("bekliyor"),
   note: text("note"),
   createdAt: ts("created_at").notNull().defaultNow(),
 }, (t) => [index("reservations_tenant_idx").on(t.tenantId, t.at)]);
+
+/** Public-link identity lookup before tenant is known; no customer data. Every admin query is tenant/store scoped. */
+export const reservationSettings = pgTable("reservation_settings", {
+  storeId: uuid("store_id").primaryKey().references(() => stores.id, { onDelete: "cascade" }),
+  tenantId: tenantRef(),
+  token: uuid("token").notNull().defaultRandom().unique(),
+  enabled: boolean("enabled").notNull().default(false),
+  openMinute: integer("open_minute").notNull().default(600),
+  closeMinute: integer("close_minute").notNull().default(1320),
+  durationMinutes: integer("duration_minutes").notNull().default(90),
+  slotMinutes: integer("slot_minutes").notNull().default(30),
+  advanceDays: integer("advance_days").notNull().default(30),
+}, t => [check("reservation_settings_range", sql`${t.openMinute} >= 0 and ${t.closeMinute} <= 1440 and ${t.closeMinute} > ${t.openMinute} and ${t.durationMinutes} between 15 and 360 and ${t.slotMinutes} in (15,30,60) and ${t.advanceDays} between 1 and 90`)]);

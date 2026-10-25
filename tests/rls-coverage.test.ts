@@ -41,6 +41,7 @@ function rlsCovered(): Set<string> {
 // uygulandığını açıklar. Buraya yeni satır eklemek kasıtlı bir karardır.
 const ALLOWLIST: Record<string, string> = {
   users: "kimlik: e-posta/oturum ile kiracıdan önce aranır (lib/auth)",
+  reservation_settings: "public booking link identity: token resolves tenant before customer-data RLS; no customer data, all admin queries tenant/store scoped",
   devices: "kimlik: cz_device jetonu kiracıdan önce aranır (lib/auth/kasa, /api/sync/catalog)",
   agents: "kimlik: ajan jetonu kiracıdan önce aranır (/api/agent/pair|heartbeat)",
   sessions: "kimlik: oturum hash'i kiracıdan önce aranır (lib/auth/session)",

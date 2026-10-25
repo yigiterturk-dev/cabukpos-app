@@ -92,7 +92,7 @@ export function useFormAction<S>(action: (s: S, f: FormData) => Promise<S>, init
     e.preventDefault();
     if (pending || submitLockRef.current) return;
     const form = e.currentTarget;
-    const fd = new FormData(form);
+    const fd = new FormData(form, (e.nativeEvent as SubmitEvent).submitter);
     submitLockRef.current = true;
     formRef.current = form;
     startTransition(() => dispatch(fd));

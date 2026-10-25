@@ -56,7 +56,7 @@ export const tabEv = z.discriminatedUnion("type", [
   z.object({ type: z.literal("reject"), reason }),
   z.object({ type: z.literal("courier"), staffId: uuid.nullable() }),
   z.object({ type: z.literal("out") }),
-  z.object({ type: z.literal("delivered"), method: z.enum(["nakit", "kart", "yemek_karti", "online"]) }),
+  z.object({ type: z.literal("delivered"), method: z.enum(["nakit", "kart", "yemek_karti", "online", "karma"]) }),
   z.object({ type: z.literal("handover") }),
   z.object({ type: z.literal("cancel"), reason }),
 ]);

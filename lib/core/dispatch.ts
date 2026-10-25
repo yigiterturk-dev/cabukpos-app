@@ -54,7 +54,7 @@ export function courierSummary(tabs: Iterable<TabState>, couriers: { id: string;
     const done = assigned.filter(t => deliveryStatus(t) === "teslim" && deliveryDay(t) === day);
     const sum = (method: string) => done.filter(t => t.delivery.method === method).reduce((s, t) => s + t.total, 0);
     const journeys = done.map(t => deliveryTimes(t, now).journey).filter((v): v is number => v !== null);
-    return { id, name, active: active.length, onRoad: active.filter(t => !!t.delivery.outAt).length, ready: active.filter(t => deliveryStatus(t) === "hazir").length, delivered: done.length, total: done.reduce((s, t) => s + t.total, 0), cash: sum("nakit"), card: sum("kart"), online: sum("online"), meal: sum("yemek_karti"), averageJourney: journeys.length ? Math.round(journeys.reduce((a, b) => a + b, 0) / journeys.length) : null };
+    return { id, name, active: active.length, onRoad: active.filter(t => !!t.delivery.outAt).length, ready: active.filter(t => deliveryStatus(t) === "hazir").length, delivered: done.length, total: done.reduce((s, t) => s + t.total, 0), cash: sum("nakit"), card: sum("kart"), mixed: sum("karma"), online: sum("online"), meal: sum("yemek_karti"), averageJourney: journeys.length ? Math.round(journeys.reduce((a, b) => a + b, 0) / journeys.length) : null };
   }).sort((a, b) => a.active - b.active || a.name.localeCompare(b.name, "tr"));
 }
 export function dispatchCsv(tabs: TabState[], couriers: { id: string; name: string }[]) {

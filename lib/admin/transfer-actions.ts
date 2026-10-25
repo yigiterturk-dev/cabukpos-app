@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { withTenant } from "@/db";
 import { requireWriter } from "@/lib/auth/session";
-import { recordTransfer, type TransferError } from "./transfer";
+import { changeShipment, recordTransfer, type TransferError } from "./transfer";
 
 export type TransferState = Partial<TransferError> & { savedAt?: number };
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -18,5 +18,14 @@ export async function createTransfer(previous: TransferState, form: FormData): P
   }));
   if ("error" in result) return { ...result, savedAt: previous.savedAt };
   for (const path of ["/yonetim/transferler", "/yonetim/stok", "/yonetim/hq", "/yonetim/depo", "/yonetim"]) revalidatePath(path);
+  return { savedAt: Date.now() };
+}
+
+export async function shipmentAction(_: TransferState, form: FormData): Promise<TransferState> {
+  const actor = await requireWriter();
+  const id = text(form, "id");
+  const result = await withTenant(actor.tenantId, tx => changeShipment(tx, actor.tenantId, actor, id, text(form, "status")));
+  if ("error" in result) return result;
+  for (const path of ["/yonetim/transferler", `/yonetim/transferler/${id}`, "/yonetim/stok", "/yonetim/depo", "/yonetim/hq"]) revalidatePath(path);
   return { savedAt: Date.now() };
 }

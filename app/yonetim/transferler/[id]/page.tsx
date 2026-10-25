@@ -6,6 +6,9 @@ import { transferDocument } from "@/lib/admin/transfer-document";
 import { transferDate, transferQuantity } from "@/lib/core/transfer-document";
 import { PrintButton } from "@/components/PrintButton";
 import { buttonClass } from "@/components/ui";
+import { ShipmentActions } from "@/components/admin/ShipmentActions";
+import { canUseStore } from "@/lib/core/access";
+import { SHIPMENT_LABELS } from "@/lib/admin/transfer";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Stok transferi — ÇabukPOS" };
@@ -28,6 +31,8 @@ export default async function TransferDetail({ params }: { params: Promise<{ id:
         <p className="break-all font-mono text-xs text-muted">Transfer kimliği: {doc.id}</p>
         <time dateTime={doc.createdAt.toISOString()} className="block text-sm text-muted">{transferDate(doc.createdAt)} · İstanbul</time>
       </header>
+      <p className="mb-3 font-semibold">Durum: {SHIPMENT_LABELS[doc.status ?? "teslim"] ?? doc.status}{doc.receivedAt ? ` · ${transferDate(doc.receivedAt)}` : ""}</p>
+      <ShipmentActions id={doc.id} status={doc.status ?? "teslim"} canSend={canUseStore(actor, doc.fromStoreId)} canReceive={canUseStore(actor, doc.toStoreId)} />
       <dl className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 print:grid-cols-2">
         <div className="min-w-0"><dt className="text-xs uppercase tracking-wide text-muted">Kaynak</dt><dd className="mt-1 break-words font-medium">{doc.fromName}</dd></div>
         <div className="min-w-0"><dt className="text-xs uppercase tracking-wide text-muted">Hedef</dt><dd className="mt-1 break-words font-medium">{doc.toName}</dd></div>

@@ -12,6 +12,7 @@ const { mockSource, sign } = await import("@/lib/platform/mock");
 const { ingestOrders } = await import("@/lib/platform/ingest");
 const { provisionConnection } = await import("@/lib/platform/provision");
 const { notifyPlatform, notifyPlatformStatus } = await import("@/lib/platform/notify");
+const { deliveryPaymentMethod, intentLabel } = await import("@/lib/core/delivery");
 const { and, eq } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "PKT-T", vertical: "restoran" }).returning();
@@ -49,6 +50,29 @@ const feeEv = (lineId: string) => ({ type: "add", lineId, productId: null, name:
 const reviewOf = async (id: string) => (await withTenant(t.id, (tx) => tx.select({ r: schema.tabEvents.review }).from(schema.tabEvents).where(eq(schema.tabEvents.id, id))))[0]?.r ?? null;
 
 const incoming = (externalId: string) => ({ externalId, customer: { name: "Demo", phone: "05550000111" }, address: "Örnek", directions: null, note: null, payIntent: "online" as const, deadline: null, lines: [{ code: "LAH", name: "Lahmacun", unitPrice: 6500, qtyMilli: 1000, note: null }] });
+
+test("kurye karma tahsilatı para üstüyle tek satışa yazılır ve teslimde karma görünür", async () => {
+  const tabId = crypto.randomUUID(), lineId = crypto.randomUUID();
+  for (const d of [doc(tabId, { type: "open", guests: 0, kind: "paket" }), doc(tabId, { ...orderEv(), phone: "905550000777", name: "Karma müşteri" }), doc(tabId, lineEv(lineId)), doc(tabId, { type: "courier", staffId: s.kurye.id })]) await applyDoc(kasa, d);
+  const [device] = await getDb().insert(schema.devices).values({ tenantId: t.id, storeId: s.store.id, name: "Mixed courier", receiptPrefix: "MX", role: "kurye" }).returning();
+  const mixedCtx = { ...kuryeCtx, deviceId: device.id, receiptPrefix: "MX" };
+  const shiftId = crypto.randomUUID();
+  await applyDoc(mixedCtx, { kind: "shift_open", id: shiftId, staffId: s.kurye.id, at: now(), openingCash: 0 });
+  const id = crypto.randomUUID();
+  const sale = { kind: "sale", id, shiftId, staffId: s.kurye.id, receiptSeq: 91, at: now(), lines: [{ lineId, productId: s.lah.id, name: "Lahmacun", unitPrice: 6000, vatRate: 10, qtyMilli: 2000, options: [], note: null, discount: 0 }], payments: [{ method: "nakit", amount: 10000 }, { method: "kart", amount: 6000 }], tab: { tabId, tableId: null, paidLines: [{ lineId, qtyMilli: 2000, discount: 0 }] } };
+  assert.equal((await applyDoc(mixedCtx, sale)).ok, true);
+  assert.equal((await applyDoc(mixedCtx, sale)).ok, true);
+  const method = deliveryPaymentMethod([{ method: "nakit", amount: 10000 }, { method: "kart", amount: 6000 }]);
+  assert.equal(method, "karma"); assert.equal(intentLabel(method), "Karma ödeme");
+  const delivered = doc(tabId, { type: "delivered", method }, { staffId: s.kurye.id });
+  assert.equal((await applyDoc(mixedCtx, delivered)).ok, true);
+  assert.equal(await reviewOf(delivered.id), null);
+  const [stored] = await withTenant(t.id, tx => tx.select().from(schema.sales).where(eq(schema.sales.id, id)));
+  const payments = await withTenant(t.id, tx => tx.select().from(schema.payments).where(eq(schema.payments.saleId, id)));
+  assert.equal(stored.change, 4000); assert.equal(payments.length, 2);
+  const tab = foldTabs(await withTenant(t.id, tx => tabEventsOf(tx, tabId))).get(tabId)!;
+  assert.equal(tab.delivery.method, "karma"); assert.equal(tab.remaining, 0);
+});
 const orderEvents = (storeId: string, externalId: string) => withTenant(t.id, async (tx) => {
   const E = schema.tabEvents;
   const orders = await tx.select().from(E).where(and(eq(E.storeId, storeId), eq(E.type, "order")));
@@ -180,7 +204,7 @@ test("paket: masasız adisyon, müşteri defteri, serbest ücret satırı, kurye
   assert.equal(lines.find((l) => l.name === "Paket servis ücreti")?.productId, null);
 });
 
-test("serbest satır masa adisyonunda review; müdürsüz iptal review; atanmamış kurye teslimi review", async () => {
+test("serbest satır masa adisyonunda review; yetkisiz iptal reddedilir; atanmamış kurye teslimi review", async () => {
   const tabId = crypto.randomUUID();
   await applyDoc(kasa, doc(tabId, { type: "open", guests: 1 }, { tableId: s.m1.id }));
   const fee = doc(tabId, feeEv(crypto.randomUUID()), { tableId: s.m1.id });
@@ -193,8 +217,8 @@ test("serbest satır masa adisyonunda review; müdürsüz iptal review; atanmam�
   await applyDoc(kuryeCtx, del);
   assert.match(String(await reviewOf(del.id)), /atanmamış kurye/);
   const c = doc(p, { type: "cancel", reason: "vazgeçti" });
-  await applyDoc(kasa, c);
-  assert.match(String(await reviewOf(c.id)), /müdür onayı yok/);
+  assert.equal((await applyDoc(kasa, c)).ok, false);
+  assert.equal(await reviewOf(c.id), null);
 });
 
 test("webhook: imza, idempotens, otomatik kabul → accept + send + platform.accept audit; eşlenmeyen kod serbest satır", async () => {

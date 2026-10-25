@@ -38,6 +38,7 @@ export default async function Rezervasyonlar({ searchParams }: { searchParams: P
   return (
     <>
       <PageHeader title="Rezervasyonlar" desc="Günün rezervasyonları; onayla, geldi/gelmedi işaretle. Kasa salonunda masa durumuyla birlikte ilerler." />
+      <Link href="/yonetim/rezervasyonlar/ayarlar" className="mb-4 inline-flex min-h-11 items-center font-semibold text-brand underline">Masa kapasitesi ve çevrimiçi rezervasyon ayarları →</Link>
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <form action="/yonetim/rezervasyonlar" method="get" className="flex flex-wrap items-end gap-2">
           <label htmlFor="reservation-day" className="text-sm font-medium text-ink-2">Tarih

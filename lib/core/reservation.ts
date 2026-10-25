@@ -19,3 +19,13 @@ export function timeToAt(day: string, time: string): Date | null {
   if (!isValidCalendarDay(day) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return null;
   return new Date(`${day}T${time}:00+03:00`);
 }
+
+export function freeReservationTables<T extends { id: string; seats: number }>(tables: T[], occupied: { tableId: string | null; guests: number }[]): T[] {
+  let free = tables.filter(t => !occupied.some(r => r.tableId === t.id));
+  for (const r of occupied.filter(r => !tables.some(t => t.id === r.tableId)).sort((a, b) => b.guests - a.guests)) {
+    const candidate = [...free].sort((a, b) => a.seats - b.seats).find(t => t.seats >= r.guests);
+    if (!candidate) return [];
+    free = free.filter(t => t.id !== candidate.id);
+  }
+  return free;
+}

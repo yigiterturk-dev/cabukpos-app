@@ -1,4 +1,5 @@
 "use client";
+import { staffCan } from "@/lib/core/staff-permissions";
 // Kasa uygulaması (çevrimdışı çalışır). Veri IndexedDB'de; PIN cihazda doğrulanır; satış/vardiya giden kutusuna
 // yazılır ve arka planda /api/sync ile eşitlenir. Kasiyer oturumu yalnız bellekte (sayfa yenilenince PIN yeniden).
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -16,7 +17,8 @@ import { refundNote } from "@/lib/core/refundNote";
 import { pendingPrints } from "@/lib/core/kitchen";
 import { paidLinesOf, payableLines, type PayLine } from "@/lib/core/split";
 import { totals } from "@/lib/core/cart";
-import { deliveryStatus, openTabsByTable, type PayIntent, type TabState, tabLabel } from "@/lib/core/tab";
+import { deliveryStatus, openTabsByTable, type DeliveryMethod, type TabState, tabLabel } from "@/lib/core/tab";
+import { deliveryPaymentMethod } from "@/lib/core/delivery";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
 import type { Payment } from "@/lib/core/payment";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
@@ -645,22 +647,25 @@ export function KasaApp() {
   }, [cashier, tabsApi, meta, afterSale]);
 
   // M6 kurye: "Teslim ettim" → delivered + kalan tutar seçilen yöntemle satış (kuryenin vardiyasına).
-  const onDeliver = useCallback(async (tab: TabState, method: PayIntent) => {
+  const onDeliver = useCallback(async (tab: TabState, method: DeliveryMethod, payments?: Payment[]) => {
     if (!cashier) throw new Error("Kurye oturumu gerekli.");
     const part = payableLines(tab);
+    let actualMethod = method;
     if (part.length) {
+      if (method === "karma" && !payments?.length) throw new Error("Tahsilat tutarlarını girin.");
       const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
-      const sale = await recordSaleLocal(cashier, part, [{ method, amount: totals(part).total }], tab.id, { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part), kind: tab.kind });
+      const sale = await recordSaleLocal(cashier, part, payments ?? [{ method: method as Exclude<DeliveryMethod, "karma">, amount: totals(part).total }], tab.id, { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part), kind: tab.kind });
       if (!sale.ok) throw new Error(sale.error);
+      actualMethod = deliveryPaymentMethod(sale.sale.payments);
     }
-    await tabsApi.add([{ tabId: tab.id, tableId: null, staffId: cashier.id, ev: { type: "delivered", method } }]);
+    await tabsApi.add([{ tabId: tab.id, tableId: null, staffId: cashier.id, ev: { type: "delivered", method: actualMethod } }]);
     await tabsApi.reload();
     void sync.current?.kick();
   }, [cashier, tabsApi, meta]);
 
   // Kurye telefonunda vardiya yoksa açılış nakdi 0 ile kendiliğinden açılır.
   useEffect(() => {
-    if (role !== "kurye" || !cashier || !meta || meta.shift) return;
+    if (role !== "kurye" || !cashier || !meta || meta.shift || !staffCan(meta.catalog.staff.find(s=>s.id===cashier.id),"shift")) return;
     void openShiftLocal(cashier.id, 0).then((m) => { setMeta(m); void sync.current?.kick(); });
   }, [role, cashier, meta]);
 
@@ -753,7 +758,7 @@ export function KasaApp() {
       {status.rejected > 0 && <span role="status" className="inline-flex h-7 items-center rounded-full bg-bad-soft px-2.5 text-xs font-medium text-bad">{status.rejected} belge reddedildi</span>}
       {cashier && meta.agent?.drawer && atHome && (
         <Button variant="secondary" title="Çekmece" className="min-h-12" onClick={() => {
-          if (meta.catalog.staff.find((x) => x.id === cashier.id)?.role === "mudur") void drawerBy(null);
+          if (staffCan(meta.catalog.staff.find((x) => x.id === cashier.id),"drawer")) void drawerBy(null);
           else setView({ name: "cekmece" });
           }}><Inbox aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Çekmece</span></Button>
       )}
@@ -793,6 +798,7 @@ export function KasaApp() {
     return <>{header}<Center logo title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} autoFocusFirst /><Link href="/kasa/kurulum" className="mt-4 inline-flex min-h-11 items-center justify-center text-sm text-brand underline">İlk kullanım: PIN belirle / PIN’imi değiştir</Link></Center></>;
   }
   if (restoran && role === "kurye") {
+    if (!meta.shift && !staffCan(meta.catalog.staff.find(s=>s.id===cashier.id),"shift")) return <Center title="Vardiya açma yetkisi yok" sub="İşletme yöneticisi Personel ekranından bu izni düzenleyebilir."><Button onClick={()=>setCashier(null)}>Giriş ekranına dön</Button></Center>;
     const kHeader = (
       <Bar tenant={d.tenantName} device={cashier.name}>
         <LinkNote link={tabsApi.link} /><SyncBadge s={status} />
@@ -821,7 +827,7 @@ export function KasaApp() {
       <>
         {header}
         <Center title="Müdür onayı" sub="Çekmeceyi açmak için müdür PIN'i girsin.">
-          <PinPad meta={meta} onMeta={setMeta} only={(x) => x.role === "mudur"} onOk={(m) => drawerBy(m.id)} autoFocusFirst />
+          <PinPad meta={meta} onMeta={setMeta} only={(x) => staffCan(x,"drawer")} onOk={(m) => drawerBy(m.id)} autoFocusFirst />
           <Button variant="ghost" onClick={() => setView({ name: "home" })} className="mt-6 min-h-12 w-full">Vazgeç</Button>
         </Center>
       </>

@@ -18,6 +18,7 @@ const errorProps = (state: ResState, field: string) => state.field === field && 
 /** Yeni rezervasyon formu. */
 export function ReservationForm({ storeId, day, tables }: { storeId: string | null; day: string; tables: { id: string; name: string; areaName: string }[] }) {
   const { state, pending, onSubmit } = useFormAction(createReservation, {} as ResState);
+  const [requestId] = useState(() => crypto.randomUUID());
   const formRef = useRef<HTMLFormElement>(null);
   const [edited, setEdited] = useState(false);
   const displayState = edited || pending ? ({} as ResState) : state;
@@ -28,14 +29,16 @@ export function ReservationForm({ storeId, day, tables }: { storeId: string | nu
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="grid gap-3 sm:grid-cols-2">
       <input type="hidden" name="day" value={day} />
+      <input type="hidden" name="requestId" value={state.requestId ?? requestId} />
       <input type="hidden" name="storeId" value={storeId ?? ""} />
       <fieldset key={state.savedAt ?? 0} disabled={pending} aria-busy={pending} className="contents">
       <Field label="İsim" hint="1–120 karakter"><Input name="name" required maxLength={120} pattern=".*\S.*" autoComplete="name" {...errorProps(displayState, "name")} /></Field>
       <div><Field label="Telefon" hint="6–15 rakam; ülke koduyla da girebilirsiniz. Örn. 532 123 45 67 veya +90 532 123 45 67"><Input name="phone" type="tel" inputMode="tel" required maxLength={24} autoComplete="tel" placeholder="532 123 45 67" {...errorProps(displayState, "phone")} /></Field><Err state={displayState} field="phone" /></div>
       <div><Field label="Kişi" hint="1–99 kişi"><Input name="guests" type="number" inputMode="numeric" step={1} required min={1} max={99} defaultValue={2} className="!w-24" {...errorProps(displayState, "guests")} /></Field><Err state={displayState} field="guests" /></div>
       <div><Field label="Saat" hint="Rezervasyon Türkiye saatine göre kaydedilir."><Input name="time" type="time" required defaultValue="19:00" className="!w-32" {...errorProps(displayState, "time")} /></Field><Err state={displayState} field="time" /></div>
+      <Field label="Süre (dakika)"><Input name="duration" type="number" min={15} max={360} step={15} defaultValue={90} required /></Field>
       {tables.length > 0 && (
-        <Field label="Masa (opsiyonel)">
+        <Field label="Masa (boşsa otomatik atanır)">
           <Select disabled={pending} name="tableId" defaultValue="" onChange={() => setEdited(true)} options={[{ value: "", label: "—" }, ...tables.map((t) => ({ value: t.id, label: `${t.areaName} · ${t.name}` }))]} />
         </Field>
       )}

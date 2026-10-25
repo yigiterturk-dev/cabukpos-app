@@ -1,5 +1,6 @@
 // HQ: şubeler arası stok transferi — kaynak şubeden düşer, hedef şubeye ekler.
 import Link from "next/link";
+import { SHIPMENT_LABELS } from "@/lib/admin/transfer";
 import { desc, eq, inArray, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { schema, withTenant } from "@/db";
@@ -16,7 +17,7 @@ const dt = new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "sh
 const qtyLabel = (qty: number, unit: TransferProduct["unit"]) => `${formatQty(qty, unit)}${unit === "adet" ? " adet" : ""}`;
 
 type RecentLine = { transferId: string; productId: string; name: string; qtyMilli: number; unit: TransferProduct["unit"] };
-type RecentTransfer = { id: string; fromName: string; toName: string; note: string | null; createdAt: Date; lines: RecentLine[] };
+type RecentTransfer = { status: string; id: string; fromName: string; toName: string; note: string | null; createdAt: Date; lines: RecentLine[] };
 
 export default async function Transferler({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   const a = await requireAdmin();
@@ -38,7 +39,7 @@ export default async function Transferler({ searchParams }: { searchParams: Prom
     const T = schema.stockTransfers, TL = schema.stockTransferLines, P = schema.products;
     const F = alias(schema.stores, "from_store"), TO = alias(schema.stores, "to_store");
     const recent = await tx.select({
-      id: T.id, fromName: F.name, toName: TO.name, note: T.note, createdAt: T.createdAt,
+      id: T.id, fromName: F.name, toName: TO.name, note: T.note, createdAt: T.createdAt, status: T.status,
     }).from(T)
       .innerJoin(F, eq(F.id, T.fromStoreId))
       .innerJoin(TO, eq(TO.id, T.toStoreId))
@@ -60,7 +61,7 @@ export default async function Transferler({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Şubeler arası transfer"
-        desc="Kaynak şubeden düşer, hedef şubeye ekler. Stok seviyesi ve maliyet aynı üründe kalır; transfer fire veya satış sayılmaz."
+        desc="Kaynak stok gönderimde düşer; hedef stok teslim alma onayında artar. Sevkiyatı açıp yola çıktı, teslim veya iptal işlemini yapın."
         actions={<Link href="/yonetim/hq" className="text-sm text-brand hover:underline">Zincir merkezi →</Link>}
       />
       {stores.length < 2 ? (
@@ -107,7 +108,7 @@ export default async function Transferler({ searchParams }: { searchParams: Prom
                     <h3 className="min-w-0 break-words font-medium text-ink"><Link href={`/yonetim/transferler/${t.id}`} className="hover:text-brand hover:underline">{t.fromName} → {t.toName}</Link></h3>
                     <time dateTime={t.createdAt.toISOString()} className="shrink-0 text-xs tabular text-muted">{dt.format(t.createdAt)}</time>
                   </div>
-                  <ul className="mt-1 space-y-0.5 text-sm">
+                  <p className="mt-2 text-sm font-semibold text-brand">{SHIPMENT_LABELS[t.status] ?? t.status}</p><ul className="mt-1 space-y-0.5 text-sm">
                     {t.lines.map((l) => (
                       <li key={`${t.id}-${l.productId}`} className="flex flex-wrap justify-between gap-2">
                         <span className="min-w-0 break-words">{l.name}</span>

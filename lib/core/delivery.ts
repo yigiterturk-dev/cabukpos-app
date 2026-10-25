@@ -2,7 +2,8 @@
 import { EscPos, type Codepage, type PaperWidth } from "./escpos";
 import { formatTL, type Kurus } from "./money";
 import { qtyText } from "./receipt";
-import { lineGross, type OrderInfo, type PayIntent, type TabEv, type TabState } from "./tab";
+import { lineGross, type DeliveryMethod, type OrderInfo, type PayIntent, type TabEv, type TabState } from "./tab";
+import type { Payment } from "./payment";
 import { sendByStation } from "./platform";
 
 /** Whole-order Ready uses the same kitchen events as individual station tickets. */
@@ -72,7 +73,11 @@ export const PAY_INTENTS: { value: PayIntent; label: string }[] = [
   { value: "yemek_karti", label: "Yemek kartı" },
   { value: "online", label: "Online ödendi" },
 ];
-export const intentLabel = (v: PayIntent | null) => PAY_INTENTS.find((x) => x.value === v)?.label ?? "";
+export const intentLabel = (v: DeliveryMethod | null) => v === "karma" ? "Karma ödeme" : PAY_INTENTS.find((x) => x.value === v)?.label ?? "";
+export function deliveryPaymentMethod(payments: Payment[]): DeliveryMethod {
+  const methods = [...new Set(payments.filter(p => p.amount > 0).map(p => p.method))];
+  return methods.length === 1 && methods[0] !== "hediye_karti" ? methods[0] : "karma";
+}
 
 /** Kuryenin üzerindeki nakit: teslim ettiği, nakit tahsil edilmiş siparişlerin toplamı. */
 export function courierCash(tabs: Iterable<TabState>, courierId: string): Kurus {

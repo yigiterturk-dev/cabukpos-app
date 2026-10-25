@@ -1,6 +1,7 @@
 "use client";
 // İade: fiş no → (yerel, yoksa bulut) satış → ürün/miktar seç → geri ödeme yöntemi → kasiyerse müdür PIN'i → iade fişi.
 // Çevrimdışıyken yalnız bu cihazda kesilmiş fişler bulunur.
+import { staffCan } from "@/lib/core/staff-permissions";
 import { useEffect, useId, useRef, useState } from "react";
 import { totals } from "@/lib/core/cart";
 import { parseKg } from "@/lib/core/scan";
@@ -94,7 +95,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
   // #33: satış düzeyi indirim iadeye oransal yansır — müşteri ödediği net tutardan fazlasını geri almaz.
   const refundDiscount = sale && sale.goodsTotal > 0 ? Math.floor((goods * sale.discount) / sale.goodsTotal) : 0;
   const total = goods - refundDiscount;
-  const role = meta.catalog.staff.find((s) => s.id === cashier.id)?.role;
+  const canRefund = staffCan(meta.catalog.staff.find((s) => s.id === cashier.id),"refund");
 
   const record = async (approvedBy: string, approvalToken?: string) => {
     if (!sale || recordingRef.current) return;
@@ -120,7 +121,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
       <div {...mainProps} className="mx-auto w-full max-w-sm px-4 py-8 text-center outline-none">
         <h1 className="font-display text-2xl font-bold tracking-tight">Müdür onayı</h1>
         <p className="mb-6 text-sm text-muted">{TL(total)} iade · müdür PIN&apos;i girsin</p>
-        <PinPad meta={meta} onMeta={onMeta} only={(s) => s.role === "mudur"} onOk={(m, token) => record(m.id, token)} autoFocusFirst />
+        <PinPad meta={meta} onMeta={onMeta} only={(s) => staffCan(s,"refund")} onOk={(m, token) => record(m.id, token)} autoFocusFirst />
       <Button variant="ghost" type="button" disabled={busy} onClick={() => {
         setApproving(false);
         requestAnimationFrame(() => lookupRef.current?.focus());
@@ -209,7 +210,7 @@ export function RefundScreen({ meta, cashier, online, onMeta, onDone, onBack, au
           {refundDiscount > 0 && <p className="mt-2 text-right text-sm text-muted">İndirim payı −{TL(refundDiscount)} · Brüt {TL(goods)}</p>}
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/25 bg-brand-soft/30 px-4 py-3">
             <div><span className="block text-xs font-medium uppercase tracking-wide text-muted">İade tutarı</span><span data-testid="refund-total" aria-live="polite" aria-atomic="true" className="tabular font-display text-3xl font-extrabold tracking-tight">{TL(total)}</span><span className="mt-0.5 block text-xs text-muted">Yöntem: {SELECTABLE_METHODS.find((m) => m.value === method)?.label}</span></div>
-            <Button id={refundActionId} disabled={!picked.length || invalidWeighedDraft || busy} aria-busy={busy || undefined} onClick={() => (role === "mudur" ? void record(cashier.id) : setApproving(true))} className="min-h-12">{busy ? "İade kaydediliyor…" : <>İadeyi onayla{picked.length > 0 && <span className="tabular">· {TL(total)}</span>}</>}</Button>
+            <Button id={refundActionId} disabled={!picked.length || invalidWeighedDraft || busy} aria-busy={busy || undefined} onClick={() => (canRefund ? void record(cashier.id) : setApproving(true))} className="min-h-12">{busy ? "İade kaydediliyor…" : <>İadeyi onayla{picked.length > 0 && <span className="tabular">· {TL(total)}</span>}</>}</Button>
           </div>
           {!picked.length && <p className="mt-2 text-right text-xs text-muted">İade için en az bir kalem seçin.</p>}
         </section>

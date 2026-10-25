@@ -1,3 +1,5 @@
+import { writeStock } from "@/lib/admin/stock-lots";
+import { staffCan, permissionForTab, type StaffPermission } from "@/lib/core/staff-permissions";
 // lib/sync/apply.ts — Kasadan gelen belgeyi bulutta uygular. İdempotent: aynı kimlik ikinci kez yazılmaz.
 // Tamamlanmış satış/iade reddedilmez: fiyat farkı, silinmiş/pasif ürün, fiş no çakışması, fazla iade → kaydedilir + sales.review.
 // Stok takipli ürünlerde satış (−) ve iade (+) hareketi satış anıyla yazılır. M7: reçeteli satırda ürün değil hammaddeler düşer (recete);
@@ -53,6 +55,10 @@ async function staffExists(tx: Tx, staffId: string) {
   const [s] = await tx.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.id, staffId));
   return Boolean(s);
 }
+async function permitted(tx: Tx, id: string | null, permission: StaffPermission) {
+  const [person] = id ? await tx.select().from(schema.staff).where(eq(schema.staff.id,id)) : [];
+  return staffCan(person,permission);
+}
 
 /** Cihaz saati ileri/geri gitmişse sunucu saati. now: cihazın push anındaki saati (sync.now); yoksa yalnız ileri yönü kollar.
  *  Geri yön: cihaz saati sunucudan sapmışsa ve belge cihaz saatine göre "taze"se (son 30 dk) sunucu zamanına çekilir;
@@ -78,6 +84,7 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
     const [done] = await tx.select({ deviceId: sh.deviceId }).from(sh).where(eq(sh.id, doc.id));
     if (done) return done.deviceId === ctx.deviceId ? null : "Vardiya başka cihazda.";
     if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
+    if (!(await permitted(tx,doc.staffId,"shift"))) return "Vardiya yetkisi yok.";
     await tx.insert(sh).values({ id: doc.id, tenantId: ctx.tenantId, storeId: ctx.storeId, deviceId: ctx.deviceId, openedBy: doc.staffId, openedAt: clampAt(doc.at, undefined, ctx.now), openingCash: doc.openingCash });
     await audit(tx, ctx.tenantId, `staff:${doc.staffId}`, "shift.open", { shiftId: doc.id, deviceId: ctx.deviceId, openingCash: doc.openingCash });
     return null;
@@ -87,6 +94,7 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
     const [shift] = await tx.select().from(sh).where(and(eq(sh.id, doc.id), eq(sh.deviceId, ctx.deviceId)));
     if (!shift) return "Vardiya bulunamadı.";
     if (shift.closedAt) return null;
+    if (!(await permitted(tx,doc.staffId,"shift"))) return "Vardiya yetkisi yok.";
     if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
     const expectedCash = await expectedCashOf(tx, shift.id, shift.openingCash);
     await tx.update(sh).set({ closedAt: clampAt(doc.at, undefined, ctx.now), closedBy: doc.staffId, countedCash: doc.countedCash, expectedCash }).where(eq(sh.id, shift.id));
@@ -96,6 +104,7 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
 
   if (doc.kind === "audit") {
     if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
+    if (!(await permitted(tx,doc.approvedBy??doc.staffId,"drawer"))) return "Çekmece yetkisi yok.";
     await tx.insert(schema.auditLog)
       .values({ id: doc.id, tenantId: ctx.tenantId, actor: `staff:${doc.staffId}`, action: `kasa.${doc.action}`, detail: { deviceId: ctx.deviceId, approvedBy: doc.approvedBy }, createdAt: clampAt(doc.at, undefined, ctx.now) })
       .onConflictDoNothing();
@@ -113,6 +122,7 @@ async function apply(tx: Tx, ctx: DeviceCtx, doc: SyncDoc): Promise<string | nul
   }
 
   if (doc.kind === "safe_drop") {
+    if (!(await permitted(tx,doc.staffId,"safeDrop"))) return "Para aktarma yetkisi yok.";
     const [shift] = await tx.select({ id: sh.id }).from(sh).where(and(eq(sh.id, doc.shiftId), eq(sh.deviceId, ctx.deviceId)));
     if (!shift) return "Vardiya bulunamadı.";
     if (!(await staffExists(tx, doc.staffId))) return "Personel bulunamadı.";
@@ -195,6 +205,8 @@ async function recipeData(tx: Tx, lines: Checked["lines"]): Promise<{ byProduct:
 }
 
 async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checked, payments: { method: PayMethod; amount: number }[], change: number, extra: { status: "kapandi" | "iade"; refundOf?: string; approvedBy?: string; tabId?: string; tableId?: string | null; channel?: "masa" | "paket" | "platform"; discount?: number; customerId?: string | null }) {
+  // Already completed financial documents are retained for reconciliation; authority failures are visible review findings.
+  if (!(await permitted(tx,doc.staffId,"sale"))) c.reasons.push("satış/tahsilat yetkisi yok");
   const t = totals(c.lines);
   const receiptNo = await freeReceiptNo(tx, ctx, doc.receiptSeq, c.reasons);
   const at = clampAt(doc.at, c.reasons, ctx.now);
@@ -213,7 +225,7 @@ async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checke
     for (const [id, q] of consumption(recLines[i], r.byProduct, r.byOption)) used.set(id, (used.get(id) ?? 0) + q);
   });
   for (const [id, q] of used) if (q) moves.push({ tenantId: ctx.tenantId, storeId: ctx.storeId, productId: id, kind: "recete", qtyMilli: sign * q, at, saleId: doc.id, actor });
-  if (moves.length) await tx.insert(schema.stockMovements).values(moves);
+  if (moves.length) await writeStock(tx, moves);
   await tx.update(schema.devices).set({ nextReceiptNo: sql`greatest(${schema.devices.nextReceiptNo}, ${doc.receiptSeq + 1})` }).where(and(eq(schema.devices.id, ctx.deviceId), eq(schema.devices.tenantId, ctx.tenantId)));
 }
 
@@ -413,9 +425,10 @@ async function applyTab(tx: Tx, ctx: DeviceCtx, doc: TabDoc): Promise<string | n
   const guarded = NEEDS_MANAGER.has(ev.type) || sentVoid;
   if (guarded) {
     const who = doc.approvedBy ?? doc.staffId;
-    const [s] = who ? await tx.select({ role: schema.staff.role }).from(schema.staff).where(eq(schema.staff.id, who)) : [];
+    const [s] = who ? await tx.select().from(schema.staff).where(eq(schema.staff.id, who)) : [];
     if (!s) return "Onaylayan personel bulunamadı.";
-    if (s.role !== "mudur") reasons.push("müdür onayı yok");
+    const permission = permissionForTab(ev.type,sentVoid);
+    if (permission && !staffCan(s,permission)) return "Bu işlem için personel yetkisi yok.";
     if (doc.approvalToken !== undefined && who && !(await approvalOk(doc.approvalToken, ctx, who))) reasons.push("müdür onayı doğrulanamadı");
   }
   const at = clampAt(doc.at, reasons, ctx.now);
@@ -484,9 +497,9 @@ async function reverseSaleExtras(tx: Tx, ctx: DeviceCtx, doc: RefundDoc) {
 async function applyRefund(tx: Tx, ctx: DeviceCtx, doc: RefundDoc): Promise<string | null> {
   const c = await precheck(tx, ctx, doc);
   if (c === null || typeof c === "string") return c;
-  const [approver] = await tx.select({ role: schema.staff.role }).from(schema.staff).where(eq(schema.staff.id, doc.approvedBy));
+  const [approver] = await tx.select().from(schema.staff).where(eq(schema.staff.id, doc.approvedBy));
   if (!approver) return "Onaylayan personel bulunamadı.";
-  if (approver.role !== "mudur") c.reasons.push("onaylayan müdür değil");
+  if (!staffCan(approver,"refund")) c.reasons.push("onaylayan müdür değil; iade yetkisi yok");
   // Derin tarama #2: PIN sunucuda doğrulanmışsa belge onaya kriptografik olarak bağlanır.
   if (doc.approvalToken !== undefined && !(await approvalOk(doc.approvalToken, ctx, doc.approvedBy))) c.reasons.push("müdür onayı doğrulanamadı");
   const sold = await soldLines(tx, doc.refundOf);

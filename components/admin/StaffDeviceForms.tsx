@@ -6,6 +6,7 @@ import { createDevice, type DeviceState } from "@/lib/admin/device-actions";
 import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
+import { STAFF_PERMISSIONS, staffCan, type StaffPermissions, type StaffPermission } from "@/lib/core/staff-permissions";
 
 const Err = ({ s, f }: { s: { error?: string; field?: string }; f: string }) => (s.field === f && s.error ? <p id={`staff-device-${f}-error`} className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{s.error}</p> : null);
 const errorProps = (s: { error?: string; field?: string }, f: string) => s.field === f && s.error
@@ -29,9 +30,10 @@ export function StaffActiveForm({ id, active, name, className = "" }: { id: stri
   return <form action={setStaffActive.bind(null, id, !active)} className={className}><StaffActiveSubmit active={active} name={name} /></form>;
 }
 
-export function StaffForm({ initial }: { initial?: { id: string; name: string; role: "kasiyer" | "mudur" | "garson" | "kurye" } }) {
+export function StaffForm({ initial }: { initial?: { id: string; name: string; role: "kasiyer" | "mudur" | "garson" | "kurye"; permissions?: StaffPermissions | null } }) {
   const { state, pending, onSubmit } = useFormAction(saveStaff.bind(null, initial?.id ?? null), {} as StaffState);
   const [role, setRole] = useState<string>(initial?.role ?? "kasiyer");
+  const [custom, setCustom] = useState(!!initial?.permissions);
   const [edited, setEdited] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const saveButtonRef = useRef<HTMLButtonElement>(null);
@@ -69,9 +71,10 @@ export function StaffForm({ initial }: { initial?: { id: string; name: string; r
         </div>
         <div><Field label="PIN" hint={initial ? "Boş bırakırsanız değişmez · yenisi 4-6 rakam" : "4-6 hane rakam"}><PasswordInput name="pin" disabled={pending} inputMode="numeric" autoComplete="new-password" minLength={4} maxLength={6} pattern="[0-9]{4,6}" required={!initial} {...errorProps(displayState, "pin")} /></Field><Err s={displayState} f="pin" /></div>
       </div>
+      <details className="rounded-xl border border-line p-3"><summary className="cursor-pointer text-sm font-medium">İşlem yetkileri</summary><label className="my-3 flex min-h-11 items-center gap-2"><input type="checkbox" name="customPermissions" checked={custom} onChange={e=>setCustom(e.target.checked)} disabled={pending}/>Bu personele özel yetkiler</label>{custom?<fieldset disabled={pending} className="grid gap-2 sm:grid-cols-2">{Object.entries(STAFF_PERMISSIONS).map(([key,label])=><label key={`${role}:${key}`} className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="permission" value={key} defaultChecked={staffCan({role,permissions:initial?.permissions},key as StaffPermission)}/>{label}</label>)}</fieldset>:<p className="text-sm text-muted">Rolün varsayılan yetkileri kullanılır.</p>}<p className="mt-2 text-xs text-muted">Çevrimdışı cihazlar yeni yetkileri katalog eşitlendiğinde alır. Sunucu güncel yetkiyi ayrıca kontrol eder.</p></details>
       {initial && (
         <div className="max-w-xs">
-          <Field label="Hesap şifreniz" hint="Rol veya PIN değişiminde gerekli"><PasswordInput name="sifre" disabled={pending} autoComplete="current-password" {...errorProps(displayState, "sifre")} /></Field>
+          <Field label="Hesap şifreniz" hint="Rol, PIN veya işlem yetkisi değişiminde gerekli"><PasswordInput name="sifre" disabled={pending} autoComplete="current-password" {...errorProps(displayState, "sifre")} /></Field>
           <Err s={displayState} f="sifre" />
         </div>
       )}

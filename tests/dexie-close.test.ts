@@ -16,7 +16,7 @@ test("kapanış: vardiya aç + 2 satış + reddedilmiş kopya + kapanış tamaml
   // Cihaz meta'da yoksa recordSaleLocal "Açık vardiya yok" der; eşlenmiş kasa gibi hazırla.
   await d.transaction("rw", d.meta, async () => {
     const m = await loadMeta();
-    await d.meta.put({ ...m, device: { id: "d1", name: "Kasa 1", receiptPrefix: "K1", tenantName: "T", vertical: "market", role: "kasa", stations: [], storeName: "S", storeAddress: null, nextReceiptNo: 1 } });
+    await d.meta.put({ ...m, catalog:{...m.catalog,staff:[{...staff,role:"kasiyer"}]}, device: { id: "d1", name: "Kasa 1", receiptPrefix: "K1", tenantName: "T", vertical: "market", role: "kasa", stations: [], storeName: "S", storeAddress: null, nextReceiptNo: 1 } });
   });
   await withTimeout(openShiftLocal("s1", 500), 3000, "vardiya açma");
   const sale = (id: string) => withTimeout(recordSaleLocal(staff, cart, [{ method: "nakit" as const, amount: 3000 }], id, undefined, null, 0), 3000, `satış ${id}`);

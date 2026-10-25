@@ -3,6 +3,7 @@ import { formatQty, type StockUnit } from "./stock";
 
 export type TransferDocument = {
   id: string; createdAt: Date; fromStoreId: string; fromName: string; toStoreId: string; toName: string; note: string | null;
+  status?: string; receivedAt?: Date | null;
   lines: { productId: string; name: string; qtyMilli: number; unit: StockUnit }[];
 };
 export const transferDate = (date: Date) => new Intl.DateTimeFormat("tr-TR", {

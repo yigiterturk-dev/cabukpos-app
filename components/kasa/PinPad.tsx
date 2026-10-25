@@ -82,7 +82,7 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
       const found: Cashier | null = foundStaff ? { id: foundStaff.id, name: foundStaff.name } : null;
       // Müdür onayı: PIN sunucuda da doğrulanır, kısa ömürlü imzalı belirteç belgeyle buluta gider.
       let approvalToken: string | undefined;
-      if (!serverPurpose && foundStaff?.role === "mudur" && navigator.onLine) {
+      if (!serverPurpose && only && foundStaff && navigator.onLine) {
         try {
           const r = await fetch("/api/kasa/onay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ staffId: foundStaff.id, pin: entered }), signal: AbortSignal.timeout(8000) });
           if (r.ok) approvalToken = ((await r.json()) as { token?: string }).token;

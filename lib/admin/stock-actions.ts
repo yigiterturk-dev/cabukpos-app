@@ -1,4 +1,5 @@
 "use server";
+import { writeStock } from "@/lib/admin/stock-lots";
 // Stok hareketleri (yönetim): fire (−, not zorunlu), sayım (mutlak). Alış M7'den beri alış fişiyle (purchase-actions). Yönetim ilk şubeyi kullanır (M1 tek şube).
 // #51 sayım oturumu: açılışta anlık görüntü, satır satır sayım, kapanışta sapma onayıyla mutlak sayım hareketi.
 import { eq } from "drizzle-orm";
@@ -30,7 +31,7 @@ export async function addStockMove(productId: string, _: StockState, form: FormD
     const storeId = await scopedStoreId(tx, a.tenantId, a.storeId);
     if (!storeId) return { error: "Şube yok." };
     const qtyMilli = kind === "fire" ? -q : q;
-    await tx.insert(schema.stockMovements).values({ tenantId: a.tenantId, storeId, productId, kind, qtyMilli, actor: `user:${a.id}`, note });
+    await writeStock(tx, { tenantId: a.tenantId, storeId, productId, kind, qtyMilli, actor: `user:${a.id}`, note });
     await audit(tx, a.tenantId, `user:${a.id}`, `stock.${kind}`, { productId, qtyMilli, note });
     return null;
   });
@@ -111,7 +112,7 @@ export async function closeStockCount(countId: string, _: CountState, form: Form
     const lines = await tx.select({ id: schema.stockCountLines.id, productId: schema.stockCountLines.productId, expectedMilli: schema.stockCountLines.expectedMilli, countedMilli: schema.stockCountLines.countedMilli })
       .from(schema.stockCountLines).where(eq(schema.stockCountLines.countId, countId));
     const applied = lines.map((l) => ({ productId: l.productId, apply: countApply(l) })).filter((x): x is { productId: string; apply: number } => x.apply !== null);
-    if (applied.length) await tx.insert(schema.stockMovements).values(applied.map((x) => ({ tenantId: a.tenantId, storeId: c.storeId, productId: x.productId, kind: "sayim" as const, qtyMilli: x.apply, actor: `user:${a.id}`, note: `Sayım oturumu${note ? `: ${note}` : ""}` })));
+    if (applied.length) await writeStock(tx, applied.map((x) => ({ tenantId: a.tenantId, storeId: c.storeId, productId: x.productId, kind: "sayim" as const, qtyMilli: x.apply, actor: `user:${a.id}`, note: `Sayım oturumu${note ? `: ${note}` : ""}` })));
     await tx.update(schema.stockCounts).set({ status: "kapandi", closedBy: `user:${a.id}`, closedAt: new Date(), note }).where(eq(schema.stockCounts.id, countId));
     await audit(tx, a.tenantId, `user:${a.id}`, "count.close", { id: countId, applied: applied.length, skipped: lines.length - applied.length });
     return null;

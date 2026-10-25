@@ -61,16 +61,16 @@ test("olay idempotent; başka kiracının masası ve personelsiz satır eklemesi
   assert.ok(evs[0].seq! < evs[1].seq!);
 });
 
-test("garsonun ikramı müdürsüz → kaydedilir, review + audit; müdür onaylı → temiz", async () => {
+test("garsonun yetkisiz ikramı reddedilir; yetkili onaylı indirim temiz", async () => {
   const comp = tabDoc({ type: "comp", lineId: lineA, reason: "bekletildi" });
-  assert.equal((await applyDoc(garsonCtx, comp)).ok, true);
+  assert.equal((await applyDoc(garsonCtx, comp)).ok, false);
   const disc = tabDoc({ type: "discount", percent: 10, amount: null, reason: "müdavim" }, { approvedBy: s.mudur.id });
   assert.equal((await applyDoc(garsonCtx, disc)).ok, true);
   const rows = await withTenant(t.id, (tx) => tx.select().from(schema.tabEvents).where(eq(schema.tabEvents.tabId, tabId)));
-  assert.equal(rows.find((r) => r.id === comp.id)!.review, "müdür onayı yok");
+  assert.equal(rows.find((r) => r.id === comp.id), undefined);
   assert.equal(rows.find((r) => r.id === disc.id)!.review, null);
   const audits = await withTenant(t.id, (tx) => tx.select().from(schema.auditLog).where(eq(schema.auditLog.action, "masa.comp")));
-  assert.equal(audits.length, 1);
+  assert.equal(audits.length, 0);
   // Geri al: ikramı kaldırmak için satırı iptal etmek yerine yeni satır (sonraki test tam fiyat ödeme ister)
   await applyDoc(garsonCtx, tabDoc({ type: "discount", percent: null, amount: null, reason: "" }, { approvedBy: s.mudur.id }));
 });
