@@ -276,7 +276,7 @@ export function MobileNav({ children }: { children: React.ReactNode }) {
   const setOpen = (v: boolean) => setOpenAt(v ? path : null);
   const close = () => setOpenAt(null);
   useEffect(() => {
-    const desktop = window.matchMedia("(min-width: 48rem)");
+    const desktop = window.matchMedia("(min-width: 64rem)");
     const closeOnDesktop = () => { if (desktop.matches) setOpenAt(null); };
     desktop.addEventListener("change", closeOnDesktop);
     return () => desktop.removeEventListener("change", closeOnDesktop);
@@ -332,11 +332,11 @@ export function MobileNav({ children }: { children: React.ReactNode }) {
   }, [open]);
   return (
     <>
-      <button ref={triggerRef} type="button" aria-label={open ? "Menüyü kapat" : "Menüyü aç"} aria-expanded={open} onClick={() => setOpen(!open)} className="press grid size-11 place-items-center rounded-[10px] text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 md:hidden">
+      <button ref={triggerRef} type="button" aria-label={open ? "Menüyü kapat" : "Menüyü aç"} aria-expanded={open} onClick={() => setOpen(!open)} className="press grid size-11 place-items-center rounded-[10px] text-ink-2 outline-none hover:bg-surface-3 focus-visible:ring-4 focus-visible:ring-brand-ring/60 lg:hidden">
         <Menu aria-hidden className="size-5" />
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menü">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menü">
           <div className="absolute inset-0 bg-espresso/50" onClick={() => setOpen(false)} />
           <div ref={drawerRef} className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overscroll-contain overflow-y-auto bg-espresso p-4 shadow-pop">
             <button ref={closeRef} type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="press mb-2 ml-auto grid size-11 place-items-center rounded-[10px] text-cream-muted outline-none hover:bg-surface/5 hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60">

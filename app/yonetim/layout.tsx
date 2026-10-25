@@ -57,16 +57,16 @@ export default async function YonetimLayout({ children }: { children: React.Reac
     </div>
   );
   return (
-    <div className="min-h-dvh bg-canvas md:grid md:grid-cols-[232px_1fr] print:block print:bg-white">
+    <div className="min-h-dvh bg-canvas lg:grid lg:grid-cols-[232px_1fr] print:block print:bg-white">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-3 focus:font-semibold focus:text-ink focus:shadow-pop focus-visible:ring-4 focus-visible:ring-brand-ring/60">İçeriğe geç</a>
       <PanelOffline />
-      <aside className="relative hidden overflow-hidden bg-espresso print:hidden md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:p-4 md:shadow-[inset_-1px_0_0_rgb(255_255_255/0.06)]">
+      <aside className="relative hidden overflow-hidden bg-espresso print:hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:p-4 lg:shadow-[inset_-1px_0_0_rgb(255_255_255/0.06)]">
         <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 h-48 bg-[radial-gradient(60%_100%_at_50%_0%,rgb(224_90_16/0.16),transparent)]" />
         <div className="relative mb-4 border-b border-white/10 pb-4">{brand(true)}<div className="mt-3 px-1">{storeLink(true)}</div></div>
         <div className="relative min-h-0 flex-1 overflow-y-auto"><Nav vertical={a.vertical} storeCount={storeCount} allStores={!a.storeId} openTabs={openTabs} /></div>
         <div className="relative pt-4">{footer}</div>
       </aside>
-      <header className="sticky top-0 z-40 flex min-w-0 items-center gap-2 border-b border-line bg-surface px-3 py-2 print:hidden md:hidden">
+      <header className="sticky top-0 z-40 flex min-w-0 items-center gap-2 border-b border-line bg-surface px-3 py-2 print:hidden lg:hidden">
         <MobileNav>
           <div className="mb-5">{brand(true)}</div>
           <div className="flex-1"><Nav vertical={a.vertical} storeCount={storeCount} allStores={!a.storeId} openTabs={openTabs} /></div>

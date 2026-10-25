@@ -27,10 +27,27 @@ Genel testlere kısmi teslim ve yarış, tekrar kimliği değişikliği, kalan i
 
 HTTP smoke yalnız loopback ve tam yerel demo DB adıyla çalışır; geçici ayrı test işletmesi oluşturur ve kendi verilerini temizler. Gerçek işletmenin kullanıcı/PIN/cihaz/verileriyle çalışmaz. Demo seed `scripts/seed-remaining-workflows-demo.ts` yalnız Yerel Demo işletmesinde örnek sipariş/teslim ekler. İlk 4 kg ardından tarayıcıda 2 kg teslim alındı; 4 kg kaldı.
 
-Tablet 768 px boyutuna geçişte tarayıcı kontrol bağlantısı koptu; tablet doğrulandı iddiası yoktur. Telefon ölçümü ve görseller kesintiden önce tamamlandı. Dış kurye/banka sağlayıcı bağlantıları, bu sürümün Netcup canlı geçişi ve mali cihaz/saha doğrulaması bu çalışmada yapılmadı.
+İlk denemede kesilen tablet kontrolü sonraki turda tamamlandı. 768 px tablet formları ve 1024 px menü geçişi doğrulandı; ayrıntılar aşağıdadır. Dış kurye/banka sağlayıcı bağlantıları, bu sürümün Netcup canlı geçişi ve mali cihaz/saha doğrulaması bu çalışmada yapılmadı.
 
 ## Migration ve yayın
 
 PostgreSQL 16+; yerelde 16.13, küçük demo/test hacmi. Canlı hacim ve kilit süresi ölçülmedi. `db/releases/2026-10-25-partial-procurement.sql` yeni tablo/indeks/RLS/grant ekler; eski sipariş satırlarını veya miktarlarını değiştirmez. `lock_timeout=3s`, `statement_timeout=15s`, transaction içinde uygulanır. Yerel test ve demo DB'lerinde iki kez uygulandı. Kiracı izolasyonu hem kaynak kapsam testiyle hem DB işlemleriyle doğrulandı.
 
 Canlı sıra: önce önceki beş özellik migration’ı (`docs/feature-completion-migrations.md`), sonra bu partial-procurement migration’ı, sonra yeni uygulama. Katalog eşitlemesiyle SKT verisi kasalara iletilmeli; eski çevrimdışı kodun anında güncellenmiş olduğu varsayılmamalı. İlk kısmi teslimden sonra eski uygulamaya yazımlı dönüş güvenli sayılmaz; eski kod yeni durum/teslim geçmişini yönetmez. Yeni tabloyu silen rollback yoktur; ileri düzeltme veya ayrıca doğrulanmış izole yedekten kurtarma kullanılır. Canlı yayın önerisi bu ön kontrollerle **staged** olarak kalır.
+
+
+## Tablet doğrulaması ve yerleşim düzeltmesi
+
+Başlangıç `6410027`; yalnız görünüm ve gezinme değişti, stok/tahsilat/PIN verisi değiştirilmedi. 768 px portrede 232 px sabit yan menü formu daraltıyordu. Yönetim sabit menüsü ve açılır menünün CSS/JavaScript eşikleri birlikte 1024 px (`lg`, `64rem`) yapıldı. 768 px tablet içerik için bütün genişliği kullanır; 1024 px ve üzeri sabit menüye geçer. Ana içeriğin mevcut padding davranışı korunur.
+
+Teslim formunda 640–1023 px aralığında miktar/parti iki sütun, SKT tam satır; 1024 px üzerinde üç sütun vardır. Sipariş kartında alınan ve kalan miktar artık form açılmadan görünür. İptal edilen kalan miktar “İptal edilen” olarak etiketlenir; sipariş notu hesaplanan güncel özetten ayrı etiketlidir.
+
+- 768 px: tedarik kısmi teslim formu, parti/SKT formu, hakediş formu, devam kartları, rezervasyon ayarları, müşteri rezervasyonu ve personel PIN formunun geliştirme önizlemesi kontrol edildi; her birinde belge/içerik genişliği 768/768.
+- Açılır menü açıldı; Escape kapattı ve odağı “Menüyü aç” düğmesine geri verdi.
+- Menü açıkken 768 → 1024 geçişi denendi: menü kapandı, body kaydırma kilidi temizlendi, sabit yan menü 232 px göründü; belge/içerik 1024/1024.
+- Tedarik ekranında 390/390 ve normal 1470/1470 ölçümü de geçti. Geçici viewport ayarı sıfırlandı; deneme sayfası normal boyutta bırakıldı.
+- Güncel demo kartında alınan **6 kg**, kalan **4 kg** ve tarihsel teslim alınmış siparişte alınan **5 kg**, kalan **0 kg** görüldü. Bu turda yeni teslim kaydı yapılmadı.
+- Lint ve TypeScript: `npm run qa:static`, `/private/tmp/cabukpos-tablet-static.log`, çıkış 0.
+- Üretim derlemesi: bağımsız kaynak kopyasında `npm run build`, `/private/tmp/cabukpos-tablet-build.log`, çıkış 0.
+- Önceki 560/560 işlem testi bu turda tekrar çalıştırılmadı; iş kuralları, veri modeli ve yazma yolları değişmedi. Sayıların kaynağı mevcut testli `remainingProcurement` hesabıdır; gerçek tarayıcıda kayıtlı verilerle doğrulandı.
+- Görsel kanıt: `/private/tmp/cabukpos-tablet-delivery.png`.
