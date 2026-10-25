@@ -23,9 +23,9 @@ Yedi kod başlığı yerelde tamamlandı. Bu kayıt canlı sağlayıcı, banka, 
 | Rezervasyon | `/yonetim/rezervasyonlar/ayarlar`; `/rezervasyon/[token]` | Masa kapasitesi, süre, yarı açık aralıkla çakışma, şubeye göre kilit, aynı istek kimliğinde tekrar, müşteri formu. Eşzamanlı son masa isteklerinden biri kabul edilir. |
 | Sevkiyat | `/yonetim/transferler/[id]` | Gönderimde kaynak düşer; yolda stok yazılmaz; hedef teslimde artar; iptal kaynağa döner. Tekrarlanan teslim/iptal tek stok hareketi üretir. Parti kodu/SKT hedefe taşınır. |
 | Hakediş | `/yonetim/platform-hesap` | Kaynak platforma göre satış/iade, komisyon matrahı ve oranı, kurye gideri, düzeltme, beklenen/gelen/fark. Çakışan dönem engeli, sonradan eşitlenen belge uyarısı, geçmişi silmeden iptal ve yeni hesap. |
-| Parti ve tedarik | `/yonetim/partiler`, `/yonetim/tedarik` | Etiketsiz mevcut stok partiye ayrılır; stok artmaz. Satış/reçete/üretim/fire/sevkiyat çıkışları FEFO. Sayım ve geriye tarihli hareketler toplamla tutarlıdır. Sipariş tesliminde tek alış/parti; alış iptali kendi partisine uygulanır, tüketilmiş alış iptali engellenir. |
+| Parti ve tedarik | `/yonetim/partiler`, `/yonetim/tedarik` | Etiketsiz mevcut stok partiye ayrılır; stok artmaz. Satış/reçete/üretim/fire/sevkiyat çıkışları FEFO. Sayım ve geriye tarihli hareketler toplamla tutarlıdır. Her kısmi teslimde ayrı alış/parti, kalan miktar takibi; alış iptali kendi partisine uygulanır, tüketilmiş alış iptali engellenir. |
 | Personel yetkisi | `/yonetim/personel` → Düzenle → İşlem yetkileri | Kişi bazında 9 izin; yerel depoda ve sunucuda kontrol. Yetkisiz adisyon işlemi reddi, tamamlanmış mali belgelerde kaydı koruyan inceleme uyarısı. Değişimde hesap şifresi doğrulaması. |
-| Fiilî devam | `/yonetim/devam` | Yönetici giriş/çıkış kaydeder; sunucu saati. Personel başına tüm şubelerde tek açık giriş. Eski çıkış isteği yeni girişi kapatamaz. Son 31 gün ve açık girişler, geçen/gerçek süre. |
+| Fiilî devam | `/yonetim/devam` | Yönetici veya eşlenmiş cihazda personelin kendi PIN’i giriş/çıkış kaydeder; sunucu saati. Personel başına tüm şubelerde tek açık giriş. Eski çıkış isteği yeni girişi kapatamaz. Son 31 gün ve açık girişler, geçen/gerçek süre. |
 
 ### Testler
 
@@ -38,12 +38,17 @@ Yedi kod başlığı yerelde tamamlandı. Bu kayıt canlı sağlayıcı, banka, 
 
 ### İşletim sınırları
 
-- SKT yaklaşan/geçmiş partileri uyarır. Fiziksel ayırma ve imha işletme tarafından onaylanır; otomatik satış blokajı veya gıda uygunluğu sertifikası değildir. İadeler etiketsiz stoğa döner.
-- Tedarik siparişinde kısmi teslim ve tedarikçiye otomatik mesaj yoktur. Mevcut işlem bütün siparişi tek kez teslim alır.
+- Girilmiş SKT bilgilerine göre süresi geçmiş pozitif stok partisi bulunan ürün, reçete veya seçenek hammaddesi satış öncesinde engellenir. Çevrimiçi kontrol sunucudan, çevrimdışı kontrol son katalog ve cihaz tarihinden yapılır. Fiziksel ayırma/imha işletme tarafından onaylanır; iadeler etiketsiz stoğa döner.
+- Tedarik siparişinde kısmi teslim, teslim başına parti/SKT ve kalan miktar iptali var. Tedarikçiye otomatik mesaj gönderilmez.
 - Komisyon oranları ve masraflar işletme tarafından girilir. Gelen ödeme elle kayıttır; banka/sağlayıcıdan otomatik çekilmez.
-- Devam yönetici kayıtlarıdır; çalışan uygulaması, bordro, mola/ücret hesaplama ve konumla otomatik giriş yoktur.
+- Personel eşlenmiş cihazda `/kasa/devam` sayfasından kendi PIN’iyle giriş/çıkış yapabilir. İnternet gerekir; kasa vardiyasını değiştirmez. Bordro, mola/ücret hesaplama ve konumla otomatik giriş yoktur.
 - Çevrimdışı cihaz yeni izinleri katalog eşitlemesinde alır. Sunucu güncel yetkileri ayrıca denetler. Daha önce fiilen tamamlanmış mali belgeler inceleme işaretiyle korunur.
 - Kullanıcı PIN'i, mevcut cihaz eşlemesi ve kullanıcının açık kasa vardiyası değiştirilmedi. Demo mali geçmişi ayrı, iptal edilmiş cihaz/kapanmış vardiyada oluşturuldu.
 - Migration ve dağıtım sırası: `docs/feature-completion-migrations.md`. Canlı veritabanına uygulanmadı; GitHub Actions açılmadı.
 
-Son gezinme düzeltmesi: Stok ekranına Parti/SKT, Tedarik ve Sevkiyat; Raporlar ekranına Hakediş ve Kurye hesabı bağlantıları eklendi. Personel formunun şifre açıklaması izin değişimini de kapsar. Son dar ekran kontrolü tarayıcı kontrol bağlantısı kesildiği için tamamlanmış sayılmadı; bu çalışmada yeni ekranların mobil doğrulaması iddia edilmiyor.
+Son gezinme düzeltmesi: Stok ekranına Parti/SKT, Tedarik ve Sevkiyat; Raporlar ekranına Hakediş ve Kurye hesabı bağlantıları eklendi. Personel formunun şifre açıklaması izin değişimini de kapsar. İlk denemede kesilen telefon kontrolü aşağıdaki sonraki tamamlama kapsamında 390 px için tamamlandı.
+
+
+## Sonraki tamamlama — 25 Ekim
+
+Kısmi tedarik teslimi, satış öncesi SKT engeli ve PIN ile personel devamı eklendi. Güncel paket **560/560 test**, lint/TypeScript ve ayrı kopyada üretim derlemesinden geçti. Gerçek HTTP kontrollerinde eşleşme/Origin/PIN reddi, giriş/çıkış tekrarı, SKT 409 engeli, kataloğa SKT aktarımı ve imha sonrası 200 yanıtı doğrulandı. 390 px telefon kontrolü tedarik, parti/SKT formu, hakediş formu, devam kartları, rezervasyon ayarları, müşteri formu ve personel PIN formu önizlemesinde tamamlandı; yatay taşma yoktu. Ayrıntılar: `docs/remaining-workflows.md`. Önceki mobil doğrulama eksikliği bu telefon kapsamı için kapandı; tablet kontrolü ayrı kaldı.

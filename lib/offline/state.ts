@@ -20,7 +20,7 @@ export type DeliveryZone = { id: string; name: string; fee: number; minOrder: nu
 // #50: fiyat listesi / happy hour (market + restoran; kasa satır eklerken uygular)
 export type KasaPriceList = { id: string; name: string; kind?: "fiyat" | "yuzde"; percent?: number | null; categoryIds?: string[] | null; days: number[]; startMin: number; endMin: number; storeId: string | null; items: { productId: string; price: number }[] };
 // M5: restoran salonu (market kataloğunda yok)
-export type Catalog = { categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; priceLists?: KasaPriceList[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null } };
+export type Catalog = { expirySafety?: import("@/lib/core/stock-expiry").ExpirySafety; categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; priceLists?: KasaPriceList[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null } };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
 export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number; dropped: number };
 /** #48: vardiyada seifeye alınan paralar (safe drop); beklenen kasadan düşer. */
@@ -58,7 +58,7 @@ export type LocalSale = {
 export type OutboxRow = { n?: number; id: string; doc: SyncDoc };
 export type RejectedRow = { id: string; doc: SyncDoc; error: string; at: string };
 
-export const emptyMeta = (): Meta => ({ key: "state", v: null, device: null, catalog: { categories: [], products: [], staff: [] }, shift: null, lastClosed: null, nextSeq: 1, pinFails: 0, pinLockUntil: 0 });
+export const emptyMeta = (): Meta => ({ key: "state", v: null, device: null, catalog: { categories: [], products: [], staff: [], expirySafety:{checkedDay:"2000-01-01",lots:[],recipes:[]} }, shift: null, lastClosed: null, nextSeq: 1, pinFails: 0, pinLockUntil: 0 });
 
 export const PIN_MAX_FAILS = 5;
 export const PIN_LOCK_MS = 5 * 60_000;

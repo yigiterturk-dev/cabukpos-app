@@ -1,5 +1,6 @@
 "use client";
 import { staffCan } from "@/lib/core/staff-permissions";
+import {checkSaleExpiry} from "./stock-expiry";
 // lib/offline/db.ts — Kasa IndexedDB'si (Dexie). Yalnız tarayıcıda.
 // Satış, vardiya açma ve gün sonu tek işlemde hem yerel kayda hem giden kutusuna yazılır.
 import Dexie, { type Table } from "dexie";
@@ -83,6 +84,10 @@ export type { SaleExtrasInput };
 
 export async function recordSaleLocal(staff: { id: string; name: string }, cart: SaleCartLine[], payments: Payment[], saleId: string, tab?: SaleTab, buyer: Buyer | null = null, tip = 0, extras?: SaleExtrasInput): Promise<{ ok: true; sale: LocalSale } | { ok: false; error: string }> {
   const d = kasaDb();
+  const existing=await d.sales.get(saleId);
+  if(existing)return {ok:true,sale:existing};
+  const expiryError=await checkSaleExpiry((await loadMeta()).catalog,cart);
+  if(expiryError)return {ok:false,error:expiryError};
   return d.transaction("rw", [d.meta, d.sales, d.outbox, d.tabEvents], async () => {
     const done = await d.sales.get(saleId);
     if (done) return { ok: true as const, sale: done };

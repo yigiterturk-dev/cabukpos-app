@@ -176,7 +176,7 @@ export const staffPlans = pgTable("staff_plans", {
   check("staff_plans_text", sql`length(${t.title}) between 2 and 120 and length(${t.note}) <= 1000 and ${t.revision} > 0`),
 ]);
 
-/** Latest voluntarily shared courier position; no location trail is stored. */
+/** Lot allocations label a subset of aggregate physical stock. */
 export const stockLots = pgTable("stock_lots", {
  id: uuid("id").primaryKey().defaultRandom(), tenantId: tenantRef(), storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }), code: text("code").notNull(), expiresOn: date("expires_on"), purchaseId: uuid("purchase_id").references(() => purchases.id, { onDelete: "set null" }),
@@ -191,6 +191,12 @@ export const procurementOrders = pgTable("procurement_orders", {
  status:text("status").notNull().default("siparis"),lines:jsonb("lines").notNull().$type<{productId:string;qtyMilli:number;unitCost:number;lotCode:string;expiresOn:string|null}[]>(),
  note:text("note").notNull(),createdBy:text("created_by").notNull(),createdAt:ts("created_at").notNull().defaultNow(),receivedAt:ts("received_at"),purchaseId:uuid("purchase_id").references(()=>purchases.id),
 });
+export const procurementReceipts = pgTable("procurement_receipts", {
+ id:uuid("id").primaryKey(),tenantId:tenantRef(),storeId:uuid("store_id").notNull().references(()=>stores.id,{onDelete:"cascade"}),
+ orderId:uuid("order_id").notNull().references(()=>procurementOrders.id,{onDelete:"cascade"}),purchaseId:uuid("purchase_id").notNull().references(()=>purchases.id),
+ lines:jsonb("lines").notNull().$type<{productId:string;qtyMilli:number;lotCode:string;expiresOn:string|null}[]>(),
+ note:text("note").notNull(),createdBy:text("created_by").notNull(),createdAt:ts("created_at").notNull().defaultNow(),
+},t=>[index("procurement_receipts_order_idx").on(t.tenantId,t.orderId)]);
 
 export const platformSettlements = pgTable("platform_settlements", {
   id: uuid("id").primaryKey().defaultRandom(), tenantId: tenantRef(),

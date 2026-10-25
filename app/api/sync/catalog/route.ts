@@ -1,3 +1,4 @@
+import {loadExpirySafety} from "@/lib/stock-expiry";
 // Katalog aşağı: cihaz + açık vardiya + fiş sayacı her seferinde; katalog (kategori, ürün, personel PIN hash'i)
 // yalnız içerik özeti ?v= ile farklıysa. Kimlik: cihaz çerezi.
 import { billingInfo } from "@/lib/core/billing";
@@ -63,7 +64,9 @@ export async function GET(req: Request) {
   const staffOut = device.role === "mutfak"
     ? staff.map(({ id, name, role }) => ({ id, name, role }))
     : staff;
+  const expirySafety=await withTenant(device.tenantId,tx=>loadExpirySafety(tx,device.storeId));
   const catalog = {
+    expirySafety,
     categories: cats.map(({ id, name }) => ({ id, name })), products, staff: staffOut,
     priceLists: priceLists.length ? priceLists : undefined, // #50
     fiscal: { modes: { ...DEFAULT_MODES, ...fs?.modes }, provider: fs?.provider ?? "fake-earsiv", sellerTaxId: tn?.taxId ?? null }, // M8

@@ -795,7 +795,7 @@ export function KasaApp() {
     return <>{header}<GunSonu meta={meta} closed onClose={async () => {}} onBack={() => setView({ name: "home" })} /></>;
   }
   if (!cashier) {
-    return <>{header}<Center logo title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} autoFocusFirst /><Link href="/kasa/kurulum" className="mt-4 inline-flex min-h-11 items-center justify-center text-sm text-brand underline">İlk kullanım: PIN belirle / PIN’imi değiştir</Link></Center></>;
+    return <>{header}<Center logo title={d.tenantName} sub={`${d.name} · PIN ile girin`}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} autoFocusFirst /><Link href="/kasa/kurulum" className="mt-4 inline-flex min-h-11 items-center justify-center text-sm text-brand underline">İlk kullanım: PIN belirle / PIN’imi değiştir</Link><Link href="/kasa/devam" className="mt-2 inline-flex min-h-11 items-center justify-center text-sm text-brand underline">Personel giriş / çıkış</Link></Center></>;
   }
   if (restoran && role === "kurye") {
     if (!meta.shift && !staffCan(meta.catalog.staff.find(s=>s.id===cashier.id),"shift")) return <Center title="Vardiya açma yetkisi yok" sub="İşletme yöneticisi Personel ekranından bu izni düzenleyebilir."><Button onClick={()=>setCashier(null)}>Giriş ekranına dön</Button></Center>;

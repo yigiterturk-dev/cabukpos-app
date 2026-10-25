@@ -74,3 +74,8 @@ Personel planlama ve görev yönetimi eklendi: `/yonetim/personel-plan`. Haftal�
 ## 25 Ekim — yedi kod başlığının tamamlanması
 
 Kurye karma tahsilat, kapasiteye göre müşteri rezervasyonu, teslim onaylı sevkiyat, platform hakedişi, parti/SKT ve tedarik, ayrıntılı personel izinleri, fiilî giriş/çıkış eklendi. Önceki tarihli paragraftaki fiilî devam ve özel işlem izni eksikleri bu tanımlı kapsamda kapandı. Kanıt ve sınırlar `docs/feature-completion.md` içindedir. Bu sonuç Suitable'ın bütün kapalı ekranlarının veya canlı entegrasyonlarının eşdeğerlik doğrulaması değildir.
+
+
+## 25 Ekim — kalan bağımsız akışlar
+
+Tedarik siparişleri parça parça alınabiliyor; teslim başına ayrı alış fişi/parti/SKT ve kalan miktar iptali var. Girilmiş SKT’si geçen stok, ürün/reçete/seçenek üzerinden satış öncesinde engelleniyor. Personel eşlenmiş cihazda kendi PIN’iyle çevrimiçi giriş/çıkış yapabiliyor. 390 px telefon kontrolleri ve 560 test geçti; ayrıntılar `docs/remaining-workflows.md` içinde. Bu kapsamın canlı sağlayıcı/banka/dış kurye bağlantısı veya mali cihaz saha doğrulaması iddiası yoktur.

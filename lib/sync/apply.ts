@@ -1,4 +1,5 @@
 import { writeStock } from "@/lib/admin/stock-lots";
+import {saleExpiryProblem} from "@/lib/stock-expiry";
 import { staffCan, permissionForTab, type StaffPermission } from "@/lib/core/staff-permissions";
 // lib/sync/apply.ts — Kasadan gelen belgeyi bulutta uygular. İdempotent: aynı kimlik ikinci kez yazılmaz.
 // Tamamlanmış satış/iade reddedilmez: fiyat farkı, silinmiş/pasif ürün, fiş no çakışması, fazla iade → kaydedilir + sales.review.
@@ -206,6 +207,7 @@ async function recipeData(tx: Tx, lines: Checked["lines"]): Promise<{ byProduct:
 
 async function write(tx: Tx, ctx: DeviceCtx, doc: SaleDoc | RefundDoc, c: Checked, payments: { method: PayMethod; amount: number }[], change: number, extra: { status: "kapandi" | "iade"; refundOf?: string; approvedBy?: string; tabId?: string; tableId?: string | null; channel?: "masa" | "paket" | "platform"; discount?: number; customerId?: string | null }) {
   // Already completed financial documents are retained for reconciliation; authority failures are visible review findings.
+  if(doc.kind==="sale"){const issue=await saleExpiryProblem(tx,ctx.storeId,c.lines);if(issue)c.reasons.push(issue);}
   if (!(await permitted(tx,doc.staffId,"sale"))) c.reasons.push("satış/tahsilat yetkisi yok");
   const t = totals(c.lines);
   const receiptNo = await freeReceiptNo(tx, ctx, doc.receiptSeq, c.reasons);
