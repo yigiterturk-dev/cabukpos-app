@@ -899,7 +899,7 @@ export function KasaApp() {
       const tab = tabsApi.tabs.get(view.tabId);
       if (!tab) return null;
       return <BillScreen tab={tab} tableName={tabLabel(tab, tables, PLATFORM_NAMES)} currency={d.currency} onPay={(part, id, p, b, tip, ex) => onTabPay(tab, part, id, p, b, tip, ex)}
-        onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed ? { name: "paket" } : { name: "ptab", tabId: tab.id })} />;
+        onReceipt={async (id) => { const s = await kasaDb().sales.get(id); if (s) setView({ name: "receipt", sale: s }); }} onBack={() => setView(tab.closed || deliveryStatus(tab) === "teslim" ? { name: "paket" } : { name: "ptab", tabId: tab.id })} />;
     }
     return null;
   };

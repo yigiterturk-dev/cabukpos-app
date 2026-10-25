@@ -231,9 +231,10 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                   const deadline = deadlineInfo(t);
                   const deadlineRemaining = deadline.at === null ? null : Math.ceil((deadline.at - now) / 60_000);
                   const closed = st === "teslim" || st === "iptal" || st === "reddedildi";
+                  const recoverPayment = st === "teslim" && t.kind === "paket" && !t.closed && t.remaining > 0;
                   const ageFrom = closed && t.closedAt ? t.closedAt : t.openedAt;
                   return (
-                    <li key={t.id} data-testid="delivery-card" data-order-id={t.id} tabIndex={-1} className={`min-w-0 rounded-xl border bg-surface p-3 text-sm shadow-card outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${st === "onay_bekliyor" ? "border-bad/40 ring-2 ring-bad-soft" : "border-line"} ${closed ? "opacity-70" : ""}`}>
+                    <li key={t.id} data-testid="delivery-card" data-order-id={t.id} tabIndex={-1} className={`min-w-0 rounded-xl border bg-surface p-3 text-sm shadow-card outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${st === "onay_bekliyor" ? "border-bad/40 ring-2 ring-bad-soft" : "border-line"} ${closed && !recoverPayment ? "opacity-70" : ""}`}>
                       <button type="button" aria-label={`${orderLabel}, ${STATUS_LABEL[st]} sipariş ayrıntıları`} disabled={closed} onClick={() => onOpen(t.id)} className="block w-full rounded-lg text-left outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-default">
                         <div className="flex items-center gap-2">
                           <span className="min-w-0 truncate font-semibold" title={orderLabel}>{orderLabel}</span>
@@ -256,6 +257,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                         {st === "iptal" && <div className="mt-1 break-words text-xs text-bad">İptal: {t.delivery.cancelled}</div>}
                         {st === "reddedildi" && <div className="mt-1 break-words text-xs text-bad">Red: {t.delivery.rejected}</div>}
                       </button>
+                      {recoverPayment && <button type="button" aria-label={`Açık hesabı tahsil et: ${orderLabel}`} disabled={busy || !staffCan(meta.catalog.staff.find(s => s.id === waiter.id), "sale")} onClick={() => onBill(t.id)} className={`${strong} mt-3 w-full`}>Açık hesabı tahsil et · {TL(t.remaining)}</button>}
                       {!closed && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {st === "onay_bekliyor" ? (

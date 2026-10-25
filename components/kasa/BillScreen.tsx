@@ -46,7 +46,7 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
       <div {...mainProps} className="mx-auto mt-10 w-full max-w-md rounded-2xl border border-line bg-surface p-8 text-center shadow-card outline-none">
         <h2 ref={closedHeadingRef} tabIndex={-1} className="break-words text-2xl font-semibold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">{tableName} kapandı</h2>
         <ul className="my-4 break-words space-y-1 text-sm">{paid.map((p) => <li key={p.saleId}><button type="button" onClick={() => onReceipt(p.saleId)} className="inline-flex min-h-12 items-center rounded px-1 font-medium text-brand underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">{p.receiptNo}</button>{p.change > 0 && ` · para üstü ${TL(p.change)}`}</li>)}</ul>
-        <button type="button" onClick={onBack} className="press inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-action px-6 py-3 font-semibold text-white shadow-card outline-none hover:bg-brand-action-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60">Salona dön</button>
+        <button type="button" onClick={onBack} className="press inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-action px-6 py-3 font-semibold text-white shadow-card outline-none hover:bg-brand-action-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60">{tab.kind === "masa" ? "Salona dön" : "Paketlere dön"}</button>
       </div>
     );
   }
@@ -70,6 +70,7 @@ export function BillScreen({ tab, tableName, onPay, onReceipt, onBack, currency 
           </span>
         )}
       </div>
+      {tab.kind === "paket" && tab.delivery.deliveredAt && <p className="mb-4 rounded-xl border border-warn/30 bg-warn-soft p-3 text-sm text-warn">Teslim edilmiş siparişin kalan hesabı tahsil edilir. Teslim durumu korunur; ödeme bu kasanın açık vardiyasına kaydedilir.</p>}
       <p className="mb-4 text-sm text-muted">{mode === "tumu" ? "Ödeme ekranında nakit ve kartı birlikte kullanabilirsiniz. Hesabı ayrı ayrı almak için kişi sayısına bölün veya ürün seçin." : mode === "esit" ? "Her kişinin payını ayrı nakit, kart veya karma ödeme ile alın. Kalan hesap masada açık kalır." : "Ödenecek ürünleri + ile seçin. Yalnız seçilen ürünler tahsil edilir; diğerleri masada açık kalır."}</p>
       <ul className="mb-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
         {(mode === "sec" ? lines : part).map((l) => {
