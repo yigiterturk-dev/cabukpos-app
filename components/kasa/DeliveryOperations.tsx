@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Bike, CheckCheck, Download, Search, Wallet } from "lucide-react";
 import { Button, Dialog, StatCard } from "@/components/ui";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
@@ -71,6 +72,7 @@ export function DeliveryOperations({ meta, tabs, now, view, onOpen, preview = fa
     {printError && <p role="alert" className="text-sm text-warn">{printError}</p>}
     {preview ? <p className="text-xs text-muted">Etkileşimli örnek veriler · gerçek müşteri veya konum içermez.</p> : pending ? <p role="status" className="text-sm text-muted">Seçilen günün bulut kayıtları yükleniyor…</p> : historyError ? <div role="alert" className="rounded-xl border border-warn/30 bg-warn-soft p-3 text-sm text-warn">{historyError} Yalnız bu cihazda kalan kayıtlar gösteriliyor; rapor eksik olabilir. <button onClick={() => setRetry(n => n + 1)} className="min-h-11 underline">Tekrar dene</button></div> : <p className="text-xs text-muted">{day} · bulut geçmişi ve bu cihazın henüz eşitlenmemiş kayıtları</p>}
     {view === "couriers" && <>
+      <Link href="/yonetim/kurye-hesap" className="inline-flex min-h-12 items-center font-semibold text-brand underline">Tahsilat ve kurye kapanış hesabı →</Link>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Aktif kurye işi" value={String(summary.reduce((s, c) => s + c.active, 0))} icon={<Bike />} />
         <StatCard label="Günlük teslimat" value={String(summary.reduce((s, c) => s + c.delivered, 0))} icon={<CheckCheck />} />

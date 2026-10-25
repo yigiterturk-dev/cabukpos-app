@@ -35,6 +35,7 @@ const groups: { title: string; items: Item[] }[] = [
     { href: "/yonetim/rezervasyonlar", label: "Rezervasyon", icon: CalendarClock, only: "restoran" },
     { href: "/yonetim/istasyonlar", label: "İstasyonlar", icon: Flame, only: "restoran" },
     { href: "/yonetim/bolgeler", label: "Bölgeler", icon: MapPin, only: "restoran" },
+    { href: "/yonetim/kurye-hesap", label: "Kurye hesabı", icon: Receipt, only: "restoran" },
     { href: "/yonetim/musteriler", label: "Müşteriler", icon: Contact, only: "restoran", allStores: true },
     { href: "/yonetim/buyume", label: "Büyüme Merkezi", icon: TrendingUp, only: "restoran" },
     { href: "/yonetim/platformlar", label: "Platformlar", icon: Globe, only: "restoran" },

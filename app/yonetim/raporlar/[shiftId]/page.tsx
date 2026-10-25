@@ -17,6 +17,7 @@ export default async function VardiyaRaporu({ params }: { params: Promise<{ shif
   if (!UUID.test(shiftId)) notFound();
   const data = await loadShiftSummary(a.tenantId, shiftId);
   if (!data) notFound();
+  if (a.storeId && data.shift.storeId !== a.storeId) notFound();
   const [device] = await withTenant(a.tenantId, (tx) => tx.select({ name: schema.devices.name }).from(schema.devices).where(eq(schema.devices.id, data.shift.deviceId)));
   return (
     <div className="max-w-xl">

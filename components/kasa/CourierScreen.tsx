@@ -1,11 +1,14 @@
 "use client";
 // Kurye ekranı (kuryenin kendi telefonu): üzerine atanan paketler, toplu "Yola çıktım", "Teslim ettim" (tahsilat yöntemi) → satış + delivered.
-// Üzerindeki nakit = teslim edilen nakit siparişler; "Hesap kapat" kasiyer/müdür PIN'iyle gün sonuna gider (KasaApp).
+// Beklenen nakit gerçek vardiya ödemelerinden hesaplanır; kapanış kasiyer/müdür PIN'i ister.
 import { useEffect, useRef, useState } from "react";
 import { kasaFmt } from "./kasa-format";
 import { deliveryStatus, type PayIntent, type TabState } from "@/lib/core/tab";
 import { istToday } from "@/lib/core/report";
-import { courierCash, formatPhone, intentLabel, phoneHref, PAY_INTENTS } from "@/lib/core/delivery";
+import { formatPhone, intentLabel, phoneHref, PAY_INTENTS } from "@/lib/core/delivery";
+import { shiftSales } from "@/lib/offline/db";
+import { summarizeShift } from "@/lib/core/shift";
+import { liveQuery } from "dexie";
 import type { NewTabEvent } from "@/lib/offline/tabs";
 import type { Meta } from "@/lib/offline/state";
 import type { Cashier } from "./PinPad";
@@ -55,7 +58,20 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
   const done = mine.filter((t) => t.delivery.deliveredAt && Date.parse(t.delivery.deliveredAt) >= todayStart);
   const waiting = active.filter((t) => !t.delivery.outAt && deliveryStatus(t) === "hazir");
   const hasOutForDelivery = active.some((t) => t.delivery.outAt);
-  const cash = courierCash(done, courier.id);
+  const shiftId = meta.shift?.id;
+  const openingCash = meta.shift?.openingCash ?? 0;
+  const dropped = (meta.drops ?? []).reduce((sum, d) => sum + d.amount, 0);
+  const cashKey = `${shiftId}:${openingCash}:${dropped}`;
+  const [cashState, setCashState] = useState<{ key: string; value: number | null }>({ key: "", value: null });
+  useEffect(() => {
+    if (!shiftId) return;
+    const subscription = liveQuery(() => shiftSales(shiftId)).subscribe({
+      next: sales => setCashState({ key: cashKey, value: summarizeShift(openingCash, sales, [dropped]).expectedCash }),
+      error: () => setCashState({ key: cashKey, value: null }),
+    });
+    return () => subscription.unsubscribe();
+  }, [shiftId, cashKey, openingCash, dropped]);
+  const cash = cashState.key === cashKey ? cashState.value : null;
   const previousReady = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (!tabsLoaded) return;
@@ -131,8 +147,10 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
       <section className="mt-8 rounded-xl border border-line bg-surface p-4 text-sm">
         <div className="flex items-baseline justify-between">
           <span>Bugün teslim: <span className="tabular font-medium">{tabsLoaded ? done.length : "—"}</span></span>
-          <span>Bugün tahsil edilen nakit: <span className="tabular font-display text-base font-bold" data-testid="courier-cash">{tabsLoaded ? TL(cash) : "—"}</span></span>
+          <span>Vardiya beklenen nakit: <span className="tabular font-display text-base font-bold" data-testid="courier-cash">{cash !== null ? TL(cash) : "—"}</span></span>
         </div>
+        <p className="mt-2 text-xs text-muted">Açılış nakdi + tahsilat − para üstü − nakit iade − kasaya bırakılan. Kart ve online ödeme nakde eklenmez.</p>
+        {cashState.key === cashKey && cash === null && <p role="alert" className="mt-2 text-xs text-warn">Nakit hesabı okunamadı. Sayfayı yenileyin; tutarı kapanışta kontrol edin.</p>}
         <button type="button" disabled={busy !== null || !tabsLoaded || hasOutForDelivery} aria-describedby={!tabsLoaded ? "courier-shift-loading" : hasOutForDelivery ? "courier-shift-blocked" : undefined} onClick={onCloseShift} className={`mt-3 w-full ${btn}`}>Hesap kapat (kasiyer onayı)</button>
         {!tabsLoaded && <p id="courier-shift-loading" className="mt-2 text-xs text-muted">Siparişler yüklenmeden hesap kapatılamaz.</p>}
         {hasOutForDelivery && <p id="courier-shift-blocked" className="mt-2 text-xs text-muted">Yoldaki siparişler teslim edilmeden hesap kapatılamaz.</p>}

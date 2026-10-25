@@ -65,3 +65,5 @@ Sınırlar: Bu değişiklik zamanlayıcılı bir kuyruk eklemez; kabul tekrarı 
 Bu devam değişikliğinin doğrulaması: 513/513 test geçti; ESLint, TypeScript ve diff boşluk kontrolü temiz.
 
 Sonraki düzeltme: aynı şubede farklı platformların aynı numarayı kullanması için alım, kiosk tekrar sorgusu, kilit ve veritabanı indeksi platform kapsamına taşındı. Yerel migration ve canlı geçiş sınırları `docs/platform-order-scope-migration.md` içinde. Aynı platformun tekrar isteği ikinci sipariş üretmez; farklı platformlar birbirini bastırmaz.
+
+Bağlantıdan bağımsız kurye hesap modülü eklendi: `/yonetim/kurye-hesap`, gerçek ödeme kayıtlarıyla günlük nakit/kart, para üstü/iade, açılış/safe drop, kapanış sayımı ve farkı gösterir. Kurye telefonundaki nakit göstergesi de sipariş tutarı yerine gerçek yerel vardiya hesabını izler. Mevcut vardiya kapanışını kullanır; yeni bir tahsilat yazmaz. Bu, platform hakedişi veya dış kurye hizmet bedeli mutabakatı değildir. Ayrıntılar `docs/courier-operations.md` içinde.

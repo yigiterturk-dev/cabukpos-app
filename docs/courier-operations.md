@@ -31,3 +31,19 @@ node --env-file=.env.local --experimental-strip-types --import ./tests/ts-resolv
 Test kendi geçici işletmesini kaldırır; kullanıcının PIN'i, cihazı veya demo siparişlerini değiştirmez. Çalışan telefon GPS'i ve dış kurye sağlayıcısı için saha doğrulaması ayrıca gerekir. Dış firmaya otomatik kurye çağrısı bu sürümde bağlı değildir.
 
 Etkileşimli, yalnız geliştirmede çalışan örnek ekran: `/kasa/sevkiyat-onizleme`.
+
+## Gerçek tahsilat ve kurye hesabı
+
+`/yonetim/kurye-hesap`: seçili şubenin kurye cihazlarına ait vardiyalarını listeler. Günlük nakit, kart, online ve iade tutarları `sales`/`payments` kayıtlarından hesaplanır. Gün sınırı Türkiye saatidir; günlük tahsilat ödeme tarihine göre, kapanış hesabı vardiyanın bütününe göre alınır. Gece yarısını geçen vardiyanın önceki tahsilatı beklenen nakde dahildir, sonraki günün tahsilat karosuna eklenmez.
+
+Beklenen nakit = açılış + alınan nakit − para üstü − nakit iadeler − safe drop. Sayılan nakit mevcut vardiya kapanışından gelir; fark yeniden hesaplanan beklenene göre gösterilir. Saklanmış kapanış beklentisi sonradan eşitlenen işlemlerle değişmişse uyarı verilir. İncelenecek satışlar tutarlardan gizlenmez; sayıları ayrıca gösterilir. Rapor limit aşımında kısmi toplamı tam hesap gibi göstermez.
+
+Kurye telefonundaki eski sipariş-etiketi toplamı kaldırıldı. “Vardiya beklenen nakit” yerel IndexedDB satışlarını canlı izler; internet olmadan kaydedilen tahsilat da güncellenir. Bu değer gerçek fiziksel sayımın yerine geçmez.
+
+Kurye hesabı CSV ve yazdır/PDF sunar; vardiya kartından fiş raporuna gidilir. Kasa paket ekranının Kurye yönetimi bölümünden ve yönetim menüsünden erişilir. Okuma yönetici oturumu ve seçili şube kapsamındadır. Vardiya ayrıntısında şube müdürünün başka şubeye geçmesi de engellendi. Yeni tablo veya migration yok; yeni kasa girişi yazılarak tahsilat iki kez sayılmaz. Telefonun hesap kapatma/PIN onayı mevcut kapanış yolunu kullanır.
+
+Kapsam: cihaz rolü `kurye` olan vardiyalar. Başka cihazda tahsil edilmiş ön ödeme bu telefonun nakdi sayılmaz. Personel başına dış kurye ücretleri, platform komisyonu ve bağımsız banka mutabakatı bu raporun parçası değildir. Cihaz rolünü geçmişte değiştirmiş işletmeler için geçmiş cihaz sınıflandırma kaydı bu şemada bulunmaz.
+
+Yerel örnekler: `scripts/seed-courier-account-demo.ts`, sadece belirli loopback demo veritabanını ve demo hesabını kabul eder. İki kapalı tarihî vardiya ekler: Deniz hesabı dengeli, Ekin hesabı 10 TL eksik. Hesaplar pasif, cihazlar eşlenmemiş ve iptal edilmiş durumdadır; kullanıcı PIN'i, cihaz eşlemesi ve aktif vardiyası değişmez. Sağlayıcı, stok veya mali belge işlemi başlatmaz.
+
+Doğrulama: 521/521 test, ESLint ve TypeScript geçti. Veritabanı testleri karma ödeme/para üstü/iade, gece yarısı, safe drop, sayım farkı, değişen kapanış, şube/kiracı ayrımı ve CSV formül kaçışını kapsar. Yönetim sayfası ve CSV route'u yerel tarayıcı isteğinde 200 döndü. CSV indirme olayını bekleyen tarayıcı otomasyonu zaman aşımına uğradığından indirilen dosyanın konumu ayrıca doğrulanmadı. Masaüstü görünüm incelendi; 390 px mobilde sayfa genişliği 390 px olarak doğrulandı.
