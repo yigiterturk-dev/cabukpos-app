@@ -51,3 +51,7 @@ Teslim formunda 640–1023 px aralığında miktar/parti iki sütun, SKT tam sat
 - Üretim derlemesi: bağımsız kaynak kopyasında `npm run build`, `/private/tmp/cabukpos-tablet-build.log`, çıkış 0.
 - Önceki 560/560 işlem testi bu turda tekrar çalıştırılmadı; iş kuralları, veri modeli ve yazma yolları değişmedi. Sayıların kaynağı mevcut testli `remainingProcurement` hesabıdır; gerçek tarayıcıda kayıtlı verilerle doğrulandı.
 - Görsel kanıt: `/private/tmp/cabukpos-tablet-delivery.png`.
+
+## Netcup provası tamamlandı — 25 Ekim 2026
+
+Yukarıdaki yerel çalışma notundan sonra güncel uygulama gerçek şifreli yedekten kurulmuş, ağdan izole Netcup ortamında doğrulandı. 10 migration iki kez, commit öncesi hata sonrası geri alma, 63 tablo RLS, üretim açılışı ve yeni iş akışları geçti. Tüm public tabloların kayıt sayıları ve mali toplamlar korundu; geçici veriler/konteynerler temizlendi. Canlı yayın ve mali cihaz/saha denemesi yapılmadı. Ayrıntılı kanıt ve kapsam: [Netcup prova raporu](netcup-rehearsal-2026-10-25.md).
