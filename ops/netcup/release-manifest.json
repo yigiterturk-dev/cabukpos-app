@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "migrations": [
+    "db/releases/2026-10-24-hq-stock.sql",
+    "db/releases/2026-10-24-courier-locations.sql",
+    "db/releases/2026-10-25-platform-order-scope.sql",
+    "db/releases/2026-10-25-staff-plans.sql",
+    "db/releases/2026-10-25-reservation-capacity.sql",
+    "db/releases/2026-10-25-shipment-lifecycle.sql",
+    "db/releases/2026-10-25-attendance.sql",
+    "db/releases/2026-10-25-inventory-settlements.sql",
+    "db/releases/2026-10-25-staff-permissions.sql",
+    "db/releases/2026-10-25-partial-procurement.sql"
+  ],
+  "rls": "db/rls.sql"
+}

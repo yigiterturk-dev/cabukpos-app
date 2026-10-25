@@ -14,6 +14,7 @@ from urllib.parse import unquote, urlparse
 
 from maintenance import docker, verify
 from release_check import release_transaction
+from release_bundle import load_bundle
 
 
 def main():
@@ -25,7 +26,7 @@ def main():
     os.umask(0o077)
     config = json.loads(Path("/etc/cabukpos-ops/config.json").read_text())
     state = Path(config.get("state_dir", "/var/lib/cabukpos-ops"))
-    sql = (args.release_dir / "db/releases/2026-10-24-hq-stock.sql").read_text() + "\n" + (args.release_dir / "db/rls.sql").read_text()
+    sql, protected, _ = load_bundle(args.release_dir)
     digest = hashlib.sha256(sql.encode()).hexdigest()
     evidence = json.loads((state / "release-evidence.json").read_text())
     if digest != args.expected_sha256 or digest != evidence["migration_rls_sha256"]:
@@ -77,12 +78,12 @@ def main():
         if not args.apply:
             print("Read-only preflight complete; --apply required for writes", flush=True)
             return
-        query(release_transaction(sql))
+        query(release_transaction(sql, protected))
         record = {"ok": True, "completed_at": dt.datetime.now(dt.timezone.utc).isoformat(),
                   "migration_rls_sha256": digest, "backup": artifact.name, "preflight": preflight,
-                  "transaction": "committed", "counts_totals_preserved": True, "forced_rls_tables": 9}
+                  "transaction": "committed", "counts_totals_preserved": True, "forced_rls_tables": len(protected)}
         (state / "production-release.json").write_text(json.dumps(record, indent=2) + "\n")
-        print("Production release committed; data counts/totals preserved; nine tables enforce RLS", flush=True)
+        print("Production release committed; data counts/totals preserved; protected tables enforce RLS", flush=True)
 
 
 if __name__ == "__main__":

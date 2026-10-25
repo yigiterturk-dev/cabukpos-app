@@ -8,6 +8,7 @@ import time
 import uuid
 
 from maintenance import run
+from release_bundle import load_bundle, LEGACY_PROTECTED
 
 NODE_IMAGE = "node@sha256:3ed98443660ff48413b5af19ecefce3b9d50845a901a43420d47cc63a9fddbe9"
 COUNTS = """select json_build_array(
@@ -18,22 +19,45 @@ COUNTS = """select json_build_array(
 )::text;"""
 
 
-def release_transaction(migration_rls):
+def release_transaction(migration_rls, protected_tables=None):
     totals = COUNTS.strip().removeprefix("select ").removesuffix(";")
-    protected = "'category_station_routes','product_station_routes','stores','products','sales','stock_movements','stock_transfers','stock_transfer_lines','store_product_settings'"
+    tables = protected_tables or LEGACY_PROTECTED
+    if not all(re.fullmatch(r"[a-z_]+", t) for t in tables):
+        raise RuntimeError("invalid protected table name")
+    protected = ",".join("'" + t + "'" for t in tables)
     transaction = "BEGIN ISOLATION LEVEL REPEATABLE READ;\nSET LOCAL lock_timeout='5s';\nSET LOCAL statement_timeout='60s';\n"
     transaction += "SELECT pg_advisory_xact_lock(20261024,1);\nCREATE TEMP TABLE cabukpos_release_before ON COMMIT DROP AS SELECT " + totals + " AS totals;\n"
+    transaction += """CREATE TEMP TABLE cabukpos_release_rows_before(table_name text,row_count bigint) ON COMMIT DROP;
+DO $rows$ DECLARE t text; n bigint; BEGIN
+ FOR t IN SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename LOOP
+  EXECUTE format('select count(*) from public.%I',t) INTO n;
+  INSERT INTO cabukpos_release_rows_before VALUES(t,n);
+ END LOOP;
+END $rows$;
+"""
     transaction += migration_rls + "\nDO $gate$ BEGIN\nIF (SELECT totals FROM cabukpos_release_before) IS DISTINCT FROM (SELECT " + totals + ") THEN RAISE EXCEPTION 'release data totals changed'; END IF;\n"
-    transaction += "IF (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN (" + protected + ") AND c.relrowsecurity AND c.relforcerowsecurity) <> 9 THEN RAISE EXCEPTION 'release forced RLS incomplete'; END IF;\nEND $gate$;\nCOMMIT;\n"
+    transaction += "IF (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN (" + protected + ") AND c.relrowsecurity AND c.relforcerowsecurity) <> " + str(len(tables)) + " THEN RAISE EXCEPTION 'release forced RLS incomplete'; END IF;\nEND $gate$;\n"
+    transaction += """DO $rows$ DECLARE r record; n bigint; BEGIN
+ FOR r IN SELECT * FROM cabukpos_release_rows_before LOOP
+  EXECUTE format('select count(*) from public.%I',r.table_name) INTO n;
+  IF n<>r.row_count THEN RAISE EXCEPTION 'release changed an existing table row count'; END IF;
+ END LOOP;
+END $rows$;
+COMMIT;
+"""
     return transaction
 
 
 def check_release(database_container, work, source):
-    def sql(statement):
+    def sql(statement, expect_abort=False):
         result = sp.run(["docker", "exec", "-i", database_container, "psql", "-X", "-U", "rehearsal",
                     "-d", "rehearsal", "-At", "-v", "ON_ERROR_STOP=1",
                     *([] if statement.startswith("BEGIN ") else ["--single-transaction"])],
                    input=statement.encode(), capture_output=True)
+        if expect_abort:
+            if not result.returncode or "cabukpos_rehearsal_abort" not in result.stderr.decode(errors="replace"):
+                raise RuntimeError("expected migration abort was not reached")
+            return "ABORT_VERIFIED"
         if result.returncode:
             # Static schema diagnostics only; never print failing row data or SQL input.
             text = result.stderr.decode(errors="replace")
@@ -41,8 +65,7 @@ def check_release(database_container, work, source):
             raise RuntimeError("release SQL failed; schema hints=" + ",".join(matches))
         return result.stdout.decode().strip()
 
-    migration = (source / "db/releases/2026-10-24-hq-stock.sql").read_text()
-    rls = (source / "db/rls.sql").read_text()
+    migration, protected, migrations = load_bundle(source)
     build_id = (source / ".next/BUILD_ID").read_text().strip()
     if not (source / "node_modules/next/dist/bin/next").is_file():
         raise RuntimeError("release snapshot requires installed dependencies")
@@ -53,14 +76,26 @@ def check_release(database_container, work, source):
                     "from information_schema.columns where table_schema='public';")
     (work.parent / "release-schema-inventory.json").write_text(inventory + "\n")
     before = sql(COUNTS)
+    fingerprint_query = """select md5(json_build_object(
+ 'columns',(select json_agg(row(table_name,column_name,udt_name,is_nullable,column_default) order by table_name,ordinal_position) from information_schema.columns where table_schema='public'),
+ 'indexes',(select json_agg(row(tablename,indexname,indexdef) order by tablename,indexname) from pg_indexes where schemaname='public'),
+ 'policies',(select json_agg(row(tablename,policyname,roles,cmd,qual,with_check) order by tablename,policyname) from pg_policies where schemaname='public'),
+ 'flags',(select json_agg(row(c.relname,c.relrowsecurity,c.relforcerowsecurity) order by c.relname) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r'),
+ 'enums',(select json_agg(row(t.typname,e.enumlabel,e.enumsortorder) order by t.typname,e.enumsortorder) from pg_enum e join pg_type t on t.oid=e.enumtypid join pg_namespace n on n.oid=t.typnamespace where n.nspname='public'),
+ 'functions',(select json_agg(row(p.proname,pg_get_function_identity_arguments(p.oid),pg_get_functiondef(p.oid)) order by p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f')
+)::text);"""
+    before_schema = sql(fingerprint_query)
+    abort = "\nDO $abort$ BEGIN RAISE EXCEPTION 'cabukpos_rehearsal_abort'; END $abort$;\n"
+    sql(release_transaction(migration + abort, protected), expect_abort=True)
+    if sql(COUNTS) != before or sql(fingerprint_query) != before_schema:
+        raise RuntimeError("failed migration did not restore schema and financial totals")
+    print("Rollback: injected migration failure restored original schema and financial totals", flush=True)
     for _ in range(2):
-        sql(release_transaction(migration + "\n" + rls))
+        sql(release_transaction(migration, protected))
         if sql(COUNTS) != before:
             raise RuntimeError("release migration changed existing counts/totals")
     print("Release SQL + RLS: transaction and repeat application passed; data counts/totals preserved", flush=True)
 
-    protected = ["category_station_routes", "product_station_routes", "stores", "products", "sales", "stock_movements", "stock_transfers",
-                 "stock_transfer_lines", "store_product_settings"]
     flags = sql("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace "
                 "where n.nspname='public' and c.relname in (" + ",".join("'"+t+"'" for t in protected) +
                 ") and c.relrowsecurity and c.relforcerowsecurity;")
@@ -114,10 +149,19 @@ def check_release(database_container, work, source):
         if "PASS" not in audit:
             raise RuntimeError("runtime audit did not report PASS")
         print("Application: production Next.js ready with app DB role; runtime audit PASS", flush=True)
+        smoke = run(["docker", "exec", "-e", "BASE=http://127.0.0.1:3199", "-e", "RELEASE_REHEARSAL=isolated",
+                     app_name, "node", "--experimental-strip-types", "--import", "./tests/ts-resolve.mjs",
+                     "ops/netcup/release_smoke.mjs"]).decode()
+        if "Release workflows PASS" not in smoke:
+            raise RuntimeError("release business workflow checks failed")
+        print("Release business workflows: partial receipts, expiry, PIN attendance, bookings, transfers and tenant scope PASS", flush=True)
+        if sql(COUNTS) != before:
+            raise RuntimeError("workflow fixture cleanup did not preserve source counts/totals")
         (work.parent / "release-evidence.json").write_text(json.dumps({
             "source_snapshot": source.name, "build_id": build_id,
-            "migration_rls_sha256": hashlib.sha256((migration + "\n" + rls).encode()).hexdigest(),
+            "migration_rls_sha256": hashlib.sha256(migration.encode()).hexdigest(), "migrations": migrations,
             "migration_repeated": True, "counts_totals_preserved": True,
+            "migration_failure_rollback": True, "business_workflows": "PASS", "fixture_cleanup_verified": True,
             "forced_rls_tables": len(protected), "tenant_visibility_verified": True,
             "readiness": True, "runtime_audit": "PASS", "external_network": False,
         }, indent=2) + "\n")
