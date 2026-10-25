@@ -23,7 +23,7 @@ Buradaki “mevcut” kodda karşılığı bulunduğunu belirtir; her ekranın b
 | Platformlar | `lib/platform/index.ts`, `notify.ts`, `outbound.ts` | Sağlayıcı sürücüleri sandbox ve varsayılan kapalı. Canlı sözleşme, kimlik ve karşılıklı durum testi olmadan entegrasyon hazır sayılmaz. |
 | Ödeme ve gün sonu | `lib/core/split.ts`, `lib/core/payment.ts`, `lib/kasa/shift-report.ts` | Nakit/kart karma tahsilat, kişi/ürün/pay bölme ve para üstü mevcut. Kurye sipariş tutarı gerçek kasa bakiyesi değildir. |
 | Rapor | `lib/admin/report.ts`, `app/yonetim/raporlar` | Tarih, ürün, personel ve konsolide rapor var. Platform komisyonu / hakediş / kurye masrafı mutabakatı ayrı geliştirme gerektirir. |
-| Personel | `lib/admin/staff-actions.ts`, `lib/core/access.ts` | PIN ve sabit roller var. Özel rol matrisi, insan kaynakları dosyası, görev ve çalışma vardiyası planlama yok. Kasa vardiyası bu özelliklerle karıştırılmaz. |
+| Personel | `lib/admin/staff-actions.ts`, `lib/admin/staff-plan.ts`, `lib/core/access.ts` | PIN, sabit roller, haftalık vardiya ve görev planlama mevcut. Özel rol matrisi, insan kaynakları dosyası, fiilî puantaj ve bordro ayrı eksiklerdir. |
 | Müşteri ve sadakat | `lib/delivery/customers.ts`, `lib/loyalty.ts`, `lib/admin/loyalty-actions.ts` | Kayıtlı adres, puan, kupon, hediye kartı karşılıkları var. Telefon hattı Caller ID entegrasyonu yok; garson çağrısı farklı bir özelliktir. Cari hesapta bire bir eşdeğerlik doğrulanmadı. |
 | Rezervasyon | `lib/admin/reservation-actions.ts`, `lib/core/reservation.ts` | Yönetimden kayıt/durum var. Müşteri rezervasyon portalı ve kapasiteye göre müsait saat motoru tamamlanmış sayılmaz. |
 | Depo ve sevkiyat | `app/yonetim/depo`, `lib/admin/transfer.ts`, `transfer-document.ts` | Depo, şubeler arası stok hareketi ve belge var. Yolda/teslim alındı onaylı lojistik süreciyle aynı değil. |
@@ -46,7 +46,7 @@ Buradaki “mevcut” kodda karşılığı bulunduğunu belirtir; her ekranın b
 1. Gerçek platform ve dış kurye için onaylı sözleşme, sipariş/durum sözleşmeleri ve sandbox erişimi; kabul hatasında güvenilir tekrar ve görünür hata akışı.
 2. Kurye teslim/tahsilatının vardiya ve platform hakedişiyle mutabakatı.
 3. Günlük servis akışındaki uç durumların saha denemesi: bağlantı kesilmesi, tekrar webhook, kısmi ödeme, iptal/iade, vardiya devri.
-4. Personel planlama, rezervasyon müsaitliği, depo teslim alma ve tedarik gibi ayrı ürün kapsamları.
+4. Rezervasyon müsaitliği, depo teslim alma, tedarik ve fiilî personel devam takibi gibi ayrı ürün kapsamları.
 
 Bu liste uygulama ve doğrulama kuyruğudur; tam özellik eşitliği veya canlı kullanım onayı değildir.
 
@@ -67,3 +67,5 @@ Bu devam değişikliğinin doğrulaması: 513/513 test geçti; ESLint, TypeScrip
 Sonraki düzeltme: aynı şubede farklı platformların aynı numarayı kullanması için alım, kiosk tekrar sorgusu, kilit ve veritabanı indeksi platform kapsamına taşındı. Yerel migration ve canlı geçiş sınırları `docs/platform-order-scope-migration.md` içinde. Aynı platformun tekrar isteği ikinci sipariş üretmez; farklı platformlar birbirini bastırmaz.
 
 Bağlantıdan bağımsız kurye hesap modülü eklendi: `/yonetim/kurye-hesap`, gerçek ödeme kayıtlarıyla günlük nakit/kart, para üstü/iade, açılış/safe drop, kapanış sayımı ve farkı gösterir. Kurye telefonundaki nakit göstergesi de sipariş tutarı yerine gerçek yerel vardiya hesabını izler. Mevcut vardiya kapanışını kullanır; yeni bir tahsilat yazmaz. Bu, platform hakedişi veya dış kurye hizmet bedeli mutabakatı değildir. Ayrıntılar `docs/courier-operations.md` içinde.
+
+Personel planlama ve görev yönetimi eklendi: `/yonetim/personel-plan`. Haftalık çalışma saatleri, mola, gece vardiyası, şubeler arası çakışma önleme, atanan görev ve durum değişimi, düzenleme, iptal ve yazdırma bulunur. Eski karşılaştırma tablosundaki planlama/görev eksikliği bu kapsamda kapatıldı. Fiilî puantaj, bordro, özel rol matrisi ve ayrı çalışan uygulaması hâlâ farklı kapsamlardır. Migration ve kanıtlar `docs/staff-planning.md` içinde.

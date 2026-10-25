@@ -4,7 +4,7 @@ import { UserPlus } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { StaffActiveForm, StaffForm } from "@/components/admin/StaffDeviceForms";
-import { Badge, Card, Empty, TABLE_HEAD } from "@/components/ui";
+import { Badge, Card, Empty, TABLE_HEAD, buttonClass } from "@/components/ui";
 import { ListWorkspace } from "@/components/admin/ListWorkspace";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
 
@@ -17,6 +17,7 @@ export default async function Personel({ searchParams }: { searchParams: Promise
   const editing = rows.find((r) => r.id === duzenle);
   return (
     <>
+      <div className="mb-4"><Link href="/yonetim/personel-plan" className={buttonClass("secondary")}>Vardiya planı ve görev takibi →</Link></div>
       <ListWorkspace key={editing?.id ?? "new"} title="Personel" description="Kasada PIN ile giriş yapanlar. PIN kişiye özeldir; iki aktif kişide aynı olamaz." editing={Boolean(editing)} closeHref="/yonetim/personel" panels={[
         { id: "staff", label: "Personel ekle", title: editing ? `Düzenle: ${editing.name}` : "Personel ekle", content: <StaffForm key={editing?.id ?? "yeni"} initial={editing} /> },
       ]}>

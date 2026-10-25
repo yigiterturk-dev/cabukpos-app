@@ -50,6 +50,7 @@ const groups: { title: string; items: Item[] }[] = [
     { href: "/yonetim/subeler", label: "Şubeler", icon: Building2, allStores: true },
     { href: "/yonetim/hq", label: "Zincir merkezi", icon: ChartColumn, minStores: 2, allStores: true },
     { href: "/yonetim/personel", label: "Personel", icon: UserCog },
+    { href: "/yonetim/personel-plan", label: "Personel planı", icon: CalendarClock },
     { href: "/yonetim/cihazlar", label: "Cihazlar", icon: MonitorSmartphone },
     { href: "/yonetim/donanim", label: "Donanım", icon: Printer },
     { href: "/yonetim/mali", label: "Mali", icon: Receipt, allStores: true },

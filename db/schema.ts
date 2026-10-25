@@ -148,6 +148,33 @@ export const staff = pgTable("staff", {
   createdAt: ts("created_at").notNull().defaultNow(),
 });
 
+/** Work roster and staff tasks; independent from financial register shifts. */
+export const staffPlans = pgTable("staff_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  staffId: uuid("staff_id").notNull().references(() => staff.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  title: text("title").notNull(),
+  startsAt: ts("starts_at").notNull(),
+  endsAt: ts("ends_at").notNull(),
+  breakMinutes: integer("break_minutes").notNull().default(0),
+  note: text("note").notNull().default(""),
+  status: text("status").notNull().default("planlandi"),
+  revision: integer("revision").notNull().default(1),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+}, t => [
+  index("staff_plans_store_at_idx").on(t.tenantId, t.storeId, t.startsAt),
+  index("staff_plans_staff_at_idx").on(t.tenantId, t.staffId, t.startsAt),
+  check("staff_plans_kind", sql`${t.kind} in ('vardiya','gorev')`),
+  check("staff_plans_status", sql`${t.status} in ('planlandi','suruyor','tamamlandi','iptal')`),
+  check("staff_plans_period", sql`${t.endsAt} > ${t.startsAt} and ${t.endsAt} - ${t.startsAt} <= case when ${t.kind} = 'vardiya' then interval '24 hours' else interval '31 days' end`),
+  check("staff_plans_break", sql`${t.breakMinutes} between 0 and 720 and ${t.breakMinutes} * interval '1 minute' < ${t.endsAt} - ${t.startsAt} and (${t.kind} = 'vardiya' or ${t.breakMinutes} = 0)`),
+  check("staff_plans_text", sql`length(${t.title}) between 2 and 120 and length(${t.note}) <= 1000 and ${t.revision} > 0`),
+]);
+
 /** Latest voluntarily shared courier position; no location trail is stored. */
 export const courierLocations = pgTable("courier_locations", {
   tenantId: tenantRef(),
