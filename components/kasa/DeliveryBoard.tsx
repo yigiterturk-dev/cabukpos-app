@@ -235,7 +235,7 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                   const ageFrom = closed && t.closedAt ? t.closedAt : t.openedAt;
                   return (
                     <li key={t.id} data-testid="delivery-card" data-order-id={t.id} tabIndex={-1} className={`min-w-0 rounded-xl border bg-surface p-3 text-sm shadow-card outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${st === "onay_bekliyor" ? "border-bad/40 ring-2 ring-bad-soft" : "border-line"} ${closed && !recoverPayment ? "opacity-70" : ""}`}>
-                      <button type="button" aria-label={`${orderLabel}, ${STATUS_LABEL[st]} sipariş ayrıntıları`} disabled={closed} onClick={() => onOpen(t.id)} className="block w-full rounded-lg text-left outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-default">
+                      <button type="button" aria-label={`${orderLabel}, ${STATUS_LABEL[st]} sipariş ayrıntıları`} disabled={closed || t.closed} onClick={() => onOpen(t.id)} className="block w-full rounded-lg text-left outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:cursor-default">
                         <div className="flex items-center gap-2">
                           <span className="min-w-0 truncate font-semibold" title={orderLabel}>{orderLabel}</span>
                           <span className="ml-auto shrink-0 tabular text-xs text-muted">{closed && t.closedAt ? "Kapanalı " : ""}{minutesSince(ageFrom, now)} dk</span>
@@ -245,8 +245,9 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                         {o && <div className="truncate text-xs text-muted" title={[zone?.name, o.address].filter(Boolean).join(" · ")}>{[zone?.name, o.address].filter(Boolean).join(" · ")}</div>}
                         <div className="mt-1 flex items-center gap-2">
                           <span className="tabular font-display text-base font-bold">{TL(t.total)}</span>
-                          {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
+                          {o && <span className="text-xs text-muted">{t.remaining === 0 && t.paid > 0 ? "Önceden ödendi" : intentLabel(o.payIntent)}</span>}
                         </div>
+                        {t.paid > 0 && st !== "iptal" && st !== "reddedildi" && <p className={`mt-1 text-xs font-semibold ${t.remaining === 0 ? "text-ok" : "text-warn"}`}>{t.remaining === 0 ? "Ödemesi alındı · Tekrar tahsil etmeyin" : `Alınan ${TL(t.paid)} · Kalan ${TL(t.remaining)}`}</p>}
                         {courier && <div className="mt-1 break-words text-xs">Kurye: <span className="font-medium">{courier}</span></div>}
                         {deliveryTimes(t, now).late && <p className="mt-1 text-xs font-semibold text-bad">Hazırlık süresi aşıldı</p>}
                         {t.remaining > 0 && st === "teslim" && <p className="mt-1 text-xs font-semibold text-warn">Açık hesap: {TL(t.remaining)}</p>}

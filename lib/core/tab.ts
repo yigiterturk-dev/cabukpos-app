@@ -49,7 +49,7 @@ export type TabEvent = { id: string; tabId: string; tableId: string | null; at: 
 export type TabLine = Extract<TabEv, { type: "add" }> & { addedAt: string; staffId: string | null; sent: boolean; voided: boolean; comped: boolean; paidMilli: number; paidDiscount: Kurus };
 export type Ticket = { id: string; stationId: string | null; lineIds: string[]; at: string; staffId: string | null; status: KitchenStatus; readyAt: string | null; printed: boolean };
 export type Delivery = {
-  courierId: string | null; acceptedAt: string | null; prepMin: number | null; rejected: string | null; cancelled: string | null;
+  courierId: string | null; everAssigned?: boolean; acceptedAt: string | null; prepMin: number | null; rejected: string | null; cancelled: string | null;
   outAt: string | null; deliveredAt: string | null; method: DeliveryMethod | null; handedOver: boolean;
 };
 export type TabState = {
@@ -126,7 +126,7 @@ export function foldTabs(events: TabEvent[]): Map<string, TabState> {
       case "order": { const { type: _t, ...info } = ev; void _t; t.order = info; break; }
       case "accept": if (!t.delivery.acceptedAt) { t.delivery.acceptedAt = e.at; t.delivery.prepMin = ev.prepMin; } break;
       case "reject": t.delivery.rejected = ev.reason; break;
-      case "courier": t.delivery.courierId = ev.staffId; break;
+      case "courier": t.delivery.courierId = ev.staffId; if (ev.staffId) t.delivery.everAssigned = true; break;
       case "out": t.delivery.outAt ??= e.at; break;
       case "delivered": t.delivery.deliveredAt ??= e.at; t.delivery.method = ev.method; break;
       case "handover": t.delivery.handedOver = true; t.delivery.deliveredAt ??= e.at; t.delivery.method = "online"; break;
@@ -184,10 +184,16 @@ export function deliveryStatus(t: TabState): DeliveryStatus {
   return "hazirlaniyor";
 }
 
+/** Financial settlement does not finish an assigned courier's physical delivery. */
+export function isDeliveryPending(t: TabState): boolean {
+  if (t.kind === "masa" || t.mergedAway || t.delivery.cancelled || t.delivery.rejected || t.delivery.deliveredAt || t.delivery.handedOver) return false;
+  return !t.closed || ((t.kind === "platform" || (t.delivery.everAssigned || t.delivery.courierId !== null)) && t.lines.some(l => !l.voided));
+}
+
 /** Paket panosu: açık paket/platform adisyonları + son 12 saatte kapananlar (teslim/iptal sütunu), açılış sırasıyla. */
 export function openDeliveries(tabs: Map<string, TabState>, now: number): TabState[] {
   const since = new Date(now - 12 * 3600_000).toISOString();
-  return [...tabs.values()].filter((t) => t.kind !== "masa" && (!t.closed || (t.closedAt ?? "") >= since)).sort((a, b) => a.openedAt.localeCompare(b.openedAt));
+  return [...tabs.values()].filter((t) => t.kind !== "masa" && (!t.closed || isDeliveryPending(t) || (t.closedAt ?? "") >= since)).sort((a, b) => a.openedAt.localeCompare(b.openedAt));
 }
 
 /** Ekran/fiş başlığı: masa adı, "Paket · Ayşe", "Deneme · #1234". */

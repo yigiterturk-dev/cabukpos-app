@@ -6,13 +6,13 @@ process.env.DATABASE_URL = "postgres://cabukpos_app:dev-app-pass@localhost:5432/
 process.env.MIGRATE_DATABASE_URL = "postgres://yigiterturk@localhost:5432/cabukpos_test";
 const { getDb, withTenant, closeDb, schema } = await import("@/db");
 const { applyDoc, tabEventsOf } = await import("@/lib/sync/apply");
-const { foldTabs, deliveryStatus } = await import("@/lib/core/tab");
+const { foldTabs, deliveryStatus, isDeliveryPending } = await import("@/lib/core/tab");
 const { lookupCustomer } = await import("@/lib/delivery/customers");
 const { mockSource, sign } = await import("@/lib/platform/mock");
 const { ingestOrders } = await import("@/lib/platform/ingest");
 const { provisionConnection } = await import("@/lib/platform/provision");
 const { notifyPlatform, notifyPlatformStatus } = await import("@/lib/platform/notify");
-const { deliveryPaymentMethod, intentLabel } = await import("@/lib/core/delivery");
+const { deliveryPaymentMethod, intentLabel, readyDeliveryEvents } = await import("@/lib/core/delivery");
 const { and, eq } = await import("drizzle-orm");
 
 const [t] = await getDb().insert(schema.tenants).values({ name: "PKT-T", vertical: "restoran" }).returning();
@@ -327,4 +327,23 @@ test("incelemeye düşen yetkisiz teslim platforma iletilmez", async () => {
   assert.match(String(await reviewOf(delivered.id)), /atanmamış kurye/);
   const audits = await withTenant(t.id, tx => tx.select().from(schema.auditLog).where(eq(schema.auditLog.action, "platform.status")));
   assert.equal(audits.filter(a => (a.detail as { tabId?: string }).tabId === delivered.tabId).length, 0);
+});
+
+
+test("ön ödemeli kurye paketi hazır/yolda/teslim akışını yeni satış veya inceleme uyarısı olmadan tamamlar", async () => {
+  const tabId=crypto.randomUUID(),lineId=crypto.randomUUID();
+  for(const d of [doc(tabId,{type:"open",kind:"paket",guests:0}),doc(tabId,lineEv(lineId)),doc(tabId,{type:"courier",staffId:s.kurye.id})])assert.equal((await applyDoc(kasa,d)).ok,true);
+  const[device]=await getDb().insert(schema.devices).values({tenantId:t.id,storeId:s.store.id,name:"Prepaid register",receiptPrefix:"PP"}).returning();
+  const ctx={...kasa,deviceId:device.id,receiptPrefix:"PP"},shiftId=crypto.randomUUID(),saleId=crypto.randomUUID();
+  assert.equal((await applyDoc(ctx,{kind:"shift_open",id:shiftId,staffId:s.kasiyer.id,at:now(),openingCash:0})).ok,true);
+  assert.equal((await applyDoc(ctx,{kind:"sale",id:saleId,shiftId,staffId:s.kasiyer.id,receiptSeq:1,at:now(),lines:[{productId:s.lah.id,name:"Lahmacun",unitPrice:6000,vatRate:10,qtyMilli:2000,options:[],note:null,discount:0}],payments:[{method:"kart",amount:12000}],tab:{tabId,tableId:null,paidLines:[{lineId,qtyMilli:2000,discount:0}]}})).ok,true);
+  const state=()=>withTenant(t.id,async tx=>foldTabs(await tabEventsOf(tx,tabId)).get(tabId)!);
+  const paid=await state();assert.equal(paid.closed,true);assert.equal(isDeliveryPending(paid),true);
+  const plan=readyDeliveryEvents(paid,()=>crypto.randomUUID());assert.ok(plan.some(e=>e.type==="send"));
+  for(const ev of plan){const d=doc(tabId,ev);assert.equal((await applyDoc(ctx,d)).ok,true);assert.equal(await reviewOf(d.id),null);}
+  assert.equal(deliveryStatus(await state()),"hazir");
+  for(const ev of [{type:"out"},{type:"delivered",method:"kart"}]){const d=doc(tabId,ev,{staffId:s.kurye.id});assert.equal((await applyDoc(kuryeCtx,d)).ok,true);assert.equal(await reviewOf(d.id),null);}
+  const done=await state();assert.equal(isDeliveryPending(done),false);assert.equal(done.remaining,0);
+  const sales=await withTenant(t.id,tx=>tx.select().from(schema.sales).where(eq(schema.sales.tabId,tabId)));assert.equal(sales.length,1);assert.equal(sales[0].review,null);
+  const late=doc(tabId,{type:"send",ticketId:crypto.randomUUID(),lineIds:[lineId],stationId:null});await applyDoc(ctx,late);assert.match(String(await reviewOf(late.id)),/kapanmış adisyona/);
 });

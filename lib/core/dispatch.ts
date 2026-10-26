@@ -1,4 +1,4 @@
-import { deliveryStatus, type TabState } from "./tab";
+import { deliveryStatus, isDeliveryPending, type TabState } from "./tab";
 import { istToday } from "./report";
 import { csvCell } from "./accounting";
 import { PLATFORM_NAMES } from "./platform";
@@ -6,7 +6,7 @@ import { intentLabel, readyDeliveryEvents } from "./delivery";
 import { normalizeSearchText } from "./search";
 
 export const deliveryStageLabels = { onay_bekliyor: "Onay bekliyor", hazirlaniyor: "Hazırlanıyor", hazir: "Hazır", yolda: "Yolda", teslim: "Teslim edildi", iptal: "İptal", reddedildi: "Reddedildi" } as const;
-export const isDeliveryActive = (t: TabState) => t.kind !== "masa" && !t.closed && !["teslim", "iptal", "reddedildi"].includes(deliveryStatus(t));
+export const isDeliveryActive = isDeliveryPending;
 export const deliveryDay = (t: TabState) => istToday(Date.parse(t.delivery.deliveredAt ?? t.closedAt ?? t.openedAt));
 export const deliveryChannel = (t: TabState) => t.order?.source ? PLATFORM_NAMES[t.order.source.platform] ?? t.order.source.platform : "Telefon / gel-al";
 /** Opt-in assignment on the dispatcher's Ready button; never overrides an existing courier. */

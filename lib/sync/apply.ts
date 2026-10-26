@@ -17,7 +17,7 @@ import { audit } from "@/lib/audit";
 import { verifyJwt } from "@/lib/auth/jwt";
 import { refundable, refundKey, type RefLine } from "@/lib/core/refund";
 import { consumption, lineCost, type RecipeItem, type Recipes } from "@/lib/core/recipe";
-import { foldTabs, type TabEv, type TabEvent } from "@/lib/core/tab";
+import { foldTabs, isDeliveryPending, type TabEv, type TabEvent } from "@/lib/core/tab";
 import { normalizePhone } from "@/lib/core/delivery";
 import { endOfStoredIstanbulDay } from "@/lib/core/date";
 import { notifyPlatform, notifyPlatformStatus } from "@/lib/platform/notify";
@@ -395,7 +395,7 @@ async function applyTab(tx: Tx, ctx: DeviceCtx, doc: TabDoc): Promise<string | n
   const reasons: string[] = [];
   const ev = doc.ev;
   const state = foldTabs(await tabEventsOf(tx, doc.tabId)).get(doc.tabId);
-  if (state?.closed && ["add", "send", "comp", "discount", "move", "merge"].includes(ev.type)) reasons.push("kapanmış adisyona olay");
+  if (state?.closed && (["add", "comp", "discount", "move", "merge"].includes(ev.type) || (ev.type === "send" && !isDeliveryPending(state)))) reasons.push("kapanmış adisyona olay");
   const kind = state?.kind ?? (ev.type === "open" ? (ev.kind ?? "masa") : "masa");
   if (ev.type === "add") {
     if (!ev.productId) { if (kind === "masa") reasons.push(`serbest satır: ${ev.name}`); }

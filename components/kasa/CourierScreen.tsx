@@ -134,6 +134,7 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
                 <span className="tabular text-base font-semibold">{TL(t.remaining)}</span>
                 {o && <span className="text-xs text-muted">{intentLabel(o.payIntent)}</span>}
               </div>
+              {t.remaining === 0 && t.paid > 0 && <p className="mt-2 text-xs font-semibold text-ok">Ödemesi alındı. Teslimde tekrar tahsil etmeyin.</p>}
               <div className="mt-3 flex flex-wrap gap-2">
                 {addr && <a href={`https://maps.google.com/?q=${encodeURIComponent(addr)}`} target="_blank" rel="noreferrer" aria-label={`Haritada aç: ${o?.name ?? "Paket"}, ${zone?.name ?? o?.address ?? "adres"}; yeni sekmede açılır`} className={btn}>Harita</a>}
                 {phone && o?.phone && <a href={phone} aria-label={`Ara ${o.name ?? "müşteri"}, ${formatPhone(o.phone)}`} className={btn}>Ara {formatPhone(o.phone)}</a>}
@@ -161,6 +162,7 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
       {deliver && (
         <Modal label="Nasıl ödendi?" onClose={() => setDeliver(null)} closeDisabled={busy !== null} statusMessage={busy === "deliver" ? "Teslimat ve ödeme kaydediliyor." : ""}>
           <p className="mb-3 text-sm">{deliver.order?.name} · <span className="tabular font-semibold">{TL(deliver.remaining)}</span></p>
+          {deliver.remaining === 0 && deliver.paid > 0 && <p className="mb-3 rounded-lg bg-ok-soft px-3 py-2 text-sm font-semibold text-ok">Ödeme daha önce alındı. Tekrar tahsilat yapmadan teslimi tamamlayın.</p>}
           {deliver.order?.payIntent && <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">Sipariş tercihi: <b className="text-ink">{intentLabel(deliver.order.payIntent)}</b>. Lütfen teslimde gerçekte tahsil edilen yöntemi seçin.</p>}
           {error && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
           <div className="grid grid-cols-2 gap-2">

@@ -2,15 +2,15 @@
 import { EscPos, type Codepage, type PaperWidth } from "./escpos";
 import { formatTL, type Kurus } from "./money";
 import { qtyText } from "./receipt";
-import { lineGross, type DeliveryMethod, type OrderInfo, type PayIntent, type TabEv, type TabState } from "./tab";
+import { lineGross, isDeliveryPending, type DeliveryMethod, type OrderInfo, type PayIntent, type TabEv, type TabState } from "./tab";
 import type { Payment } from "./payment";
 import { sendByStation } from "./platform";
 
 /** Whole-order Ready uses the same kitchen events as individual station tickets. */
 export function readyDeliveryEvents(tab: TabState, newId: () => string): TabEv[] {
-  if (tab.kind === "masa" || tab.closed || tab.delivery.deliveredAt || tab.delivery.outAt || tab.delivery.handedOver ||
+  if (!isDeliveryPending(tab) || tab.delivery.outAt ||
       (tab.kind === "platform" && !tab.delivery.acceptedAt)) return [];
-  const live = tab.lines.filter(line => !line.voided && !line.comped && line.paidMilli < line.qtyMilli);
+  const live = tab.lines.filter(line => !line.voided && !line.comped);
   if (!live.length) return [];
   const ids = new Set(live.map(line => line.lineId));
   const sends = sendByStation(live.filter(line => !line.sent), newId);

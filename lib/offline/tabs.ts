@@ -4,7 +4,7 @@ import { staffCan, permissionForTab } from "@/lib/core/staff-permissions";
 // lib/offline/tabs.ts — Adisyon olaylarının yerel deposu ve canlı akış (tarayıcı).
 // Yerel olay: tabEvents'e seq=null ile + giden kutusuna tek işlemde. Sunucu yankısı aynı kimlikle gelir, seq'li hâli kalır.
 import type { TabEv, TabEvent } from "@/lib/core/tab";
-import { foldTabs, lanMergePlan } from "@/lib/core/tab";
+import { foldTabs, lanMergePlan, isDeliveryPending } from "@/lib/core/tab";
 import type { LanLink } from "@/lib/agent/config";
 import type { TabDoc } from "@/lib/sync/docs";
 import { kasaDb, loadMeta } from "./db";
@@ -49,7 +49,7 @@ export async function pruneTabEvents(now = Date.now()) {
   const d = kasaDb();
   const events = await d.tabEvents.toArray();
   const cutoff = new Date(now - 24 * 3600_000).toISOString();
-  const old = [...foldTabs(events).values()].filter((t) => t.closed && t.closedAt && t.closedAt < cutoff && !events.some((e) => e.tabId === t.id && e.seq === null)).map((t) => t.id);
+  const old = [...foldTabs(events).values()].filter((t) => t.closed && !isDeliveryPending(t) && t.closedAt && t.closedAt < cutoff && !events.some((e) => e.tabId === t.id && e.seq === null)).map((t) => t.id);
   if (old.length) await d.tabEvents.where("tabId").anyOf(old).delete();
 }
 
