@@ -94,11 +94,18 @@ def backup(config, work, backups, env):
     if parsed.scheme not in ("postgres", "postgresql") or not parsed.hostname:
         raise RuntimeError("invalid PostgreSQL URL")
     query = parse_qs(parsed.query)
+    sslmode = (query.get("sslmode", ["verify-full"])[0] or "verify-full").strip().lower()
+    tls = sslmode in ("verify-full", "verify-ca")
+    tls_args = ["--mount",
+                "type=bind,src=/etc/ssl/certs/ca-certificates.crt,dst=/etc/ssl/certs/ca-certificates.crt,readonly"] if tls else []
+    net_args = ["--network=host"] if parsed.hostname in ("127.0.0.1", "localhost", "::1") else []
     values = {"PGHOST": parsed.hostname, "PGPORT": str(parsed.port or 5432),
               "PGUSER": unquote(parsed.username or ""), "PGPASSWORD": unquote(parsed.password or ""),
               "PGDATABASE": unquote(parsed.path.lstrip("/")), "PGCONNECT_TIMEOUT": "20",
-              "PGSSLMODE": "verify-full", "PGSSLROOTCERT": "/etc/ssl/certs/ca-certificates.crt",
+              "PGSSLMODE": sslmode,
               "PGCHANNELBINDING": query.get("channel_binding", ["prefer"])[0]}
+    if tls:
+        values["PGSSLROOTCERT"] = "/etc/ssl/certs/ca-certificates.crt"
     if any("\n" in value or "\r" in value for value in values.values()):
         raise RuntimeError("invalid PostgreSQL environment")
     pg_env.write_text("".join(f"{key}={value}\n" for key, value in values.items()))
@@ -107,8 +114,7 @@ def backup(config, work, backups, env):
     path = backups / f"cabukpos-{stamp}-{secrets.token_hex(3)}.dump.enc"
     partial = work / "backup.partial"
     with partial.open("wb") as target:
-        pipeline([docker(image) + ["--env-file", str(pg_env), "--mount",
-                                  "type=bind,src=/etc/ssl/certs/ca-certificates.crt,dst=/etc/ssl/certs/ca-certificates.crt,readonly",
+        pipeline([docker(image) + ["--env-file", str(pg_env), *net_args, *tls_args,
                                   image, "pg_dump", "--format=custom",
                                   "--no-owner", "--no-privileges"], crypt()], destination=target, env=env)
         target.flush()
@@ -161,7 +167,7 @@ def restore(config, work, path, env, release_dir=None):
         # Placeholders exist only in this network-isolated disposable database.
         run(["docker", "exec", name, "psql", "-X", "-U", "rehearsal", "-d", "rehearsal",
              "-v", "ON_ERROR_STOP=1", "-c",
-             "CREATE ROLE neondb_owner NOLOGIN; CREATE ROLE cabukpos_app NOLOGIN;"])
+             "CREATE ROLE neondb_owner NOLOGIN; CREATE ROLE cabukpos NOLOGIN; CREATE ROLE apps NOLOGIN; CREATE ROLE cabukpos_app NOLOGIN;"])
         with path.open("rb") as source, open(os.devnull, "wb") as target:
             pipeline([crypt(True), ["docker", "exec", "-i", name, "pg_restore", "-U", "rehearsal",
                       "-d", "rehearsal", "--clean", "--if-exists", "--no-owner", "--no-acl", "--exit-on-error"]],

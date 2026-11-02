@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 import subprocess as sp
 import tempfile
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from maintenance import docker, verify
 from release_check import release_transaction
@@ -42,11 +42,19 @@ def main():
     with (state / "maintenance.lock").open("w") as lock, tempfile.TemporaryDirectory(prefix="apply-", dir=state) as directory:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         parsed = urlparse(config["database_url"])
+        owner = unquote(parsed.username or "")
+        sslmode = (parse_qs(parsed.query).get("sslmode", ["verify-full"])[0] or "verify-full").strip().lower()
+        tls = sslmode in ("verify-full", "verify-ca")
+        tls_args = ["--mount",
+                    "type=bind,src=/etc/ssl/certs/ca-certificates.crt,dst=/etc/ssl/certs/ca-certificates.crt,readonly"] if tls else []
+        net_args = ["--network=host"] if parsed.hostname in ("127.0.0.1", "localhost", "::1") else []
         values = {"PGHOST": parsed.hostname, "PGPORT": str(parsed.port or 5432),
-                  "PGUSER": unquote(parsed.username or ""), "PGPASSWORD": unquote(parsed.password or ""),
+                  "PGUSER": owner, "PGPASSWORD": unquote(parsed.password or ""),
                   "PGDATABASE": unquote(parsed.path.lstrip("/")), "PGCONNECT_TIMEOUT": "20",
-                  "PGSSLMODE": "verify-full", "PGSSLROOTCERT": "/etc/ssl/certs/ca-certificates.crt",
+                  "PGSSLMODE": sslmode,
                   "PGAPPNAME": "cabukpos-reviewed-release"}
+        if tls:
+            values["PGSSLROOTCERT"] = "/etc/ssl/certs/ca-certificates.crt"
         if any(not isinstance(v, str) or "\n" in v or "\r" in v for v in values.values()):
             raise RuntimeError("invalid PostgreSQL configuration")
         env_file = Path(directory) / "pg.env"
@@ -54,8 +62,7 @@ def main():
         env_file.chmod(0o600)
 
         def query(statement):
-            command = docker(config["image"]) + ["-i", "--env-file", str(env_file), "--mount",
-                "type=bind,src=/etc/ssl/certs/ca-certificates.crt,dst=/etc/ssl/certs/ca-certificates.crt,readonly",
+            command = docker(config["image"]) + ["-i", "--env-file", str(env_file), *net_args, *tls_args,
                 config["image"], "psql", "-X", "-At", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=sqlstate"]
             result = sp.run(command, input=statement.encode(), capture_output=True, timeout=180)
             if result.returncode:
@@ -65,13 +72,13 @@ def main():
 
         preflight = json.loads(query("""select json_build_object(
           'version',current_setting('server_version_num')::int,
-          'owner',current_user='neondb_owner','primary',not pg_is_in_recovery(),
+          'owner',current_user,'primary',not pg_is_in_recovery(),
           'public_table_bytes',(select coalesce(sum(pg_total_relation_size(c.oid)),0) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r'),
           'long_transactions',(select count(*) from pg_stat_activity where datname=current_database() and pid<>pg_backend_pid() and xact_start<now()-interval '30 seconds'),
           'active_sessions',(select count(*) from pg_stat_activity where datname=current_database() and pid<>pg_backend_pid() and state='active'),
           'safe_app_role',(select not rolsuper and not rolbypassrls from pg_roles where rolname='cabukpos_app')
         )::text;"""))
-        if not (180000 <= preflight["version"] < 190000 and preflight["owner"] and preflight["primary"]
+        if not (160000 <= preflight["version"] < 190000 and preflight["owner"] == owner and preflight["primary"]
                 and preflight["safe_app_role"] and preflight["long_transactions"] == 0):
             raise RuntimeError("production preflight did not pass")
         print("Production preflight: " + json.dumps(preflight), flush=True)

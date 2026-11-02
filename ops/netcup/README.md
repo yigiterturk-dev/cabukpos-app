@@ -1,5 +1,9 @@
 # Netcup bakım işleri
 
+## 2026-11-02 canlı deploy
+
+Yedek ve release araçları artık host PostgreSQL 17'yi hedefler (`sslmode=disable`, loopback için `--network=host`). Şema/RLS `apply_release.py --apply` ile uygulandı; uygulama `cabukpos_app` rolüyle çalışıyor. Ayrıntı ve geri dönüş: [docs/netcup-deploy-2026-11-02.md](../../docs/netcup-deploy-2026-11-02.md).
+
 24 Ekim 2026'da mevcut `netcup` SSH hedefinde kuruldu. GitHub Actions gerekmez.
 
 | İş | Zaman (UTC) | Türkiye saati |

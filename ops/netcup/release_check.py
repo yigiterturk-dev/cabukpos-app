@@ -140,13 +140,18 @@ def check_release(database_container, work, source):
         probe = ("fetch('http://127.0.0.1:3199/api/ready').then(async r=>{const b=await r.json();"
                  "process.exit(r.status===200&&b.ok===true&&b.checks?.database==='ok'?0:1)})"
                  ".catch(()=>process.exit(1))")
+        last = ""
         for _ in range(60):
-            result = sp.run(["docker", "exec", app_name, "node", "-e", probe], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+            result = sp.run(["docker", "exec", app_name, "node", "-e", probe], capture_output=True)
             if result.returncode == 0:
                 break
+            last = (result.stdout + result.stderr).decode(errors="replace").strip()
             time.sleep(1)
         else:
-            raise RuntimeError("release application readiness failed")
+            logs_run = sp.run(["docker", "logs", "--tail", "80", app_name], capture_output=True)
+            logs = (logs_run.stdout + logs_run.stderr).decode(errors="replace")
+            state = sp.run(["docker", "inspect", "-f", "{{.State.ExitCode}} {{.State.OOMKilled}} {{.State.Error}}", app_name], capture_output=True)
+            raise RuntimeError("release application readiness failed: " + ((state.stdout + state.stderr).decode(errors="replace") + " " + last + " " + logs).replace("\n", " | ")[-1800:])
         audit = run(["docker", "exec", "-e", "BASE=http://127.0.0.1:3199", app_name,
                      "node", "scripts/runtime-audit.mjs"]).decode()
         if "PASS" not in audit:
