@@ -21,6 +21,7 @@ import { foldTabs, isDeliveryPending, type TabEv, type TabEvent } from "@/lib/co
 import { normalizePhone } from "@/lib/core/delivery";
 import { endOfStoredIstanbulDay } from "@/lib/core/date";
 import { notifyPlatform, notifyPlatformStatus } from "@/lib/platform/notify";
+import { courierEventRelevant, onCourierEvent } from "@/lib/courier/hooks";
 import { onRefund, openFiscalDoc } from "@/lib/fiscal/issue";
 import { capDiscount, couponCheck, pointsEarned, pointsValue, type CouponLike } from "@/lib/loyalty";
 import { formatReceipt, syncDoc, type DocResult, type RefundDoc, type SaleDoc, type SyncDoc, type TabDoc } from "./docs";
@@ -48,6 +49,8 @@ export async function applyDoc(ctx: DeviceCtx, raw: unknown): Promise<DocResult>
       const status = ev.type === "out" || ev.type === "handover" ? "picked" : ev.type === "delivered" ? "delivered" : ev.type === "cancel" ? "cancelled" : null;
       if (status) await notifyPlatformStatus(ctx.tenantId, doc.id, doc.tabId, status);
     }
+    // Dış kurye sevki: ağ isteği cihazın senkron yanıtını bekletmesin; sonuç YNR'de tekilleşir.
+    if (courierEventRelevant(ev)) void onCourierEvent(ctx.tenantId, doc.tabId, ev).catch((e) => console.error("kurye olayı işlenemedi", e));
   }
   return res;
 }

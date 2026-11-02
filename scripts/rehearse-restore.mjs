@@ -35,6 +35,22 @@ const run = (cmd, args, opts = {}) =>
     child.once("exit", (status, signal) => resolveExit({ code: status ?? (signal ? 1 : 0), out }));
   });
 
+// --clean --if-exists mevcut veritabanını bekler; hedef yoksa pg_restore
+// "database does not exist" ile düşer. Önce yönetim DB'sinden hedefi oluştur.
+{
+  const u = new URL(target);
+  const name = decodeURIComponent(u.pathname.replace(/^\//, ""));
+  const admin = new URL(target);
+  admin.pathname = "/postgres";
+  const created = await run("psql", ["--dbname", admin.toString(), "--quiet", "--command",
+    `create database "${name.replaceAll('"', '""')}"`]);
+  // Zaten varsa psql hata döner; --clean --if-exists onu temizler.
+  if (created.code !== 0) {
+    const probe = await run("psql", ["--dbname", target, "--quiet", "--command", "select 1"], { capture: true });
+    if (probe.code !== 0) throw new Error(`Hedef veritabanı yok ve bağlantı rolünün CREATEDB yetkisi olmayabilir. Yönetici olarak "createdb ${name}" çalıştırıp tekrar deneyin.`);
+  }
+}
+
 // Do not allow pg_restore to continue past a failed object and report a false
 // positive based only on the later tenants smoke query.
 // --no-owner + --no-acl: yedekteki ACL/ownership ifadelerini atla (bunlar zaten

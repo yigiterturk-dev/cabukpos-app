@@ -72,9 +72,12 @@ const strong = "press inline-flex min-h-12 items-center justify-center gap-1.5 r
 
 type Dialog = { k: "accept" | "reject" | "courier" | "cancel"; tab: TabState };
 
-export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onOpen, onBill, onHandover, loaded = false }: {
+export type CourierJobView = { tabId: string; status: string; courierName: string | null; etaMinutes: number | null; collectionMinor: number | null };
+const JOB_LABEL: Record<string, string> = { sent: "Kuryeye iletildi", created: "Kurye bekliyor", picked_up: "Kurye aldı", on_the_way: "Yolda", delivered: "Teslim edildi", cancelled: "Kurye iptali" };
+
+export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onOpen, onBill, onHandover, loaded = false, courierJobs = {} }: {
   meta: Meta; onMeta: (m: Meta) => void; tabs: Map<string, TabState>; now: number; add: Add; waiter: Waiter;
-  onNew: () => void; onOpen: (tabId: string) => void; onBill: (tabId: string) => void; onHandover: (tab: TabState) => Promise<void>; loaded?: boolean;
+  onNew: () => void; onOpen: (tabId: string) => void; onBill: (tabId: string) => void; onHandover: (tab: TabState) => Promise<void>; loaded?: boolean; courierJobs?: Record<string, CourierJobView>;
 }) {
   const mainProps = useKasaMainProps();
   const [dialog, setDialog] = useState<Dialog | null>(null);
@@ -249,6 +252,11 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                         </div>
                         {t.paid > 0 && st !== "iptal" && st !== "reddedildi" && <p className={`mt-1 text-xs font-semibold ${t.remaining === 0 ? "text-ok" : "text-warn"}`}>{t.remaining === 0 ? "Ödemesi alındı · Tekrar tahsil etmeyin" : `Alınan ${TL(t.paid)} · Kalan ${TL(t.remaining)}`}</p>}
                         {courier && <div className="mt-1 break-words text-xs">Kurye: <span className="font-medium">{courier}</span></div>}
+                        {courierJobs[t.id] && <div className="mt-1 break-words text-xs text-ink-2" data-testid="courier-job">
+                          {JOB_LABEL[courierJobs[t.id].status] ?? courierJobs[t.id].status}
+                          {courierJobs[t.id].courierName ? ` · ${courierJobs[t.id].courierName}` : ""}
+                          {courierJobs[t.id].etaMinutes != null ? ` · ~${courierJobs[t.id].etaMinutes} dk` : ""}
+                        </div>}
                         {deliveryTimes(t, now).late && <p className="mt-1 text-xs font-semibold text-bad">Hazırlık süresi aşıldı</p>}
                         {t.remaining > 0 && st === "teslim" && <p className="mt-1 text-xs font-semibold text-warn">Açık hesap: {TL(t.remaining)}</p>}
                         {st === "yolda" && (() => { const e = etaFor(t); return e != null ? <div className={`mt-1 text-xs font-medium ${e === 0 ? "text-warn" : "text-ink-2"}`} data-testid="eta">{e === 0 ? "Tahmini teslim süresi aşıldı" : `Tahmini teslim ~${e} dk`}</div> : null; })()}

@@ -15,7 +15,7 @@ export type IncomingOrder = {
 
 export type MappedProduct = { id: string; name: string; vatRate: VatRate; stationId: string | null };
 
-export const PLATFORM_NAMES: Record<string, string> = { mock: "Deneme", yemeksepeti: "Yemeksepeti", trendyol: "Trendyol Go", getir: "Getir", migros: "Migros Yemek", tiklagelsin: "Tıkla Gelsin", kiosk: "Kiosk / QR" };
+export const PLATFORM_NAMES: Record<string, string> = { mock: "Deneme", yemeksepeti: "Yemeksepeti", trendyol: "Trendyol Go", trendyol_yemek: "Trendyol Yemek (Go)", getir: "Getir", migros: "Migros Yemek", tiklagelsin: "Tıkla Gelsin", kiosk: "Kiosk / QR" };
 
 /** Otomatik kabulün varsayılan hazırlık süresi (dk) — oto-kabul ve yönetim kabulü aynı süreyi kullanır. */
 export const AUTO_PREP_MIN = 20;

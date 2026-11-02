@@ -38,7 +38,7 @@ import { TabScreen } from "./TabScreen";
 import { BillScreen } from "./BillScreen";
 import { KitchenScreen } from "./KitchenScreen";
 import { useNow, useTabs } from "./useTabs";
-import { DeliveryBoard } from "./DeliveryBoard";
+import { DeliveryBoard, type CourierJobView } from "./DeliveryBoard";
 import { NewDelivery } from "./NewDelivery";
 import { CourierScreen } from "./CourierScreen";
 import { BugunScreen } from "./BugunScreen";
@@ -541,6 +541,24 @@ export function KasaApp() {
     return () => { live = false; clearInterval(t); };
   }, [agentCfg]);
 
+  const [courierJobs, setCourierJobs] = useState<Record<string, CourierJobView>>({});
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await fetch("/api/kasa/courier", { cache: "no-store", signal: AbortSignal.timeout(6000) });
+        if (!r.ok || !alive) return;
+        const j = (await r.json()) as { jobs?: CourierJobView[] };
+        const map: Record<string, CourierJobView> = {};
+        for (const job of j.jobs ?? []) map[job.tabId] = job;
+        if (alive) setCourierJobs(map);
+      } catch { /* pano yerel veriyle çalışmaya devam eder */ }
+    };
+    void load();
+    const t = setInterval(load, 30_000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+
   const trackPrint = useCallback(async (saleId: string, job: Promise<PrintResult> | null) => {
     if (!job) return;
     setPrints((p) => ({ ...p, [saleId]: { state: "printing" } }));
@@ -950,7 +968,7 @@ export function KasaApp() {
       <>
         {bar(kasaTabs)}
         {paketView() ?? <DeliveryBoard meta={meta} onMeta={setMeta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} waiter={waiter} loaded={tabsApi.loaded}
-          onNew={() => setView({ name: "yeni-paket" })} onOpen={(tabId) => setView({ name: "ptab", tabId })} onBill={(tabId) => setView({ name: "bill", tabId })} onHandover={onHandover} />}
+          onNew={() => setView({ name: "yeni-paket" })} onOpen={(tabId) => setView({ name: "ptab", tabId })} onBill={(tabId) => setView({ name: "bill", tabId })} onHandover={onHandover} courierJobs={courierJobs} />}
       </>
     );
   }

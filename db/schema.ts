@@ -1015,3 +1015,16 @@ export const reservationSettings = pgTable("reservation_settings", {
   slotMinutes: integer("slot_minutes").notNull().default(30),
   advanceDays: integer("advance_days").notNull().default(30),
 }, t => [check("reservation_settings_range", sql`${t.openMinute} >= 0 and ${t.closeMinute} <= 1440 and ${t.closeMinute} > ${t.openMinute} and ${t.durationMinutes} between 15 and 360 and ${t.slotMinutes} in (15,30,60) and ${t.advanceDays} between 1 and 90`)]);
+
+/** Dış kurye (YNR) işinin son bilinen durumu. Sevk anında yazılır, cron ile tazelenir; kasa panosu bunu okur. */
+export const courierJobs = pgTable("courier_jobs", {
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+  tabId: uuid("tab_id").notNull(),
+  provider: text("provider").notNull(),
+  status: text("status").notNull(),
+  courierName: text("courier_name"),
+  etaMinutes: integer("eta_minutes"),
+  collectionMinor: integer("collection_minor"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+}, t => [primaryKey({ columns: [t.tenantId, t.tabId] })]);
