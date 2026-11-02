@@ -1,0 +1,12 @@
+# netcup: host Postgres yalnız 127.0.0.1'de; uygulama host ağında 172.18.0.1:3228 dinler, Caddy oradan ulaşır.
+services:
+  app:
+    build: ../../..
+    image: cabukpos:netcup
+    container_name: cabukpos
+    network_mode: host
+    env_file: /opt/cabukpos/.env
+    environment:
+      HOSTNAME: 172.18.0.1
+      PORT: 3228
+    restart: unless-stopped
