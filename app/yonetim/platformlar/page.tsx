@@ -166,7 +166,7 @@ export default async function Platformlar() {
   const free = CONNECTABLE_PLATFORMS.filter((p) => !conns.some((c) => c.storeId === storeId && c.platform === p)).map((p) => ({ value: p, label: PLATFORM_NAMES[p] ?? p }));
   return (
     <>
-      <PageHeader title="Sipariş platformları" desc="Platform siparişleri kasada Paket sekmesine sesli uyarıyla düşer; kabul/red platforma bildirilir. Yemeksepeti ve Trendyol Go entegratör onayı gelince eklenecek." />
+      <PageHeader title="Sipariş platformları" desc="Platform siparişleri kasada Paket sekmesine sesli uyarıyla düşer; kabul/red platforma bildirilir. Trendyol Yemek siparişleri webhook'suz, 2 dakikalık polling ile alınır; diğer sağlayıcılar entegratör onayıyla açılır." />
       <PaketHatti acik={acik} teslim={teslim} money={money} />
       {free.length > 0 && <Card className="mb-6 p-5">{storeId ? <ConnectionForm platforms={free} /> : <p className="text-sm text-muted">Platform bağlamak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</p>}</Card>}
       {conns.length === 0 ? <Empty>Henüz bağlı platform yok. Akışı denemek için Deneme platformunu bağlayın.</Empty> : await Promise.all(conns.map(async (c) => {
@@ -186,9 +186,11 @@ export default async function Platformlar() {
             </div>
           ) : (
           <>
-          <WebhookCredentials url={`${origin}/api/platform/${c.platform}/webhook?t=${c.webhookToken}`} secret={c.webhookSecret} />
+          {c.platform === "trendyol_yemek"
+            ? <p className="rounded-lg border border-line bg-surface-2 p-3 text-sm">Bu platform webhook kullanmaz: siparişler 2 dakikada bir polling ile çekilir. Anahtarlar sunucu ortamında tanımlıdır; kabul/red bu bağlantı üzerinden platforma bildirilir.</p>
+            : <WebhookCredentials url={`${origin}/api/platform/${c.platform}/webhook?t=${c.webhookToken}`} secret={c.webhookSecret} />}
           {c.platform === "mock" && <TestOrderButton connectionId={c.id} />}
-          {c.platform !== "kiosk" && <PushCatalogButton connectionId={c.id} />}
+          {c.platform !== "kiosk" && c.platform !== "trendyol_yemek" && <PushCatalogButton connectionId={c.id} />}
           <div>
             <h3 className="mb-2 text-sm font-semibold">Ürün kodu eşleme</h3>
             <p className="mb-3 text-sm text-muted">Eşlenmeyen kod siparişe platformdaki ad ve fiyatla serbest satır olarak düşer.</p>

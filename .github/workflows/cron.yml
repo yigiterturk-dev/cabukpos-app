@@ -16,6 +16,9 @@ on:
           - fiscal
           - billing
           - report
+          - courier
+          - courier-status
+          - trendyol-yemek
 
 permissions:
   contents: read
@@ -46,6 +49,9 @@ jobs:
             "0 */6 * * *"|"fiscal") PATHNAME="/api/cron/fiscal" ;;
             "0 6 * * *"|"billing") PATHNAME="/api/cron/billing" ;;
             "30 7 * * *"|"report") PATHNAME="/api/cron/report" ;;
+            "0 * * * *"|"courier") PATHNAME="/api/cron/courier" ;;
+            "*/5 * * * *"|"courier-status") PATHNAME="/api/cron/courier-status" ;;
+            "*/2 * * * *"|"trendyol-yemek") PATHNAME="/api/cron/trendyol-yemek" ;;
             *) echo "Bilinmeyen zamanlama: $SCHEDULE" >&2; exit 1 ;;
           esac
           BASE="${APP_URL%/}"

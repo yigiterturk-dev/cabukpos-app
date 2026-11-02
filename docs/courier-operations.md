@@ -20,6 +20,8 @@ Yalnız son konum saklanır, yol izi saklanmaz. Konum 90 saniyeden eskiyse günc
 
 Yeni tablo: `db/releases/2026-10-24-courier-locations.sql`. PostgreSQL 16.13 yerel demo ve test veritabanlarında uygulandı. Yeni tablo başlangıçta boştur; backfill yoktur, mevcut satış/ödeme/adisyon tabloları değiştirilmez. FK oluşturma üst tablolarda kısa kilit alabilir; 3 sn kilit, 15 sn işlem zaman aşımıyla sınırlandırılmıştır. FORCE RLS ve kiracı politikası aynı işlemde açılır. Uygulama rolü RLS'yi atlamaz.
 
+Dış kurye durumu için ayrıca `db/releases/2026-10-31-courier-jobs.sql` eklenir; yalnız yeni `courier_jobs` tablosunu açar, mevcut verilere dokunmaz. Sıra ve doğrulama ayrıntısı [courier-integrations.md](courier-integrations.md) içindedir.
+
 Dağıtım sırası: güncel yedek/restore kanıtını kontrol et → SQL'i uygula → yeni uygulamayı dağıt → API smoke/şube izolasyonunu doğrula. Eski uygulama yeni tabloyu kullanmadığından kod geri alınabilir; geri dönüşte tabloyu silmek gerekmez. Üretime henüz uygulanmadı. Üretimdeki tablo hacmi ve kilit beklemeleri dağıtım öncesi tekrar ölçülmelidir.
 
 Yerel HTTP smoke (yalnız loopback ve `cabukpos_preview_*` DB kabul eder):
@@ -28,7 +30,7 @@ Yerel HTTP smoke (yalnız loopback ve `cabukpos_preview_*` DB kabul eder):
 node --env-file=.env.local --experimental-strip-types --import ./tests/ts-resolve.mjs e2e/delivery-api.mjs
 ```
 
-Test kendi geçici işletmesini kaldırır; kullanıcının PIN'i, cihazı veya demo siparişlerini değiştirmez. Çalışan telefon GPS'i ve dış kurye sağlayıcısı için saha doğrulaması ayrıca gerekir. Dış firmaya otomatik kurye çağrısı bu sürümde bağlı değildir.
+Test kendi geçici işletmesini kaldırır; kullanıcının PIN'i, cihazı veya demo siparişlerini değiştirmez. Çalışan telefon GPS'i için saha doğrulaması ayrıca gerekir. Dış kurye (YNR) sevki artık bağlıdır; yapılandırma, tekilleştirme ve sınırlar için [courier-integrations.md](courier-integrations.md).
 
 Etkileşimli, yalnız geliştirmede çalışan örnek ekran: `/kasa/sevkiyat-onizleme`.
 

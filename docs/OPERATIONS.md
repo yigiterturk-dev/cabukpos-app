@@ -50,10 +50,17 @@ Bu komut yalnızca okur; `billing_invoices`, `billing_invoice_counters`,
 
 ## Uygulama cron'ları
 
-- `/api/cron/agent-heartbeat`, `/api/cron/uptime`, `/api/cron/fiscal`,
-  `/api/cron/billing` ve `/api/cron/report` endpoint'leri `.github/workflows/cron.yml`
-  tarafından çağrılır; bu, Vercel Hobby'nin günlükten sık cron kısıtını aşmadan
-  5/10 dakika, 6 saat ve günlük iş aralıklarını korur.
+- Canlı zamanlama netcup'taki `/opt/cron-tetik/tetik.py` üzerinden dakikada bir
+  yapılır (GitHub Actions kotası 2026-10-14'te doldu). `.github/workflows/cron.yml`
+  yalnız elle çalıştırma içindir ve aynı endpoint'leri çağırır.
+- Çağrılan endpoint'ler: `/api/cron/agent-heartbeat`, `/api/cron/uptime`,
+  `/api/cron/platform`, `/api/cron/fiscal`, `/api/cron/billing`, `/api/cron/report`,
+  `/api/cron/courier`, `/api/cron/courier-status` ve `/api/cron/trendyol-yemek`.
+  Kurye tekrarı saatlik, kurye durumu 5 dakikada bir, Trendyol Yemek polling
+  2 dakikada bir çalışır.
+- Yeni endpoint'ler uygulama canlıya alındıktan sonra tetik listesine eklenir;
+  erken eklenirse 404 döner. YNR veya Trendyol Yemek yapılandırılmamışsa uçlar
+  ağa çıkmadan boş sonuç döner.
 - Repository secret'ları `APP_URL` ve `CRON_SECRET` tanımlı olmadan workflow
   bilerek başarısız olur. İlk açılışta her zamanlama en az bir kez çalıştırılmalı;
   Actions logundaki HTTP yanıtı ve uygulama audit/alert kaydı saklanmalıdır.
