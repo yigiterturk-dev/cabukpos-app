@@ -56,6 +56,10 @@ uygulandı. Canlı veri sayıları ve mali toplamlar korundu.
 - Cron: `/opt/cron-tetik/tetik.py` içine `courier` (saatlik), `courier-status`
   (5 dk), `trendyol-yemek` (2 dk) eklendi; üçü de elle 200 döndü. Uygulama
   canlıya alınmadan önce eklenmedi.
+- Caddy `cabukpos.com` bloğuna `header_up X-Real-IP {remote_host}` eklendi. Önce
+  `clientIp()` prod'da ham XFF'i yok sayıp tüm trafiği `"yerel"` sayıyordu; IP
+  bazlı hız sınırları global oluyordu. Doğrulama: geçersiz menü isteği sonrası
+  `login_attempts` anahtarı `siparis:178.233.168.123` (gerçek IP), `"yerel"` değil.
 - Yedek timer'ı aynı gün elle çalıştırıldı ve başarılı kayıt üretti.
 
 ## Sınırlar ve geri dönüş
