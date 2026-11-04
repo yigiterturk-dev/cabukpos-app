@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "dexie": "^4.4.6",
+    "dexie": "^4.4.7",
     "drizzle-orm": "^0.45.3",
     "jose": "^6.2.12",
     "lucide-react": "^1.48.0",
