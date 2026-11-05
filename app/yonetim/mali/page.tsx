@@ -82,7 +82,7 @@ export default async function Mali({ searchParams }: { searchParams: Promise<{ s
   const blockEarsiv = fake && fakeProvidersBlocked();
   return (
     <>
-      <PageHeader title="Mali belge" desc="Bilgi fişi ya da e-Arşiv fatura. Kesilemeyen belgeler otomatik yeniden denenir; tam iade edilen faturalar iptal edilir, kısmi iadede iade tutanağı düzenlenir." />
+      <PageHeader title="Mali belgeler" desc="Bilgi fişi ya da e-Arşiv fatura. Kesilemeyen belgeler otomatik yeniden denenir; tam iade edilen faturalar iptal edilir, kısmi iadede iade tutanağı düzenlenir." />
       <div className="-mx-1 mb-5 flex flex-wrap items-center gap-2 px-1">
         <Link href="/yonetim/mali" aria-current={tab === "ayarlar" ? "page" : undefined} className={seg(tab === "ayarlar")}>Ayarlar</Link>
         <Link href="/yonetim/mali?sekme=belgeler" aria-current={tab === "belgeler" ? "page" : undefined} className={seg(tab === "belgeler")}>Belgeler</Link>

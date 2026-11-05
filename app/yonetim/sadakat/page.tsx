@@ -49,7 +49,7 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
   const lastItem = Math.min(currentPage * PAGE_SIZE, total);
   return (
     <>
-      <PageHeader title="Sadakat puanı" desc="Müşteri harcaması puan kazanır; puan, sonraki satışta indirim olarak harcanır. Satış anı kazanım/harcanma kasa güncellemesine bağlıdır." />
+      <PageHeader title="Puan programı" desc="Müşteri harcaması puan kazanır; puan, sonraki satışta indirim olarak harcanır. Satış anı kazanım/harcanma kasa güncellemesine bağlıdır." />
       {ok && <ActionResult kind="success">Kaydedildi.</ActionResult>}
       {hata && <ActionResult kind="error">Eksik ya da geçersiz bilgi — kontrol edip yeniden deneyin.</ActionResult>}
       <section aria-label="Puan programı ayarları" className="mb-8">

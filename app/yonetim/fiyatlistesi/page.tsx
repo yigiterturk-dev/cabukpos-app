@@ -34,7 +34,7 @@ export default async function FiyatListesi() {
   const catName = new Map(cats.map((c) => [c.id, c.name]));
   return (
     <>
-      <PageHeader title="Fiyat listeleri ve indirimler" desc="Belirli gün + saat aralığında geçerli liste. İki tür: ürün başı sabit fiyat (happy hour, öğle menüsü) ya da kapsama göre yüzde indirim (tüm ürünler veya seçili kategoriler). Birden fazla etkin liste eşleşirse yukarıda görünen ilk liste uygulanır. Kasa, satır eklenirken geçerli fiyatı kullanır; saat dışı taban fiyatla akar." />
+      <PageHeader title="Fiyat listeleri" desc="Belirli gün + saat aralığında geçerli liste. İki tür: ürün başı sabit fiyat (happy hour, öğle menüsü) ya da kapsama göre yüzde indirim (tüm ürünler veya seçili kategoriler). Birden fazla etkin liste eşleşirse yukarıda görünen ilk liste uygulanır. Kasa, satır eklenirken geçerli fiyatı kullanır; saat dışı taban fiyatla akar." />
       <div className="mb-6"><Panel title="Liste / indirim ekle">{storeId ? <ListForm categories={categories} /> : <p className="text-sm text-muted">Fiyat listesi oluşturmak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</p>}</Panel></div>
       {lists.length === 0 ? <Empty>{storeId ? <>Henüz liste yok. Örneğin &quot;Happy Hour %20 (tüm ürünler)&quot; ya da kategorili bir indirim ekleyin.</> : <>Şube oluşturduktan sonra ilk fiyat listenizi ekleyebilirsiniz.</>}</Empty> : (
         <div className="space-y-4">

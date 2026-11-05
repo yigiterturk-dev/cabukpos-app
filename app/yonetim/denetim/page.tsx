@@ -31,7 +31,7 @@ export default async function Denetim({ searchParams }: { searchParams: Promise<
   const lastItem = Math.min(currentPage * PAGE_SIZE, total);
   return (
     <>
-      <PageHeader title="Denetim kayıtları" desc="İşletmenizdeki son yönetim, cihaz ve sistem işlemleri." />
+      <PageHeader title="İşlem geçmişi" desc="İşletmenizdeki son yönetim, cihaz ve sistem işlemleri." />
       {rows.length === 0 ? <Empty icon={<ShieldCheck />}>Henüz denetim kaydı yok.</Empty> : (
         <>
         <p className="mb-3 text-sm text-muted">{firstItem}–{lastItem} / {total} denetim kaydı</p>

@@ -4,20 +4,24 @@ import { UserPlus } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { StaffActiveForm, StaffForm } from "@/components/admin/StaffDeviceForms";
-import { Badge, Card, Empty, TABLE_HEAD, buttonClass } from "@/components/ui";
+import { Badge, Card, Empty, TABLE_HEAD } from "@/components/ui";
 import { ListWorkspace } from "@/components/admin/ListWorkspace";
 import { HorizontalScrollRegion } from "@/components/HorizontalScrollRegion";
+import { HUBS, visibleChildren } from "../nav-data";
+import { navContext } from "../_hub/context";
+import { HubBar } from "../_hub/Hub";
 
 export const dynamic = "force-dynamic";
 
 export default async function Personel({ searchParams }: { searchParams: Promise<{ duzenle?: string }> }) {
   const a = await requireAdmin();
+  const { ctx } = await navContext();
   const { duzenle } = await searchParams;
   const rows = await withTenant(a.tenantId, (tx) => tx.select({ id: schema.staff.id, name: schema.staff.name, role: schema.staff.role, permissions: schema.staff.permissions, active: schema.staff.active }).from(schema.staff).orderBy(desc(schema.staff.active), asc(schema.staff.name)));
   const editing = rows.find((r) => r.id === duzenle);
   return (
     <>
-      <div className="mb-4 flex flex-wrap gap-2"><Link href="/yonetim/personel-plan" className={buttonClass("secondary")}>Vardiya planı ve görev takibi →</Link><Link href="/yonetim/devam" className={buttonClass("secondary")}>Gerçek giriş / çıkış →</Link></div>
+      <HubBar items={visibleChildren(HUBS.find((h) => h.href === "/yonetim/personel")!, ctx).filter((i) => i.href !== "/yonetim/personel")} />
       <ListWorkspace key={editing?.id ?? "new"} title="Personel" description="Kasada PIN ile giriş yapanlar. PIN kişiye özeldir; iki aktif kişide aynı olamaz." editing={Boolean(editing)} closeHref="/yonetim/personel" panels={[
         { id: "staff", label: "Personel ekle", title: editing ? `Düzenle: ${editing.name}` : "Personel ekle", content: <StaffForm key={editing?.id ?? "yeni"} initial={editing} /> },
       ]}>

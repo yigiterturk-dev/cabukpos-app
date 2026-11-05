@@ -26,7 +26,7 @@ async function login(email) {
 try {
   const owner = await login(fixture.owner);
   await owner.goto(`${base}/yonetim/hq`);
-  await owner.getByRole('heading',{name:'Zincir merkezi (HQ)',exact:true}).waitFor();
+  await owner.getByRole('heading',{name:'Zincir yönetimi',exact:true}).waitFor();
   await owner.getByText('Release Şube A',{exact:true}).filter({visible:true}).first().waitFor();
   await owner.getByText('Release Şube B',{exact:true}).filter({visible:true}).first().waitFor();
   console.log('PASS owner: authenticated HQ renders both branches');
@@ -43,7 +43,7 @@ try {
 
   const hq = await login(fixture.hq);
   await hq.goto(`${base}/yonetim/hq`);
-  await hq.getByRole('heading',{name:'Zincir merkezi (HQ)',exact:true}).waitFor();
+  await hq.getByRole('heading',{name:'Zincir yönetimi',exact:true}).waitFor();
   await hq.goto(`${base}/yonetim/subeler`);
   await hq.getByText('Release Şube B',{exact:true}).filter({visible:true}).first().waitFor();
   console.log('PASS HQ manager: chain-wide branch view accessible');

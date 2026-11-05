@@ -33,7 +33,7 @@ export default async function Istasyonlar() {
   const stationOpts = stations.map((s) => ({ value: s.id, label: s.name }));
   return (
     <>
-      <PageHeader title="Mutfak istasyonları" desc="Siparişler istasyona göre ayrılır: mutfak ekranında o istasyonun sütununa düşer, yazıcısı varsa oraya da basılır." />
+      <PageHeader title="Mutfak ekranları" desc="Siparişler istasyona göre ayrılır: mutfak ekranında o istasyonun sütununa düşer, yazıcısı varsa oraya da basılır." />
       {!storeId ? <Card className="mb-6 p-6">
         <h2 className="mb-1 text-lg font-semibold">Önce şube oluşturun</h2>
         <p className="mb-4 text-sm text-muted">Mutfak istasyonları şubeye ve o şubenin yazıcılarına bağlıdır.</p>

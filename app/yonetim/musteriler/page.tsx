@@ -10,6 +10,9 @@ import { normalizeSearchText } from "@/lib/core/search";
 import { CustomerForm } from "@/components/admin/DeliveryForms";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { buttonClass, Card, Empty, Input, PageHeader } from "@/components/ui";
+import { HUBS, visibleChildren } from "../nav-data";
+import { navContext } from "../_hub/context";
+import { HubBar } from "../_hub/Hub";
 
 export const dynamic = "force-dynamic";
 const PAGE_SIZE = 50;
@@ -17,6 +20,7 @@ const PAGE_SIZE = 50;
 export default async function Musteriler({ searchParams }: { searchParams: Promise<{ q?: string; id?: string; page?: string }> }) {
   const a = await requireAdmin();
   if (!seesAllStores(a)) redirect("/yonetim");
+  const { ctx } = await navContext();
   const { q: rawQuery = "", id, page } = await searchParams;
   const q = rawQuery.slice(0, 80);
   const requestedPage = Number(page);
@@ -55,6 +59,7 @@ export default async function Musteriler({ searchParams }: { searchParams: Promi
   return (
     <>
       <PageHeader title="Müşteriler" desc="Paket siparişlerinden kendiliğinden oluşur: telefon numarası müşteriyi, yeni adres adres defterini doldurur." />
+      <HubBar items={visibleChildren(HUBS.find((h) => h.href === "/yonetim/musteriler")!, ctx).filter((i) => i.href !== "/yonetim/musteriler")} />
       <section aria-label="Müşteri büyüme özeti" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           ["Toplam müşteri", growth.total, "Telefonu kayıtlı müşteri"],

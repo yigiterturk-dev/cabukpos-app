@@ -26,7 +26,7 @@ export default async function Secenekler({ searchParams }: { searchParams: Promi
   const editing = full.find((g) => g.id === duzenle);
   return (
     <>
-      <PageHeader title="Seçenekler" desc="Pişirme derecesi, ekstralar, porsiyon. Grubu ürün formundan ürüne bağlayın; kasada ürüne dokununca sorulur." />
+      <PageHeader title="Ürün seçenekleri" desc="Pişirme derecesi, ekstralar, porsiyon. Grubu ürün formundan ürüne bağlayın; kasada ürüne dokununca sorulur." />
       <SplitView
         panel={
           <Panel title={editing ? `Düzenle: ${editing.name}` : "Seçenek grubu ekle"} tone={editing ? "edit" : undefined} action={editing && <Link href="/yonetim/secenekler" className="inline-flex min-h-11 items-center rounded px-2 text-sm text-muted outline-none hover:text-ink hover:underline focus-visible:ring-4 focus-visible:ring-brand-ring/60">Vazgeç</Link>}>

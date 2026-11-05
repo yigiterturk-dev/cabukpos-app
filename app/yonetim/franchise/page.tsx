@@ -117,12 +117,12 @@ export default async function Franchise({ searchParams }: { searchParams: Promis
   return (
     <>
       <div className="mb-4 hidden print:block">
-        <h1 className="text-xl font-bold">{a.tenantName} — Franchise raporu</h1>
+        <h1 className="text-xl font-bold">{a.tenantName} — Bayilik</h1>
         <p className="text-sm">{day(range.bas)} – {day(range.bit)} · {dayCount(range)} gün</p>
       </div>
       <PageHeader
-        title="Franchise raporu"
-        desc="Satış şubeleri için net ciro üzerinden ciro payı ve gün oranlı sabit bedel. Depo ve franchise koşulu tanımsız şubeler ayrı işaretlenir."
+        title="Bayilik"
+        desc="Satış şubeleri için net ciro üzerinden ciro payı ve gün oranlı sabit bedel. Depo ve bayilik koşulu tanımsız şubeler ayrı işaretlenir."
         actions={<div className="flex flex-wrap items-center gap-2"><PrintButton /><a href={`/yonetim/franchise/csv?${new URLSearchParams({ bas: range.bas, bit: range.bit })}`} download className={buttonClass("secondary")}>CSV indir</a></div>}
       />
 
@@ -143,7 +143,7 @@ export default async function Franchise({ searchParams }: { searchParams: Promis
 
       {data.rows.length === 0 ? (
         <Empty>
-          Franchise raporu için satış şubesi gerekir.{" "}
+          Bayilik için satış şubesi gerekir.{" "}
           <Link href="/yonetim/subeler" className="font-medium text-brand underline underline-offset-2">Şubeler’den şube ve franchise koşullarını girin</Link>.
         </Empty>
       ) : (

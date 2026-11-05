@@ -27,7 +27,7 @@ export default async function Donanim() {
   const rows = (await getDb().select().from(schema.agents).where(eq(schema.agents.tenantId, u.tenantId)).orderBy(asc(schema.agents.createdAt))).filter((r) => canUseStore(u, r.storeId));
   return (
     <>
-      <PageHeader title="Donanım" desc="Kasadaki bilgisayarda çalışan ÇabukPOS ajanı fiş yazıcısını, para çekmecesini ve teraziyi yönetir." />
+      <PageHeader title="Yazıcı ve donanım" desc="Kasadaki bilgisayarda çalışan ÇabukPOS ajanı fiş yazıcısını, para çekmecesini ve teraziyi yönetir." />
       <Card className="mb-6 p-5">
         {activeStoreId ? <AgentCreateForm /> : <div className="space-y-3 text-sm text-muted"><p>Ajan eklemeden önce bir şube oluşturun.</p><Link href="/yonetim/subeler" className={buttonClass("primary")}>Şube ekle</Link></div>}
         <p className="mt-4 break-words rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn" data-testid="lna-note">Kasa ekranında Chrome “yerel ağ erişimi” izni sorduğunda <strong>İzin ver</strong> deyin; aksi halde ajan “kapalı” görünür.</p>

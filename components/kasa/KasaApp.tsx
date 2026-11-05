@@ -778,16 +778,16 @@ export function KasaApp() {
         <Button variant="secondary" title="Çekmece" className="min-h-12" onClick={() => {
           if (staffCan(meta.catalog.staff.find((x) => x.id === cashier.id),"drawer")) void drawerBy(null);
           else setView({ name: "cekmece" });
-          }}><Inbox aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Çekmece</span></Button>
+          }}><Inbox aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Çekmece</span></Button>
       )}
-      {cashier && meta.shift && atHome && <Button variant="secondary" title="İade" className="min-h-12" onClick={() => setView({ name: "iade" })}><Undo2 aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">İade</span></Button>}
-      {cashier && meta.shift && atHome && <Button variant="secondary" title="Güvenli kasaya aktar" data-testid="safe-drop-btn" className="min-h-12" onClick={() => setView({ name: "safe-drop" })}><Landmark aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Güvenli kasa</span></Button>}
-      {cashier && meta.shift && atHome && <Button variant="secondary" title="Gün sonu" className="min-h-12" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Gün sonu</span></Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" title="İade" className="min-h-12" onClick={() => setView({ name: "iade" })}><Undo2 aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">İade</span></Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" title="Güvenli kasaya aktar" data-testid="safe-drop-btn" className="min-h-12" onClick={() => setView({ name: "safe-drop" })}><Landmark aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Para aktar</span></Button>}
+      {cashier && meta.shift && atHome && <Button variant="secondary" title="Gün sonu" className="min-h-12" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Gün sonu</span></Button>}
       {cashier && (
         <span className="flex min-h-12 items-center gap-1 rounded-full border border-line bg-surface pl-1 shadow-card">
           <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{cashier.name.trim().charAt(0).toLocaleUpperCase("tr")}</span>
           <span className="max-w-32 truncate px-1 text-sm font-medium text-ink" title={cashier.name}>{cashier.name}</span>
-          <button type="button" title="Kasiyer değiştir" aria-label="Kasiyer değiştir" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60"><LogOut aria-hidden className="size-4" /><span className="sr-only xl:not-sr-only">Kasiyer değiştir</span></button>
+          <button type="button" title="Kasiyer değiştir" aria-label="Kasiyer değiştir" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60"><LogOut aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Kasiyer değiştir</span></button>
         </span>
       )}
     </Bar>

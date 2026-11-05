@@ -20,9 +20,9 @@ export default async function CourierAccountPage({ searchParams }: { searchParam
   const money = await moneyFormatter(a.tenantId);
   let report;
   try { report = await courierAccount({ tenantId: a.tenantId, storeId }, day); }
-  catch { return <><PageHeader title="Kurye hesabı" desc="Tahsilat ve vardiya kapanışları" /><p role="alert">Kurye hesabı yüklenemedi. Sayfayı yenileyin veya daha sonra tekrar deneyin.</p></>; }
+  catch { return <><PageHeader title="Kurye ödemeleri" desc="Tahsilat ve vardiya kapanışları" /><p role="alert">Kurye hesabı yüklenemedi. Sayfayı yenileyin veya daha sonra tekrar deneyin.</p></>; }
   return <>
-    <PageHeader title="Kurye hesabı" desc="Kurye cihazlarının gerçek ödeme kayıtları ve nakit sayımları." actions={<PrintButton />} />
+    <PageHeader title="Kurye ödemeleri" desc="Kurye cihazlarının gerçek ödeme kayıtları ve nakit sayımları." actions={<PrintButton />} />
     <form method="get" className="mb-5 flex flex-wrap items-end gap-3 print:hidden"><label className="grid gap-1 text-sm">Rapor günü<Input type="date" name="day" defaultValue={day} min={min} max={today} /></label><button className={buttonClass("secondary")} type="submit">Göster</button><Link className={buttonClass("secondary")} href={`/yonetim/kurye-hesap/csv?day=${day}`}>CSV indir</Link><Link className={buttonClass("ghost")} href="/kasa">Kasaya dön</Link></form>
     <div className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4"><StatCard label="Net nakit tahsilatı" value={money(report.daily.byMethod.nakit)} /><StatCard label="Net kart tahsilatı" value={money(report.daily.byMethod.kart)} /><StatCard label="Online ödeme" value={money(report.daily.byMethod.online)} /><StatCard label="Günlük iade" value={money(report.daily.refundTotal)} /></div>
     <p className="mb-5 text-sm text-muted">Günlük tutarlar ödeme tarihine göredir; para üstü ve iadeler düşülmüştür. Kapanış hesabı vardiyanın tamamını kapsar: açılış nakdi + net nakit − kasaya bırakılan tutar. Online ve kart ödemeleri nakit hesabına eklenmez.</p>

@@ -24,7 +24,7 @@ export default async function StaffPlanning({ searchParams }: { searchParams: Pr
   if (!storeId) return <Empty>Önce bir şube oluşturun.</Empty>;
   let data;
   try { data = await listStaffPlans({ tenantId: a.tenantId, storeId, actor: a }, week); }
-  catch { return <><PageHeader title="Personel planı" /><p role="alert">Planlar yüklenemedi. Sayfayı yenileyin.</p></>; }
+  catch { return <><PageHeader title="Vardiya planı" /><p role="alert">Planlar yüklenemedi. Sayfayı yenileyin.</p></>; }
   const kind = q.kind && isPlanKind(q.kind) ? q.kind : "";
   const status = q.status && isPlanStatus(q.status) ? q.status : "";
   const person = data.staff.find(s => s.id === q.staff);
@@ -34,7 +34,7 @@ export default async function StaffPlanning({ searchParams }: { searchParams: Pr
   const hours = rows.filter(r => r.kind === "vardiya" && r.status !== "iptal").reduce((n, r) => n + planMinutes(r.startsAt, r.endsAt, r.breakMinutes), 0);
   const initial = editing ? { ...editing, startsAt: planLocal(editing.startsAt), endsAt: planLocal(editing.endsAt) } : undefined;
   return <>
-    <PageHeader title="Personel planı" desc="Çalışma vardiyaları ve personele atanan görevler." actions={<PrintButton />} />
+    <PageHeader title="Vardiya planı" desc="Çalışma vardiyaları ve personele atanan görevler." actions={<PrintButton />} />
     <div className="mb-5 flex flex-wrap gap-2 print:hidden"><Link className={buttonClass("secondary")} href={link(planDayOffset(week, -7))}>← Önceki hafta</Link><Link className={buttonClass("secondary")} href={link(planWeekStart(today))}>Bu hafta</Link><Link className={buttonClass("secondary")} href={link(planDayOffset(week, 7))}>Sonraki hafta →</Link><Link className={buttonClass("ghost")} href="/yonetim/personel">Personel ve PIN ayarları</Link></div>
     <form method="get" className="mb-5 flex flex-wrap items-end gap-3 print:hidden"><label className="grid min-w-0 max-w-full gap-1 text-sm">Hafta<Input type="date" name="week" defaultValue={week} min={min} max={max} /></label><label className="grid min-w-0 max-w-full gap-1 text-sm">Personel<select className={selectClass} name="staff" defaultValue={person?.id ?? ""}><option value="">Tüm personel</option>{data.staff.map(s => <option key={s.id} value={s.id}>{s.name}{s.active ? "" : " (pasif)"}</option>)}</select></label><label className="grid min-w-0 max-w-full gap-1 text-sm">Tür<select className={selectClass} name="kind" defaultValue={kind}><option value="">Vardiya ve görev</option>{Object.entries(PLAN_KINDS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="grid min-w-0 max-w-full gap-1 text-sm">Durum<select className={selectClass} name="status" defaultValue={status}><option value="">İptal dışındakiler</option>{Object.entries(PLAN_STATUSES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className={buttonClass("secondary")}>Göster</button></form>
     <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4"><StatCard label="Çalışma planı" value={String(rows.filter(r => r.kind === "vardiya").length)} /><StatCard label="Planlanan çalışma" value={`${Math.floor(hours / 60)} sa ${hours % 60} dk`} /><StatCard label="Açık görev" value={String(rows.filter(r => r.kind === "gorev" && !["tamamlandi", "iptal"].includes(r.status)).length)} /><StatCard label="Tamamlanan görev" value={String(rows.filter(r => r.kind === "gorev" && r.status === "tamamlandi").length)} /></div>

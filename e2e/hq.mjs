@@ -27,13 +27,12 @@ const ctx = async () => {
 const choose = async (p, combo, option) => { await combo.click(); await p.getByRole("option", { name: option, exact: true }).click(); };
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 const step = (m) => console.log("•", m);
-const openGroups = async (p, names) => {
-  for (const name of names) {
-    const b = p.getByRole("button", { name, exact: true });
-    if (await b.count() && (await b.first().getAttribute("aria-expanded")) !== "true") await b.first().click();
-  }
-  await p.waitForTimeout(200);
-};
+const hubLinks = [
+  ["/yonetim/stok", "Merkez depo"],
+  ["/yonetim/ayarlar", "Franchise"],
+  ["/yonetim/ayarlar", "Şubeler"],
+  ["/yonetim/personel", "Panel kullanıcıları"],
+];
 
 try {
   const owner = await ctx();
@@ -97,14 +96,15 @@ try {
   assert(bmLink.includes("/sifre-yenile?t=") && !bmLink.includes("object"), "yenilenen davet bağlantısı geçersiz");
   step("mevcut kullanıcıya yeniden davet bağlantısı");
 
-  await owner.getByRole("button", { name: "Tümü", exact: true }).click();
-  await openGroups(owner, ["Stok", "İşletme"]);
-  for (const name of ["Merkez depo", "Franchise", "Kullanıcılar", "Şubeler"]) assert((await owner.getByRole("link", { name, exact: true }).count()) > 0, `menüde ${name} yok`);
+  for (const [path, name] of hubLinks) {
+    await owner.goto(`${BASE}${path}`);
+    assert((await owner.getByRole("link", { name, exact: true }).count()) > 0, `menüde ${name} yok`);
+  }
   await owner.goto(`${BASE}/yonetim/depo`);
   await owner.getByRole("heading", { name: "Merkez depo" }).waitFor();
   await owner.getByText("Depo stoğu").waitFor();
   await owner.goto(`${BASE}/yonetim/franchise`);
-  await owner.getByRole("heading", { name: "Franchise raporu" }).waitFor();
+  await owner.getByRole("heading", { name: "Bayilik" }).waitFor();
   assert((await owner.getByText("%5").count()) > 0, "franchise oranı görünmüyor");
   step("depo + franchise ekranları");
 
@@ -114,9 +114,10 @@ try {
   await bm.getByRole("button", { name: "Şifreyi kaydet" }).click();
   await bm.waitForURL(`${BASE}/yonetim**`);
   await bm.locator('[aria-label="Şubeniz: Kadıköy"]').first().waitFor();
-  await bm.getByRole("button", { name: "Tümü", exact: true }).click();
-  await openGroups(bm, ["Stok", "İşletme"]);
-  for (const name of ["Merkez depo", "Franchise", "Kullanıcılar", "Şubeler"]) assert((await bm.getByRole("link", { name, exact: true }).count()) === 0, `şube müdüründe ${name} görünüyor`);
+  for (const [path, name] of hubLinks) {
+    await bm.goto(`${BASE}${path}`);
+    assert((await bm.getByRole("link", { name, exact: true }).count()) === 0, `şube müdüründe ${name} görünüyor`);
+  }
   for (const path of ["/yonetim/hq", "/yonetim/kullanicilar", "/yonetim/franchise", "/yonetim/subeler", "/yonetim/musteriler", "/yonetim/kuponlar", "/yonetim/mali", "/yonetim/denetim", "/yonetim/veriler"]) {
     await bm.goto(`${BASE}${path}`);
     await bm.waitForURL(`${BASE}/yonetim`);
@@ -130,9 +131,10 @@ try {
   await hq.fill("input[name=password]", pass);
   await hq.getByRole("button", { name: "Şifreyi kaydet" }).click();
   await hq.waitForURL(`${BASE}/yonetim**`);
-  await hq.getByRole("button", { name: "Tümü", exact: true }).click();
-  await openGroups(hq, ["Stok", "İşletme"]);
-  for (const name of ["Merkez depo", "Franchise", "Kullanıcılar", "Şubeler"]) assert((await hq.getByRole("link", { name, exact: true }).count()) > 0, `HQ menüsünde ${name} yok`);
+  for (const [path, name] of hubLinks) {
+    await hq.goto(`${BASE}${path}`);
+    assert((await hq.getByRole("link", { name, exact: true }).count()) > 0, `HQ menüsünde ${name} yok`);
+  }
   await hq.goto(`${BASE}/yonetim/kullanicilar`);
   await hq.getByText(bmEmail).waitFor();
   await hq.getByRole("combobox").first().click();
@@ -168,7 +170,6 @@ try {
       await tx`insert into tab_events (id, tenant_id, store_id, tab_id, at, type, payload) values (gen_random_uuid(), ${user.tenant_id}, ${store.id}, gen_random_uuid(), now(), 'open', '{"type":"open","guests":2}'::jsonb)`;
     });
     await owner.goto(`${BASE}/yonetim`);
-    await owner.getByRole("button", { name: "Günlük", exact: true }).click();
     await owner.locator('[aria-label="1 açık adisyon"]').waitFor();
     step("menüde açık adisyon sayacı 1");
   } else {

@@ -215,7 +215,7 @@ export default async function Hq() {
   return (
     <>
       <PageHeader
-        title="Zincir merkezi (HQ)"
+        title="Zincir yönetimi"
         desc="Tüm şubeler tek ekranda: bugün ve son 7 günün cirosu, ortalaması, kârı. Şube değiştirmek için üst şube seçicisini kullanın; aylık PDF için konsolide rapora gidin."
         actions={<Link href="/yonetim/depo" className="text-sm text-brand hover:underline">Merkez depo →</Link>}
       />

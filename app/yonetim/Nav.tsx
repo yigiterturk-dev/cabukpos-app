@@ -1,83 +1,15 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeSearchText } from "@/lib/core/search";
-import { Armchair, ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, ChartColumn, ChefHat, ChevronDown, Contact, CookingPot, CreditCard, Flame, Gift, Globe, Handshake, LayoutDashboard, MapPin, Menu, Database, MonitorSmartphone, Package, PackagePlus, Percent, Plug, Printer, Receipt, Search, ShieldCheck, SlidersHorizontal, Star, Store, Tag, Ticket, TrendingUp, UserCog, Warehouse, X, Clock, ClipboardList, CircleHelp, type LucideIcon, Settings } from "lucide-react";
+import { Menu, Search, X, type LucideIcon } from "lucide-react";
+import { visibleChildren, visibleHubs, type NavContext } from "./nav-data";
 
-type Item = { href: string; label: string; icon: LucideIcon; only?: "restoran" | "market"; exact?: boolean; minStores?: number; allStores?: boolean; badge?: number };
-const groups: { title: string; items: Item[] }[] = [
-  { title: "Genel", items: [
-    { href: "/yonetim", label: "Bugün", icon: LayoutDashboard, exact: true },
-    { href: "/yonetim/bildirimler", label: "Bildirimler", icon: Bell },
-    { href: "/yonetim/raporlar", label: "Raporlar", icon: ChartColumn },
-    { href: "/yonetim/tercihler", label: "Tercihler", icon: Settings },
-    { href: "/yonetim/yardim", label: "Yardım ve kurulum", icon: CircleHelp },
-  ] },
-  { title: "Menü", items: [
-    { href: "/yonetim/urunler", label: "Ürünler", icon: Package },
-    { href: "/yonetim/fiyatlistesi", label: "Fiyat listeleri", icon: Clock },
-    { href: "/yonetim/secenekler", label: "Seçenekler", icon: SlidersHorizontal, only: "restoran" },
-    { href: "/yonetim/receteler", label: "Reçeteler", icon: ChefHat, only: "restoran" },
-    { href: "/yonetim/uretim", label: "Üretim", icon: CookingPot, only: "restoran" },
-    { href: "/yonetim/etiketler", label: "Raf etiketi", icon: Tag },
-  ] },
-  { title: "Stok", items: [
-    { href: "/yonetim/stok", label: "Stok", icon: Boxes },
-    { href: "/yonetim/sayim", label: "Sayım & zayi", icon: ClipboardList },
-    { href: "/yonetim/alislar", label: "Alışlar", icon: PackagePlus },
-    { href: "/yonetim/tedarikciler", label: "Tedarikçiler", icon: Handshake },
-    { href: "/yonetim/transferler", label: "Transferler", icon: ArrowLeftRight, minStores: 2 },
-    { href: "/yonetim/depo", label: "Merkez depo", icon: Warehouse, allStores: true },
-  ] },
-  { title: "Satış kanalları", items: [
-    { href: "/yonetim/salon", label: "Salon", icon: Armchair, only: "restoran" },
-    { href: "/yonetim/rezervasyonlar", label: "Rezervasyon", icon: CalendarClock, only: "restoran" },
-    { href: "/yonetim/istasyonlar", label: "İstasyonlar", icon: Flame, only: "restoran" },
-    { href: "/yonetim/bolgeler", label: "Bölgeler", icon: MapPin, only: "restoran" },
-    { href: "/yonetim/platform-hesap", label: "Platform hakedişi", icon: Receipt, only: "restoran" },
-    { href: "/yonetim/partiler", label: "Parti / SKT", icon: Receipt },
-    { href: "/yonetim/tedarik", label: "Tedarik siparişleri", icon: Receipt },
-    { href: "/yonetim/devam", label: "Personel giriş / çıkış", icon: CalendarClock },
-    { href: "/yonetim/kurye-hesap", label: "Kurye hesabı", icon: Receipt, only: "restoran" },
-    { href: "/yonetim/musteriler", label: "Müşteriler", icon: Contact, only: "restoran", allStores: true },
-    { href: "/yonetim/buyume", label: "Büyüme Merkezi", icon: TrendingUp, only: "restoran" },
-    { href: "/yonetim/platformlar", label: "Platformlar", icon: Globe, only: "restoran" },
-    { href: "/yonetim/markalar", label: "Markalar", icon: Store, only: "restoran" },
-  ] },
-  { title: "Sadakat", items: [
-    { href: "/yonetim/sadakat", label: "Puan programı", icon: Star, allStores: true },
-    { href: "/yonetim/kuponlar", label: "Kuponlar", icon: Ticket, allStores: true },
-    { href: "/yonetim/hediyekarti", label: "Hediye kartı", icon: Gift, allStores: true },
-  ] },
-  { title: "İşletme", items: [
-    { href: "/yonetim/subeler", label: "Şubeler", icon: Building2, allStores: true },
-    { href: "/yonetim/hq", label: "Zincir merkezi", icon: ChartColumn, minStores: 2, allStores: true },
-    { href: "/yonetim/personel", label: "Personel", icon: UserCog },
-    { href: "/yonetim/personel-plan", label: "Personel planı", icon: CalendarClock },
-    { href: "/yonetim/cihazlar", label: "Cihazlar", icon: MonitorSmartphone },
-    { href: "/yonetim/donanim", label: "Donanım", icon: Printer },
-    { href: "/yonetim/mali", label: "Mali", icon: Receipt, allStores: true },
-    { href: "/yonetim/franchise", label: "Franchise", icon: Percent, allStores: true },
-    { href: "/yonetim/veriler", label: "Veriler", icon: Database, allStores: true },
-    { href: "/yonetim/denetim", label: "Denetim", icon: ShieldCheck, allStores: true },
-    { href: "/yonetim/entegrasyonlar", label: "Entegrasyonlar", icon: Plug, allStores: true },
-    { href: "/yonetim/abonelik", label: "Abonelik", icon: CreditCard, allStores: true },
-    { href: "/yonetim/kullanicilar", label: "Kullanıcılar", icon: UserCog, allStores: true },
-  ] },
-];
+type NavItemData = { href: string; label: string; icon: LucideIcon; exact?: boolean; badge?: number };
 
-/** Günlük görünüm: işletmecinin her gün baktıkları, işletme türü filtresiyle birlikte. Sıra bu listedeki sıra. */
-const GUNLUK = ["/yonetim", "/yonetim/salon", "/yonetim/urunler", "/yonetim/stok", "/yonetim/raporlar", "/yonetim/personel", "/yonetim/yardim"];
-
-const NAV_MODE_KEY = "cabukpos:nav";
-const navModeListeners = new Set<() => void>();
-const subscribeNavMode = (fn: () => void) => { navModeListeners.add(fn); return () => { navModeListeners.delete(fn); }; };
-const getAllMode = (): boolean => { try { return window.localStorage.getItem(NAV_MODE_KEY) === "tumu"; } catch { return false; } };
-const getServerAllMode = () => false;
-
-function NavItem({ item, path, onSelect }: { item: Item; path: string; onSelect?: () => void }) {
-  const on = item.exact ? path === item.href : path.startsWith(item.href);
+function NavItem({ item, path, active, onSelect }: { item: NavItemData; path: string; active?: boolean; onSelect?: () => void }) {
+  const on = active ?? (item.exact ? path === item.href : path.startsWith(item.href));
   const Icon = item.icon;
   const ref = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
@@ -99,25 +31,7 @@ function NavItem({ item, path, onSelect }: { item: Item; path: string; onSelect?
   );
 }
 
-function GroupLabel({ children, open, onToggle }: { children: React.ReactNode; open?: boolean; onToggle?: () => void }) {
-  const cls = "text-[11px] font-semibold uppercase tracking-[0.14em] text-cream-muted";
-  if (!onToggle) return <h2 className={`mb-1.5 px-3 ${cls}`}>{children}</h2>;
-  return (
-    <h2>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={onToggle}
-        className={`flex min-h-11 w-full items-center justify-between rounded-xl px-3 outline-none transition-[background-color,color,box-shadow] hover:text-cream focus-visible:ring-4 focus-visible:ring-brand-ring/60 ${cls}`}
-      >
-        {children}
-        <ChevronDown aria-hidden className={`size-3.5 shrink-0 transition-transform duration-200 ${open ? "" : "-rotate-90"}`} />
-      </button>
-    </h2>
-  );
-}
-
-/** Sidebar menüsü: arama ile filtrele + gruplu liste. Masaüstü ve mobil çekmecede aynı. */
+/** Sidebar menüsü: 10 ana başlık + arama. Alt sayfalar hub sayfalarından açılır. */
 export function Nav({ vertical, storeCount, allStores, openTabs = 0, onNavigate: onNavigateProp }: { vertical: "restoran" | "market"; storeCount: number; allStores: boolean; openTabs?: number; onNavigate?: () => void }) {
   const drawerClose = useContext(DrawerCloseContext);
   const onNavigate = onNavigateProp ?? drawerClose ?? undefined;
@@ -145,37 +59,15 @@ export function Nav({ vertical, storeCount, allStores, openTabs = 0, onNavigate:
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-  const visible = useMemo(
-    () => groups.map((g) => ({ ...g, items: g.items.filter((i) => (!i.only || i.only === vertical) && (!i.minStores || storeCount >= i.minStores) && (!i.allStores || allStores)).map((i) => (i.href === "/yonetim/salon" ? { ...i, badge: openTabs } : i)) })).filter((g) => g.items.length),
-    [vertical, storeCount, allStores, openTabs],
-  );
-  // Varsayılan görünüm "Günlük işler": yeni işletmeci paneli açtığında yalnız her gün baktığı sayfaları görür.
-  // Seçim kalıcıdır (localStorage); arama her iki görünümde de bütün menüyü tarar.
-  const allMode = useSyncExternalStore(subscribeNavMode, getAllMode, getServerAllMode);
-  const [modeNotice, setModeNotice] = useState("");
-  const setMode = (all: boolean) => {
-    try { window.localStorage.setItem(NAV_MODE_KEY, all ? "tumu" : "gunluk"); } catch { /* yok say */ }
-    for (const fn of navModeListeners) fn();
-    setModeNotice(all ? "Tüm menü gösteriliyor." : "Günlük işler gösteriliyor.");
-  };
-  const flat = useMemo(() => visible.flatMap((g) => g.items), [visible]);
-  const gunlukItems = useMemo(() => GUNLUK.map((h) => flat.find((i) => i.href === h)).filter((i): i is Item => Boolean(i)), [flat]);
-  const activeItem = flat.find((i) => (i.exact ? path === i.href : path.startsWith(i.href)));
-  const activeGroupTitle = useMemo(() => (activeItem ? visible.find((g) => g.items.includes(activeItem))?.title : undefined), [visible, activeItem]);
-  const shown = useMemo(() => {
-    if (allMode) return visible;
-    const out: { title: string; items: Item[] }[] = [];
-    if (activeItem && !gunlukItems.includes(activeItem)) out.push({ title: "Bulunduğun sayfa", items: [activeItem] });
-    out.push({ title: "Günlük işler", items: gunlukItems });
-    return out;
-  }, [allMode, visible, gunlukItems, activeItem]);
+  const ctx: NavContext = useMemo(() => ({ vertical, storeCount, allStores }), [vertical, storeCount, allStores]);
+  const hubs = useMemo(() => visibleHubs(ctx), [ctx]);
+  const leaves = useMemo(() => hubs.flatMap((h) => visibleChildren(h, ctx)), [hubs, ctx]);
+  const searchPool = useMemo(() => [...hubs, ...leaves].filter((i, index, all) => all.findIndex((x) => x.href === i.href) === index), [hubs, leaves]);
   const needle = normalizeSearchText(q.trim());
-  const matches = needle ? flat.filter((i) => normalizeSearchText(i.label).includes(needle)) : [];
-  // Tümü görünümü katlanabilir ağaçtır: gruplar kapalı durur, yalnız ilgili olan açılır (ihtiyaç anında çıkarılır).
-  // Açıklık durumu türetilir: kullanıcının açtıkları + her zaman aktif sayfanın grubu (effect'siz, SSR tutarlı).
-  const [manualOpen, setManualOpen] = useState<string[]>([]);
-  const toggleGroup = (title: string) => setManualOpen((prev) => (prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]));
-  const isGroupOpen = (title: string) => manualOpen.includes(title) || title === activeGroupTitle;
+  const matches = needle ? searchPool.filter((i) => normalizeSearchText(i.label).includes(needle)) : [];
+  const activeHub = hubs.find((hub) => hub.exact
+    ? path === hub.href
+    : path === hub.href || path.startsWith(`${hub.href}/`) || visibleChildren(hub, ctx).some((leaf) => path === leaf.href || path.startsWith(`${leaf.href}/`)));
   useEffect(() => {
     if (!needle) return;
     const timer = window.setTimeout(() => setMatchNotice({ query: needle, text: matches.length === 0 ? "Menüde sonuç yok." : `${matches.length} menü sonucu bulundu.` }), 450);
@@ -209,27 +101,8 @@ export function Nav({ vertical, storeCount, allStores, openTabs = 0, onNavigate:
       </div>
 
       <p className="sr-only" role="status" aria-live="polite">
-        {matchNotice?.query === needle ? matchNotice.text : modeNotice}
+        {matchNotice?.query === needle ? matchNotice.text : ""}
       </p>
-
-      <div role="group" aria-label="Menü görünümü" className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.06] p-1">
-        <button
-          type="button"
-          aria-pressed={!allMode}
-          onClick={() => setMode(false)}
-          className={`min-h-9 rounded-lg px-2 py-1.5 text-xs outline-none transition-[background-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-brand-ring/60 ${!allMode ? "bg-white/[0.12] font-semibold text-cream shadow-rest" : "font-medium text-cream-muted hover:text-cream"}`}
-        >
-          Günlük
-        </button>
-        <button
-          type="button"
-          aria-pressed={allMode}
-          onClick={() => setMode(true)}
-          className={`min-h-9 rounded-lg px-2 py-1.5 text-xs outline-none transition-[background-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-brand-ring/60 ${allMode ? "bg-white/[0.12] font-semibold text-cream shadow-rest" : "font-medium text-cream-muted hover:text-cream"}`}
-        >
-          Tümü
-        </button>
-      </div>
 
       {needle ? (
         <ul className="space-y-0.5">
@@ -237,23 +110,18 @@ export function Nav({ vertical, storeCount, allStores, openTabs = 0, onNavigate:
           {matches.map((i) => <li key={i.href}><NavItem item={i} path={path} onSelect={() => { setQ(""); onNavigate?.(); }} /></li>)}
         </ul>
       ) : (
-        <div className="space-y-5">
-          {shown.map((g) => {
-            const collapsible = allMode && g.title !== "Bulunduğun sayfa";
-            const open = !collapsible || isGroupOpen(g.title);
-            return (
-              <div key={g.title}>
-                <GroupLabel open={open} onToggle={collapsible ? () => toggleGroup(g.title) : undefined}>{g.title}</GroupLabel>
-                {open && (
-                  <ul className="space-y-0.5">
-                    {g.items.map((i) => <li key={i.href}><NavItem item={i} path={path} onSelect={() => { setQ(""); onNavigate?.(); }} /></li>)}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-          {!allMode && <p className="px-3 text-[11px] leading-relaxed text-cream-muted">Aradığın sayfa burada yok mu? Yukarıda aramayı dene ya da “Tümü”ne geç.</p>}
-        </div>
+        <ul className="space-y-0.5">
+          {hubs.map((hub) => (
+            <li key={hub.href}>
+              <NavItem
+                item={{ href: hub.href, label: hub.label, icon: hub.icon, exact: hub.exact, badge: hub.href === "/yonetim/satis" ? openTabs : undefined }}
+                path={path}
+                active={activeHub?.href === hub.href}
+                onSelect={() => { setQ(""); onNavigate?.(); }}
+              />
+            </li>
+          ))}
+        </ul>
       )}
     </nav>
   );

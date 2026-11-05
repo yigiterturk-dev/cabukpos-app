@@ -12,7 +12,7 @@ export default async function Veriler() {
   if (!seesAllStores(a)) redirect("/yonetim");
   return (
     <>
-      <PageHeader title="Veriler" desc="İşletmenizin taşınabilir veri kopyasını oluşturun." />
+      <PageHeader title="Veri yönetimi" desc="İşletmenizin taşınabilir veri kopyasını oluşturun." />
       <Card className="max-w-2xl p-5">
         <div className="flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><Download aria-hidden className="size-5" /></span>

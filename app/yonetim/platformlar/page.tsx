@@ -166,7 +166,7 @@ export default async function Platformlar() {
   const free = CONNECTABLE_PLATFORMS.filter((p) => !conns.some((c) => c.storeId === storeId && c.platform === p)).map((p) => ({ value: p, label: PLATFORM_NAMES[p] ?? p }));
   return (
     <>
-      <PageHeader title="Sipariş platformları" desc="Platform siparişleri kasada Paket sekmesine sesli uyarıyla düşer; kabul/red platforma bildirilir. Trendyol Yemek siparişleri webhook'suz, 2 dakikalık polling ile alınır; diğer sağlayıcılar entegratör onayıyla açılır." />
+      <PageHeader title="Pazaryerleri" desc="Platform siparişleri kasada Paket sekmesine sesli uyarıyla düşer; kabul/red platforma bildirilir. Trendyol Yemek siparişleri webhook'suz, 2 dakikalık polling ile alınır; diğer sağlayıcılar entegratör onayıyla açılır." />
       <PaketHatti acik={acik} teslim={teslim} money={money} />
       {free.length > 0 && <Card className="mb-6 p-5">{storeId ? <ConnectionForm platforms={free} /> : <p className="text-sm text-muted">Platform bağlamak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</p>}</Card>}
       {conns.length === 0 ? <Empty>Henüz bağlı platform yok. Akışı denemek için Deneme platformunu bağlayın.</Empty> : await Promise.all(conns.map(async (c) => {

@@ -26,7 +26,7 @@ export default async function Cihazlar() {
   const storeNames = new Map(stores.map((s) => [s.id, s.name]));
   return (
     <>
-      <PageHeader title="Cihazlar" desc="Kasa, tablet ve mutfak ekranları. Her cihaz kendi fiş numarasını verir." />
+      <PageHeader title="Kasa cihazları" desc="Kasa, tablet ve mutfak ekranları. Her cihaz kendi fiş numarasını verir." />
       <SplitView
         panel={<Panel title="Cihaz ekle" desc={activeStoreId ? "Yeni cihaz seçili şubeye atanır. Eşleme kodunu cihazda /kasa adresine yazın." : undefined}>{activeStoreId ? <DeviceForm /> : <div className="space-y-3 text-sm text-muted"><p>Cihaz eklemeden önce bir şube oluşturun.</p><Link href="/yonetim/subeler" className={buttonClass("primary")}>Şube ekle</Link></div>}</Panel>}
         list={<>
