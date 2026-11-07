@@ -26,6 +26,9 @@ export function yemekConfig(env: NodeJS.ProcessEnv = process.env): Config {
   };
 }
 
+/** TRENDYOL_YEMEK_READ_ONLY=1: yalnız GET; kabul/yola çıkış/iptal Trendyol'a gitmez, yalnız ÇabukPOS'ta kalır. */
+export const yemekReadOnly = (env: NodeJS.ProcessEnv = process.env) => env.TRENDYOL_YEMEK_READ_ONLY === "1";
+
 export type YemekDeps = { fetch?: typeof fetch; timeoutMs?: number };
 
 export type YemekPackage = {
@@ -121,6 +124,8 @@ export function createYemekClient(deps: YemekDeps = {}) {
 
   async function call<T>(method: "GET" | "PUT" | "POST", url: string, body?: unknown): Promise<T> {
     const cfg = yemekConfig();
+    // Salt okuma: gerçek restoranın siparişi test ortamından asla değiştirilmez.
+    if (method !== "GET" && yemekReadOnly()) throw new Error("Trendyol Yemek salt okuma modunda; yazma isteği gönderilmedi.");
     const res = await doFetch(`${cfg.base}${url}`, {
       method,
       headers: {
@@ -142,9 +147,9 @@ export function createYemekClient(deps: YemekDeps = {}) {
 
   return {
     /** Doküman: packageStatuses virgülle çoklu statü kabul eder (ör. "Cancelled,Picking"). */
-    fetchPackages(statuses?: string) {
+    fetchPackages(statuses?: string, page = 0) {
       const cfg = yemekConfig();
-      const qs = new URLSearchParams({ storeId: cfg.storeId, page: "0", size: "50" });
+      const qs = new URLSearchParams({ storeId: cfg.storeId, page: String(page), size: "50" });
       if (statuses) qs.set("packageStatuses", statuses);
       return call<unknown>("GET", `/integrator/order/meal/suppliers/${supplier()}/packages?${qs.toString()}`);
     },
@@ -178,14 +183,17 @@ export function createYemekSource(enabled: boolean): OrderSource {
     },
     async accept(_conn: Conn, externalId: string, prepMin: number) {
       if (!enabled) throw new Error("Trendyol Yemek bağlantısı kapalı.");
+      if (yemekReadOnly()) return;
       await client().accept(externalId, prepMin);
     },
     async reject(_conn: Conn, externalId: string) {
       if (!enabled) throw new Error("Trendyol Yemek bağlantısı kapalı.");
+      if (yemekReadOnly()) return;
       await client().cancel(externalId);
     },
     async pushStatus(_conn: Conn, externalId: string, status: PlatformOrderStatus) {
       if (!enabled) throw new Error("Trendyol Yemek bağlantısı kapalı.");
+      if (yemekReadOnly()) return;
       if (status === "picked") return client().ship(externalId);
       return unsupported(status === "delivered" ? "teslim" : "iptal");
     },

@@ -112,3 +112,22 @@ test("paket modeli ortak siparişe çevrilir", () => {
   assert.equal(order.lines[0].qtyMilli, 2000);
   assert.equal(order.lines[0].note, null);
 });
+
+test("salt okuma: GET geçer, kabul/yola çıkış/iptal ağa hiç çıkmaz", async () => {
+  process.env.TRENDYOL_YEMEK_READ_ONLY = "1";
+  try {
+    await withEnv(async () => {
+      const r = recorder({ content: [] });
+      const c = createYemekClient({ fetch: r.fetchImpl });
+      await c.fetchPackages("Delivered", 2);
+      await assert.rejects(c.accept("1", 10), /salt okuma/);
+      await assert.rejects(c.ship("1"), /salt okuma/);
+      await assert.rejects(c.cancel("1"), /salt okuma/);
+      assert.equal(r.seen.length, 1);
+      assert.equal(r.seen[0].method, "GET");
+      assert.ok(r.seen[0].url.includes("page=2"));
+    });
+  } finally {
+    delete process.env.TRENDYOL_YEMEK_READ_ONLY;
+  }
+});
