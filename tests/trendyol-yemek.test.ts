@@ -113,6 +113,36 @@ test("paket modeli ortak siparişe çevrilir", () => {
   assert.equal(order.lines[0].note, null);
 });
 
+test("canlı API şekli: packageStatus, items[] adedi, unitSellingPrice, seçenek notu", () => {
+  const [p] = parsePackages({
+    content: [
+      {
+        id: "3301", orderNumber: "TY-77", packageStatus: "Delivered", storePickupSelected: true,
+        packageCreationDate: 1794076272215, customerNote: "zil çalışmıyor", totalPrice: 690,
+        customer: { firstName: "Can", lastName: "Ak" }, address: { address1: "Atakum", phone: "0532 111 22 33" },
+        payment: { paymentType: "PAY_WITH_CARD" },
+        lines: [
+          { productId: 7, name: "Lahmacun", price: 100, unitSellingPrice: 115,
+            items: [{ isCancelled: false }, { isCancelled: false }, { isCancelled: true }],
+            modifierProducts: [{ name: "Acılı", price: 15 }], removedIngredients: [{ name: "Soğan" }] },
+          { productId: 8, name: "Ayran", price: 30, unitSellingPrice: 30, items: [{ isCancelled: true }] },
+          { productId: 9, name: "Künefe", price: 460, unitSellingPrice: 460, items: [{ isCancelled: false }] },
+        ],
+      },
+    ],
+  });
+  assert.equal(p.status, "Delivered");
+  assert.equal(p.code, "TY-77");
+  assert.equal(p.isStorePickup, true);
+  assert.equal(p.createdAt, new Date(1794076272215).toISOString());
+  assert.equal(p.note, "zil çalışmıyor");
+  const o = toIncomingOrder(p);
+  assert.equal(o.lines.length, 2, "tamamı iptal satır düşer");
+  assert.deepEqual([o.lines[0].qtyMilli, o.lines[0].unitPrice, o.lines[0].note], [2000, 11500, "Acılı, -Soğan"]);
+  const sum = o.lines.reduce((s, l) => s + (l.unitPrice * l.qtyMilli) / 1000, 0);
+  assert.equal(sum, 69000);
+});
+
 test("salt okuma: GET geçer, kabul/yola çıkış/iptal ağa hiç çıkmaz", async () => {
   process.env.TRENDYOL_YEMEK_READ_ONLY = "1";
   try {

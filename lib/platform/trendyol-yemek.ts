@@ -55,6 +55,23 @@ const payIntentOf = (raw: string | null): PayIntent => {
   return "online";
 };
 
+function lineQty(l: Record<string, unknown>): number {
+  if (Array.isArray(l.items)) return (l.items as Record<string, unknown>[]).filter((i) => i.isCancelled !== true).length;
+  return Number(l.quantity ?? 1);
+}
+
+/** Seçenekler / çıkarılanlar mutfak fişinde görünsün diye satır notuna yazılır. */
+function lineNote(l: Record<string, unknown>): string | null {
+  const names = (v: unknown) => (Array.isArray(v) ? v.map((m) => String((m as Record<string, unknown>)?.name ?? "")).filter(Boolean) : []);
+  const parts = [
+    ...names(l.modifierProducts),
+    ...names(l.extraIngredients).map((n) => `+${n}`),
+    ...names(l.removedIngredients).map((n) => `-${n}`),
+    ...(typeof l.note === "string" && l.note.trim() ? [l.note.trim()] : []),
+  ];
+  return parts.length ? parts.join(", ") : null;
+}
+
 const digits = (v: unknown) => String(v ?? "").replace(/\D/g, "");
 
 /** Doküman modeli: { page, size, totalPages, totalElements, content: [...] }. Alanlar savunmalı okunur. */
@@ -71,26 +88,29 @@ export function parsePackages(json: unknown): YemekPackage[] {
     const total = Number(p.totalPrice ?? p.amount ?? payment.amount ?? 0);
     return [{
       id,
-      code: typeof p.code === "string" ? p.code : null,
-      status: String(p.status ?? ""),
+      code: [p.orderNumber, p.orderCode, p.code].find((v) => typeof v === "string" && v) as string | undefined ?? null,
+      // Canlı API alanı packageStatus; doküman örneği status.
+      status: String(p.packageStatus ?? p.status ?? ""),
       deliveryType: typeof p.deliveryType === "string" ? p.deliveryType : null,
-      isStorePickup: p.isStorePickup === true,
-      createdAt: typeof p.createdDate === "number" ? new Date(p.createdDate).toISOString() : null,
+      isStorePickup: p.storePickupSelected === true || p.isStorePickup === true,
+      createdAt: typeof (p.packageCreationDate ?? p.createdDate) === "number" ? new Date(Number(p.packageCreationDate ?? p.createdDate)).toISOString() : null,
       customer: {
         name: `${customer.firstName ?? customer.customerFirstName ?? ""} ${customer.lastName ?? customer.customerLastName ?? ""}`.trim(),
         phone: digits(customer.phone ?? address.phone),
       },
       address: String(address.address1 ?? address.addressText ?? address.addressDescription ?? ""),
-      note: typeof (p.customer as Record<string, unknown>)?.note === "string" ? String((p.customer as Record<string, unknown>).note) : null,
+      note: typeof p.customerNote === "string" && p.customerNote.trim() ? p.customerNote.trim() : typeof customer.note === "string" ? String(customer.note) : null,
       payIntent: payIntentOf(typeof payment.paymentType === "string" ? payment.paymentType : null),
       totalMinor: Number.isFinite(total) ? Math.round(total * 100) : 0,
       lines: lines.map((l) => ({
         id: l.lineItemId ? String(l.lineItemId) : null,
         productId: Number.isFinite(Number(l.productId)) ? Number(l.productId) : null,
         name: String(l.name ?? l.productName ?? ""),
-        quantity: Number(l.quantity ?? 1),
-        priceMinor: Math.round(Number(l.price ?? 0) * 100),
-        note: typeof l.note === "string" ? l.note : null,
+        // Canlı API'de quantity yok: her adet items[] içinde, iptal edilenler sayılmaz.
+        quantity: lineQty(l),
+        // unitSellingPrice = seçenekler dahil birim fiyat (canlı veride toplamla birebir tutar).
+        priceMinor: Math.round(Number(l.unitSellingPrice ?? l.price ?? 0) * 100),
+        note: lineNote(l),
       })),
       raw: p,
     }];
@@ -107,7 +127,7 @@ export function toIncomingOrder(p: YemekPackage): IncomingOrder {
     note: p.note,
     payIntent: p.payIntent,
     deadline: null,
-    lines: p.lines.map((l) => ({
+    lines: p.lines.filter((l) => l.quantity > 0).map((l) => ({
       code: l.productId === null ? l.id ?? "" : String(l.productId),
       name: l.name,
       unitPrice: l.priceMinor,
