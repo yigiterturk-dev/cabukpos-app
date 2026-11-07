@@ -622,6 +622,7 @@ export function KasaApp() {
         staffName: meta.catalog.staff.find((s) => s.id === j.ticket.staffId)?.name ?? null,
         at: j.ticket.at,
         lines: j.ticket.lineIds.flatMap((id) => j.tab.lines.filter((l) => l.lineId === id && !l.voided)),
+        order: j.tab.order ? { no: j.tab.order.source?.externalId ?? null, name: j.tab.order.name, phone: j.tab.order.phone, address: j.tab.order.address, directions: j.tab.order.directions, note: j.tab.order.note, pay: j.tab.order.payIntent, total: j.tab.total } : null,
       };
       const markPrinted = () => void tabsApi.add([{ tabId: j.tab.id, tableId: j.tab.tableId, staffId: null, ev: { type: "printed", ticketId: j.ticket.id } }]);
       if (browser) { void printHtml(kitchenTicketHtml(data)).then(markPrinted); continue; }

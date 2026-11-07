@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { deliveryStatus, type TabState } from "@/lib/core/tab";
 import { useKasaSetting } from "./useKasaSetting";
 import { ALERT_VALUES, REPEAT_KEY } from "./DeliverySoundControls";
-import { beep } from "./beep";
+import { orderAlarm } from "./beep";
 
 const isPlatformOrder = (t: TabState) => Boolean(t.order?.source) && !t.closed;
 
@@ -21,14 +21,14 @@ export function useOrderAlert(tabs: Map<string, TabState>, loaded: boolean, enab
     seen.current = new Set([...(prev ?? []), ...ids]);
     if (sound !== "acik") return;
     // İlk yüklemede: yalnız onay bekleyen varsa öt (eski siparişler için her açılışta ötmesin).
-    if (!prev) { if ([...tabs.values()].some((t) => isPlatformOrder(t) && deliveryStatus(t) === "onay_bekliyor")) beep(true); return; }
-    if (ids.some((id) => !prev.has(id))) beep(true);
+    if (!prev) { if ([...tabs.values()].some((t) => isPlatformOrder(t) && deliveryStatus(t) === "onay_bekliyor")) orderAlarm(); return; }
+    if (ids.some((id) => !prev.has(id))) orderAlarm();
   }, [tabs, loaded, enabled, sound]);
 
   const waiting = enabled && loaded && [...tabs.values()].some((t) => !t.closed && deliveryStatus(t) === "onay_bekliyor");
   useEffect(() => {
     if (!waiting || repeat !== "acik" || sound !== "acik") return;
-    const t = setInterval(() => beep(true), 4000);
+    const t = setInterval(() => orderAlarm(), 6000);
     return () => clearInterval(t);
   }, [waiting, repeat, sound]);
 }

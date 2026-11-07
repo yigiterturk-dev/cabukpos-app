@@ -1,7 +1,7 @@
 "use client";
 import { Volume2, VolumeX } from "lucide-react";
 import { useKasaSetting } from "./useKasaSetting";
-import { beep } from "./beep";
+import { orderAlarm } from "./beep";
 
 export const ALERT_VALUES = ["acik", "kapali"] as const;
 export const REPEAT_KEY = "cabukpos_paket_uyari_tekrar";
@@ -16,6 +16,6 @@ export function DeliverySoundControls() {
     <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={sound === "acik"} onChange={e => setSound(e.target.checked ? "acik" : "kapali")} className="size-5 accent-brand" />Sesli uyarılar</label>
     <label className={`flex min-h-11 items-center gap-2 ${sound !== "acik" ? "text-muted" : ""}`}><input type="checkbox" checked={repeat === "acik"} disabled={sound !== "acik"} onChange={e => setRepeat(e.target.checked ? "acik" : "kapali")} className="size-5 accent-brand" />Onay beklerken tekrarla</label>
     <label className="flex min-h-11 items-center gap-2" title="Ajan yoksa mutfak fişi bu bilgisayarın varsayılan yazıcısına gider. ÇabukPOS Kasa kısayoluyla açıldıysa pencere sormadan basar."><input type="checkbox" checked={direct === "acik"} onChange={e => setDirect(e.target.checked ? "acik" : "kapali")} className="size-5 accent-brand" />Fişi doğrudan yazdır (ajansız)</label>
-    <button type="button" disabled={sound !== "acik"} onClick={() => beep(true)} className="press ml-auto min-h-11 rounded-lg px-3 font-medium text-brand outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:text-muted disabled:opacity-50">Sesi dene</button>
+    <button type="button" disabled={sound !== "acik"} onClick={() => orderAlarm()} className="press ml-auto min-h-11 rounded-lg px-3 font-medium text-brand outline-none hover:bg-brand-soft focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:text-muted disabled:opacity-50">Sesi dene</button>
   </div>;
 }
