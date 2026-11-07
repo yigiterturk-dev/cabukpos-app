@@ -7,7 +7,9 @@ import { useKasaSetting } from "./useKasaSetting";
 import { ALERT_VALUES, REPEAT_KEY } from "./DeliverySoundControls";
 import { orderAlarm } from "./beep";
 
-const isPlatformOrder = (t: TabState) => Boolean(t.order?.source) && !t.closed;
+// Yalnız TAZE sipariş öter: geçmiş içe aktarma (asıl, eski zamanlı) ya da olayları parça parça gelen eski adisyon ötmez.
+const FRESH_MS = 10 * 60_000;
+const isPlatformOrder = (t: TabState) => Boolean(t.order?.source) && !t.closed && Date.now() - Date.parse(t.openedAt) < FRESH_MS;
 
 export function useOrderAlert(tabs: Map<string, TabState>, loaded: boolean, enabled: boolean) {
   const [sound] = useKasaSetting("sesli_uyari", ALERT_VALUES, "acik");
@@ -25,7 +27,7 @@ export function useOrderAlert(tabs: Map<string, TabState>, loaded: boolean, enab
     if (ids.some((id) => !prev.has(id))) orderAlarm();
   }, [tabs, loaded, enabled, sound]);
 
-  const waiting = enabled && loaded && [...tabs.values()].some((t) => !t.closed && deliveryStatus(t) === "onay_bekliyor");
+  const waiting = enabled && loaded && [...tabs.values()].some((t) => isPlatformOrder(t) && deliveryStatus(t) === "onay_bekliyor");
   useEffect(() => {
     if (!waiting || repeat !== "acik" || sound !== "acik") return;
     const t = setInterval(() => orderAlarm(), 6000);
