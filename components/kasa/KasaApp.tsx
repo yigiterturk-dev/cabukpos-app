@@ -23,7 +23,7 @@ import { PLATFORM_NAMES } from "@/lib/core/platform";
 import type { Payment } from "@/lib/core/payment";
 import { createSync, type SyncStatus } from "@/lib/offline/sync";
 import type { LocalSale, Meta } from "@/lib/offline/state";
-import { ArrowLeft, ClipboardCheck, Inbox, Landmark, LayoutDashboard, LayoutGrid, LogOut, Printer, Bike, Undo2, Zap } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Inbox, Landmark, LayoutDashboard, LayoutGrid, LogOut, Printer, Bike, RotateCw, Undo2, Zap } from "lucide-react";
 import { Button, Card, Field, Input, LogoMark, Segmented } from "@/components/ui";
 import { InstallButton } from "@/components/InstallButton";
 import { ShiftReport, type ShiftReportData } from "@/components/ShiftReport";
@@ -83,7 +83,9 @@ function Bar({ tenant, device, nav, children }: { tenant: string; device: string
       </div>
       {nav && <span aria-hidden className="hidden h-7 w-px bg-white/10 sm:block" />}
       {nav}
-      <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">{children}</div>
+      <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">{children}
+        <button type="button" onClick={() => location.reload()} title="Yenile" aria-label="Sayfayı yenile" className="press inline-flex size-11 items-center justify-center rounded-lg text-cream outline-none hover:bg-white/10 focus-visible:ring-4 focus-visible:ring-brand-ring/60"><RotateCw aria-hidden className="size-5" /></button>
+      </div>
     </header>
   );
 }

@@ -11,6 +11,8 @@ export type IncomingOrder = {
   payIntent: PayIntent; deadline: string | null;
   lines: { code: string; name: string; unitPrice: Kurus; qtyMilli: number; note: string | null }[];
   raw?: unknown;
+  /** Geçmiş (bitmiş) sipariş: kapalı içe alınır — mutfağa gitmez, fiş basılmaz, platforma bildirim yok. */
+  history?: { status: "delivered" | "cancelled"; at: string; endedAt: string; reason: string | null } | null;
 };
 
 export type MappedProduct = { id: string; name: string; vatRate: VatRate; stationId: string | null };

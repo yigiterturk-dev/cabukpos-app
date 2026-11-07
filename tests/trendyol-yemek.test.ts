@@ -161,3 +161,17 @@ test("salt okuma: GET geçer, kabul/yola çıkış/iptal ağa hiç çıkmaz", as
     delete process.env.TRENDYOL_YEMEK_READ_ONLY;
   }
 });
+
+test("geçmiş paket: teslim → kapalı, iptal → kapalı; mutfağa gönderim yok", async () => {
+  const { foldTabs } = await import("@/lib/core/tab");
+  const mk = (status: string) => toIncomingOrder(parsePackages({ content: [{ id: status, packageStatus: status, packageCreationDate: 1794076272215, packageModificationDate: 1794078000000, customer: {}, address: {}, payment: { paymentType: "PAY_WITH_CARD" }, lines: [{ productId: 1, name: "Döner", unitSellingPrice: 100, items: [{ isCancelled: false }] }] }] })[0]);
+  const d = mk("Delivered"), c = mk("Cancelled"), n = mk("Created");
+  assert.equal(d.history?.status, "delivered");
+  assert.equal(d.history?.endedAt, new Date(1794078000000).toISOString());
+  assert.equal(c.history?.status, "cancelled");
+  assert.equal(n.history, null);
+  const ev = (type: string, payload: object, i: number) => ({ id: `e${i}`, tabId: "t", tableId: null, at: new Date(1794076272215 + i).toISOString(), staffId: null, approvedBy: null, seq: i, ev: { type, ...payload } as never });
+  const tab = foldTabs([ev("open", { guests: 0, kind: "platform" }, 0), ev("add", { lineId: "l", productId: null, name: "Döner", unitPrice: 10000, vatRate: 10, qtyMilli: 1000, options: [], note: null, stationId: null }, 1), ev("accept", { prepMin: 20 }, 2), ev("delivered", { method: "online" }, 3), ev("close", { reason: "Trendyol: teslim edildi" }, 4)]).get("t")!;
+  assert.equal(tab.closed, true);
+  assert.equal(tab.tickets.length, 0);
+});

@@ -141,7 +141,8 @@ export function foldTabs(events: TabEvent[]): Map<string, TabState> {
     // Kapalı: tümü iptal; ya da her canlı satır ödendi/ikram ve (en az bir ödeme var ya da kalan 0 iken elle kapatıldı).
     // Tamamı ikram olan adisyon kendiliğinden kapanmaz: masada sipariş sürebilir.
     const settled = live.every((l) => l.comped || l.paidMilli >= l.qtyMilli);
-    const ended = Boolean(t.delivery.cancelled || t.delivery.rejected); // iptal/red: ödemesiz kapanır
+    // iptal/red: ödemesiz kapanır; platformda ödenmiş + teslim edilmiş + kapatılmış (geçmiş içe aktarma) de.
+    const ended = Boolean(t.delivery.cancelled || t.delivery.rejected) || (t.kind === "platform" && t.closeRequested && Boolean(t.delivery.deliveredAt));
     t.closed = ended || t.mergedAway || (t.lines.length > 0 && (live.length === 0 || (settled && (t.paid > 0 || live.some((l) => l.paidMilli > 0) || t.closeRequested))));
     t.closedAt = t.closed ? (wasClosed ? t.closedAt : e.at) : null;
   }

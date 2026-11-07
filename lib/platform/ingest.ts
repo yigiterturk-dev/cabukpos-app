@@ -37,13 +37,19 @@ export async function ingestOrders(conn: Conn, orders: IncomingOrder[]): Promise
       }
       let acceptId: string | null = null;
       const all: TabEv[] = [...events];
-      if (conn.autoAccept) all.push({ type: "accept", prepMin: AUTO_PREP_MIN }, ...sendByStation(adds, () => crypto.randomUUID()));
+      const h = o.history ?? null;
+      // Geçmiş sipariş: asıl zamanlarıyla, kapalı; mutfağa gönderim/fiş/platform bildirimi yok.
+      if (h) all.push({ type: "accept", prepMin: AUTO_PREP_MIN }, ...(h.status === "delivered" ? [{ type: "delivered", method: o.payIntent } as TabEv, { type: "close", reason: h.reason ?? "Platformda teslim edildi" } as TabEv] : [{ type: "cancel", reason: h.reason ?? "Platformda iptal" } as TabEv]));
+      else if (conn.autoAccept) all.push({ type: "accept", prepMin: AUTO_PREP_MIN }, ...sendByStation(adds, () => crypto.randomUUID()));
       const tabId = crypto.randomUUID();
-      const base = Date.now();
+      const base = h ? Date.parse(h.at) : Date.now();
+      const endAt = h ? Date.parse(h.endedAt) : base;
+      const finals = new Set(["delivered", "close", "cancel"]);
       const rows = all.map((ev, i) => {
         const id = crypto.randomUUID();
-        if (ev.type === "accept") acceptId = id;
-        return { id, tenantId: conn.tenantId, storeId: conn.storeId, tabId, tableId: null, deviceId: null, staffId: null, at: new Date(base + i), type: ev.type, payload: ev, review: ev.type === "order" && unmapped ? `eşlenmeyen ürün: ${unmapped}` : null };
+        if (ev.type === "accept" && !h) acceptId = id;
+        const at = new Date(h && finals.has(ev.type) ? Math.max(endAt, base + i) + i : base + i);
+        return { id, tenantId: conn.tenantId, storeId: conn.storeId, tabId, tableId: null, deviceId: null, staffId: null, at, type: ev.type, payload: ev, review: ev.type === "order" && unmapped && !h ? `eşlenmeyen ürün: ${unmapped}` : null };
       });
       await tx.insert(E).values(rows);
       const ord = all.find((e): e is Extract<TabEv, { type: "order" }> => e.type === "order")!;

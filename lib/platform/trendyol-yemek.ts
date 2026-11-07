@@ -135,7 +135,27 @@ export function toIncomingOrder(p: YemekPackage): IncomingOrder {
       note: l.note,
     })),
     raw: p.raw,
+    history: historyOf(p),
   };
+}
+
+const ENDED: Record<string, { status: "delivered" | "cancelled"; label: string }> = {
+  DELIVERED: { status: "delivered", label: "Trendyol: teslim edildi" },
+  CANCELLED: { status: "cancelled", label: "Trendyol: iptal" },
+  UNSUPPLIED: { status: "cancelled", label: "Trendyol: tedarik edilemedi" },
+};
+
+/** Bitmiş paket → kapalı geçmiş kaydı (zamanlar Trendyol'daki asıl zamanlar). */
+function historyOf(p: YemekPackage): IncomingOrder["history"] {
+  const e = ENDED[p.status.toUpperCase()];
+  if (!e) return null;
+  const raw = (p.raw ?? {}) as Record<string, unknown>;
+  const at = p.createdAt ?? new Date().toISOString();
+  const mod = Number(raw.packageModificationDate ?? raw.lastModifiedDate);
+  const endedAt = Number.isFinite(mod) && mod > 0 ? new Date(mod).toISOString() : at;
+  const ci = (raw.cancelInfo ?? null) as Record<string, unknown> | null;
+  const why = ci && typeof ci === "object" ? [ci.reasonCode, ci.reason, ci.reasonDescription, ci.description].find((v) => typeof v === "string" && v) : null;
+  return { status: e.status, at, endedAt: endedAt < at ? at : endedAt, reason: why ? `${e.label} — ${String(why)}` : e.label };
 }
 
 export function createYemekClient(deps: YemekDeps = {}) {
