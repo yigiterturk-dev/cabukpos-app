@@ -143,3 +143,13 @@ test("escpos: marka profili kesme baytını değiştirir (#36)", () => {
   assert.deepEqual(cutOf("xprinter"), [0x1d, 0x56, 66, 3]);
   assert.deepEqual(cutOf("epson"), [0x1d, 0x56, 65, 3]);
 });
+
+test("mutfak fişi: platform siparişinde zil (ESC B), Epson'da ve masada yok", async () => {
+  const { renderKitchenTicket } = await import("@/lib/core/kitchen");
+  const base = { tableName: "Trendyol · #1234", packed: true, stationName: "Mutfak", staffName: null, at: "2026-11-07T18:00:00Z", lines: [{ qtyMilli: 1000, name: "Pide", options: [], note: null }] };
+  const has = (b: Uint8Array) => Buffer.from(b).includes(Buffer.from([0x1b, 0x42, 3, 3]));
+  assert.equal(has(renderKitchenTicket({ ...base, buzz: true }, { width: 80, codepage: "pc857", brand: "xprinter" })), true);
+  assert.equal(has(renderKitchenTicket({ ...base, buzz: true }, { width: 80, codepage: "pc857" })), true);
+  assert.equal(has(renderKitchenTicket({ ...base, buzz: true }, { width: 80, codepage: "pc857", brand: "epson" })), false);
+  assert.equal(has(renderKitchenTicket(base, { width: 80, codepage: "pc857", brand: "xprinter" })), false);
+});

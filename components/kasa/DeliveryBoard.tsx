@@ -12,15 +12,13 @@ import type { Meta } from "@/lib/offline/state";
 import { Modal, type Waiter } from "./TabScreen";
 import { PinPad } from "./PinPad";
 import { minutesSince } from "./useTabs";
-import { beep } from "./beep";
 import { useKasaMainProps } from "./KasaPreviewContext";
 import { DeliveryOperations } from "./DeliveryOperations";
 import { courierSummary, deliveryTimes, dispatchFilter, isDeliveryActive, readyDispatchEvents } from "@/lib/core/dispatch";
 import { istToday } from "@/lib/core/report";
 import { StatCard } from "@/components/ui";
 import { DeliveryConnections } from "./DeliveryConnections";
-import { DeliverySoundControls, ALERT_VALUES, REPEAT_KEY } from "./DeliverySoundControls";
-import { useKasaSetting } from "./useKasaSetting";
+import { DeliverySoundControls } from "./DeliverySoundControls";
 
 type Add = (list: NewTabEvent[]) => Promise<unknown>;
 const EMPTY_TABLES: NonNullable<Meta["catalog"]["tables"]> = [];
@@ -84,8 +82,6 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   const [view, setView] = useState<"board" | "orders" | "couriers">("board");
   const [query, setQuery] = useState("");
   const [autoAssign, setAutoAssign] = useState(false);
-  const [repeatAlert] = useKasaSetting(REPEAT_KEY, ALERT_VALUES, "acik");
-  const [soundAlert] = useKasaSetting("sesli_uyari", ALERT_VALUES, "acik");
   const { TL } = kasaFmt(meta);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -135,21 +131,15 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
     const previous = previousWaitingRef.current;
     if (previous) {
       const added = [...current].filter(([id]) => !previous.has(id)).map(([, tab]) => tab);
-      if (added.length) beep(true);
       if (added.length && announcementRef.current) {
         const messages = added.slice(0, 3).map((tab) => `Yeni onay bekleyen sipariş: ${tabLabel(tab, tables, PLATFORM_NAMES)}.`);
         announce(announcementRef.current, announcementFrameRef, messages.join(" ") + (added.length > 3 ? ` Ayrıca ${added.length - 3} yeni sipariş daha.` : ""));
       }
-    } else if (current.size) beep(true);
+    }
     previousWaitingRef.current = new Set(current.keys());
   }, [loaded, list, tables]);
 
-  // Onay bekleyen platform siparişi varken 4 sn'de bir ses.
-  useEffect(() => {
-    if (!waiting || repeatAlert !== "acik" || soundAlert !== "acik") return;
-    const t = setInterval(() => beep(true), 4000);
-    return () => clearInterval(t);
-  }, [waiting, repeatAlert, soundAlert]);
+  // Ses: useOrderAlert (KasaApp) — kasanın her ekranında çalışır; burada yalnız ekran okuyucu duyurusu.
   const ev = (tab: TabState, e: NewTabEvent["ev"], approvedBy: string | null = null, approvalToken?: string): NewTabEvent => ({ tabId: tab.id, tableId: null, staffId: waiter.id, approvedBy, approvalToken, ev: e });
   const openDialog = (next: Dialog) => { setActionError(null); setDialog(next); };
   const run = async (fn: () => Promise<unknown>, successNotice: string, actionKey = "dialog", pendingNotice = "Sipariş güncelleniyor.", focusOrderId?: string) => {

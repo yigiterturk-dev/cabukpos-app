@@ -1,18 +1,18 @@
 // lib/core/kitchen.ts — Mutfak fişi (ESC/POS) ve yazdırılacak biletlerin seçimi. Saf.
-import { EscPos, type Codepage, type PaperWidth } from "./escpos";
+import { EscPos, type Codepage, type PaperWidth, type PrinterBrand } from "./escpos";
 import { qtyText } from "./receipt";
 import type { LineOption } from "./options";
 import type { TabState, Ticket } from "./tab";
 
 export type KitchenTicketData = {
-  tableName: string; packed?: boolean; stationName: string | null; staffName: string | null; at: string;
+  tableName: string; packed?: boolean; /** Platform siparişi: yazıcı zili öter (başında kimse olmasa da duyulsun). */ buzz?: boolean; stationName: string | null; staffName: string | null; at: string;
   lines: { qtyMilli: number; name: string; options: LineOption[]; note: string | null }[];
 };
 
 const TZ = "Europe/Istanbul";
 
-export function renderKitchenTicket(t: KitchenTicketData, o: { width: PaperWidth; codepage: Codepage }): Uint8Array {
-  const p = new EscPos(o.codepage, o.width);
+export function renderKitchenTicket(t: KitchenTicketData, o: { width: PaperWidth; codepage: Codepage; brand?: PrinterBrand }): Uint8Array {
+  const p = new EscPos(o.codepage, o.width, o.brand ?? "genel");
   const d = new Date(t.at);
   p.align("center").bold(true).size(2, 2);
   if (t.packed) p.line("PAKET");
@@ -26,6 +26,7 @@ export function renderKitchenTicket(t: KitchenTicketData, o: { width: PaperWidth
     if (l.note) p.lines(`  ! ${l.note}`);
   }
   p.rule().feed(3).cut();
+  if (t.buzz) p.buzz();
   return p.bytes();
 }
 

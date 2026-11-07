@@ -37,6 +37,7 @@ import { SalonScreen } from "./SalonScreen";
 import { TabScreen } from "./TabScreen";
 import { BillScreen } from "./BillScreen";
 import { KitchenScreen } from "./KitchenScreen";
+import { useOrderAlert } from "./useOrderAlert";
 import { useNow, useTabs } from "./useTabs";
 import { DeliveryBoard, type CourierJobView } from "./DeliveryBoard";
 import { NewDelivery } from "./NewDelivery";
@@ -593,6 +594,7 @@ export function KasaApp() {
   const restoran = meta?.device?.vertical === "restoran";
   const kick = useCallback(() => void sync.current?.kick(), []);
   const tabsApi = useTabs(Boolean(restoran), kick, meta?.agent ?? meta?.lan);
+  useOrderAlert(tabsApi.tabs, tabsApi.loaded, Boolean(restoran) && role === "kasa");
   const now = useNow();
   const printingRef = useRef(new Map<string, number>()); // bilet → bir sonraki deneme zamanı
   useEffect(() => {
@@ -606,6 +608,7 @@ export function KasaApp() {
       const job = printKitchen(a, j.printer, {
         tableName: tabLabel(j.tab, meta.catalog.tables ?? [], PLATFORM_NAMES),
         packed: j.tab.kind !== "masa",
+        buzz: j.tab.kind === "platform" || Boolean(j.tab.order?.source),
         stationName: stations.find((s) => s.id === j.ticket.stationId)?.name ?? null,
         staffName: meta.catalog.staff.find((s) => s.id === j.ticket.staffId)?.name ?? null,
         at: j.ticket.at,

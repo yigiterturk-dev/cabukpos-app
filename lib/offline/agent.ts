@@ -68,7 +68,7 @@ export function printSale(meta: Meta, sale: ReceiptSale, drawer = false): Promis
 export function printKitchen(a: KasaAgent, printerId: string, data: KitchenTicketData): Promise<PrintResult> | null {
   const p = a.printers.find((x) => x.id === printerId);
   if (!p) return null;
-  return send(a, p.id, renderKitchenTicket(data, { width: p.width, codepage: p.codepage }), false);
+  return send(a, p.id, renderKitchenTicket(data, { width: p.width, codepage: p.codepage, brand: p.brand }), false);
 }
 
 /** M6: paket fişi kasa yazıcısından (kuryenin çantasına). */

@@ -56,10 +56,12 @@ export const DRAWER_PULSE = [0x1b, 0x70, 0x00, 0x19, 0xfa];
 // Çok marka (#36): ESC/POS ortak dildir; markalar kesme biçiminde ayrılır.
 // genel/xprinter → besle + KISMI kes (GS V 66 3), epson TM → besle + TAM kes (GS V 65 3).
 export type PrinterBrand = "genel" | "epson" | "xprinter";
-export const BRANDS: Record<PrinterBrand, { ad: string; cut: 65 | 66 }> = {
-  genel: { ad: "Genel ESC/POS", cut: 66 },
-  xprinter: { ad: "XPrinter", cut: 66 },
-  epson: { ad: "Epson TM", cut: 65 },
+// Zil: XPrinter ve genel Çin ESC/POS yazıcıları ESC B n t (n kez, t×50 ms) kullanır; zili olmayan model komutu yok sayar.
+// Epson TM'de zil ayrı aksesuar ve farklı komut → gönderilmez.
+export const BRANDS: Record<PrinterBrand, { ad: string; cut: 65 | 66; buzzer: boolean }> = {
+  genel: { ad: "Genel ESC/POS", cut: 66, buzzer: true },
+  xprinter: { ad: "XPrinter", cut: 66, buzzer: true },
+  epson: { ad: "Epson TM", cut: 65, buzzer: false },
 };
 
 export class EscPos {
@@ -84,6 +86,8 @@ export class EscPos {
   lines(s: string) { for (const l of wrap(s, this.cols)) this.line(l); return this; }
   cols2(left: string, right: string) { return this.line(cols(left, right, this.cols)); }
   rule(ch = "-") { return this.line(ch.repeat(this.cols)); }
+  /** Yazıcının dahili zili (varsa): n kez öter. */
+  buzz(n = 3) { if (BRANDS[this.brand].buzzer) this.b.push(0x1b, 0x42, n, 3); return this; }
   feed(n = 1) { this.b.push(0x1b, 0x64, n); return this; }
   cut() { this.b.push(0x1d, 0x56, BRANDS[this.brand].cut, 0x03); return this; } // GS V: besle + kes (marka profiline göre tam/kısmi)
   drawer() { this.b.push(...DRAWER_PULSE); return this; }
