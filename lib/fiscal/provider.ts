@@ -1,6 +1,7 @@
 // lib/fiscal/provider.ts — Mali belge sağlayıcı arayüzü ve kayıt defteri.
 import type { Buyer } from "@/lib/core/fiscal";
 import { fakeEarsiv } from "./fake";
+import { nesProvider } from "./nes";
 import { fakeProvidersBlocked } from "@/lib/fake-providers";
 
 export type IssueInput = {
@@ -29,6 +30,8 @@ export interface FiscalProvider {
 }
 
 export function getProvider(name: string, opts: { fakeFail: boolean }): FiscalProvider {
+  // Test ortamı: FISCAL_PROVIDER_OVERRIDE=nes-sandbox → tüm kiracılar NES sandbox'ına keser (belgeler yine "TEST" bantlı).
+  if (process.env.FISCAL_PROVIDER_OVERRIDE === "nes-sandbox" && !opts.fakeFail) return nesProvider();
   if (name === "fake-earsiv") {
     if (fakeProvidersBlocked()) throw new Error("Sahte e-Arşiv sağlayıcısı production'da kullanılamaz.");
     return fakeEarsiv(opts);
