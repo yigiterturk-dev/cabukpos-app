@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, count, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Bell, ChartColumn, CheckCircle2, Minus, Monitor, Package, Plus, TriangleAlert, UserPlus } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Bell, ChartColumn, CheckCircle2, LayoutGrid, Minus, Monitor, Package, Plus, TriangleAlert, UserPlus } from "lucide-react";
 import { schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { stockLevels } from "@/lib/admin/stock";
@@ -48,11 +48,12 @@ export default async function Bugun() {
     const S = schema.sales;
     const recent = await tx.select({ id: S.id, receiptNo: S.receiptNo, channel: S.channel, status: S.status, total: S.total, at: S.createdAt, staff: schema.staff.name })
       .from(S).innerJoin(schema.staff, eq(schema.staff.id, S.staffId)).where(and(inArray(S.status, ["kapandi", "iade"]), storeId ? eq(S.storeId, storeId) : sql`false`)).orderBy(desc(S.createdAt)).limit(8);
-    const [productSeed, deviceSeed, staffSeed, saleSeed, reviewSales, reviewEvents, rejectedDocs, fiscalErrors, buyerInvoices] = await Promise.all([
+    const [productSeed, deviceSeed, staffSeed, saleSeed, tableSeed, reviewSales, reviewEvents, rejectedDocs, fiscalErrors, buyerInvoices] = await Promise.all([
       tx.select({ id: schema.products.id }).from(schema.products).where(and(eq(schema.products.active, true), eq(schema.products.sellable, true))).limit(1),
       tx.select({ id: schema.devices.id }).from(schema.devices).where(and(eq(schema.devices.role, "kasa"), isNotNull(schema.devices.pairedAt), isNull(schema.devices.revokedAt))).limit(1),
       tx.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.active, true)).limit(1),
       tx.select({ id: schema.sales.id }).from(schema.sales).limit(1),
+      tx.select({ id: schema.tables.id }).from(schema.tables).where(eq(schema.tables.active, true)).limit(1),
       tx.select({ value: count() }).from(schema.sales).where(isNotNull(schema.sales.review)),
       tx.select({ value: count() }).from(schema.tabEvents).where(isNotNull(schema.tabEvents.review)),
       tx.select({ value: count() }).from(schema.auditLog).where(eq(schema.auditLog.action, "sync.red")),
@@ -68,7 +69,7 @@ export default async function Bugun() {
       forecast: await demandForecast(tx, storeId),
       critical: storeId ? (await stockLevels(tx, storeId)).filter(isCriticalRow) : [],
       recent,
-      setup: { product: productSeed.length > 0, device: deviceSeed.length > 0, staff: staffSeed.length > 0, sale: saleSeed.length > 0 },
+      setup: { product: productSeed.length > 0, device: deviceSeed.length > 0, staff: staffSeed.length > 0, sale: saleSeed.length > 0, tables: tableSeed.length > 0 },
       attention: { review, fiscal, buyer, total: review + fiscal + buyer },
     };
   });
@@ -79,6 +80,7 @@ export default async function Bugun() {
     { label: "Şube oluştur", href: "/yonetim/subeler", done: Boolean(storeId), Icon: Package },
     { label: "Personel ekle, kasiyer PIN'i belirle", href: "/yonetim/personel", done: setup.staff, Icon: UserPlus },
     { label: "Ürünleri ekle (tek tek veya CSV ile)", href: "/yonetim/urunler", done: setup.product, Icon: Plus },
+    ...(restoran ? [{ label: "Salonu kur (bölüm + masa sayısı)", href: "/yonetim/salon", done: setup.tables, Icon: LayoutGrid }] : []),
     { label: "Kasa tabletini bağla", href: "/yonetim/cihazlar", done: setup.device, Icon: Monitor },
     { label: "Kasayı aç ve ilk satışı yap", href: "/kasa", done: setup.sale, Icon: CheckCircle2 },
   ];
