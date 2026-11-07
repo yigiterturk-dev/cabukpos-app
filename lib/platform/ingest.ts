@@ -30,6 +30,11 @@ export async function ingestOrders(conn: Conn, orders: IncomingOrder[]): Promise
       const codes = await codeMap(tx, conn);
       const { events, unmapped } = toTabEvents(o, conn.platform, codes, () => crypto.randomUUID());
       const adds = events.filter((e): e is Extract<TabEv, { type: "add" }> => e.type === "add");
+      // İstasyonu olmayan satır (eşlenmemiş ürün dahil) mağazanın ilk istasyonuna düşer → mutfak fişi/ekranı kaçmaz.
+      if (adds.some((a) => !a.stationId)) {
+        const [first] = await tx.select({ id: schema.stations.id }).from(schema.stations).where(eq(schema.stations.storeId, conn.storeId)).orderBy(schema.stations.sort).limit(1);
+        if (first) for (const a of adds) if (!a.stationId) a.stationId = first.id;
+      }
       let acceptId: string | null = null;
       const all: TabEv[] = [...events];
       if (conn.autoAccept) all.push({ type: "accept", prepMin: AUTO_PREP_MIN }, ...sendByStation(adds, () => crypto.randomUUID()));
