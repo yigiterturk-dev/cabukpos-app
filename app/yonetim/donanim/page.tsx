@@ -31,8 +31,13 @@ export default async function Donanim() {
       <Card className="mb-6 p-5">
         {activeStoreId ? <AgentCreateForm /> : <div className="space-y-3 text-sm text-muted"><p>Ajan eklemeden önce bir şube oluşturun.</p><Link href="/yonetim/subeler" className={buttonClass("primary")}>Şube ekle</Link></div>}
         <p className="mt-4 break-words rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn" data-testid="lna-note">Kasa ekranında Chrome “yerel ağ erişimi” izni sorduğunda <strong>İzin ver</strong> deyin; aksi halde ajan “kapalı” görünür.</p>
+        <div className="mt-4 rounded-lg border border-brand/30 bg-brand-soft px-3 py-3 text-sm">
+          <p className="font-medium">Tek yazıcı: ajansız kurulum (önerilen)</p>
+          <p className="mt-1 text-ink-2">Termal yazıcıyı Windows’ta varsayılan yazıcı yapın, dosyayı indirip çift tıklayın. Masaüstüne ve bilgisayar açılışına “ÇabukPOS Kasa” gelir; sipariş gelince sorusuz fiş basar ve öter. Kasaya bir kez giriş yapın. Çekmece ve terazi için ajan gerekir.</p>
+          <a href="/api/agent/kisayol" download className={`${buttonClass("primary")} mt-2`}>Kasa kısayolunu indir</a>
+        </div>
         <div className="mt-4 rounded-lg border border-line bg-surface-2 px-3 py-3 text-sm">
-          <p className="font-medium">Windows’ta hızlı kurulum</p>
+          <p className="font-medium">Birden çok yazıcı, çekmece, terazi: ajan kurulumu</p>
           <p className="mt-1 text-ink-2">Önce yukarıdan eşleme kodu üretin. Sonra dosyayı indirip çift tıklayın: Node.js yoksa kendisi kurar, eşleme kodunu sorar, ajanı bilgisayar açılışına ekler. Bir kez yapılır, yalnız yazıcının bağlı olduğu kasa bilgisayarında.</p>
           <a href="/api/agent/kurulum" download className={`${buttonClass("primary")} mt-2`}>Windows kurulumunu indir</a>
           <p className="mt-2 text-xs text-muted">Windows “bilinmeyen yayıncı” uyarısı verirse: Ek bilgi → Yine de çalıştır. Elle kurmak için: <a href="/indir/cabukpos-agent-install.ps1" download className="text-brand underline">PowerShell betiği</a>.</p>

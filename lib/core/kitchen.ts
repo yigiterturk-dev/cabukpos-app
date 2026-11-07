@@ -41,3 +41,18 @@ export function pendingPrints(tabs: Iterable<TabState>, printerOf: (stationId: s
   }
   return out.sort((a, b) => a.ticket.at.localeCompare(b.ticket.at));
 }
+
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+/** Ajansız kasa: aynı mutfak fişinin HTML hâli (Chrome --kiosk-printing ile varsayılan yazıcıya sessiz basılır). */
+export function kitchenTicketHtml(t: KitchenTicketData, width: PaperWidth = 80): string {
+  const d = new Date(t.at);
+  const time = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+  const lines = t.lines.map((l) => `<div class="l"><b>${esc(qtyText(l.qtyMilli))} x ${esc(l.name)}</b>${l.options.map((o) => `<div class="s">+ ${esc(o.name)}</div>`).join("")}${l.note ? `<div class="s">! ${esc(l.note)}</div>` : ""}</div>`).join("");
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Mutfak fişi</title><style>
+@page{size:${width}mm auto;margin:0}*{box-sizing:border-box}html,body{margin:0;background:#fff;color:#000}
+body{width:${width - 8}mm;padding:2mm 3mm 8mm;font:13px/1.3 Arial,Helvetica,sans-serif}
+.c{text-align:center}.h{font-size:22px;font-weight:700}.r{border-top:1px dashed #000;margin:2mm 0}
+.l{font-size:17px;margin:1.5mm 0}.s{font-size:14px;padding-left:4mm}
+</style></head><body><div class="c">${t.packed ? '<div class="h">PAKET</div>' : ""}<div class="h">${esc(t.tableName)}</div>${t.stationName ? `<div>${esc(t.stationName)}</div>` : ""}<div>${esc(time)}${t.staffName ? ` · ${esc(t.staffName)}` : ""}</div></div><div class="r"></div>${lines}<div class="r"></div></body></html>`;
+}

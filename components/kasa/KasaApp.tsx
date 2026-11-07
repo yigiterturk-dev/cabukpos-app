@@ -38,6 +38,10 @@ import { TabScreen } from "./TabScreen";
 import { BillScreen } from "./BillScreen";
 import { KitchenScreen } from "./KitchenScreen";
 import { useOrderAlert } from "./useOrderAlert";
+import { printHtml } from "@/lib/offline/browser-print";
+import { kitchenTicketHtml } from "@/lib/core/kitchen";
+import { useKasaSetting } from "./useKasaSetting";
+import { ALERT_VALUES, DIRECT_PRINT_KEY } from "./DeliverySoundControls";
 import { useNow, useTabs } from "./useTabs";
 import { DeliveryBoard, type CourierJobView } from "./DeliveryBoard";
 import { NewDelivery } from "./NewDelivery";
@@ -597,15 +601,20 @@ export function KasaApp() {
   useOrderAlert(tabsApi.tabs, tabsApi.loaded, Boolean(restoran) && role === "kasa");
   const now = useNow();
   const printingRef = useRef(new Map<string, number>()); // bilet → bir sonraki deneme zamanı
+  const [directPrint, setDirectPrint] = useKasaSetting(DIRECT_PRINT_KEY, ALERT_VALUES, "kapali");
+  // Chrome kasa kısayolu ?dogrudan=1 ile açar → bu cihazda doğrudan yazdırma kendiliğinden açılır.
+  useEffect(() => { if (new URLSearchParams(location.search).get("dogrudan") === "1" && directPrint !== "acik") setDirectPrint("acik"); }, [directPrint, setDirectPrint]);
   useEffect(() => {
     const a = meta?.agent;
-    if (!a || !restoran || role !== "kasa" || !meta) return;
+    // Ajan yoksa ve bu kasa "doğrudan yazdır" (Chrome kısayolu) ile açıldıysa: tüm istasyon fişleri varsayılan yazıcıya.
+    const browser = !a && directPrint === "acik";
+    if ((!a && !browser) || !restoran || role !== "kasa" || !meta) return;
     const stations = meta.catalog.stations ?? [];
-    const jobs = pendingPrints(tabsApi.tabs.values(), (sid) => stations.find((s) => s.id === sid)?.printer ?? null, Date.now())
+    const jobs = pendingPrints(tabsApi.tabs.values(), (sid) => (browser ? "tarayici" : stations.find((s) => s.id === sid)?.printer ?? null), Date.now())
       .filter((j) => (printingRef.current.get(j.ticket.id) ?? 0) <= Date.now());
     for (const j of jobs) {
       printingRef.current.set(j.ticket.id, Date.now() + 30_000);
-      const job = printKitchen(a, j.printer, {
+      const data = {
         tableName: tabLabel(j.tab, meta.catalog.tables ?? [], PLATFORM_NAMES),
         packed: j.tab.kind !== "masa",
         buzz: j.tab.kind === "platform" || Boolean(j.tab.order?.source),
@@ -613,10 +622,13 @@ export function KasaApp() {
         staffName: meta.catalog.staff.find((s) => s.id === j.ticket.staffId)?.name ?? null,
         at: j.ticket.at,
         lines: j.ticket.lineIds.flatMap((id) => j.tab.lines.filter((l) => l.lineId === id && !l.voided)),
-      });
-      void job?.then((r) => { if (r.ok) void tabsApi.add([{ tabId: j.tab.id, tableId: j.tab.tableId, staffId: null, ev: { type: "printed", ticketId: j.ticket.id } }]); });
+      };
+      const markPrinted = () => void tabsApi.add([{ tabId: j.tab.id, tableId: j.tab.tableId, staffId: null, ev: { type: "printed", ticketId: j.ticket.id } }]);
+      if (browser) { void printHtml(kitchenTicketHtml(data)).then(markPrinted); continue; }
+      const job = printKitchen(a!, j.printer, data);
+      void job?.then((r) => { if (r.ok) markPrinted(); });
     }
-  }, [tabsApi, meta, restoran, role, now]);
+  }, [tabsApi, meta, restoran, role, now, directPrint]);
   const readyCount = useMemo(() => [...openTabsByTable(tabsApi.tabs).values()].flat().reduce((a, t) => a + t.tickets.filter((k) => k.status === "hazir").length, 0), [tabsApi.tabs]);
   const lastReady = useRef<number | null>(null);
   useEffect(() => {

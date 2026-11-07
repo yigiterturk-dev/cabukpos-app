@@ -153,3 +153,14 @@ test("mutfak fişi: platform siparişinde zil (ESC B), Epson'da ve masada yok", 
   assert.equal(has(renderKitchenTicket({ ...base, buzz: true }, { width: 80, codepage: "pc857", brand: "epson" })), false);
   assert.equal(has(renderKitchenTicket(base, { width: 80, codepage: "pc857", brand: "xprinter" })), false);
 });
+
+test("mutfak fişi HTML (ajansız): kaçışlı, paket + seçenek + not", async () => {
+  const { kitchenTicketHtml } = await import("@/lib/core/kitchen");
+  const h = kitchenTicketHtml({ tableName: "Trendyol · #<1>", packed: true, stationName: "Mutfak", staffName: null, at: "2026-11-07T18:00:00Z", lines: [{ qtyMilli: 2000, name: "Pide & Ayran", options: [{ id: "o", name: "Acılı", delta: 0 }], note: "-Soğan" }] }, 80);
+  assert.match(h, /@page\{size:80mm auto/);
+  assert.match(h, /PAKET/);
+  assert.match(h, /#&lt;1&gt;/);
+  assert.match(h, /2 x Pide &amp; Ayran/);
+  assert.match(h, /\+ Acılı/);
+  assert.match(h, /! -Soğan/);
+});
