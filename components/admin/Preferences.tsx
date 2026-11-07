@@ -25,8 +25,8 @@ const apply = (t: Tema) => {
   document.documentElement.classList.toggle("dark", dark);
 };
 
-export const getTema = (): Tema => { try { return ((localStorage.getItem("tema") as Tema) || "sistem"); } catch { return "sistem"; } };
-const getServerTema = (): Tema => "sistem";
+export const getTema = (): Tema => { try { return ((localStorage.getItem("tema") as Tema) || "acik"); } catch { return "acik"; } };
+const getServerTema = (): Tema => "acik";
 export const getSesKapali = (): boolean => { try { return localStorage.getItem(SES_KEY) === "kapali"; } catch { return false; } };
 const getServerSesKapali = () => false;
 
