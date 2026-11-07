@@ -33,8 +33,9 @@ export default async function Donanim() {
         <p className="mt-4 break-words rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn" data-testid="lna-note">Kasa ekranında Chrome “yerel ağ erişimi” izni sorduğunda <strong>İzin ver</strong> deyin; aksi halde ajan “kapalı” görünür.</p>
         <div className="mt-4 rounded-lg border border-line bg-surface-2 px-3 py-3 text-sm">
           <p className="font-medium">Windows’ta hızlı kurulum</p>
-          <p className="mt-1 text-ink-2">Node.js LTS kuruluysa betiği indirip çalıştırın; eşleme kodunu soracak, ajanı indirip bilgisayar açılışına ekleyecek.</p>
-          <a href="/indir/cabukpos-agent-install.ps1" download className={`${buttonClass("primary")} mt-2`}>Windows kurulum betiğini indir</a>
+          <p className="mt-1 text-ink-2">Önce yukarıdan eşleme kodu üretin. Sonra dosyayı indirip çift tıklayın: Node.js yoksa kendisi kurar, eşleme kodunu sorar, ajanı bilgisayar açılışına ekler. Bir kez yapılır, yalnız yazıcının bağlı olduğu kasa bilgisayarında.</p>
+          <a href="/api/agent/kurulum" download className={`${buttonClass("primary")} mt-2`}>Windows kurulumunu indir</a>
+          <p className="mt-2 text-xs text-muted">Windows “bilinmeyen yayıncı” uyarısı verirse: Ek bilgi → Yine de çalıştır. Elle kurmak için: <a href="/indir/cabukpos-agent-install.ps1" download className="text-brand underline">PowerShell betiği</a>.</p>
         </div>
         <details className="mt-4 text-sm text-ink-2">
           <summary className="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-2.5 font-medium outline-none hover:bg-surface-2 focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kurulum adımları</summary>
