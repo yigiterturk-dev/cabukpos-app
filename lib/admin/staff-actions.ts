@@ -21,7 +21,9 @@ export async function saveStaff(id: string | null, _: StaffState, form: FormData
   const permissions: StaffPermissions | null = form.get("customPermissions") === "on" ? Object.fromEntries(Object.keys(STAFF_PERMISSIONS).map(k => [k, form.getAll("permission").includes(k)])) : null;
   if (name.length < 2 || name.length > 60) return { error: "Ad 2-60 karakter.", field: "name" };
   if (!["kasiyer", "mudur", "garson", "kurye"].includes(role)) return { error: "Rol geçersiz.", field: "role" };
-  if (!id || pin) {
+  // PIN isteğe bağlı: boş = kasada adına dokunarak girer (pinHash "").
+  const removePin = !pin && form.get("removePin") === "on";
+  if (pin) {
     const p = pinProblem(pin);
     if (p) return { error: p, field: "pin" };
   }
@@ -30,7 +32,7 @@ export async function saveStaff(id: string | null, _: StaffState, form: FormData
   if (id) {
     const [onceki] = await withTenant(a.tenantId, (tx) => tx.select({ role: schema.staff.role, permissions: schema.staff.permissions }).from(schema.staff).where(eq(schema.staff.id, id)));
     if (!onceki) return { error: "Personel bulunamadı." };
-    if (onceki.role !== role || pin || Object.keys(STAFF_PERMISSIONS).some(k => onceki.permissions?.[k as keyof StaffPermissions] !== permissions?.[k as keyof StaffPermissions])) reauthErr = await checkReauth(a.id, form);
+    if (onceki.role !== role || pin || removePin || Object.keys(STAFF_PERMISSIONS).some(k => onceki.permissions?.[k as keyof StaffPermissions] !== permissions?.[k as keyof StaffPermissions])) reauthErr = await checkReauth(a.id, form);
   }
   if (reauthErr) return { error: reauthErr, field: "sifre" };
   const err = await withTenant(a.tenantId, async (tx) => {
@@ -39,14 +41,14 @@ export async function saveStaff(id: string | null, _: StaffState, form: FormData
       const others = await tx.select({ pinHash: schema.staff.pinHash }).from(schema.staff).where(id ? and(eq(schema.staff.active, true), ne(schema.staff.id, id)) : eq(schema.staff.active, true));
       for (const o of others) if (await verifyPin(pin, o.pinHash)) return "Bu PIN başka birinde kullanılıyor.";
     }
-    const set = { name, permissions, role: role as "kasiyer" | "mudur" | "garson" | "kurye", ...(pin ? { pinHash: await hashPin(pin) } : {}) };
+    const set = { name, permissions, role: role as "kasiyer" | "mudur" | "garson" | "kurye", ...(pin ? { pinHash: await hashPin(pin) } : removePin ? { pinHash: "" } : {}) };
     if (id) {
       const [row] = await tx.update(schema.staff).set(set).where(eq(schema.staff.id, id)).returning({ id: schema.staff.id });
       if (!row) return "Personel bulunamadı.";
     } else {
-      await tx.insert(schema.staff).values({ tenantId: a.tenantId, name, permissions, role: set.role, pinHash: set.pinHash! });
+      await tx.insert(schema.staff).values({ tenantId: a.tenantId, name, permissions, role: set.role, pinHash: set.pinHash ?? "" });
     }
-    await audit(tx, a.tenantId, `user:${a.id}`, "staff.save", { id, name, role, permissions, pinChanged: Boolean(pin) });
+    await audit(tx, a.tenantId, `user:${a.id}`, "staff.save", { id, name, role, permissions, pinChanged: Boolean(pin) || removePin });
     return null;
   });
   if (err) return { error: err, field: "pin" };

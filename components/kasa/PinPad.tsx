@@ -51,6 +51,22 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
     if (locked && (active === document.body || active instanceof HTMLButtonElement && active.disabled)) lockMessageRef.current?.focus();
     if (unlocked && document.activeElement === document.body) firstKeyRef.current?.focus();
   }, [locked]);
+  // PIN isteğe bağlı: PIN'i olmayan personel adına dokunarak girer/onaylar.
+  const candidates = meta.catalog.staff.filter(only ?? (() => true));
+  const noPin = candidates.filter((s) => !s.pinHash);
+  const hasPin = candidates.some((s) => s.pinHash);
+  const pick = async (s: KasaStaff) => {
+    if (busy || previewOnly) return;
+    setBusy(true); setError(null);
+    try {
+      const m = await loadMeta();
+      await kasaDb().meta.put({ ...m, pinFails: 0, pinLockUntil: 0 });
+      onMeta({ ...m, pinFails: 0, pinLockUntil: 0 });
+      setWorking(true);
+      await onOk({ id: s.id, name: s.name });
+    } catch { setError("İşlem tamamlanamadı. Tekrar deneyin."); }
+    finally { setWorking(false); setBusy(false); }
+  };
   const key = (d: string) => { setError(null); setPin((p) => (p.length < 6 ? p + d : p)); };
   const erase = () => { setError(null); setPin((p) => p.slice(0, -1)); };
   const submit = useCallback(async () => {
@@ -114,7 +130,7 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
   useEffect(() => {
     // The design preview keeps a static PIN pad mounted beside other live screens.
     // Its global keyboard handler must not consume those screens' Enter/digit keys.
-    if (previewOnly) return;
+    if (previewOnly || !hasPin) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return;
       if (/^\d$/.test(e.key)) {
@@ -132,9 +148,20 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, locked, previewOnly, submit]);
+  }, [busy, hasPin, locked, previewOnly, submit]);
   return (
-    <form onSubmit={(e) => { e.preventDefault(); void submit(); }} aria-label={only ? "Yetkili PIN girişi" : "PIN girişi"} aria-busy={busy} className="mx-auto w-full max-w-xs">
+    <div className="mx-auto w-full max-w-xs">
+    {noPin.length > 0 && (
+      <div className="mb-6">
+        <p className="mb-2 text-center text-sm font-medium text-ink-2">{only ? "Onaylayan" : "Kim giriyor?"}</p>
+        <div className="grid gap-2">
+          {noPin.map((s) => <button key={s.id} type="button" disabled={busy} onClick={() => void pick(s)} className="press min-h-14 rounded-2xl bg-brand-action px-4 text-lg font-semibold text-white shadow-rest outline-none hover:bg-brand-action-hover focus-visible:ring-4 focus-visible:ring-brand-ring/60 disabled:opacity-40">{s.name}</button>)}
+        </div>
+        {error && !hasPin && <p className="mt-4 break-words text-center text-sm text-bad" role="alert">{error}</p>}
+        {hasPin && <p className="mt-5 text-center text-xs text-muted">ya da PIN gir</p>}
+      </div>
+    )}
+    {(hasPin || noPin.length === 0) && <form onSubmit={(e) => { e.preventDefault(); void submit(); }} aria-label={only ? "Yetkili PIN girişi" : "PIN girişi"} aria-busy={busy}>
       <div className="mb-6 flex h-6 items-center justify-center gap-4" role="status" aria-live="polite" aria-atomic="true">
         <span className="sr-only">{working ? "İşlem uygulanıyor." : busy ? "PIN kontrol ediliyor." : `${pin.length} hane girildi.`}</span>
         {Array.from({ length: Math.max(4, pin.length) }, (_, i) => <span key={i} aria-hidden="true" className={`size-4 rounded-full transition ${i < pin.length ? "scale-110 bg-brand-action" : "border-2 border-line-strong"}`} />)}
@@ -153,6 +180,7 @@ export function PinPad({ meta, onOk, onMeta, only, autoFocusFirst = false, previ
       <p ref={lockStatusRef} className="sr-only" role="status" aria-live="polite" aria-atomic="true" />
       {error && !locked && <p className="mt-4 break-words text-center text-sm text-bad" role="alert" aria-live="assertive">{error}</p>}
       {!only && <p className="mt-5 text-center text-xs text-muted">PIN’i bilmiyor musun? <Link href="/giris" className="inline-flex min-h-11 items-center font-medium text-brand underline underline-offset-2 hover:text-brand-hover">Yönetim panelinden değiştir</Link></p>}
-    </form>
+    </form>}
+    </div>
   );
 }

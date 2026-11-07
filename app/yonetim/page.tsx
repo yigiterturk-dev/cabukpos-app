@@ -78,7 +78,7 @@ export default async function Bugun() {
   const dateLabel = new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Istanbul" });
   const setupSteps = [
     { label: "Şube oluştur", href: "/yonetim/subeler", done: Boolean(storeId), Icon: Package },
-    { label: "Personel ekle, kasiyer PIN'i belirle", href: "/yonetim/personel", done: setup.staff, Icon: UserPlus },
+    { label: "Personel ekle", href: "/yonetim/personel", done: setup.staff, Icon: UserPlus },
     { label: "Ürünleri ekle (tek tek veya CSV ile)", href: "/yonetim/urunler", done: setup.product, Icon: Plus },
     ...(restoran ? [{ label: "Salonu kur (bölüm + masa sayısı)", href: "/yonetim/salon", done: setup.tables, Icon: LayoutGrid }] : []),
     { label: "Kasa tabletini bağla", href: "/yonetim/cihazlar", done: setup.device, Icon: Monitor },

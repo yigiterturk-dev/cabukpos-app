@@ -44,6 +44,8 @@ export async function signup(_: AuthState, form: FormData): Promise<AuthState> {
     const [u] = await tx.insert(schema.users).values({ tenantId: t.id, email: values.email, name: values.name, passwordHash: hash, role: "sahip" }).returning();
     await tx.execute(sql`select set_config('app.tenant_id', ${t.id}, true)`);
     await tx.insert(schema.stores).values({ tenantId: t.id, name: "Merkez" });
+    // Sahip kasada PIN'siz müdür olarak hazır: kasa açılınca doğrudan girer, PIN isteyen sonra koyar.
+    await tx.insert(schema.staff).values({ tenantId: t.id, name: values.name, role: "mudur", pinHash: "" });
     await audit(tx, t.id, `user:${u.id}`, "tenant.signup", { vertical: values.vertical });
     return { userId: u.id, tenantId: t.id };
   });
