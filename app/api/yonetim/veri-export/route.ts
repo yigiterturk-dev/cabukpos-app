@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
   const [tenantRow] = tenant;
   const data = await withTenant(a.tenantId, async (tx) => {
-    const [stores, staff, categories, products, shifts, sales, saleLines, payments, stockMovements, auditLog, areas, tables, tableCalls, optionGroups, options, productOptionGroups, stations, tabEvents, deliveryZones, customers, customerAddresses, productPlatformCodes, recipeItems, suppliers, purchases, purchaseLines, supplierPayments, productions, fiscalSettings, fiscalDocuments, fiscalRefunds, registerEvents, brands, brandProducts] = await Promise.all([
+    const [stores, staff, categories, products, shifts, sales, saleLines, payments, stockMovements, auditLog, areas, tables, tableCalls, optionGroups, options, productOptionGroups, stations, tabEvents, deliveryZones, customers, customerAddresses, productPlatformCodes, recipeItems, suppliers, purchases, purchaseLines, supplierPayments, productions, fiscalSettings, fiscalDocuments, fiscalRefunds, registerEvents, brands, brandProducts, externalPayments] = await Promise.all([
       tx.select().from(schema.stores),
       tx.select({ id: schema.staff.id, name: schema.staff.name, role: schema.staff.role, active: schema.staff.active, createdAt: schema.staff.createdAt }).from(schema.staff),
       tx.select().from(schema.categories), tx.select().from(schema.products), tx.select().from(schema.shifts),
@@ -36,11 +36,21 @@ export async function GET(req: Request) {
       tx.select().from(schema.deliveryZones), tx.select().from(schema.customers), tx.select().from(schema.customerAddresses),
       tx.select().from(schema.productPlatformCodes), tx.select().from(schema.recipeItems), tx.select().from(schema.suppliers),
       tx.select().from(schema.purchases), tx.select().from(schema.purchaseLines), tx.select().from(schema.supplierPayments),
-      tx.select().from(schema.productions), tx.select().from(schema.fiscalSettings), tx.select().from(schema.fiscalDocuments),
+      tx.select().from(schema.productions),
+      tx.select({
+        tenantId: schema.fiscalSettings.tenantId, provider: schema.fiscalSettings.provider,
+        series: schema.fiscalSettings.series, counter: schema.fiscalSettings.counter,
+        channelModes: schema.fiscalSettings.channelModes, fakeFail: schema.fiscalSettings.fakeFail,
+        okcProvider: schema.fiscalSettings.okcProvider, okcSerial: schema.fiscalSettings.okcSerial,
+        okcCounter: schema.fiscalSettings.okcCounter, okcFakeFail: schema.fiscalSettings.okcFakeFail,
+        okcApiUrl: schema.fiscalSettings.okcApiUrl, nesApiUrl: schema.fiscalSettings.nesApiUrl,
+        nesSenderAlias: schema.fiscalSettings.nesSenderAlias, updatedAt: schema.fiscalSettings.updatedAt,
+      }).from(schema.fiscalSettings),
+      tx.select().from(schema.fiscalDocuments),
       tx.select().from(schema.fiscalRefunds), tx.select().from(schema.tableCalls), tx.select().from(schema.registerEvents),
-      tx.select().from(schema.brands), tx.select().from(schema.brandProducts),
+      tx.select().from(schema.brands), tx.select().from(schema.brandProducts), tx.select().from(schema.externalPayments),
     ]);
-    return { stores, staff, categories, products, shifts, sales, saleLines, payments, stockMovements, auditLog, areas, tables, tableCalls, optionGroups, options, productOptionGroups, stations, tabEvents, deliveryZones, customers, customerAddresses, productPlatformCodes, recipeItems, suppliers, purchases, purchaseLines, supplierPayments, productions, fiscalSettings, fiscalDocuments, fiscalRefunds, registerEvents, brands, brandProducts };
+    return { stores, staff, categories, products, shifts, sales, saleLines, payments, stockMovements, auditLog, areas, tables, tableCalls, optionGroups, options, productOptionGroups, stations, tabEvents, deliveryZones, customers, customerAddresses, productPlatformCodes, recipeItems, suppliers, purchases, purchaseLines, supplierPayments, productions, fiscalSettings, fiscalDocuments, fiscalRefunds, registerEvents, brands, brandProducts, externalPayments };
   });
 
   const body = JSON.stringify({ exportVersion: 1, exportedAt: new Date().toISOString(), tenant: tenantRow, users, devices, agents, platforms, billing, integrationKeys: keys, ...data });

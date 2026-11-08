@@ -10,6 +10,7 @@ Yedek ve release araçları artık host PostgreSQL 17'yi hedefler (`sslmode=disa
 | --- | --- | --- |
 | Şifreli üretim DB yedeği | Her gün 03:15 | 06:15 |
 | Son yedekten gerçek restore provası | Pazartesi 04:30 | 07:30 |
+| Yedek tazeliği bekçisi | 00:45 / 06:45 / 12:45 / 18:45 | 03:45 / 09:45 / 15:45 / 21:45 |
 
 Timer'larda en fazla 60 saniye rastgele gecikme ve sunucu yeniden açıldığında
 kaçırılan işi çalıştırma (`Persistent=true`) vardır. Ortak dosya kilidi paralel
@@ -24,7 +25,10 @@ yedek/restore çalışmasını engeller. Birimlerin zaman aşımı 30 dakikadır
 - Systemd birimleri: bu dizindeki `cabukpos-*.{service,timer}`
 
 Ayar dosyası `database_url`, `encryption_key`, `image` içerir; isteğe bağlı
-`state_dir` desteklenir. Değerler Git'e veya loglara yazılmaz. Kurulumda yalnız
+`state_dir`, `alert` (webhook/e-posta), `offsite_command`,
+`backup_max_age_hours` (varsayılan 30) ve `restore_max_age_hours` (varsayılan 192)
+desteklenir. `watchdog.py` son başarılı yedek/restore status dosyasının yaşını
+denetler; eşik aşılırsa aynı alarm hattından `cabukpos-backup-stale` gönderir. Değerler Git'e veya loglara yazılmaz. Kurulumda yalnız
 ÇabukPOS Neon üretim bağlantısı alındı; Vercel sırları topluca indirilmedi.
 Anahtarın kurtarma kopyası operatör Mac'inde
 `~/.config/cabukpos/netcup-backup-key` (0600) altında tutulur. Anahtar olmadan
@@ -116,9 +120,23 @@ ssh netcup 'systemctl start cabukpos-restore.service'
 ```
 
 Status dosyası **son başarılı** çalışmayı gösterir; güncelliği ve servis sonucunu
-birlikte kontrol edin. Kayıtlar journald'a gider; yeni otomatik e-posta kurulmadı.
-Yedeklere otomatik silme uygulanmaz; disk kullanımını takip edin. Mevcut GitHub
-artifact'ları korunur. Netcup dışına ikinci şifreli kopyalama henüz kurulmadı.
+birlikte kontrol edin. Kayıtlar journald'a gider. Hata bildirimi `config.json`
+içindeki `alert.webhook_url` ya da `alert.email` + `alert.resend_api_key` +
+`alert.mail_from` ile otomatik gönderilir; tanımlı değilse sessizce atlanır.
+İkinci şifreli kopya `offsite_command` ile açılır (ör. rclone/rsync/S3 CLI);
+`{path}` yedek dosyasını, `{dir}` yedek klasörünü genişletir. Komut başarısızsa
+iş kırmızıya düşer ve alarm gider; yerel yedek silinmez. Yedeklere otomatik silme
+uygulanmaz; disk kullanımını takip edin. Mevcut GitHub artifact'ları korunur.
+
+```json
+{
+  "alert": { "webhook_url": "https://ops.example/hook" },
+  "offsite_command": ["rclone", "copy", "--include", "*.dump.enc", "{dir}", "b2:cabukpos-backups"]
+}
+```
+
+`rclone`/`rsync`/sağlayıcı CLI'ları sunucuda kurulu olmalı; kimlik bilgileri
+komut satırına değil ilgili aracın kendi 0600 ayar dosyasına yazılır.
 
 Kod güncellemesi için yalnız bu dizindeki dosyaları `/opt/cabukpos-ops/` altına
 kopyalayın; ayar/anahtar dosyasını değiştirmeyin. Birimler değişirse 0644 izinle
@@ -126,10 +144,10 @@ kopyalayın; ayar/anahtar dosyasını değiştirmeyin. Birimler değişirse 0644
 İlk kurulumda yedek ve restore başarılı olduktan sonra:
 
 ```sh
-systemctl enable --now cabukpos-backup.timer cabukpos-restore.timer
+systemctl enable --now cabukpos-backup.timer cabukpos-restore.timer cabukpos-watchdog.timer
 ```
 
-Durdurma: `systemctl disable --now cabukpos-backup.timer cabukpos-restore.timer`.
+Durdurma: `systemctl disable --now cabukpos-backup.timer cabukpos-restore.timer cabukpos-watchdog.timer`.
 Bu komut yedekleri, anahtarı veya mevcut uygulama cron'larını silmez.
 
 ## İlk canlı doğrulama

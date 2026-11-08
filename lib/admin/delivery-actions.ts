@@ -12,6 +12,7 @@ import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import { ingestOrders } from "@/lib/platform/ingest";
 import { provisionConnection } from "@/lib/platform/provision";
 import { pushStoreCatalog } from "@/lib/platform/outbound";
+import { encodePlatformApi, readPlatformApi } from "@/lib/platform/credentials";
 import { applyDoc, tabEventsOf } from "@/lib/sync/apply";
 import { foldTabs } from "@/lib/core/tab";
 import { scopedStoreId } from "@/lib/admin/store-scope";
@@ -151,6 +152,41 @@ export async function setConnection(id: string, patch: { autoAccept?: boolean; a
   if (!UUID.test(id)) return;
   await getDb().update(P).set(patch).where(and(eq(P.id, id), eq(P.tenantId, a.tenantId), a.storeId ? eq(P.storeId, a.storeId) : undefined));
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.update", { id, ...patch }));
+  revalidatePath("/yonetim/platformlar");
+}
+
+/** Pazaryeri BYOK: şube bağlantısına kendi API adresi + anahtarı (AES-256-GCM şifreli).
+ *  Boş bırakılan alan kayıtlı değeri korur; ikisi de yoksa hata. */
+export async function saveConnectionCredentials(connectionId: string, _: DeliveryState, form: FormData): Promise<DeliveryState> {
+  const a = await requireWriter();
+  const conn = await ownConnection(a, connectionId);
+  if (!conn) return { error: "Bağlantı bulunamadı." };
+  if (conn.platform === "mock" || conn.platform === "kiosk") return { error: "Bu platform API anahtarı kullanmaz." };
+  if (conn.platform === "trendyol_yemek") return { error: "Trendyol Yemek anahtarları sunucu ortamında tanımlıdır." };
+  const base = str(form, "apiBase");
+  const key = str(form, "apiKey");
+  if (base.length > 2048) return { error: "API adresi en çok 2.048 karakter.", field: "apiBase" };
+  if (key.length > 4096) return { error: "API anahtarı çok uzun.", field: "apiKey" };
+  if (base && !/^https:\/\//i.test(base)) return { error: "API adresi https:// ile başlamalı.", field: "apiBase" };
+  const existing = readPlatformApi(conn);
+  const nextBase = base || existing?.base || "";
+  const nextKey = key || existing?.key || "";
+  if (!nextBase) return { error: "API adresi gerekli.", field: "apiBase" };
+  if (!nextKey) return { error: "API anahtarı gerekli.", field: "apiKey" };
+  const encoded = encodePlatformApi({ base: nextBase, key: nextKey });
+  if (encoded === null) return { error: "Sunucu anahtarı (AUTH_SECRET) yapılandırılmamış; anahtar saklanamaz." };
+  await getDb().update(P).set({ credentials: encoded }).where(and(eq(P.id, connectionId), eq(P.tenantId, a.tenantId)));
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.credentials", { id: connectionId, platform: conn.platform, base: nextBase, keySet: true }));
+  revalidatePath("/yonetim/platformlar");
+  return { savedAt: Date.now() };
+}
+
+export async function clearConnectionCredentials(connectionId: string) {
+  const a = await requireWriter();
+  const conn = await ownConnection(a, connectionId);
+  if (!conn) return;
+  await getDb().update(P).set({ credentials: null }).where(and(eq(P.id, connectionId), eq(P.tenantId, a.tenantId)));
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.credentials.clear", { id: connectionId, platform: conn.platform }));
   revalidatePath("/yonetim/platformlar");
 }
 

@@ -11,7 +11,9 @@
     "db/releases/2026-10-25-inventory-settlements.sql",
     "db/releases/2026-10-25-staff-permissions.sql",
     "db/releases/2026-10-25-partial-procurement.sql",
-    "db/releases/2026-10-31-courier-jobs.sql"
+    "db/releases/2026-10-31-courier-jobs.sql",
+    "db/releases/2026-11-08-nes-byok.sql",
+    "db/releases/2026-11-08-external-payments.sql"
   ],
   "rls": "db/rls.sql"
 }

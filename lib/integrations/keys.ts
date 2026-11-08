@@ -7,7 +7,7 @@ import { newDeviceToken, sha256 } from "@/lib/auth/tokens";
 const K = schema.integrationKeys;
 export const KEY_PREFIX = "cpk_";
 
-export type IntegrationScope = "stats" | "growth";
+export type IntegrationScope = "stats" | "growth" | "payments";
 
 export async function createKey(tenantId: string, name: string, scope: IntegrationScope = "stats"): Promise<{ id: string; key: string }> {
   const key = KEY_PREFIX + newDeviceToken();

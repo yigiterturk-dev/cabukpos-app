@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { IncomingOrder } from "@/lib/core/platform";
 import type { PayIntent } from "@/lib/core/tab";
 import { verifySignature } from "./mock";
+import { platformApi } from "./credentials";
 import type { Conn, OrderSource, PlatformOrderStatus } from "./types";
 
 const kurus = z.number().int().min(0).max(100_000_000);
@@ -35,10 +36,8 @@ export function parseSandboxPayload(json: unknown): IncomingOrder[] {
   }));
 }
 
-function requireConfig() {
-  const base = process.env.TIKLAGELSIN_API_BASE, key = process.env.TIKLAGELSIN_API_KEY;
-  if (!base || !key) throw new Error("Tıkla Gelsin entegrasyonu yapılandırılmamış: TIKLAGELSIN_API_BASE ve TIKLAGELSIN_API_KEY gerekli.");
-  return { base, key };
+function requireConfig(conn: Conn) {
+  return platformApi(conn, process.env.TIKLAGELSIN_API_BASE, process.env.TIKLAGELSIN_API_KEY, "Tıkla Gelsin");
 }
 
 export function createTiklaGelsinSource(enabled: boolean): OrderSource {
@@ -53,25 +52,25 @@ export function createTiklaGelsinSource(enabled: boolean): OrderSource {
     },
     async accept(conn: Conn, externalId: string, prepMin: number) {
       if (!enabled) throw new Error("Tıkla Gelsin bağlantısı kapalı.");
-      const { base, key } = requireConfig();
+      const { base, key } = requireConfig(conn);
       const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/accept`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ prepMin }) });
       if (!res.ok) throw new Error(`Tıkla Gelsin kabul hatası: HTTP ${res.status}`);
     },
     async reject(conn: Conn, externalId: string, reason: string) {
       if (!enabled) throw new Error("Tıkla Gelsin bağlantısı kapalı.");
-      const { base, key } = requireConfig();
+      const { base, key } = requireConfig(conn);
       const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/reject`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ reason }) });
       if (!res.ok) throw new Error(`Tıkla Gelsin red hatası: HTTP ${res.status}`);
     },
     async pushStatus(conn: Conn, externalId: string, status: PlatformOrderStatus) {
       if (!enabled) throw new Error("Tıkla Gelsin bağlantısı kapalı.");
-      const { base, key } = requireConfig();
+      const { base, key } = requireConfig(conn);
       const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/status`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ status }) });
       if (!res.ok) throw new Error(`Tıkla Gelsin durum hatası: HTTP ${res.status}`);
     },
     async pushCatalog(conn: Conn, items) {
       if (!enabled) return { error: "Tıkla Gelsin bağlantısı kapalı." };
-      const { base, key } = requireConfig();
+      const { base, key } = requireConfig(conn);
       const res = await fetch(`${base}/stores/${encodeURIComponent(conn.storeId)}/catalog`, { method: "PUT", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ items }), signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`Tıkla Gelsin katalog hatası: HTTP ${res.status}`);
       const parsed = z.object({ ok: z.number().int().min(0), failed: z.number().int().min(0) }).safeParse(await res.json().catch(() => null));

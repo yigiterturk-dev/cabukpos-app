@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
 
 export type Doc = {
-  status: "pending" | "issued" | "error" | "cancelled" | "cancel_rejected"; number: string | null; ettn: string | null; provider: string | null;
+  status: "pending" | "issued" | "error" | "cancelled" | "cancel_rejected"; number: string | null; ettn: string | null; provider: string | null; tenantId: string;
   buyer: { taxId: string; name: string; email?: string; address?: string }; issuedAt: string | null; createdAt: string;
   sale: { receiptNo: string; total: number; discount: number; tip: number; vat: { rate: number; gross: number; net: number; vat: number }[]; createdAt: string };
   lines: { name: string; qtyMilli: number; unitPrice: number; vatRate: number; total: number }[];

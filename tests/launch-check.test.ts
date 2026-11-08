@@ -9,6 +9,8 @@ const required = {
   CRON_SECRET: "test-cron-secret-012345678901234567890123",
   LEGAL_NAME: "Test Şirket",
   LEGAL_ADDRESS: "Test adres",
+  LEGAL_TAX_ID: "1234567890",
+  LEGAL_TAX_OFFICE: "Test VD",
   LEGAL_EMAIL: "test@example.com",
   LEGAL_PHONE: "+905550000000",
   BILLING_PROVIDER: "paytr",

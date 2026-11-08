@@ -1,0 +1,10 @@
+[Unit]
+Description=ÇabukPOS yedek tazeliği denetimi (günde 4 kez)
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:45:00
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

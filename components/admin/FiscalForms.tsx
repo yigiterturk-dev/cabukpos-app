@@ -14,9 +14,10 @@ const errorProps = (s: FiscalState, f: string) => s.field === f && s.error
   ? { "aria-invalid": true as const, "aria-describedby": `fiscal-${f}-error` }
   : {};
 
-export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }: {
+export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, nes, okc }: {
   initial: { taxId: string; taxOffice: string; address: string; series: string; modes: ChannelModes; fakeFail: boolean };
   channels: readonly Channel[]; fake: boolean; blockEarsiv: boolean;
+  nes?: { active: boolean; apiUrl: string | null; senderAlias: string | null; hasKey: boolean } | null;
   okc?: { provider: string; serial: string; hasKey?: boolean; apiUrl?: string | null } | null;
 }) {
   const { state, pending, onSubmit } = useFormAction(saveFiscalSettings, {} as FiscalState);
@@ -34,13 +35,15 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
     const frame = window.requestAnimationFrame(() => saveButtonRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [pending, state.error, state.savedAt]);
-  const [modes, setModes] = useState<ChannelModes>(() => blockEarsiv
+  const [modes, setModes] = useState<ChannelModes>(() => blockEarsiv && !nes?.active
     ? Object.fromEntries(channels.map((c) => [c, "info"])) as ChannelModes
     : initial.modes);
   const requiresEarsiv = Object.values(modes).includes("earsiv");
   const [okcOn, setOkcOn] = useState(!!okc);
   const [okcProvider, setOkcProvider] = useState(okc?.provider ?? OKC_PROVIDERS[0].value);
   const okcCloud = OKC_PROVIDERS.find((p) => p.value === okcProvider)?.cloud ?? false;
+  const [nesOn, setNesOn] = useState(!!nes?.active);
+  const earsivBlocked = blockEarsiv && !nesOn;
   return (
     <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => {
       if (requiresEarsiv && !addressRef.current?.value.trim()) {
@@ -68,8 +71,8 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
               <legend className="text-sm">{CH_LABEL[c]}</legend>
               <div className="flex gap-1">
                 {([["info", "Bilgi fişi"], ["earsiv", "e-Arşiv"]] as [DocMode, string][]).map(([v, l]) => (
-                  <label key={v} className={`inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm outline-none transition focus-within:ring-4 focus-within:ring-brand-ring/60 ${modes[c] === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"} ${v === "earsiv" && blockEarsiv ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
-                    <input type="radio" name={`mode-${c}`} value={v} checked={modes[c] === v} required disabled={pending || (v === "earsiv" && blockEarsiv)} onChange={() => { setEdited(true); setModes((m) => ({ ...m, [c]: v })); }} className="peer sr-only" />
+                  <label key={v} className={`inline-flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm outline-none transition focus-within:ring-4 focus-within:ring-brand-ring/60 ${modes[c] === v ? "border-brand bg-brand-soft font-medium text-brand" : "border-line hover:bg-surface-2"} ${v === "earsiv" && earsivBlocked ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
+                    <input type="radio" name={`mode-${c}`} value={v} checked={modes[c] === v} required disabled={pending || (v === "earsiv" && earsivBlocked)} onChange={() => { setEdited(true); setModes((m) => ({ ...m, [c]: v })); }} className="peer sr-only" />
                     {l}
                   </label>
                 ))}
@@ -81,10 +84,37 @@ export function FiscalSettingsForm({ initial, channels, fake, blockEarsiv, okc }
       {fake && (
         <div className="rounded-lg border border-warn/40 bg-warn-soft p-3 text-sm">
           <p className="font-medium">TEST sağlayıcısı: kesilen belgelerin mali değeri yoktur.</p>
-          <p className="mt-1 text-muted">Gerçek entegratör (Paraşüt/Uyumsoft/İzibiz) bağlanmadan e-Arşiv kullanılamaz; bilgi fişi satışa devam eder.</p>
+          <p className="mt-1 text-muted">Gerçek entegratör (NES) bağlanmadan e-Arşiv kullanılamaz; bilgi fişi satışa devam eder.</p>
           <label className="mt-2 flex min-h-11 items-center gap-2"><input type="checkbox" name="fakeFail" disabled={pending} defaultChecked={initial.fakeFail} className="size-4 accent-brand" />Hata simülasyonu (her kesim hata verir)</label>
         </div>
       )}
+      <div className="rounded-lg border border-line p-4">
+        <h3 className="text-sm font-semibold">e-Arşiv / e-Fatura sağlayıcısı (NES)</h3>
+        <p className="mt-1 text-sm text-muted">Canlı mali belge için kiracı kendi NES hesabının API adresini ve anahtarını girer (BYOK). Anahtar şifreli saklanır; boş bırakılırsa kayıtlı anahtar korunur.</p>
+        <label className="mt-3 flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="nesOn" disabled={pending} checked={nesOn} onChange={(e) => setNesOn(e.target.checked)} className="size-4 accent-brand" />NES bağlantısı açık (e-Arşiv/e-Fatura)</label>
+        {nesOn && (
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field label="NES API adresi" hint="Canlı: https://…nes.com.tr · Sandbox: https://apitest.nes.com.tr">
+                <Input name="nesApiUrl" disabled={pending} defaultValue={nes?.apiUrl ?? ""} placeholder="https://apitest.nes.com.tr" inputMode="url" maxLength={2048} required {...errorProps(displayState, "nesApiUrl")} />
+              </Field>
+              <Err s={displayState} f="nesApiUrl" />
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="NES API anahtarı" hint={nes?.hasKey ? "Kayıtlı (şifreli); değiştirmek için yenisini yazın" : "NES hesabının API anahtarı, şifreli saklanır"}>
+                <PasswordInput name="nesApiKey" disabled={pending} autoComplete="off" minLength={8} placeholder={nes?.hasKey ? "••••••••" : ""} {...errorProps(displayState, "nesApiKey")} />
+              </Field>
+              <Err s={displayState} f="nesApiKey" />
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Gönderici alias (isteğe bağlı)" hint="GİB gönderici alias'ı; boşsa varsayılan kullanılır">
+                <Input name="nesSenderAlias" disabled={pending} defaultValue={nes?.senderAlias ?? ""} maxLength={200} placeholder="urn:mail:defaultgb@nes.com.tr" className="font-mono" {...errorProps(displayState, "nesSenderAlias")} />
+              </Field>
+              <Err s={displayState} f="nesSenderAlias" />
+            </div>
+          </div>
+        )}
+      </div>
       <div className="rounded-lg border border-line p-4">
         <h3 className="text-sm font-semibold">ÖKC / mali cihaz</h3>
         <p className="mt-1 text-sm text-muted">Kasa fişi ancak ÖKC imzasıyla yasal mali belge olur. Açıkken eşitlenen her satış mali fiş no ile künyelenir.</p>

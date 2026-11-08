@@ -72,6 +72,7 @@ export const HUBS: NavHub[] = [
       { href: "/yonetim/platformlar", label: "Pazaryerleri", desc: "Yemek sepeti ve online satış kanallarını bağlayın.", icon: Globe },
       { href: "/yonetim/platform-hesap", label: "Pazaryeri ödemeleri", desc: "Platformlardan gelen hakedişleri kontrol edin.", icon: Receipt },
       { href: "/yonetim/kurye-hesap", label: "Kurye ödemeleri", desc: "Kurye teslimatlarının günlük hesabını görün.", icon: Receipt },
+      { href: "/yonetim/dis-odemeler", label: "Dış ödemeler", desc: "YanındaPOS gibi dış sistemlerden gelen ödeme özetlerini görün.", icon: Handshake },
       { href: "/yonetim/markalar", label: "Markalar", desc: "Birden çok markanız varsa ayrı yönetin.", icon: Store },
     ],
   },

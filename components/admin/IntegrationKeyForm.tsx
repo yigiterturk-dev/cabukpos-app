@@ -5,7 +5,7 @@ import { useFormAction } from "@/components/useFormAction";
 import { Button, Field, Input } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
 
-function KeyBox({ s, scope }: { s: KeyState; scope: "stats" | "growth" }) {
+function KeyBox({ s, scope }: { s: KeyState; scope: "stats" | "growth" | "payments" }) {
   const [copyState, setCopyState] = useState<"idle" | "copying" | "copied" | "failed">("idle");
   const copyButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -38,12 +38,12 @@ function KeyBox({ s, scope }: { s: KeyState; scope: "stats" | "growth" }) {
       <p className="mt-2 text-sm" role="status" aria-live="polite" aria-atomic="true">
         {copyState === "copied" ? "Anahtar panoya kopyalandı." : copyState === "failed" ? "Kopyalanamadı; anahtarı seçip elle kopyalayın." : copyState === "copying" ? "Anahtar panoya kopyalanıyor." : ""}
       </p>
-      <p className="mt-2 text-sm text-ink-2">{scope === "growth" ? "Büyüme Merkezi/Laya bağlantısında kullanılır. Yalnız toplu, PII'siz büyüme özelliklerini okur; hiçbir şeyi değiştiremez." : "Ajans panelinde Bağlantılar → ÇabukPOS alanına yapıştırılır. Anahtar yalnız günlük satış özetini okur; hiçbir şeyi değiştiremez."}</p>
+      <p className="mt-2 text-sm text-ink-2">{scope === "growth" ? "Büyüme Merkezi/Laya bağlantısında kullanılır. Yalnız toplu, PII'siz büyüme özelliklerini okur; hiçbir şeyi değiştiremez." : scope === "payments" ? "YanındaPOS gibi dış sistemlerin tamamlanmış ödeme özetlerini yazması için kullanılır. Satış, fiş veya mali belge oluşturmaz; yalnız mutabakat referansı yazar." : "Ajans panelinde Bağlantılar → ÇabukPOS alanına yapıştırılır. Anahtar yalnız günlük satış özetini okur; hiçbir şeyi değiştiremez."}</p>
     </div>
   );
 }
 
-export function IntegrationKeyForm({ scope = "stats" }: { scope?: "stats" | "growth" }) {
+export function IntegrationKeyForm({ scope = "stats" }: { scope?: "stats" | "growth" | "payments" }) {
   const { state, pending, onSubmit } = useFormAction(createIntegrationKey, {} as KeyState);
   const errorId = useId();
   const nameErrorId = `${errorId}-name-error`;
@@ -60,14 +60,14 @@ export function IntegrationKeyForm({ scope = "stats" }: { scope?: "stats" | "gro
       <input type="hidden" name="scope" value={scope} />
       <div key={state.key ?? "credentials"} className="flex flex-wrap items-start gap-3">
         <div>
-          <Field label={scope === "growth" ? "Büyüme bağlantısı adı" : "Ajans adı"} hint="2–40 karakter"><Input name="name" disabled={pending} placeholder={scope === "growth" ? "Laya Büyüme" : "Zirve Ajans"} minLength={2} maxLength={40} pattern=".*\S.*\S.*" required aria-invalid={displayState.field === "name" && !!displayState.error || undefined} aria-describedby={displayState.field === "name" && displayState.error ? nameErrorId : undefined} /></Field>
+          <Field label={scope === "growth" ? "Büyüme bağlantısı adı" : scope === "payments" ? "Ödeme bağlantısı adı" : "Ajans adı"} hint="2–40 karakter"><Input name="name" disabled={pending} placeholder={scope === "growth" ? "Laya Büyüme" : scope === "payments" ? "YanındaPOS" : "Zirve Ajans"} minLength={2} maxLength={40} pattern=".*\S.*\S.*" required aria-invalid={displayState.field === "name" && !!displayState.error || undefined} aria-describedby={displayState.field === "name" && displayState.error ? nameErrorId : undefined} /></Field>
           {displayState.field === "name" && displayState.error && <p id={nameErrorId} className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}
         </div>
         <div>
           <Field label="Hesap şifreniz" hint="Kimlik bilgisi üretimi için teyit"><PasswordInput name="sifre" disabled={pending} autoComplete="current-password" required aria-invalid={displayState.field === "sifre" && !!displayState.error || undefined} aria-describedby={displayState.field === "sifre" && displayState.error ? passwordErrorId : undefined} /></Field>
           {displayState.field === "sifre" && displayState.error && <p id={passwordErrorId} className="mt-1 break-words text-sm text-bad" role="alert" aria-live="assertive">{displayState.error}</p>}
         </div>
-        <Button type="submit" disabled={pending} className="mt-6">{pending ? "Oluşturuluyor…" : scope === "growth" ? "Büyüme erişimi oluştur" : "Ajans erişimi oluştur"}</Button>
+        <Button type="submit" disabled={pending} className="mt-6">{pending ? "Oluşturuluyor…" : scope === "growth" ? "Büyüme erişimi oluştur" : scope === "payments" ? "Ödeme erişimi oluştur" : "Ajans erişimi oluştur"}</Button>
       </div>
       {pending && <p className="sr-only" role="status" aria-live="polite">Erişim anahtarı oluşturuluyor.</p>}
       <KeyBox s={{ ...state, error: displayState.error, field: displayState.field }} scope={scope} />

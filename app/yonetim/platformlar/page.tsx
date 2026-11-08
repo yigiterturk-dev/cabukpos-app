@@ -4,7 +4,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { getDb, schema, withTenant } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
-import { acceptPlatformOrder, deleteCode, rejectPlatformOrder } from "@/lib/admin/delivery-actions";
+import { acceptPlatformOrder, clearConnectionCredentials, deleteCode, rejectPlatformOrder } from "@/lib/admin/delivery-actions";
 import { PLATFORM_NAMES } from "@/lib/core/platform";
 import { canUseStore } from "@/lib/core/access";
 import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
@@ -13,7 +13,7 @@ import { foldTabs, type TabState } from "@/lib/core/tab";
 import { phoneHref } from "@/lib/core/delivery";
 import { initialEvents } from "@/lib/tabs/stream";
 import { moneyFormatter } from "@/lib/admin/currency";
-import { CodeForm, ConnectionForm, ConnectionToggles, PushCatalogButton, TestOrderButton } from "@/components/admin/DeliveryForms";
+import { CodeForm, ConnectionForm, ConnectionToggles, PlatformCredentialsForm, PushCatalogButton, TestOrderButton } from "@/components/admin/DeliveryForms";
 import { WebhookCredentials } from "@/components/admin/WebhookCredentials";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { PlatformOrderAction } from "@/components/admin/PlatformOrderAction";
@@ -189,6 +189,8 @@ export default async function Platformlar() {
           {c.platform === "trendyol_yemek"
             ? <p className="rounded-lg border border-line bg-surface-2 p-3 text-sm">Bu platform webhook kullanmaz: siparişler 2 dakikada bir polling ile çekilir. Anahtarlar sunucu ortamında tanımlıdır; kabul/red bu bağlantı üzerinden platforma bildirilir.</p>
             : <WebhookCredentials url={`${origin}/api/platform/${c.platform}/webhook?t=${c.webhookToken}`} secret={c.webhookSecret} />}
+          {c.platform !== "mock" && c.platform !== "trendyol_yemek" && <PlatformCredentialsForm connectionId={c.id} hasCredentials={Boolean(c.credentials)} />}
+          {c.credentials && c.platform !== "mock" && c.platform !== "trendyol_yemek" && <ConfirmActionForm action={clearConnectionCredentials.bind(null, c.id)} ariaLabel={`Kayıtlı API anahtarını sil: ${PLATFORM_NAMES[c.platform] ?? c.platform}`} label="Kayıtlı API anahtarını sil" prompt="Bu bağlantının kayıtlı API anahtarı silinecek; kabul/red ve menü gönderimi çalışmayabilir. Devam etmek istiyor musunuz?" className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-xs text-bad underline outline-none hover:bg-bad-soft focus-visible:ring-4 focus-visible:ring-bad/20" />}
           {c.platform === "mock" && <TestOrderButton connectionId={c.id} />}
           {c.platform !== "kiosk" && c.platform !== "trendyol_yemek" && <PushCatalogButton connectionId={c.id} />}
           <div>
