@@ -43,7 +43,9 @@ export async function signup(_: AuthState, form: FormData): Promise<AuthState> {
     const [t] = await tx.insert(schema.tenants).values({ name: values.businessName, vertical: values.vertical as "restoran" | "market" }).returning();
     const [u] = await tx.insert(schema.users).values({ tenantId: t.id, email: values.email, name: values.name, passwordHash: hash, role: "sahip" }).returning();
     await tx.execute(sql`select set_config('app.tenant_id', ${t.id}, true)`);
-    await tx.insert(schema.stores).values({ tenantId: t.id, name: "Merkez" });
+    const [store] = await tx.insert(schema.stores).values({ tenantId: t.id, name: "Merkez" }).returning({ id: schema.stores.id });
+    // Restoran: platform siparişleri ilk günden mutfak ekranına düşsün diye hazır "Mutfak" istasyonu (yazıcı sonra atanır).
+    if (values.vertical === "restoran") await tx.insert(schema.stations).values({ tenantId: t.id, storeId: store.id, name: "Mutfak" });
     // Sahip kasada PIN'siz müdür olarak hazır: kasa açılınca doğrudan girer, PIN isteyen sonra koyar.
     await tx.insert(schema.staff).values({ tenantId: t.id, name: values.name, role: "mudur", pinHash: "" });
     await audit(tx, t.id, `user:${u.id}`, "tenant.signup", { vertical: values.vertical });

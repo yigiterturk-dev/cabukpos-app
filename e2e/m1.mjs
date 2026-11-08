@@ -29,10 +29,11 @@ await admin.getByRole("button", { name: "Hesap oluştur" }).click();
 await admin.waitForURL(`${BASE}/yonetim**`);
 step("kayıt → yönetim");
 
-await admin.goto(`${BASE}/yonetim/urunler`);
+await admin.goto(`${BASE}/yonetim/urunler`); await admin.getByRole("button", { name: "Kategoriler" }).click();
 await admin.fill("input[name=categoryName]", "Ana yemek");
 await admin.getByRole("button", { name: "Kategori ekle" }).click();
 await admin.getByText("Ana yemek").first().waitFor();
+await admin.getByRole("button", { name: "Pencereyi kapat" }).click(); await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
 for (const [name, price, vat] of [["Döner", "180,00", "10"], ["Ayran", "25", "10"], ["Su", "10", "20"]]) {
   await admin.fill("input[name=name]", name);
   await admin.fill("input[name=price]", price);
@@ -50,7 +51,7 @@ for (let i = 0; i < 3; i++) {
 await admin.getByText("Fiyat geçersiz (ör. 25,00).").waitFor();
 step("3 ürün eklendi; geçersiz fiyat reddedildi");
 
-await admin.goto(`${BASE}/yonetim/personel`);
+await admin.goto(`${BASE}/yonetim/personel`); await admin.getByRole("button", { name: "Personel ekle" }).first().click();
 await admin.fill("input[name=name]", "Ali Kasiyer");
 await admin.fill("input[name=pin]", "1234");
 await admin.getByRole("button", { name: "Personeli kaydet" }).click();
@@ -68,7 +69,7 @@ step(`personel (kolay PIN reddedildi) + cihaz, eşleme kodu ${code}`);
 
 const kasa = await page(1280);
 await kasa.goto(`${BASE}/kasa`);
-await kasa.getByText("Kasa eşlemesini başlat").click();
+await kasa.getByText("Eşleme koduyla bağla").click();
 await kasa.waitForURL(`${BASE}/kasa/eslestir`);
 await kasa.fill("input[name=code]", "YANLIS22");
 await kasa.getByRole("button", { name: "Eşle" }).click();

@@ -749,9 +749,9 @@ export function KasaApp() {
   if (!meta.device) {
     if (status.syncing) return <Center title="Kasa açılıyor…" />;
     return (
-      <Center logo title="Bu kasayı tanımla" sub={status.online ? "İlk girişte kendi PIN’ini belirleyerek bu tarayıcıyı kasaya bağla. Başka bir cihaz için eşleme kodu da kullanabilirsin." : "İlk tanımlama için internet bağlantısı gerekir."} card>
+      <Center logo title="Bu kasayı tanımla" sub={status.online ? "Bu tarayıcıyı tek dokunuşla kasan yap. Başka bir cihaz için eşleme kodu da kullanabilirsin." : "İlk tanımlama için internet bağlantısı gerekir."} card>
         <div className="space-y-3">
-          <Link href="/kasa/kurulum" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-action px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Kendi kasamı kur ve PIN belirle</Link>
+          <Link href="/kasa/kurulum" className="press inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand-action px-4 text-[15px] font-semibold text-white shadow-rest outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">Bu cihazı kasam yap</Link>
           <Link href="/kasa/eslestir" className="flex min-h-11 items-center justify-center rounded-xl border border-line px-4 text-sm text-brand">Eşleme koduyla bağla</Link>
           <p className="text-center text-xs text-muted">Yönetim → Cihazlar → Kasa ekle</p>
         </div>

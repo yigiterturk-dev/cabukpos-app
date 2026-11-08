@@ -28,11 +28,14 @@ export async function setupRegister(tx: Tx, tenantId: string, actor: AccessActor
   const staff = await tx.select().from(schema.staff).where(eq(schema.staff.active, true));
   let existing: string | null = null;
   for (const person of staff) {
-    if (await verifyPin(pin, person.pinHash)) {
+    if (pin && await verifyPin(pin, person.pinHash)) {
       if (person.name === name && person.role === "mudur") existing = person.id;
       else return { error: "Bu PIN başka bir personelde kullanılıyor. Farklı bir PIN seçin." };
     }
   }
+  // Kayıtta PIN'siz eklenen sahip (aynı ad, müdür) yeniden kullanılır; PIN girildiyse ona atanır.
+  const ownerNoPin = existing ? null : staff.find(person => person.name === name && person.role === "mudur" && (person.pinHash === "" || !pin));
+  if (ownerNoPin) existing = ownerNoPin.id;
   if (!existing && staff.some(person => person.name === name)) return { error: "Bu adla personel zaten var. PIN’inizi Personel → Düzenle’den hesap şifrenizle değiştirin." };
   // Create the device before the staff row; a prefix failure leaves no partial user.
   let deviceId = current?.id;
@@ -45,7 +48,8 @@ export async function setupRegister(tx: Tx, tenantId: string, actor: AccessActor
     }
     if (!deviceId) return { error: "Kasa oluşturulamadı. Yeniden deneyin." };
   }
-  if (!existing) await tx.insert(schema.staff).values({ tenantId: tenantId, name, role: "mudur", pinHash: await hashPin(pin) });
+  if (!existing) await tx.insert(schema.staff).values({ tenantId: tenantId, name, role: "mudur", pinHash: pin ? await hashPin(pin) : "" });
+  else if (ownerNoPin && pin) await tx.update(schema.staff).set({ pinHash: await hashPin(pin) }).where(eq(schema.staff.id, existing));
   await audit(tx, tenantId, `user:${actor.id}`, "register.self_setup", { deviceId, reusedStaff: Boolean(existing) });
   return { ok: true };
 }

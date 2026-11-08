@@ -4,7 +4,7 @@ import {hit} from "@/lib/ratelimit";
 import {z} from "zod";
 export const dynamic="force-dynamic";
 const headers={"Cache-Control":"no-store"};
-const bodySchema=z.object({staffId:z.uuid(),pin:z.string().regex(/^\d{4,6}$/),direction:z.enum(["status","in","out"]),sessionId:z.uuid().optional(),requestId:z.uuid().optional()});
+const bodySchema=z.object({staffId:z.uuid(),pin:z.string().regex(/^(\d{4,6})?$/),direction:z.enum(["status","in","out"]),sessionId:z.uuid().optional(),requestId:z.uuid().optional()});
 export async function POST(req:Request){
  const device=await getDevice();if(!device)return Response.json({error:"Önce bu cihazı işletmeye eşleyin."},{status:401,headers});
  if(req.headers.get("origin")!==new URL(process.env.APP_URL||req.url).origin)return Response.json({error:"Kaynak doğrulanamadı."},{status:403,headers});

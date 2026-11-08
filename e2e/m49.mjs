@@ -76,7 +76,7 @@ try {
   await waitFor(() => /Yapılandırma güncellendi: 1 yazıcı/.test(agentLog), "ajan yapılandırması", 45000);
   step(`ajan eşlendi ve çalışıyor, yazıcı 127.0.0.1:${pport}`);
 
-  await admin.goto(`${BASE}/yonetim/urunler`);
+  await admin.goto(`${BASE}/yonetim/urunler`); await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
   await admin.fill("input[name=name]", "Çay");
   await admin.fill("input[name=price]", "50");
   await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
@@ -87,7 +87,7 @@ try {
   await admin.getByRole("cell", { name: /^Kahve/ }).waitFor();
   step("ürünler: Çay 50, Kahve 80");
 
-  await admin.goto(`${BASE}/yonetim/personel`);
+  await admin.goto(`${BASE}/yonetim/personel`); await admin.getByRole("button", { name: "Personel ekle" }).first().click();
   for (const [name, role, p] of [["Ali Kasiyer", null, "4613"], ["Ayşe Garson", "Garson", "5820"]]) {
     await admin.fill("input[name=name]", name);
     if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();

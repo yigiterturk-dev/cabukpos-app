@@ -41,6 +41,7 @@ try {
   // — Hammaddeler, ara ürün, seçenek, ürün —
   await admin.goto(`${BASE}/yonetim/urunler`);
   const raw = async (name, extra) => {
+    await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
     await admin.fill("input[name=name]", name);
     await admin.locator("label").filter({ hasText: "Hayır (hammadde" }).click();
     await admin.locator("label").filter({ hasText: /^Kg$/ }).click();
@@ -63,7 +64,7 @@ try {
   await admin.fill("textarea[name=options]", "Ekstra kıyma +20");
   await admin.getByRole("button", { name: "Grubu kaydet" }).click();
   await admin.getByText("isteğe bağlı, en çok 1").waitFor();
-  await admin.goto(`${BASE}/yonetim/urunler`);
+  await admin.goto(`${BASE}/yonetim/urunler`); await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
   await admin.fill("input[name=name]", "Lahmacun");
   await admin.fill("input[name=price]", "120");
   await admin.getByLabel("Ekstra").check();
@@ -127,7 +128,7 @@ try {
   await admin.getByLabel("1. bölge masa sayısı").fill("1");
   await admin.getByRole("button", { name: "Salonu kur" }).click();
   await admin.getByText("M1", { exact: true }).waitFor();
-  await admin.goto(`${BASE}/yonetim/personel`);
+  await admin.goto(`${BASE}/yonetim/personel`); await admin.getByRole("button", { name: "Personel ekle" }).first().click();
   await admin.fill("input[name=name]", "Ali Kasiyer");
   await admin.fill("input[name=pin]", "4613");
   await admin.getByRole("button", { name: "Personeli kaydet" }).click();

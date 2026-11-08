@@ -46,7 +46,7 @@ await admin.fill("input[name=password]", "Cabukpos2026x");
 await admin.getByRole("button", { name: "Hesap oluştur" }).click();
 await admin.waitForURL(`${BASE}/yonetim**`);
 
-await admin.goto(`${BASE}/yonetim/urunler`);
+await admin.goto(`${BASE}/yonetim/urunler`); await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
 await admin.fill("input[name=name]", "Süt");
 await admin.fill("input[name=price]", "35");
 await admin.locator("label").filter({ hasText: /^%1$/ }).click();
@@ -75,7 +75,7 @@ await admin.getByTestId("purchase").first().waitFor();
 expect(await stock(admin, "Süt"), "10", "alış sonrası stok");
 step("alış 10 → stok 10");
 
-await admin.goto(`${BASE}/yonetim/personel`);
+await admin.goto(`${BASE}/yonetim/personel`); await admin.getByRole("button", { name: "Personel ekle" }).first().click();
 await admin.fill("input[name=name]", "Ayşe Kasiyer");
 await admin.fill("input[name=pin]", "5820");
 await admin.getByRole("button", { name: "Personeli kaydet" }).click();

@@ -103,7 +103,7 @@ try {
   await admin.getByText("zorunlu, 1 seçim").waitFor();
   step("seçenek grubu Pişirme (zorunlu tek)");
 
-  await admin.goto(`${BASE}/yonetim/urunler`);
+  await admin.goto(`${BASE}/yonetim/urunler`); await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
   await admin.fill("input[name=name]", "Köfte");
   await admin.fill("input[name=price]", "200");
   await choose(admin, admin.getByRole("combobox").nth(1), "Izgara");
@@ -116,7 +116,7 @@ try {
   await admin.getByRole("cell", { name: /^Ayran/ }).waitFor();
   step("ürünler: Köfte (Izgara, Pişirme), Ayran (istasyonsuz)");
 
-  await admin.goto(`${BASE}/yonetim/personel`);
+  await admin.goto(`${BASE}/yonetim/personel`); await admin.getByRole("button", { name: "Personel ekle" }).first().click();
   for (const [name, role, p] of [["Ali Kasiyer", null, "4613"], ["Ayşe Garson", "Garson", "5820"], ["Mehmet Müdür", "Müdür", "7391"]]) {
     await admin.fill("input[name=name]", name);
     if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();

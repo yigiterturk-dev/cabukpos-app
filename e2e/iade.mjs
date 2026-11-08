@@ -64,7 +64,7 @@ try {
   await admin.getByRole("button", { name: "Hesap oluştur" }).click();
   await admin.waitForURL(`${BASE}/yonetim**`);
 
-  await admin.goto(`${BASE}/yonetim/urunler`);
+  await admin.goto(`${BASE}/yonetim/urunler`); await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
   for (const [name, price] of [["Adana", "300"], ["Ayran", "50"]]) {
     await admin.fill("input[name=name]", name);
     await admin.fill("input[name=price]", price);
@@ -72,7 +72,7 @@ try {
     await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
     await admin.getByRole("cell", { name, exact: true }).waitFor();
   }
-  await admin.goto(`${BASE}/yonetim/personel`);
+  await admin.goto(`${BASE}/yonetim/personel`); await admin.getByRole("button", { name: "Personel ekle" }).first().click();
   for (const [name, role, p] of [["Ayşe Kasiyer", null, "5820"], ["Mehmet Müdür", "Müdür", "7391"]]) {
     await admin.fill("input[name=name]", name);
     if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();

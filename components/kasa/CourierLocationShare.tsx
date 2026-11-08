@@ -4,7 +4,7 @@ import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui";
 
 /** Location is opt-in, foreground only, PIN-bound, and never resumed automatically. */
-export function CourierLocationShare({ staffId }: { staffId: string }) {
+export function CourierLocationShare({ staffId, needsPin = true }: { staffId: string; needsPin?: boolean }) {
   const [pin, setPin] = useState("");
   const [sharing, setSharing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -64,8 +64,8 @@ export function CourierLocationShare({ staffId }: { staffId: string }) {
   return <section aria-label="Konum paylaşımı" className="mb-5 rounded-2xl border border-line bg-surface p-4 text-sm">
     <h2 className="flex items-center gap-2 font-semibold"><MapPin aria-hidden className="size-4" />Konum paylaşımı <span className={`ml-auto rounded-full px-2 py-1 text-xs ${sharing ? "bg-ok-soft text-ok" : "bg-surface-3 text-muted"}`}>{sharing ? "Açık" : "Kapalı"}</span></h2>
     <p className="mt-2 text-xs text-muted">Son konumunuz işletmenin kasa ekranında görünür. Harita açılırsa OpenStreetMap üzerinde gösterilir. Konum geçmişi tutulmaz. Paylaşım bu ekran açıkken, en fazla 30 dakika sürer; istediğiniz an durdurabilirsiniz.</p>
-    <div className="mt-3 flex flex-wrap items-end gap-2">{!sharing && <label className="grid min-w-0 flex-1 gap-1 text-xs text-muted">Kendi kurye PIN’iniz<input type="password" inputMode="numeric" autoComplete="off" maxLength={6} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ""))} className="min-h-12 w-full rounded-xl border border-line bg-surface px-3 text-base text-ink outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" /></label>}
-      {sharing ? <Button variant="secondary" onClick={() => void stop()}>Paylaşımı durdur</Button> : <Button disabled={busy || pin.length < 4} onClick={() => void start()}>{busy ? "Doğrulanıyor…" : "Konumumu paylaş"}</Button>}</div>
+    <div className="mt-3 flex flex-wrap items-end gap-2">{!sharing && needsPin && <label className="grid min-w-0 flex-1 gap-1 text-xs text-muted">Kendi kurye PIN’iniz<input type="password" inputMode="numeric" autoComplete="off" maxLength={6} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ""))} className="min-h-12 w-full rounded-xl border border-line bg-surface px-3 text-base text-ink outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" /></label>}
+      {sharing ? <Button variant="secondary" onClick={() => void stop()}>Paylaşımı durdur</Button> : <Button disabled={busy || (needsPin && pin.length < 4)} onClick={() => void start()}>{busy ? "Doğrulanıyor…" : "Konumumu paylaş"}</Button>}</div>
     {notice && <p role="status" className="mt-3 text-xs text-muted">{notice}</p>}
   </section>;
 }

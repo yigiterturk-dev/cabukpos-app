@@ -17,7 +17,7 @@ const sql = postgres(process.env.MIGRATE_DATABASE_URL ?? process.env.DATABASE_UR
 const errors = [];
 const text = async (loc) => (await loc.innerText()).trim();
 const addProduct = async (p, name) => {
-  await p.goto(`${BASE}/yonetim/urunler`);
+  await p.goto(`${BASE}/yonetim/urunler`); await p.getByRole("button", { name: "Ürün ekle" }).first().click();
   await p.fill("input[name=name]", name);
   await p.fill("input[name=price]", "100");
   await p.locator("label").filter({ hasText: /^%10$/ }).click();

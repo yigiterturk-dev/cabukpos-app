@@ -56,13 +56,13 @@ try {
   await admin.getByRole("button", { name: "Pasifleştir" }).waitFor();
   step("bölge Merkez: ücret 15, asgari 100");
 
-  await admin.goto(`${BASE}/yonetim/urunler`);
+  await admin.goto(`${BASE}/yonetim/urunler`); await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
   await admin.fill("input[name=name]", "Lahmacun");
   await admin.fill("input[name=price]", "60");
   await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
   await admin.getByRole("cell", { name: /^Lahmacun/ }).waitFor();
 
-  await admin.goto(`${BASE}/yonetim/personel`);
+  await admin.goto(`${BASE}/yonetim/personel`); await admin.getByRole("button", { name: "Personel ekle" }).first().click();
   for (const [name, role, p] of [["Ali Kasiyer", null, "4613"], ["Kemal Kurye", "Kurye", "6284"]]) {
     await admin.fill("input[name=name]", name);
     if (role) await admin.locator("label").filter({ hasText: new RegExp(`^${role}$`) }).click();

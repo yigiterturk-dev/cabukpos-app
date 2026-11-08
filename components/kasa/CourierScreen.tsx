@@ -105,7 +105,7 @@ export function CourierScreen({ meta, courier, tabs, tabsLoaded = true, now, add
         <h1 id="courier-heading" tabIndex={-1} className="min-w-0 break-words rounded-sm font-display text-xl font-bold tracking-tight outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60">Siparişlerim <span className="tabular text-muted">({tabsLoaded ? active.length : "—"})</span></h1>
         {tabsLoaded && waiting.length > 0 && <button type="button" disabled={busy !== null} aria-busy={busy === "out" || undefined} onClick={(e) => { lastActionButtonRef.current = e.currentTarget; void out(); }} className={`ml-auto shrink-0 ${strong}`}>{busy === "out" ? "Yola çıkış kaydediliyor…" : `Yola çıktım (${waiting.length})`}</button>}
       </div>
-      {"id" in mainProps && <CourierLocationShare staffId={courier.id} />}
+      {"id" in mainProps && <CourierLocationShare staffId={courier.id} needsPin={Boolean(meta.catalog.staff.find((s) => s.id === courier.id)?.pinHash)} />}
       {!tabsLoaded && <p className="sr-only" role="status" aria-live="polite">Kurye siparişleri yükleniyor.</p>}
       {error && !deliver && <p ref={actionErrorRef} tabIndex={-1} className="mb-3 break-words rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-sm text-bad outline-none focus-visible:ring-4 focus-visible:ring-bad/30" role="alert" aria-live="assertive">{error}</p>}
       {busy && busy !== "deliver" && <p className="sr-only" role="status" aria-live="polite">Siparişlerin yola çıkışı kaydediliyor.</p>}

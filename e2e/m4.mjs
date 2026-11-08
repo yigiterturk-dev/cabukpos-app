@@ -57,7 +57,7 @@ try {
   await admin.getByRole("button", { name: "Hesap oluştur" }).click();
   await admin.waitForURL(`${BASE}/yonetim**`);
 
-  await admin.goto(`${BASE}/yonetim/urunler`);
+  await admin.goto(`${BASE}/yonetim/urunler`); await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
   await admin.fill("input[name=name]", "Ekmek");
   await admin.fill("input[name=price]", "10");
   await admin.locator("label").filter({ hasText: /^%1$/ }).click();
@@ -72,7 +72,7 @@ try {
   await admin.getByRole("button", { name: "Ürünü kaydet" }).click();
   await admin.getByRole("cell", { name: /^Domates/ }).waitFor();
 
-  await admin.goto(`${BASE}/yonetim/personel`);
+  await admin.goto(`${BASE}/yonetim/personel`); await admin.getByRole("button", { name: "Personel ekle" }).first().click();
   await admin.fill("input[name=name]", "Ayşe Kasiyer");
   await admin.fill("input[name=pin]", "5820");
   await admin.getByRole("button", { name: "Personeli kaydet" }).click();
