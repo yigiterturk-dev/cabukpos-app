@@ -32,13 +32,13 @@ export default function Kvkk() {
       <p>Pazarlama iletisi gönderilmez; gönderilecekse ayrıca açık izin istenir.</p>
 
       <h2>4. Aktarım</h2>
-      <p>Veriler yalnız Hizmet&apos;in gerektirdiği ölçüde şu hizmet sağlayıcılara aktarılır: barındırma ve veritabanı (Vercel Inc., Neon Inc.), e-posta gönderimi (Resend), ödeme (PayTR Ödeme ve Elektronik Para Kuruluşu A.Ş.), işletmenin seçtiği e-Arşiv entegratörü ve alan adı/ağ hizmetleri (Cloudflare). Barındırma ve e-posta sağlayıcılarının sunucuları yurt dışında bulunabilir; bu aktarım KVKK md. 9&apos;daki güvencelere (standart sözleşme) dayanılarak yapılır. Yetkili kamu kurumlarına kanunen zorunlu hallerde aktarım yapılabilir.</p>
+      <p>Veriler yalnız Hizmet&apos;in gerektirdiği ölçüde şu hizmet sağlayıcılara aktarılır: barındırma ve veritabanı (netcup GmbH, Almanya), e-posta gönderimi (Resend), alan adı kaydı/DNS (Cloudflare — uygulama verisi aktarılmaz), işletmenin seçtiği e-Arşiv entegratörü ve ödeme sağlayıcısı (etkinleştirildiğinde PayTR Ödeme ve Elektronik Para Kuruluşu A.Ş.). Barındırma ve e-posta sağlayıcılarının sunucuları yurt dışındadır; bu aktarım KVKK md. 9&apos;daki güvencelere (standart sözleşme) dayanılarak yapılır. Yetkili kamu kurumlarına kanunen zorunlu hallerde aktarım yapılabilir.</p>
 
       <h2>5. Toplama yöntemi</h2>
       <p>Veriler kayıt, yönetim paneli ve kasa ekranlarındaki formlar, ödeme sağlayıcısının bildirimi ve sistem günlükleri aracılığıyla elektronik ortamda otomatik yollarla toplanır.</p>
 
       <h2>6. Saklama süresi</h2>
-      <p>Hesap verileri hesap açık kaldıkça saklanır; hesap kapanınca 30 gün içinde silinir ya da anonimleştirilir. Fatura ve mali kayıtlar vergi mevzuatındaki süreler (genellikle 5–10 yıl) boyunca, güvenlik günlükleri en fazla 2 yıl saklanır.</p>
+      <p>Hesap verileri hesap açık kaldıkça saklanır. Hesabınızı <b>Yönetim → Veri yönetimi</b> sayfasından sildiğinizde kiracı verileri kalıcı olarak silinir; yedek kopyaları en geç 30 gün içinde döngüden çıkar. Silme talebini ürün içinden yapamıyorsanız İletişim sayfasındaki adrese yazabilirsiniz. Fatura ve mali kayıtlar vergi mevzuatındaki süreler (genellikle 5–10 yıl) boyunca, güvenlik günlükleri en fazla 2 yıl saklanır.</p>
 
       <h2>7. Çerezler ve tarayıcı depolama</h2>
       <p>Yalnız zorunlu çerezler kullanılır: yönetim oturumu (<code>cz_session</code>) ve kasa cihaz eşlemesi (<code>cz_device</code>). Kasanın internetsiz çalışabilmesi için satışlar ve katalog tarayıcının yerel depolamasında (IndexedDB) tutulur. Reklam veya analiz çerezi kullanılmaz.</p>

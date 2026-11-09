@@ -10,24 +10,24 @@
 | ÇabukPOS (satıcı) | Veri sorumlusu | Kendi müşteri adayları, hesap sahipleri, pazarlama listesi, site/uygulama günlükleri |
 | İşletme (müşteri) | Veri sorumlusu | Kendi son müşterileri, personeli, satış/fatura verileri |
 | ÇabukPOS | Veri işleyen | İşletmenin POS verisini yalnız hizmet için işler |
-| Alt işleyenler | Veri işleyen | Vercel, Neon, Resend, PayTR, alan adı/ağ sağlayıcısı |
+| Alt işleyenler | Veri işleyen | netcup GmbH (barındırma/DB, Almanya), Cloudflare, Resend, Meta WhatsApp, PayTR (pasif) |
 
 ## 2. Veri envanteri (avukata verilecek tablo)
 
 | Veri | Kimin | Amaç | Nerede | Saklama |
 |---|---|---|---|---|
-| Ad, e-posta, şifre özeti | Hesap sahibi | Kayıt, giriş, güvenlik | Neon (users) | Hesap açık + 30 gün |
-| Telefon | Hesap sahibi (kartlı ödeme) | Ödeme doğrulama, destek | Neon / PayTR | Hesap + 30 gün |
-| İşletme adı, VKN, vergi dairesi, adres | Hesap sahibi | Fatura, e-Arşiv | Neon | 10 yıl (mali) |
-| Abonelik/ödeme kayıtları | Hesap sahibi | Tahsilat, mutabakat, iade | Neon + PayTR | 10 yıl (mali) |
-| Oturum/IP/user-agent | Hesap sahibi | Güvenlik, oturum iptali | Neon (sessions) | 2 yıl |
-| Denetim kayıtları (audit_log) | İşletme | İzlenebilirlik, iade/onay kanıtı | Neon | 2 yıl önerilir |
-| Personel adı + PIN özeti | İşletme | Kasa girişi, yetki | Neon | İşletme silene kadar |
-| Son müşteri ad/telefon/adres/not | İşletme | Sipariş, teslimat, sadakat | Neon | İşletme silene kadar |
-| Satış, ürün, stok, fiş | İşletme | POS işleyişi, rapor | Neon + cihaz IndexedDB | 10 yıl (mali) |
-| Pazarlama izni + tarih/kaynak | Son müşteri | Pazarlama SMS/WhatsApp | Neon | İzin geri alınınca sil |
-| Pazarlama kampanya hedefleri | Son müşteri | Kampanya gönderimi | Neon (growth_recipient_refs) | Kampanya + 30 gün |
-| Hata/telemetri | Hesap sahibi | Hata ayıklama | Vercel/Neon (opsiyonel OTLP) | 30–90 gün |
+| Ad, e-posta, şifre özeti | Hesap sahibi | Kayıt, giriş, güvenlik | netcup (users) | Hesap açık + 30 gün |
+| Telefon | Hesap sahibi (kartlı ödeme) | Ödeme doğrulama, destek | netcup / PayTR | Hesap + 30 gün |
+| İşletme adı, VKN, vergi dairesi, adres | Hesap sahibi | Fatura, e-Arşiv | netcup | 10 yıl (mali) |
+| Abonelik/ödeme kayıtları | Hesap sahibi | Tahsilat, mutabakat, iade | netcup + PayTR | 10 yıl (mali) |
+| Oturum/IP/user-agent | Hesap sahibi | Güvenlik, oturum iptali | netcup (sessions) | 2 yıl |
+| Denetim kayıtları (audit_log) | İşletme | İzlenebilirlik, iade/onay kanıtı | netcup | 2 yıl önerilir |
+| Personel adı + PIN özeti | İşletme | Kasa girişi, yetki | netcup | İşletme silene kadar |
+| Son müşteri ad/telefon/adres/not | İşletme | Sipariş, teslimat, sadakat | netcup | İşletme silene kadar |
+| Satış, ürün, stok, fiş | İşletme | POS işleyişi, rapor | netcup + cihaz IndexedDB | 10 yıl (mali) |
+| Pazarlama izni + tarih/kaynak | Son müşteri | Pazarlama SMS/WhatsApp | netcup | İzin geri alınınca sil |
+| Pazarlama kampanya hedefleri | Son müşteri | Kampanya gönderimi | netcup (growth_recipient_refs) | Kampanya + 30 gün |
+| Hata/telemetri | Hesap sahibi | Hata ayıklama | netcup (opsiyonel OTLP) | 30–90 gün |
 | Yedekler | Hepsi | Felaket kurtarma | Şifreli yedek deposu | 30 gün |
 | Çerez: cz_session, cz_device | Hesap sahibi | Oturum, cihaz eşleme | Tarayıcı | Oturum/cihaz ömrü |
 
@@ -37,8 +37,9 @@
 
 | Sağlayıcı | Hizmet | Konum | Not |
 |---|---|---|---|
-| Vercel Inc. | Barındırma/CDN | ABD/AB | Yurt dışı aktarım |
-| Neon Inc. | PostgreSQL | ABD/AB | Yedekler şifreli |
+| netcup GmbH | VPS + PostgreSQL | Almanya | Yurt dışı aktarım; yedekler şifreli |
+| Cloudflare, Inc. | DNS/ağ | ABD | Yurt dışı aktarım |
+| Meta Platforms | WhatsApp hatırlatma | ABD | Yurt dışı aktarım |
 | Resend | İşlem e-postası | ABD | Yalnız gerekli alıcı |
 | PayTR | Ödeme | Türkiye | Kart verisi bize gelmez |
 | Cloudflare / registrar | DNS, e-posta kayıtları | ABD/AB | Trafik meta verisi |
@@ -50,7 +51,7 @@ Avukata sor: yurt dışı aktarım için **standart sözleşme** mi, taahhütnam
 
 1. Mevcut `/yasal/kvkk` metni aydınlatma + gizlilik için yeterli mi; veri sorumlusu/veri işleyen ayrımı doğru mu?
 2. **VERBİS** kaydı bu ölçekte gerekli mi (çalışan sayısı, mali bilanço, özel nitelikli veri)?
-3. Yurt dışı aktarım (Vercel/Neon/Resend) için hangi araç seçilmeli; metne nasıl yazılmalı?
+3. Yurt dışı aktarım (netcup/Cloudflare/Resend/Meta) için hangi araç seçilmeli; metne nasıl yazılmalı?
 4. Müşteriyle imzalanacak **DPA** ve son müşteri **aydınlatma metni** taslağı.
 5. Pazarlama SMS/WhatsApp için **açık rıza** ayrımı; hizmet SMS'i (fiş, sipariş durumu) rıza gerektirir mi?
 6. İhlal bildirimi (72 saat), veri sahibi başvurusu ve silme süreçleri.

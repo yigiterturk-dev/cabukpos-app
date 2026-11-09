@@ -55,7 +55,8 @@ Bu komut yalnızca okur; `billing_invoices`, `billing_invoice_counters`,
   yalnız elle çalıştırma içindir ve aynı endpoint'leri çağırır.
 - Çağrılan endpoint'ler: `/api/cron/agent-heartbeat`, `/api/cron/uptime`,
   `/api/cron/platform`, `/api/cron/fiscal`, `/api/cron/billing`, `/api/cron/report`,
-  `/api/cron/courier`, `/api/cron/courier-status` ve `/api/cron/trendyol-yemek`.
+  `/api/cron/courier`, `/api/cron/courier-status`, `/api/cron/trendyol-yemek` ve
+  `/api/cron/temizlik` (günde 1 kez — KVKK saklama süresi temizliği).
   Kurye tekrarı saatlik, kurye durumu 5 dakikada bir, Trendyol Yemek polling
   2 dakikada bir çalışır.
 - Yeni endpoint'ler uygulama canlıya alındıktan sonra tetik listesine eklenir;

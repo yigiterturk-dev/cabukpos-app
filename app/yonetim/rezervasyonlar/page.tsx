@@ -42,7 +42,7 @@ export default async function Rezervasyonlar({ searchParams }: { searchParams: P
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <form action="/yonetim/rezervasyonlar" method="get" className="flex flex-wrap items-end gap-2">
           <label htmlFor="reservation-day" className="text-sm font-medium text-ink-2">Tarih
-            <input id="reservation-day" name="gun" type="date" value={gun} className="mt-1 block min-h-11 rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
+            <input id="reservation-day" name="gun" type="date" defaultValue={gun} className="mt-1 block min-h-11 rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-brand focus:ring-4 focus:ring-brand-ring/50" />
           </label>
           <button type="submit" className={buttonClass("secondary")}>Günü aç</button>
         </form>
