@@ -27,7 +27,7 @@ export default async function Sadakat({ searchParams }: { searchParams: Promise<
   const S = schema.loyaltySettings, E = schema.loyaltyEvents, C = schema.customers;
   const { settings, rows, events, total } = await withTenant(a.tenantId, async (tx) => {
     const [settings] = await tx.select().from(S).where(eq(S.tenantId, a.tenantId)).limit(1);
-    const balance = sql<number>`coalesce(sum(${E.points}), 0)::int`;
+    const balance = sql<number>`coalesce(sum(${E.points}), 0)::int`.as("points");
     const customersWithPoints = tx
       .select({ customerId: C.id, name: C.name, phone: C.phone, points: balance })
       .from(C)
