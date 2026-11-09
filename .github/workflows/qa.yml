@@ -23,6 +23,8 @@ jobs:
     env:
       BASE_URL: ${{ github.event.deployment_status.target_url || vars.QA_BASE_URL }}
       QA_EMAIL: ${{ secrets.QA_EMAIL }}
+      QA_DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+      SIGNUP_EMAIL: qa-${{ github.run_id }}-${{ github.run_attempt }}@example.test
     steps:
       - uses: actions/checkout@v4
 
@@ -70,6 +72,15 @@ jobs:
             --email "$SIGNUP_EMAIL" --password "$QA_PASSWORD" \
             --out /tmp/qa-auth.json --wait-contains /yonetim
 
+      - name: RLS isolation
+        if: env.QA_DATABASE_URL != ''
+        run: |
+          EMAIL="${QA_EMAIL:-$SIGNUP_EMAIL}"
+          A=$(psql "$QA_DATABASE_URL" -Atc "select tenant_id from users where email='$EMAIL' limit 1")
+          B=$(psql "$QA_DATABASE_URL" -Atc "select id from tenants where id <> '$A' limit 1")
+          if [ -z "$A" ] || [ -z "$B" ]; then echo "::warning::RLS icin A/B bulunamadi; atlandi"; exit 0; fi
+          psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -v tenant_a="$A" -v tenant_b="$B" -f .github/qa/rls.sql
+
       - name: QA gate
         env:
           STORAGE_STATE: /tmp/qa-auth.json
@@ -77,7 +88,13 @@ jobs:
           suleymancoder "$BASE_URL" --routes .github/qa/routes.txt \
             --storage-state /tmp/qa-auth.json \
             --baseline .qa/baseline.json --baseline-out .qa/baseline.json \
-            --fail-on-new --steps 12 --minutes 1 --quiet
+            --fail-on-new --steps 12 --minutes 1 --workers 3 --quiet
+
+      - name: Annotate new bugs
+        if: always()
+        run: |
+          AGG=$(ls -t suleymancoder-runs/*/aggregate.json 2>/dev/null | head -1)
+          if [ -n "$AGG" ]; then python -m suleymancoder.annotate "$AGG" || true; fi
 
       - name: Cleanup after
         if: always()
