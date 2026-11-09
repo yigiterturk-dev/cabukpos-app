@@ -549,7 +549,9 @@ export function KasaApp() {
   }, [agentCfg]);
 
   const [courierJobs, setCourierJobs] = useState<Record<string, CourierJobView>>({});
+  const deviceId = meta?.device?.id;
   useEffect(() => {
+    if (!deviceId) return;
     let alive = true;
     const load = async () => {
       try {
@@ -564,7 +566,7 @@ export function KasaApp() {
     void load();
     const t = setInterval(load, 30_000);
     return () => { alive = false; clearInterval(t); };
-  }, []);
+  }, [deviceId]);
 
   const trackPrint = useCallback(async (saleId: string, job: Promise<PrintResult> | null) => {
     if (!job) return;
@@ -586,11 +588,16 @@ export function KasaApp() {
     sync.current = s;
     void s.kick().catch(() => setStartupError(true));
     const offSyncNow = onSyncNow(() => s.kick());
-    // Bulut→istemci itme (#27): sunucu değişim belirteci değişince hemen eşitle; EventSource kendi yeniden bağlanır.
-    const es = new EventSource("/api/sync/stream");
-    es.onmessage = () => s.kick();
-    return () => { es.close(); offSyncNow(); s.stop(); };
+    return () => { offSyncNow(); s.stop(); };
   }, []);
+
+  // Bulut→istemci itme (#27): yalnız eşlenmiş cihazda SSE aç; aksi halde 401 gürültüsü olur.
+  useEffect(() => {
+    if (!deviceId) return;
+    const es = new EventSource("/api/sync/stream");
+    es.onmessage = () => sync.current?.kick();
+    return () => es.close();
+  }, [deviceId]);
 
   // Kasiyer yönetimden pasife alındıysa (katalogdan düştüyse) oturum geçersiz.
   const cashier = signedIn && meta?.catalog.staff.some((s) => s.id === signedIn.id) ? signedIn : null;

@@ -62,7 +62,12 @@ export function createSync(listener: Listener) {
 
   async function once() {
     const meta = await loadMeta();
-    if (meta.device) await push(meta.device.id);
+    if (!meta.device) {
+      status = { ...status, unpaired: true };
+      await emit(meta);
+      return;
+    }
+    await push(meta.device.id);
     const server = await getJson(`/api/sync/catalog?v=${encodeURIComponent(meta.v ?? "")}`);
     if (meta.device && meta.device.id !== server.device.id) {
       await resetForDevice("Bu tarayıcı başka bir cihaz olarak eşlendi.");
