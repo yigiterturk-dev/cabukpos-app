@@ -1,0 +1,114 @@
+name: qa
+
+# Suleyman Coder — yeni hata varsa kirilir.
+# Gerekli secret/vars:
+#   secrets.SULEYMANCODER_REPO  : git+https://... (tool reponuz)
+#   secrets.QA_PASSWORD         : QA hesap sifresi (>=10 karakter, harf+rakam)
+#   secrets.QA_DATABASE_URL     : QA/staging Postgres (temizlik icin; opsiyonel)
+#   vars.QA_BASE_URL            : deployment_status yoksa hedef URL
+# .qa/baseline.json commit edilmeli; yoksa ilk kosu onu olusturur (artifact'e duser).
+
+on:
+  deployment_status:
+  workflow_dispatch:
+
+concurrency:
+  group: qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suleymancoder:
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ github.event.deployment_status.target_url || vars.QA_BASE_URL }}
+      QA_EMAIL: ${{ secrets.QA_EMAIL }}
+      QA_DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+      SIGNUP_EMAIL: qa-${{ github.run_id }}-${{ github.run_attempt }}@example.test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check BASE_URL
+        run: test -n "$BASE_URL" || { echo "::error::BASE_URL yok (vars.QA_BASE_URL)"; exit 1; }
+
+      - name: Install Suleyman Coder
+        env:
+          SULEYMANCODER_REPO: ${{ secrets.SULEYMANCODER_REPO }}
+        run: |
+          test -n "$SULEYMANCODER_REPO" || { echo "::error::SULEYMANCODER_REPO secret tanimli degil"; exit 1; }
+          python -m pip install "git+$SULEYMANCODER_REPO"
+          python -m playwright install --with-deps chromium
+
+      - name: Cleanup before
+        env:
+          QA_DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+        run: |
+          if [ -z "$QA_DATABASE_URL" ]; then echo "QA_DATABASE_URL yok; temizlik atlandi"; exit 0; fi
+          psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -f .github/qa/cleanup.sql
+
+      - name: Login QA account
+        if: env.QA_EMAIL != ''
+        env:
+          QA_PASSWORD: ${{ secrets.QA_PASSWORD }}
+        run: |
+          test -n "$QA_PASSWORD" || { echo "::error::QA_PASSWORD secret yok"; exit 1; }
+          python -m suleymancoder.login --base "$BASE_URL" \
+            --email "$QA_EMAIL" --password "$QA_PASSWORD" \
+            --out /tmp/qa-auth.json --wait-contains /yonetim
+
+      - name: Signup QA account
+        if: env.QA_EMAIL == ''
+        env:
+          QA_PASSWORD: ${{ secrets.QA_PASSWORD }}
+          SIGNUP_EMAIL: qa-${{ github.run_id }}-${{ github.run_attempt }}@example.test
+        run: |
+          test -n "$QA_PASSWORD" || { echo "::error::QA_PASSWORD secret yok"; exit 1; }
+          python -m suleymancoder.signup --base "$BASE_URL" \
+            --business "QA CI" --sector-label "Restoran" --name "QA CI" \
+            --email "$SIGNUP_EMAIL" --password "$QA_PASSWORD" \
+            --out /tmp/qa-auth.json --wait-contains /yonetim
+
+      - name: RLS isolation
+        if: env.QA_DATABASE_URL != ''
+        run: |
+          EMAIL="${QA_EMAIL:-$SIGNUP_EMAIL}"
+          A=$(psql "$QA_DATABASE_URL" -Atc "select tenant_id from users where email='$EMAIL' limit 1")
+          B=$(psql "$QA_DATABASE_URL" -Atc "select id from tenants where id <> '$A' limit 1")
+          if [ -z "$A" ] || [ -z "$B" ]; then echo "::warning::RLS icin A/B bulunamadi; atlandi"; exit 0; fi
+          psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -v tenant_a="$A" -v tenant_b="$B" -f .github/qa/rls.sql
+
+      - name: QA gate
+        env:
+          STORAGE_STATE: /tmp/qa-auth.json
+        run: |
+          suleymancoder "$BASE_URL" --routes .github/qa/routes.txt \
+            --storage-state /tmp/qa-auth.json \
+            --baseline .qa/baseline.json --baseline-out .qa/baseline.json \
+            --fail-on-new --steps 12 --minutes 1 --workers 3 --quiet
+
+      - name: Annotate new bugs
+        if: always()
+        run: |
+          AGG=$(ls -t suleymancoder-runs/*/aggregate.json 2>/dev/null | head -1)
+          if [ -n "$AGG" ]; then python -m suleymancoder.annotate "$AGG" || true; fi
+
+      - name: Cleanup after
+        if: always()
+        env:
+          QA_DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+        run: |
+          if [ -z "$QA_DATABASE_URL" ]; then exit 0; fi
+          psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -f .github/qa/cleanup.sql
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-report-${{ github.run_id }}
+          path: |
+            suleymancoder-runs/
+            .qa/baseline.json
+          if-no-files-found: ignore

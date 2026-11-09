@@ -49,3 +49,6 @@ public/indir/*
 !public/indir/cabukpos-agent-install.ps1
 !public/indir/cabukpos-urun-sablonu.csv
 e2e/_probe.mjs
+
+qa-runs/
+suleymancoder-runs/
