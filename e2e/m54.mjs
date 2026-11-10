@@ -52,10 +52,13 @@ try {
   await noOverflow(admin, "Ürünler (mobil)");
   step("mobil çekmece navigasyonu + kapanma");
 
-  // 3) Ürün ekle
+  // 3) Ürün ekle (kategori + ürün dialogları)
+  await admin.getByRole("button", { name: "Kategoriler" }).click();
   await admin.fill("input[name=categoryName]", "Mobil kategori");
   await admin.getByRole("button", { name: "Kategori ekle" }).click();
   await admin.getByText("Mobil kategori").first().waitFor();
+  await admin.getByRole("button", { name: "Pencereyi kapat" }).click();
+  await admin.getByRole("button", { name: "Ürün ekle" }).first().click();
   await admin.fill("input[name=name]", "Mobil Tost");
   await admin.fill("input[name=price]", "45");
   await admin.locator("label").filter({ hasText: /^%10$/ }).click();
