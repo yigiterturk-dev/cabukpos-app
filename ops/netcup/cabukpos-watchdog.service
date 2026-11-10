@@ -1,0 +1,7 @@
+[Unit]
+Description=ÇabukPOS yedek tazeliği denetimi
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/cabukpos-ops/watchdog.py

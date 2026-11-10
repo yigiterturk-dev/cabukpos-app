@@ -44,8 +44,28 @@ const page = async (viewport = { width: 1280, height: 900 }) => {
   return p;
 };
 const pin = async (p, digits) => {
-  for (const d of digits) await p.getByRole("button", { name: d, exact: true }).click();
-  await p.getByRole("button", { name: "Gir" }).click();
+  // PIN opsiyonel: PIN tuslari yoksa "Kim giriyor?/Onaylayan" listesindeki ilk kisiye dokun.
+  // Katalog eslemeden hemen sonra gelebilir; kisa sure bekle, gerekirse bir kez yenile.
+  let reloaded = false;
+  for (let i = 0; i < 40; i++) {
+    if (await p.getByRole("button", { name: digits[0], exact: true }).count()) {
+      for (const d of digits) await p.getByRole("button", { name: d, exact: true }).click();
+      await p.getByRole("button", { name: "Gir" }).click();
+      return;
+    }
+    const label = p.getByText(/Kim giriyor\?|Onaylayan/);
+    if (await label.count()) {
+      const person = label.locator("xpath=..").getByRole("button").first();
+      if (await person.count()) { await person.click(); return; }
+    }
+    if (!reloaded && (await p.getByText(/İlk kasa PIN/).count())) {
+      reloaded = true;
+      await p.reload({ waitUntil: "networkidle" }).catch(() => {});
+    }
+    await p.waitForTimeout(500);
+  }
+  const body = (await p.locator("body").innerText()).slice(0, 300).replace(/\n/g, " | ");
+  throw new Error("PIN/personel ekrani gelmedi: " + body);
 };
 const choose = async (p, combo, option) => { await combo.click(); await p.getByRole("option", { name: option }).click(); };
 
@@ -84,7 +104,7 @@ try {
   agentProc = spawn(process.execPath, [AGENT, "run", "--dir", dir], { env: { ...process.env, CABUKPOS_HEARTBEAT_MS: "1500" }, stdio: ["ignore", "pipe", "pipe"] });
   agentProc.stdout.on("data", (d) => (agentLog += d));
   agentProc.stderr.on("data", (d) => (agentLog += d));
-  await waitFor(() => /Yapılandırma güncellendi: 1 yazıcı/.test(agentLog), "ajan yapılandırması");
+  await waitFor(() => /Yapılandırma güncellendi: 1 yazıcı/.test(agentLog), "ajan yapılandırması", 30000);
   step(`ajan eşlendi ve çalışıyor, yazıcı 127.0.0.1:${pport}`);
 
   await admin.goto(`${BASE}/yonetim/istasyonlar`);

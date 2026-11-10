@@ -94,7 +94,7 @@ export default async function Fatura({ params }: { params: Promise<{ token: stri
           </footer>
         </article>
       )}
-      <div className="mt-6 flex flex-wrap justify-center gap-3 print:hidden"><PrintButton label="Yazdır" />{process.env.FISCAL_PROVIDER_OVERRIDE === "nes-sandbox" && ready && d.ettn && <a href={`/f/${token}/pdf`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-[10px] border border-line px-4 font-medium">NES PDF (sandbox)</a>}</div>
+      <div className="mt-6 flex flex-wrap justify-center gap-3 print:hidden"><PrintButton label="Yazdır" />{(d.provider === "nes" || process.env.FISCAL_PROVIDER_OVERRIDE === "nes-sandbox") && ready && d.ettn && <a href={`/f/${token}/pdf`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-[10px] border border-line px-4 font-medium">{d.provider === "nes" ? "NES PDF" : "NES PDF (sandbox)"}</a>}</div>
     </main>
   );
 }

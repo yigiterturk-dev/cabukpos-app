@@ -48,8 +48,9 @@ test("RLS: başka kiracının mali belgesi görünmez; token fonksiyonu bağlams
   assert.equal((await getDb().select().from(schema.fiscalDocuments)).length, 0);
   await assert.rejects(withTenant(b.t.id, (tx) => tx.insert(schema.fiscalDocuments).values({ tenantId: a.t.id, saleId: saleA, buyer: NIHAI_TUKETICI, token: newFiscalToken() })));
 
-  const [row] = await getDb().execute(sql`select fiscal_doc_by_token(${token}) as d`) as unknown as { d: { status: string; seller: { taxId: string }; store: { address: string }; lines: unknown[]; sale: { total: number } } }[];
+  const [row] = await getDb().execute(sql`select fiscal_doc_by_token(${token}) as d`) as unknown as { d: { status: string; tenantId: string; seller: { taxId: string }; store: { address: string }; lines: unknown[]; sale: { total: number } } }[];
   assert.equal(row.d.status, "pending");
+  assert.equal(row.d.tenantId, a.t.id);
   assert.equal(row.d.seller.taxId, "1234567890");
   assert.equal(row.d.store.address, "Moda Cd.");
   assert.equal(row.d.lines.length, 1);

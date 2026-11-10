@@ -63,6 +63,8 @@ if (production) {
   }
   required("LEGAL_NAME", "Yasal unvan");
   required("LEGAL_ADDRESS", "Yasal adres");
+  required("LEGAL_TAX_ID", "Yasal vergi no");
+  required("LEGAL_TAX_OFFICE", "Vergi dairesi");
   requiredEmail("LEGAL_EMAIL", "Yasal e-posta");
   required("LEGAL_PHONE", "Yasal telefon");
   requiredPrice("PLAN_PRICE_AYLIK", "Aylık plan fiyatı");
@@ -96,6 +98,58 @@ if (advisorUrl || advisorToken) {
     }
   }
   checks.push({ ok, label: "Growth/Laya danışmanı", detail: ok ? "URL + token tanımlı" : "URL/token birlikte ve production'da HTTPS olmalı" });
+}
+
+// Entegrasyon hazırlığı: yalnız açıkça etkinleştirilmiş sağlayıcılar için zorunlu.
+const platforms = [
+  { flag: "GETIR_ENABLED", label: "Getir", base: "GETIR_API_BASE", keys: ["GETIR_API_KEY"] },
+  { flag: "YEMEKSEPETI_ENABLED", label: "Yemeksepeti", base: "YEMEKSEPETI_API_BASE", keys: ["YEMEKSEPETI_API_KEY"] },
+  { flag: "TRENDYOL_ENABLED", label: "Trendyol Go", base: "TRENDYOL_API_BASE", keys: ["TRENDYOL_API_KEY"] },
+  { flag: "MIGROS_ENABLED", label: "Migros Yemek", base: "MIGROS_API_BASE", keys: ["MIGROS_API_KEY"] },
+  { flag: "TIKLAGELSIN_ENABLED", label: "Tıkla Gelsin", base: "TIKLAGELSIN_API_BASE", keys: ["TIKLAGELSIN_API_KEY"] },
+];
+for (const p of platforms) {
+  if (process.env[p.flag] !== "1") continue;
+  requiredUrl(p.base, `${p.label} API adresi`, production);
+  for (const k of p.keys) required(k, `${p.label}: ${k}`);
+}
+
+if (process.env.TRENDYOL_YEMEK_ENABLED === "1") {
+  if (process.env.TRENDYOL_YEMEK_API_BASE?.trim()) requiredUrl("TRENDYOL_YEMEK_API_BASE", "Trendyol Yemek API adresi", production);
+  for (const k of ["TRENDYOL_YEMEK_SUPPLIER_ID", "TRENDYOL_YEMEK_STORE_ID", "TRENDYOL_YEMEK_API_KEY", "TRENDYOL_YEMEK_API_SECRET", "TRENDYOL_YEMEK_AGENT", "TRENDYOL_YEMEK_EXECUTOR", "TRENDYOL_YEMEK_TENANT_ID"]) {
+    required(k, `Trendyol Yemek: ${k}`);
+  }
+}
+
+if (process.env.MARKETING_SMS_ENABLED === "1") {
+  const smsProvider = (process.env.MARKETING_SMS_PROVIDER || "http").trim().toLowerCase();
+  if (smsProvider === "netgsm") {
+    required("NETGSM_USERNAME", "Netgsm kullanıcı adı");
+    required("NETGSM_PASSWORD", "Netgsm parolası");
+    required("NETGSM_HEADER", "Netgsm SMS başlığı");
+    if (process.env.NETGSM_API_BASE?.trim()) requiredUrl("NETGSM_API_BASE", "Netgsm API adresi", production);
+  } else if (smsProvider === "iletimerkezi") {
+    required("ILETIMERKEZI_USERNAME", "İletimerkezi kullanıcı adı");
+    required("ILETIMERKEZI_PASSWORD", "İletimerkezi parolası");
+    required("ILETIMERKEZI_SENDER", "İletimerkezi gönderen");
+    if (process.env.ILETIMERKEZI_API_BASE?.trim()) requiredUrl("ILETIMERKEZI_API_BASE", "İletimerkezi API adresi", production);
+  } else if (smsProvider === "http" || smsProvider === "generic") {
+    requiredUrl("MARKETING_SMS_API_BASE", "Pazarlama SMS API adresi", production);
+    required("MARKETING_SMS_API_KEY", "Pazarlama SMS API anahtarı");
+    required("MARKETING_SMS_FROM", "Pazarlama SMS gönderen");
+  } else {
+    checks.push({ ok: false, label: "Pazarlama SMS sağlayıcısı", detail: `desteklenmeyen değer: ${smsProvider}` });
+  }
+}
+
+if (process.env.YNR_API_BASE?.trim()) {
+  requiredUrl("YNR_API_BASE", "Dış kurye API adresi", production);
+  required("YNR_TOKEN", "Dış kurye token");
+}
+
+if (production) {
+  const fiscalOverride = process.env.FISCAL_PROVIDER_OVERRIDE?.trim();
+  checks.push({ ok: !fiscalOverride, label: "Mali sağlayıcı kaçış kapısı", detail: fiscalOverride ? "FISCAL_PROVIDER_OVERRIDE production'da kullanılamaz" : "kapalı" });
 }
 
 if (process.env.LAUNCH_RUNTIME_CHECK === "1") {

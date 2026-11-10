@@ -1,32 +1,34 @@
-# ÇabukPOS açık raporu — 61 madde iş kuyruğu (2026-10-16 güncellendi)
+# ÇabukPOS açık raporu — 61 madde iş kuyruğu (2026-11-08 güncellendi)
 
 En iyi POS (Adisyo/Menulux/Square sınıfı) ile kıyas sonucu. **Kural:** yukarıdan aşağı,
 kendi alanına düşen ilk açık `[ ]`'i al → yap → commit → `[x]` + sha yaz → sıradakine geç.
 Sahip sütunu öneridir; çakışmayı panodaki sahiplik tablosu çözer. Durum: `[x]` bitti, `[~]` başlandı.
 
-**2026-10-16 durumu:** Kod tarafında açık madde kalmadı. `[~]` işaretli maddelerin
-kalanı **insan/iş tarafıdır** (gerçek entegratör hesabı, cihaz, canlı anahtar,
-mali müşavir/hukuk onayı). Açık entegrasyon maddeleri #17, #28 ve #32 sağlayıcı
-hesabı/anahtarı gerektiriyor; #31 için ERP/e-ticaret hedef ürünü ve satıcı hesabı
-seçilmeden sürücü yazılamaz. Açılış kanıt kapıları
-`docs/LAUNCH-CHECKLIST.md` ve `docs/PILOT-REHEARSAL.md` içindedir.
+**2026-11-08 durumu:** Kod tarafında açık madde kalmadı. 8 Kasım turunda #17
+(NES sandbox + canlı BYOK + PDF), #28 (pazaryeri BYOK kimlik + sözleşme testleri),
+#32 (Netgsm/İletimerkezi sürücüleri) kod tarafı kapatıldı; ayrıca YanındaPOS dış
+ödeme API'si, dış ödeme raporu/CSV, yedek tazeliği bekçisi ve alarm/ikinci kopya
+altyapısı eklendi. `[~]` maddelerin kalanı **insan/iş tarafıdır** (gerçek
+entegratör hesabı, cihaz, canlı anahtar, mali müşavir/hukuk onayı). #31 için
+ERP/e-ticaret hedef ürünü ve satıcı hesabı seçilmeden sürücü yazılamaz. Açılış
+kanıt kapıları `docs/LAUNCH-CHECKLIST.md` ve `docs/PILOT-REHEARSAL.md` içindedir.
 
 ## P0 — Satışa çıkış için zorunlu
 
 - [~] 18 | Mali | ÖKC/ETMOS mali cihaz entegrasyonu; fişler yasal mali belge değil — ✅ ajan payı: sürücü katmanı `lib/fiscal/okc.ts` (`OkcProvider` arayüzü + `fake-okc` sandbox: fiş no `seri-Z-sıra`, Z no günden durumsuz, hata simülasyonu, iptal), saf `lib/core/okc.ts` (testli), şema `fiscalSettings.okcProvider/okcSerial/okcCounter/okcFakeFail` + `sales.okc` (db:push uygulandı); push sonrası `okcReceiptFor` künyeler (satışı engellemez, numara yalnız kesimde yanar), sayaç hatada geri sarılır; fiş render'ı "MALİ FİŞ" bloğu + TEST notu (okc varken "bilgi fişidir" uyarısı basılmaz); Mali > Ayarlar'da ÖKC kartı (aç/kapa, sağlayıcı, seri no, sandbox hata simülasyonu, kayıtta canlı ping); audit `fiscal.okc` (`63451f1`) | ⏳ kalan (insan): gerçek cihaz/entegratör sözleşmesi (Mali müşavir) → `getOkc`'e gerçek sürücü, iade fişi politikası, kasa yeniden basımda künye çekme | Mali müşavir + ajan
-- [ ] 17 | Mali | Gerçek e-Arşiv entegratörü (Foriba/Uyumsoft/Paraşüt) sandbox+canlı | İnsan hesabı + ajan
-- [~] 11 | Faturalama | PayTR otomatik yenileme / kayıtlı kart — ✅ kod tamam: `tenants.cardToken` (AES-256-GCM, `lib/billing/card-vault.ts`) + `cardMark`, PayTR bildiriminden `card_token`, `renewDue` cron (`lib/billing/renewal.ts`), `Abonelikte kart yönetimi`; ⏳ kalan (insan): canlı PayTR anahtarları + kart saklama sözleşmesi | Lead
+- [~] 17 | Mali | Gerçek e-Arşiv entegratörü (Foriba/Uyumsoft/Paraşüt) sandbox+canlı — ✅ ajan payı: NES UBL-TR sürücüsü, kiracı başına AES-256-GCM şifreli `nesApiKey/nesApiUrl/nesSenderAlias` (BYOK), Mali UI, canlı/sandbox ayrımı, canlı PDF rotası, `2026-11-08-nes-byok.sql`. ⏳ kalan (insan): canlı NES hesabı + VKN + mali müşavir onayı | İnsan hesabı + ajan
+- [~] 11 | Faturalama | PayTR otomatik yenileme / kayıtlı kart — ✅ kod tamam: `tenants.cardToken` (AES-256-GCM, `lib/billing/card-vault.ts`) + `cardMark`, PayTR bildiriminden `card_token`, `renewDue` cron (`lib/billing/renewal.ts`), `Abonelikte kart yönetimi`; ⏳ kalan (insan): canlı PayTR anahtarları + kart saklama sözleşmesi | Lead — **ERTELENDİ (2026-11-09):** pilot elden/havale tahsilatla yürüyecek, PayTR genel satışa geçmeden açılacak
 - [x] 12 | Faturalama | ~~Başarısız ödeme dunning akışı~~ ✅ gecikme 1/3/5. gün + kilit + haftalık e-posta akışı
 - [x] 57 | Ops | ~~Sentry/APM iskeleti + uptime izleme~~ ✅ bağımlılıksız iskelet: `lib/observability/telemetry.ts` (env kapalıysa dışarı istek çıkmaz, `OTEL_EXPORTER_OTLP_ENDPOINT` ile OTLP/JSON logs), `instrumentation.ts` (`register` + `onRequestError`), `instrumentation-client.ts` + `/api/telemetry/client` (istemci hatası fişeği), `/api/cron/uptime` (self DB + `UPTIME_TARGETS` denetimi, arızada `dispatchAlert`) (`ed5db94`); Sentry/gerçek SDK env hazır olunca bu modülün arkasına takılır
 - [x] 33 | Büyüme | ~~Sadakat programı, hediye kartı, kupon motoru (şema+UI) + **satış anı**~~ ✅ şema: `loyalty_settings`/`loyalty_events`, `gift_cards`/`gift_card_events`, `coupons`/`coupon_uses` (RLS'li); saf hesap `lib/loyalty.ts` (`couponCheck`/`pointsValue`/`capDiscount`) + testler; panel: `/yonetim/sadakat`, `/yonetim/kuponlar`, `/yonetim/hediyekarti`. **Kasa satış akışı (tamamlandı):** sync belgesi kupon/puan/hediye kartı alanları (`lib/sync/docs.ts`), sunucu yetkili çözümleme `resolveSaleExtras` (`lib/sync/apply.ts`: kupon/puan yeniden doğrulanır, hediye kartı bakiyesi düşer + `gift_card_events`, puan kazan/harca, `coupon_uses` + `usedCount`), `sales.discount`/`sales.customerId` + `pay_method.hediye_karti`, kasa sorgu ucu `/api/kasa/loyalty` (cihaz çerezli, hız sınırlı), `PayDialog` sadakat bölümü + `recordSaleLocal` ekleri, fiş/SMS indirim satırı. Test: `tests/loyalty-sale-db.test.ts` (7 senaryo: kupon/limit/puan+kazanç/hediye kartı/idempotentlik/uyuşmazlık/kiracı izolasyonu)
-- [ ] 32 | Büyüme | Gerçek SMS (Netgsm/İletimerkezi) + WhatsApp gönderim sağlayıcısı | İnsan hesabı + ajan
+- [~] 32 | Büyüme | Gerçek SMS (Netgsm/İletimerkezi) + WhatsApp gönderim sağlayıcısı — ✅ ajan payı: Netgsm REST v2 ve İletimerkezi v1 sürücüleri, `MARKETING_SMS_PROVIDER` seçimi, TR numara normalizasyonu, hata eşlemesi, sağlayıcı testleri. ⏳ kalan (insan): canlı SMS hesabı; WhatsApp sürücüsü/kanal seçimi | İnsan hesabı + ajan
 - [x] 44 | Panel | ~~Şube oluşturma/geçiş UI + şube bazlı veri kapsamı~~ ✅ `/yonetim/subeler` (oluştur, düzenle, `cz_sube` çereziyle geçiş, cihaz+satış sayacı); `lib/admin/store-scope.ts` — bugün/raporlar/stok/platformlar sayfaları ile stok/alış/reçete/platform aksiyonları ve bildirim rozeti artık seçili şubeye bakar (çerez yoksa ilk şube); platform sipariş kabulü cihazı şubeye göre seçer
 - [x] 1 | Güvenlik | ~~2FA (TOTP)~~ ✅ `lib/auth/totp.ts` + `/yonetim/guvenlik` sayfası + giriş akışı kod doğrulama
 - [x] 4 | Güvenlik | ~~Kayıtta e-posta doğrulama~~ ✅ `/dogrula` sayfası + kayıtta otomatik e-posta + panel banner'ı + yeniden gönderme
 - [x] 13 | Faturalama | ~~Katmanlı planlar (şube/terminal başına fiyat)~~ ✅ taban 1 şube + 1 terminal dahil, ek birim env'den; ödeme anı şube/terminal fotoğrafı (`billing_payments.stores/devices`) (`a56d184`)
 - [x] 14 | Faturalama | ~~Abonelik e-Arşiv faturası (SaaS kendi faturası)~~ ✅ ödemede bekleyen fatura açılır, günlük cron `fake-earsiv` ile keser, `/fatura/<token>` herkese açık görünüm; satıcı env'den (`SAAS_NAME/SAAS_TAX_ID/SAAS_ADDRESS/SAAS_SERIES`); gerçek entegratör #17'ye bağlı (`7c6f816`)
 - [x] 15 | Faturalama | ~~Abonelik iptal/iade akışı~~ ✅ iade: ödenmiş çekime talep (neden+not) → sahip onayı → `iade` kaydı (`billingPayments.refundRequestedAt/refundReason/refundNote/refundedAt`); 7 gün + satışsız dönem koşulu `refundWindowOk` (+satış sayacı) yayınlanan koşullarla uyumlu; abonelik sayfasında satır içi talep formu, talep çekme, onay ve İptal bilgi bölümü; gerçek para iadesi PayTR canlı anahtarına bağlı (#11 sonrası)
-- [ ] 28 | Platform | Getir/YS/Trendyol/Migros gerçek API bağlantısı (4 sandbox sürücü + durum bildirimi + hız sınırı hazır — kalan: canlı hesap/anahtar + gerçek uç adları) | İnsan hesabı + Ajan-1
+- [~] 28 | Platform | Getir/YS/Trendyol/Migros gerçek API bağlantısı — ✅ ajan payı: bağlantı başına AES-256-GCM şifreli BYOK kimlik (`platform_connections.credentials`), beş adaptörde öncelik sırası, canlı istek sözleşme testleri, Pazaryerleri UI kimlik formu. ⏳ kalan (insan): canlı hesaplar + gerçek uç adları | İnsan hesabı + Ajan-1
 
 ## P1 — Rekabet gücü
 
@@ -74,6 +76,15 @@ seçilmeden sürücü yazılamaz. Açılış kanıt kapıları
 - [x] 55 | Güvenlik | ~~RLS'siz tablolara DB seviyesinde koruma~~ ✅ `tests/rls-coverage.test.ts` tenant tablolarını kaynak şema/RLS SQL'iyle karşılaştırıyor; gerekçeli allowlist drift'i yakalıyor; `audit_log` UPDATE/DELETE/TRUNCATE yetkileri `db/rls.sql` ile kapalı
 - [x] 60 | Pazar | ~~Onboarding sihirbazı + yardım merkezi + kullanıcı dokümanı~~ ✅ Yönetim ana sayfasında 4 adımlı kurulum rehberi; `/yonetim/yardim` içinde ürün/cihaz/PIN/test satışı onboarding'i; herkese açık `/yardim` merkezi tek kaynaklı kurulum, kasa, offline, restoran/market, donanım, mali, rapor, abonelik ve güvenlik dokümanlarıyla yayında
 - [x] 61 | Pazar | ~~Fiyatlandırma sayfası~~ ✅ `/fiyatlandirma`: aylık/yıllık taban + ek şube/terminal birim fiyatları (#13 env'lerinden), şube+terminal sayısıyla dönem tutarı hesaplayıcı (saf `planBreakdown`), her pakette listesi, satış iletişimi fallback'i; root #fiyat bölümünden derin bağlantı + sitemap
+
+## 2026-11-08 kod kapanışları
+
+- [x] #17 — NES canlı BYOK + Mali UI + canlı PDF (`2026-11-08-nes-byok.sql`).
+- [x] #28 — Pazaryeri BYOK kimlik + beş adaptör sözleşme testi; canlı uç adları hesap gelince.
+- [x] #32 — Netgsm/İletimerkezi SMS sürücüleri; WhatsApp ve canlı hesap açık.
+- [x] YanındaPOS dış ödeme API'si — `POST /api/v1/payments/external` (payments scope, idempotent, boyut sınırı) + `/yonetim/dis-odemeler` ay filtresi/CSV (`2026-11-08-external-payments.sql`).
+- [x] Ops — `maintenance.py` alarm (webhook/Resend) + `offsite_command` ikinci kopya + `watchdog.py` yedek tazeliği bekçisi.
+- [x] `launch:check` — NES/SMS/platform/kurye ve mali override denetimleri.
 
 ## Tamamlananlar (bu dalda)
 

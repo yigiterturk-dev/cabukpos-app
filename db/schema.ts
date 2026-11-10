@@ -753,6 +753,9 @@ export const fiscalSettings = pgTable("fiscal_settings", {
   counter: integer("counter").notNull().default(0),
   channelModes: jsonb("channel_modes").notNull().$type<ChannelModes>().default(DEFAULT_MODES),
   fakeFail: boolean("fake_fail").notNull().default(false),
+  nesApiKey: text("nes_api_key"), // #17 BYOK: kiracının NES API anahtarı, AES-256-GCM şifreli (card-vault deseni)
+  nesApiUrl: text("nes_api_url"), // NES API kök adresi (sandbox/canlı); boşsa env/varsayılan
+  nesSenderAlias: text("nes_sender_alias"), // GİB gönderici alias'ı; boşsa env/varsayılan
   okcProvider: text("okc_provider"), // #18: null = ÖKC kapalı
   okcSerial: text("okc_serial"),
   okcCounter: integer("okc_counter").notNull().default(0),
@@ -985,6 +988,25 @@ export const integrationKeys = pgTable("integration_keys", {
   lastUsedAt: ts("last_used_at"),
   revokedAt: ts("revoked_at"),
 }, (t) => [index("integration_keys_tenant_idx").on(t.tenantId)]);
+
+// — Dış ödeme özeti (YanındaPOS → ÇabukPOS tek yönlü referans). Satış/fiş değildir; mali belge üretmez. —
+export const externalPayments = pgTable("external_payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: tenantRef(),
+  storeId: uuid("store_id").references(() => stores.id, { onDelete: "set null" }),
+  source: text("source").notNull(), // ör. "yanindapos"
+  externalId: text("external_id").notNull(), // kaynak sistemdeki tekil kimlik (idempotency)
+  amount: integer("amount").notNull(), // kuruş, > 0
+  currency: text("currency").notNull().default("TRY"),
+  method: text("method").notNull().default("other"), // nakit | kart | havale | other
+  paidAt: ts("paid_at").notNull(),
+  reference: text("reference"),
+  meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: ts("created_at").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("external_payments_idempotency_uq").on(t.tenantId, t.source, t.externalId),
+  index("external_payments_tenant_idx").on(t.tenantId, t.paidAt),
+]);
 
 // — #49: rezervasyon —
 export const reservationStatus = pgEnum("reservation_status", ["bekliyor", "onaylandi", "geldi", "gelmedi", "iptal"]);

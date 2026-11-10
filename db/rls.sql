@@ -11,7 +11,7 @@ grant usage, select on all sequences in schema public to cabukpos_app; -- M5: ta
 alter default privileges in schema public grant usage, select on sequences to cabukpos_app;
 
 do $$ declare t text; begin
-  foreach t in array array['stores','staff','staff_plans','stock_lots','stock_lot_events','procurement_orders','procurement_receipts','platform_settlements','attendance','courier_locations','categories','products','shifts','sales','sale_lines','payments','stock_movements','audit_log','areas','tables','option_groups','options','product_option_groups','stations','category_station_routes','product_station_routes','tab_events','delivery_zones','customers','growth_campaigns','growth_recipient_refs','growth_campaign_events','customer_addresses','product_platform_codes','recipe_items','suppliers','purchases','purchase_lines','supplier_payments','productions','loyalty_settings','loyalty_events','gift_cards','gift_card_events','coupons','coupon_uses','reservations','stock_transfers','stock_transfer_lines','store_product_settings','courier_jobs'] loop
+  foreach t in array array['stores','staff','staff_plans','stock_lots','stock_lot_events','procurement_orders','procurement_receipts','platform_settlements','attendance','courier_locations','categories','products','shifts','sales','sale_lines','payments','stock_movements','audit_log','areas','tables','option_groups','options','product_option_groups','stations','category_station_routes','product_station_routes','tab_events','delivery_zones','customers','growth_campaigns','growth_recipient_refs','growth_campaign_events','customer_addresses','product_platform_codes','recipe_items','suppliers','purchases','purchase_lines','supplier_payments','productions','loyalty_settings','loyalty_events','gift_cards','gift_card_events','coupons','coupon_uses','reservations','stock_transfers','stock_transfer_lines','store_product_settings','courier_jobs','external_payments'] loop
     execute format('alter table %I enable row level security', t);
     execute format('alter table %I force row level security', t);
     execute format('drop policy if exists tenant_isolation on %I', t);
@@ -42,7 +42,7 @@ create or replace function fiscal_doc_by_token(p_token text) returns jsonb
 language sql stable security definer set search_path = public as $f$
   select jsonb_build_object(
     'status', d.status, 'number', d.number, 'ettn', d.ettn, 'buyer', d.buyer, 'issuedAt', d.issued_at, 'createdAt', d.created_at,
-    'provider', fs.provider,
+    'provider', fs.provider, 'tenantId', d.tenant_id,
     'sale', jsonb_build_object('receiptNo', s.receipt_no, 'total', s.total, 'discount', s.discount, 'tip', s.tip, 'vat', s.vat, 'createdAt', s.created_at),
     'lines', coalesce((select jsonb_agg(jsonb_build_object('name', l.name, 'qtyMilli', l.qty_milli, 'unitPrice', l.unit_price, 'vatRate', l.vat_rate, 'total', l.total) order by l.name) from sale_lines l where l.sale_id = s.id), '[]'::jsonb),
     'seller', jsonb_build_object('name', t.name, 'taxId', t.tax_id, 'taxOffice', t.tax_office, 'address', t.address),

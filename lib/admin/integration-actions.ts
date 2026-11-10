@@ -18,7 +18,8 @@ export async function createIntegrationKey(_: KeyState, form: FormData): Promise
   if (re) return { error: re, field: "sifre" };
   const name = String(form.get("name") ?? "").trim();
   if (name.length < 2 || name.length > 40) return { error: "Ad 2-40 karakter.", field: "name" };
-  const scope: IntegrationScope = form.get("scope") === "growth" ? "growth" : "stats";
+  const rawScope = form.get("scope");
+  const scope: IntegrationScope = rawScope === "growth" ? "growth" : rawScope === "payments" ? "payments" : "stats";
   const { id, key } = await createKey(a.tenantId, name, scope);
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "integration_key.create", { id, name, scope }));
   revalidatePath(PATH);

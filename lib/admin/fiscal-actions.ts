@@ -26,7 +26,8 @@ export async function saveFiscalSettings(_: FiscalState, form: FormData): Promis
   const modes = Object.fromEntries(FISCAL_CHANNELS.map((c) => [c, str(form, `mode-${c}`) === "earsiv" ? "earsiv" : "info"])) as ChannelModes;
   if (a.vertical === "market") { modes.masa = "info"; modes.paket = "info"; modes.platform = "info"; }
   const earsiv = Object.values(modes).includes("earsiv");
-  if (earsiv && fakeProvidersBlocked()) return { error: "Production'da e-Arşiv için gerçek entegratör bağlantısı gerekir; bağlantı hazır olana kadar Bilgi fişi kullanın." };
+  const nesOn = form.get("nesOn") === "on";
+  if (earsiv && fakeProvidersBlocked() && !nesOn) return { error: "Production'da e-Arşiv için gerçek entegratör bağlantısı gerekir; NES bağlantısını açın ya da Bilgi fişi kullanın." };
   if (taxId && !validateTaxId(taxId)) return { error: "Vergi no geçersiz (10 hane VKN ya da 11 hane TCKN).", field: "taxId" };
   if (earsiv && !taxId) return { error: "e-Arşiv için işletme vergi no gerekli.", field: "taxId" };
   if (earsiv && !taxOffice) return { error: "e-Arşiv için vergi dairesi gerekli.", field: "taxOffice" };
@@ -51,16 +52,37 @@ export async function saveFiscalSettings(_: FiscalState, form: FormData): Promis
   const encKey = okcOn && okcCloud && okcApiKey ? encryptCardToken(okcApiKey) : undefined;
   if (encKey === null) return { error: "Sunucu anahtarı (AUTH_SECRET) yapılandırılmamış; API anahtarı saklanamaz.", field: "okcApiKey" };
   const okc = okcOn ? { okcProvider, okcSerial, okcFakeFail: form.get("okcFakeFail") === "on" } : { okcProvider: null, okcSerial: null, okcFakeFail: false };
+  // #17 BYOK: kiracı kendi NES hesabının API adresi + anahtarını girer. Anahtar boşsa mevcut korunur.
+  const nesApiUrl = str(form, "nesApiUrl");
+  const nesApiKey = str(form, "nesApiKey");
+  const nesSenderAlias = str(form, "nesSenderAlias");
+  if (nesOn && !/^https:\/\//i.test(nesApiUrl)) return { error: "NES API adresi https:// ile başlamalı (ör. https://apitest.nes.com.tr).", field: "nesApiUrl" };
+  if (nesOn && nesApiUrl.length > 2048) return { error: "NES API adresi en çok 2.048 karakter olabilir.", field: "nesApiUrl" };
+  if (nesOn && nesApiKey && nesApiKey.length < 8) return { error: "NES API anahtarı çok kısa görünüyor.", field: "nesApiKey" };
+  if (nesOn && nesSenderAlias.length > 200) return { error: "Gönderici alias en çok 200 karakter.", field: "nesSenderAlias" };
+  const encNesKey = nesOn && nesApiKey ? encryptCardToken(nesApiKey) : undefined;
+  if (encNesKey === null) return { error: "Sunucu anahtarı (AUTH_SECRET) yapılandırılmamış; NES anahtarı saklanamaz.", field: "nesApiKey" };
+  const existingNesKey = nesOn
+    ? (await withTenant(a.tenantId, (tx) => tx.select({ k: schema.fiscalSettings.nesApiKey }).from(schema.fiscalSettings)))[0]?.k
+    : null;
+  if (nesOn && !nesApiKey && !existingNesKey) return { error: "NES API anahtarı gerekli.", field: "nesApiKey" };
+  const provider = nesOn ? "nes" : "fake-earsiv";
   await getDb().update(schema.tenants).set({ taxId: taxId || null, taxOffice: taxOffice || null, address: address || null }).where(eq(schema.tenants.id, a.tenantId));
   await withTenant(a.tenantId, async (tx) => {
     const v = {
-      series, channelModes: modes, fakeFail, ...okc, updatedAt: new Date(),
+      provider, series, channelModes: modes, fakeFail, ...okc, updatedAt: new Date(),
       ...(okcOn && okcCloud ? { okcApiUrl } : {}),
       ...(encKey ? { okcApiKey: encKey } : {}),
       ...(!okcOn ? { okcApiKey: null, okcApiUrl: null } : {}),
+      ...(nesOn ? { nesApiUrl, nesSenderAlias: nesSenderAlias || null } : {}),
+      ...(encNesKey ? { nesApiKey: encNesKey } : {}),
+      ...(!nesOn ? { nesApiKey: null, nesApiUrl: null, nesSenderAlias: null } : {}),
     };
     await tx.insert(schema.fiscalSettings).values({ tenantId: a.tenantId, ...v }).onConflictDoUpdate({ target: schema.fiscalSettings.tenantId, set: v });
-    await audit(tx, a.tenantId, `user:${a.id}`, "fiscal.settings", { taxId, series, modes, fakeFail, okc, okcKeySet: Boolean(encKey) });
+    await audit(tx, a.tenantId, `user:${a.id}`, "fiscal.settings", {
+      taxId, series, modes, fakeFail, provider, okc, okcKeySet: Boolean(encKey),
+      nes: nesOn ? { url: nesApiUrl, keySet: Boolean(encNesKey) } : null,
+    });
   });
   if (okcOn) await okcPing(a.tenantId).catch(() => {});
   revalidatePath("/yonetim/mali");

@@ -1,8 +1,9 @@
 "use client";
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
-import { createConnection, pushCatalog, saveCode, saveCustomer, saveZone, sendTestOrder, setConnection, type DeliveryState } from "@/lib/admin/delivery-actions";
+import { createConnection, pushCatalog, saveCode, saveConnectionCredentials, saveCustomer, saveZone, sendTestOrder, setConnection, type DeliveryState } from "@/lib/admin/delivery-actions";
 import { formatPlain } from "@/lib/core/money";
 import { useFormAction } from "@/components/useFormAction";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Select, type Option } from "@/components/Select";
 import { Button, Field, Input } from "@/components/ui";
 
@@ -183,6 +184,43 @@ export function TestOrderButton({ connectionId }: { connectionId: string }) {
       <Button ref={buttonRef} type="submit" variant="secondary" disabled={pending} aria-busy={pending || undefined}>{pending ? "Gönderiliyor…" : "Deneme siparişi gönder"}</Button>
       {pending && <span className="sr-only" role="status" aria-live="polite">Platforma deneme siparişi gönderiliyor.</span>}
       {!pending && <><Saved s={state} /><Err s={state} /></>}
+    </form>
+  );
+}
+
+export function PlatformCredentialsForm({ connectionId, hasCredentials }: { connectionId: string; hasCredentials: boolean }) {
+  const { state, pending, onSubmit } = useFormAction(saveConnectionCredentials.bind(null, connectionId), {} as DeliveryState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [edited, setEdited] = useState(false);
+  const displayState = edited || pending ? ({} as DeliveryState) : state;
+  const idPrefix = `platform-${connectionId}`;
+  useEffect(() => {
+    if (state.error && state.field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+  }, [state.error, state.field]);
+  return (
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="rounded-lg border border-line p-4">
+      <h3 className="text-sm font-semibold">Platform API bağlantısı (BYOK)</h3>
+      <p className="mt-1 text-sm text-muted">Kabul/red, durum ve menü gönderimi bu şubenin kendi sağlayıcı hesabıyla gider. Anahtar şifreli saklanır; boş bırakılan alan kayıtlı değeri korur.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <Field label="API adresi" hint="ör. https://api.saglayici.com">
+            <Input name="apiBase" disabled={pending} inputMode="url" maxLength={2048} placeholder={hasCredentials ? "Kayıtlı; değiştirmek için yazın" : "https://..."} {...errorProps(displayState, "apiBase", idPrefix)} />
+          </Field>
+          <Err s={displayState} f="apiBase" idPrefix={idPrefix} />
+        </div>
+        <div>
+          <Field label="API anahtarı" hint={hasCredentials ? "Kayıtlı (şifreli); değiştirmek için yenisini yazın" : "Sağlayıcı hesabının API anahtarı"}>
+            <PasswordInput name="apiKey" disabled={pending} autoComplete="off" placeholder={hasCredentials ? "••••••••" : ""} {...errorProps(displayState, "apiKey", idPrefix)} />
+          </Field>
+          <Err s={displayState} f="apiKey" idPrefix={idPrefix} />
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Kaydediliyor…" : hasCredentials ? "Bağlantıyı güncelle" : "Bağlantıyı kaydet"}</Button>
+        {pending && <span className="sr-only" role="status" aria-live="polite">Platform API bilgileri kaydediliyor.</span>}
+        {state.savedAt && !edited && !pending && !state.error && <Saved s={state} />}
+        <Err s={displayState} />
+      </div>
     </form>
   );
 }

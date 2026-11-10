@@ -1,7 +1,7 @@
 // lib/fiscal/provider.ts — Mali belge sağlayıcı arayüzü ve kayıt defteri.
 import type { Buyer } from "@/lib/core/fiscal";
 import { fakeEarsiv } from "./fake";
-import { nesProvider } from "./nes";
+import { nesConfig, nesProvider, type NesConn } from "./nes";
 import { fakeProvidersBlocked } from "@/lib/fake-providers";
 
 export type IssueInput = {
@@ -29,9 +29,21 @@ export interface FiscalProvider {
   queryEnvelope?(ettn: string, sentAt: Date): Promise<EnvelopeQuery>;
 }
 
-export function getProvider(name: string, opts: { fakeFail: boolean }): FiscalProvider {
+export type ProviderOpts = { fakeFail: boolean; nes?: NesConn | null };
+
+export function getProvider(name: string, opts: ProviderOpts): FiscalProvider {
   // Test ortamı: FISCAL_PROVIDER_OVERRIDE=nes-sandbox → tüm kiracılar NES sandbox'ına keser (belgeler yine "TEST" bantlı).
-  if (process.env.FISCAL_PROVIDER_OVERRIDE === "nes-sandbox" && !opts.fakeFail) return nesProvider();
+  if (process.env.FISCAL_PROVIDER_OVERRIDE === "nes-sandbox" && !opts.fakeFail) {
+    const c = nesConfig();
+    if (c) {
+      if (!c.sandbox) throw new Error("FISCAL_PROVIDER_OVERRIDE=nes-sandbox yalnız sandbox adresiyle kullanılabilir.");
+      return nesProvider(c);
+    }
+  }
+  if (name === "nes") {
+    if (!opts.nes) throw new Error("NES bağlantısı yapılandırılmamış (Yönetim → Mali: API adresi + anahtar).");
+    return nesProvider(opts.nes);
+  }
   if (name === "fake-earsiv") {
     if (fakeProvidersBlocked()) throw new Error("Sahte e-Arşiv sağlayıcısı production'da kullanılamaz.");
     return fakeEarsiv(opts);

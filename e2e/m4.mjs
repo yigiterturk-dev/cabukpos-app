@@ -41,8 +41,28 @@ const page = async () => {
   return p;
 };
 const pin = async (p, digits) => {
-  for (const d of digits) await p.getByRole("button", { name: d, exact: true }).click();
-  await p.getByRole("button", { name: "Gir" }).click();
+  // PIN opsiyonel: PIN tuslari yoksa "Kim giriyor?/Onaylayan" listesindeki ilk kisiye dokun.
+  // Katalog eslemeden hemen sonra gelebilir; kisa sure bekle, gerekirse bir kez yenile.
+  let reloaded = false;
+  for (let i = 0; i < 40; i++) {
+    if (await p.getByRole("button", { name: digits[0], exact: true }).count()) {
+      for (const d of digits) await p.getByRole("button", { name: d, exact: true }).click();
+      await p.getByRole("button", { name: "Gir" }).click();
+      return;
+    }
+    const label = p.getByText(/Kim giriyor\?|Onaylayan/);
+    if (await label.count()) {
+      const person = label.locator("xpath=..").getByRole("button").first();
+      if (await person.count()) { await person.click(); return; }
+    }
+    if (!reloaded && (await p.getByText(/İlk kasa PIN/).count())) {
+      reloaded = true;
+      await p.reload({ waitUntil: "networkidle" }).catch(() => {});
+    }
+    await p.waitForTimeout(500);
+  }
+  const body = (await p.locator("body").innerText()).slice(0, 300).replace(/\n/g, " | ");
+  throw new Error("PIN/personel ekrani gelmedi: " + body);
 };
 
 try {

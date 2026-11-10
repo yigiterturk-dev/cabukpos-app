@@ -15,6 +15,7 @@ from pathlib import Path
 import secrets
 import subprocess as sp
 import tempfile
+import urllib.request
 from urllib.parse import parse_qs, unquote, urlparse
 
 
@@ -84,6 +85,54 @@ def docker(image):
             "--read-only", "--tmpfs", "/tmp:rw,nosuid,size=64m", "--entrypoint", ""]
 
 
+def _alert_settings(config):
+    alert = config.get("alert") or {}
+    return {
+        "webhook_url": (alert.get("webhook_url") or config.get("alert_webhook_url") or "").strip(),
+        "email": (alert.get("email") or config.get("alert_email") or "").strip(),
+        "resend_api_key": (alert.get("resend_api_key") or config.get("resend_api_key") or "").strip(),
+        "mail_from": (alert.get("mail_from") or config.get("mail_from") or "").strip(),
+    }
+
+
+def notify(config, event, detail):
+    """Best-effort failure alert; webhook önce, yoksa Resend e-posta. Asla fırlatmaz."""
+    settings = _alert_settings(config)
+    payload = {"service": "cabukpos-ops", "event": event, "detail": detail,
+               "at": dt.datetime.now(dt.timezone.utc).isoformat()}
+    attempts = []
+    if settings["webhook_url"]:
+        attempts.append((settings["webhook_url"], payload, {}))
+    elif settings["email"] and settings["resend_api_key"] and settings["mail_from"]:
+        attempts.append(("https://api.resend.com/emails", {
+            "from": settings["mail_from"],
+            "to": [settings["email"]],
+            "subject": f"[ÇabukPOS ops] {event}",
+            "text": f"{event}\n{payload['at']}\n\n{json.dumps(detail, ensure_ascii=False, indent=2)}\n",
+        }, {"authorization": f"Bearer {settings['resend_api_key']}"}))
+    for url, body, headers in attempts:
+        try:
+            request = urllib.request.Request(
+                url, data=json.dumps(body).encode(), method="POST",
+                headers={"content-type": "application/json", **headers})
+            urllib.request.urlopen(request, timeout=5).close()
+        except Exception:
+            pass
+
+
+def offsite(config, path, backups):
+    """Başarılı yedekten sonra isteğe bağlı ikinci kopya komutu. {path}/{dir} genişletilir."""
+    command = config.get("offsite_command")
+    if command is None:
+        return False
+    if (not isinstance(command, list) or not command
+            or any(not isinstance(part, str) or not part for part in command)):
+        raise RuntimeError("offsite_command must be a non-empty list of strings")
+    expanded = [part.replace("{path}", str(path)).replace("{dir}", str(backups)) for part in command]
+    run(expanded)
+    return True
+
+
 def backup(config, work, backups, env):
     image = config["image"]
     pg_env = work / "postgres.env"
@@ -127,6 +176,10 @@ def backup(config, work, backups, env):
                 "hmac_sha256": signature(partial, config["encryption_key"]), "image": image}
     partial.replace(path)
     path.with_suffix(".json").write_text(json.dumps(metadata) + "\n")
+    if offsite(config, path, backups):
+        metadata["offsite_ok"] = True
+        path.with_suffix(".json").write_text(json.dumps(metadata) + "\n")
+        print(f"Offsite copy verified: {path.name}", flush=True)
     print(f"Backup verified: {path.name} ({metadata['bytes']} bytes)", flush=True)
     return path
 
@@ -207,21 +260,26 @@ def main():
     state = Path(config.get("state_dir", "/var/lib/cabukpos-ops"))
     backups = state / "backups"
     backups.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with (state / "maintenance.lock").open("w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        env = {**os.environ, "CABUKPOS_BACKUP_KEY": config["encryption_key"]}
-        with tempfile.TemporaryDirectory(prefix="job-", dir=state) as directory:
-            work = Path(directory)
-            if args.job == "backup":
-                backup(config, work, backups, env)
-            else:
-                candidates = sorted(backups.glob("cabukpos-*.dump.enc"))
-                if not candidates:
-                    raise RuntimeError("no encrypted backup available")
-                restore(config, work, candidates[-1], env,
-                        args.release_dir.resolve() if args.job == "release" else None)
-        status = {"job": args.job, "ok": True, "completed_at": dt.datetime.now(dt.timezone.utc).isoformat()}
-        (state / (args.job + "-status.json")).write_text(json.dumps(status) + "\n")
+    try:
+        with (state / "maintenance.lock").open("w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            env = {**os.environ, "CABUKPOS_BACKUP_KEY": config["encryption_key"]}
+            with tempfile.TemporaryDirectory(prefix="job-", dir=state) as directory:
+                work = Path(directory)
+                if args.job == "backup":
+                    backup(config, work, backups, env)
+                else:
+                    candidates = sorted(backups.glob("cabukpos-*.dump.enc"))
+                    if not candidates:
+                        raise RuntimeError("no encrypted backup available")
+                    restore(config, work, candidates[-1], env,
+                            args.release_dir.resolve() if args.job == "release" else None)
+            status = {"job": args.job, "ok": True, "completed_at": dt.datetime.now(dt.timezone.utc).isoformat()}
+            (state / (args.job + "-status.json")).write_text(json.dumps(status) + "\n")
+    except Exception as error:
+        detail = str(error) if type(error) is RuntimeError else type(error).__name__
+        notify(config, f"cabukpos-{args.job}-failed", {"job": args.job, "error": detail})
+        raise
 
 
 if __name__ == "__main__":

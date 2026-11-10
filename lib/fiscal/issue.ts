@@ -6,6 +6,7 @@ import { buyerSchema, DEFAULT_MODES, docModeFor, formatNumber, MAX_ATTEMPTS, new
 import { buyerKindOf } from "@/lib/core/refundNote";
 import { discountedVat } from "@/lib/core/cart";
 import { getProvider, type IssueInput } from "./provider";
+import { nesConnFrom } from "./nes";
 
 const D = schema.fiscalDocuments;
 export type IssueOutcome = { status: (typeof schema.fiscalDocStatus.enumValues)[number]; number: string | null; ettn: string | null; token: string };
@@ -61,7 +62,7 @@ export async function issueOne(tenantId: string, saleId: string, { force = false
       vat: discountedVat(sale.vat, sale.discount ?? 0), discount: sale.discount ?? 0, total: sale.total - (sale.tip ?? 0) - (sale.discount ?? 0), soldAt: sale.createdAt, number,
     };
     let r;
-    try { r = await getProvider(s.provider, { fakeFail: s.fakeFail }).issue(input); }
+    try { r = await getProvider(s.provider, { fakeFail: s.fakeFail, nes: nesConnFrom(s) }).issue(input); }
     catch (e) { r = { ok: false as const, error: e instanceof Error ? e.message : "Sağlayıcı hatası", retryable: true }; }
     if (!r.ok) {
       await tx.update(schema.fiscalSettings).set({ counter: s.counter - 1 }).where(eq(schema.fiscalSettings.tenantId, tenantId));
@@ -113,7 +114,7 @@ export async function cancelOne(tenantId: string, docId: string): Promise<IssueO
     if (!doc) return null;
     const s = await fiscalSettingsOf(tx);
     let r;
-    try { r = await getProvider(s?.provider ?? "fake-earsiv", { fakeFail: false }).cancel({ ettn: doc.ettn!, issuedAt: doc.issuedAt! }); }
+    try { r = await getProvider(s?.provider ?? "fake-earsiv", { fakeFail: false, nes: s ? nesConnFrom(s) : null }).cancel({ ettn: doc.ettn!, issuedAt: doc.issuedAt! }); }
     catch { return outcome(doc); } // geçici hata: kuyrukta kalır
     const [d] = await tx.update(D).set(r.ok ? { status: "cancelled", cancelPending: false, lastError: null } : { status: "cancel_rejected", cancelPending: false, lastError: r.error }).where(eq(D.id, doc.id)).returning();
     if (!r.ok) {
@@ -155,7 +156,7 @@ export async function processEnvelopes(tenantId: string, limit = 5, now = new Da
       .where(inArray(schema.fiscalEnvelopes.status, ["hazir", "gonderildi", "iletildi"])).orderBy(schema.fiscalEnvelopes.createdAt).limit(limit);
     if (!open.length) return;
     const [s] = await tx.select().from(schema.fiscalSettings);
-    const p = getProvider(s?.provider ?? "fake-earsiv", { fakeFail: s?.fakeFail ?? false });
+    const p = getProvider(s?.provider ?? "fake-earsiv", { fakeFail: s?.fakeFail ?? false, nes: s ? nesConnFrom(s) : null });
     for (const env of open) {
       if (!p.submitEnvelope || !p.queryEnvelope) return; // sağlayıcı zarf akışını desteklemiyor
       if (env.status === "hazir") {

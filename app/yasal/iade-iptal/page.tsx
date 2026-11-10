@@ -13,7 +13,7 @@ export default function IadeIptal() {
       <ul>
         <li>Abonelik otomatik yenilenmez; yeni dönem için ödeme yapmamanız aboneliği sona erdirmek için yeterlidir. Ayrıca iptal işlemi gerekmez.</li>
         <li>Dönem bitince 7 günlük ek süre sonrasında yönetim paneli salt okunur olur; kasa satışa devam eder, verileriniz silinmez.</li>
-        <li>Hesabınızın ve verilerinizin tamamen silinmesini istiyorsanız İletişim sayfasındaki adrese yazmanız yeterlidir; silmeden önce raporlarınızı CSV olarak indirebilirsiniz.</li>
+        <li>Hesabınızı ve tüm verilerinizi <b>Yönetim → Veri yönetimi</b> sayfasından kendiniz kalıcı olarak silebilirsiniz (işletme sahibi, işletme adı ve şifre onayıyla). Silmeden önce veri kopyanızı aynı sayfadan JSON olarak indirin.</li>
       </ul>
 
       <h2>İade</h2>

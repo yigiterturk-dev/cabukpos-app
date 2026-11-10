@@ -80,6 +80,18 @@ try {
   assert.equal(await form.locator("input[name=qty]").inputValue(), "");
   await page.getByText("Transfer Un", { exact: true }).waitFor();
   await page.getByText("Transfer Bardak", { exact: true }).waitFor();
+  await choose(0, "Transfer Un");
+  await form.getByRole("textbox", { name: "Miktar 1", exact: true }).fill("99");
+  await form.getByRole("button", { name: "Transfer et", exact: true }).click();
+  await form.getByRole("alert").filter({ hasText: "Transfer Un: kaynakta yalnız" }).waitFor();
+  assert.equal(await form.locator("input[name=qty]").inputValue(), "99", "önceki başarılı fişten sonraki hata da girdiyi korumalı");
+  await page.getByRole("link", { name: "Detay / Yazdır", exact: true }).click();
+  const detail = page.getByRole("article", { name: "Transfer dökümü" });
+  await detail.getByRole("heading", { name: "Stok transferi", exact: true }).waitFor();
+
+  // Sevkiyat yaşam döngüsü: hedef stok yalnız "Teslim aldım" ile artar.
+  await page.getByRole("button", { name: "Teslim aldım · stoğa işle", exact: true }).click();
+  await page.getByText(/Durum: Teslim alındı/).waitFor();
   const saved = await sql.begin(async (tx) => {
     await tx`select set_config('app.tenant_id', ${user.tenant_id}, true)`;
     const transfers = await tx`select id from stock_transfers where tenant_id = ${user.tenant_id}`;
@@ -92,14 +104,6 @@ try {
   for (const [store, product, expected] of [[fixture.from, fixture.flour, 7500], [fixture.from, fixture.cups, 5000], [fixture.to, fixture.flour, 2500], [fixture.to, fixture.cups, 3000]]) {
     assert.equal(saved.levels.find((l) => l.store_id === store && l.product_id === product)?.level, expected);
   }
-  await choose(0, "Transfer Un");
-  await form.getByRole("textbox", { name: "Miktar 1", exact: true }).fill("99");
-  await form.getByRole("button", { name: "Transfer et", exact: true }).click();
-  await form.getByRole("alert").filter({ hasText: "Transfer Un: kaynakta yalnız" }).waitFor();
-  assert.equal(await form.locator("input[name=qty]").inputValue(), "99", "önceki başarılı fişten sonraki hata da girdiyi korumalı");
-  await page.getByRole("link", { name: "Detay / Yazdır", exact: true }).click();
-  const detail = page.getByRole("article", { name: "Transfer dökümü" });
-  await detail.getByRole("heading", { name: "Stok transferi", exact: true }).waitFor();
   await detail.getByRole("rowheader", { name: "Transfer Un", exact: true }).waitFor();
   await detail.getByRole("cell", { name: "2,500 kg", exact: true }).waitFor();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "mobil dökümde yatay taşma");
