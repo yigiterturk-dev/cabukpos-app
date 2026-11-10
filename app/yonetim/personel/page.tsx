@@ -30,7 +30,7 @@ export default async function Personel({ searchParams }: { searchParams: Promise
         <Card className="overflow-hidden lg:hidden">
           <ul aria-label="Personel listesi" className="divide-y divide-line">
             {rows.map((r) => (
-              <li key={r.id} className={`space-y-3 p-4 ${r.id === duzenle ? "bg-brand-soft/45" : ""} ${r.active ? "" : "opacity-70"}`}>
+              <li key={r.id} className={`space-y-3 p-4 ${r.id === duzenle ? "bg-brand-soft/45" : ""} ${r.active ? "" : "text-muted"}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0"><p className="break-words font-medium">{r.name}</p><p className="mt-1 text-sm text-muted">{r.role === "mudur" ? "Müdür" : r.role === "garson" ? "Garson" : r.role === "kurye" ? "Kurye" : "Kasiyer"}</p></div>
                   {r.active ? <Badge tone="ok">Aktif</Badge> : <Badge>Pasif</Badge>}
@@ -49,7 +49,7 @@ export default async function Personel({ searchParams }: { searchParams: Promise
             <thead className={TABLE_HEAD}><tr><th scope="col" className="px-4 py-2.5 font-medium">Ad</th><th scope="col" className="px-4 py-2.5 font-medium">Rol</th><th scope="col" className="px-4 py-2.5 font-medium">Durum</th><th scope="col" className="px-4 py-2.5 text-right font-medium">Aksiyonlar</th></tr></thead>
             <tbody className="divide-y divide-line">
               {rows.map((r) => (
-                <tr key={r.id} className={`${r.id === duzenle ? "bg-brand-soft/45" : "hover:bg-surface-2"} ${r.active ? "" : "opacity-60"}`}>
+                <tr key={r.id} className={`${r.id === duzenle ? "bg-brand-soft/45" : "hover:bg-surface-2"} ${r.active ? "" : "text-muted"}`}>
                   <td className="max-w-[18rem] px-4 py-2.5 font-medium"><span className="block truncate" title={r.name}>{r.name}</span></td>
                   <td className="px-4 py-2.5">{r.role === "mudur" ? "Müdür" : r.role === "garson" ? "Garson" : r.role === "kurye" ? "Kurye" : "Kasiyer"}</td>
                   <td className="px-4 py-2.5">{r.active ? <Badge tone="ok">Aktif</Badge> : <Badge>Pasif</Badge>}</td>
