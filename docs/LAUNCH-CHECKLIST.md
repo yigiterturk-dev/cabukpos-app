@@ -26,7 +26,7 @@ Bu aday henüz production’a dağıtılmadı; aşağıdaki eski production kan�
 - [x] M8, M9a, iade tutanağı, M9b ve M9c kritik E2E akışları
 - [x] Pilot E2E komutu CI kapısına bağlı: market (`m3`), restoran salonu (`m5`) ve LAN/offline merkez (`lan`); 2026-10-18 lokal prova turu: m1 (tam müşteri yolculuğu), m3, m5, lan, m8, m9a, m9b, m9c, iade **success** (E2E seçicileri canlı UI ile hizalandı; m2/m4/m6/m7/m49/m54 ikincil suite hizalaması sürüyor)
 - [x] İlk Nocturn Audit 27 bulgu: açık kayıt 0; kalan 9 desen belgelenmiş
-- [x] `npm run launch:check` ile sırları göstermeden production ayar kontrolü; plan fiyatları production env'ine işlendi ve canlıya çıktı (2026-10-16 deploy — `/fiyatlandirma` tutarları basıyor, "Fiyat yakında" placeholder'ı gitti); yasal satıcı bilgileri (LEGAL_NAME/ADDRESS/EMAIL/PHONE) ve PayTR anahtarları hâlâ bekleniyor
+- [x] `npm run launch:check` ile sırları göstermeden production ayar kontrolü; plan fiyatları production env'ine işlendi ve canlıya çıktı (2026-10-16 deploy — `/fiyatlandirma` tutarları basıyor, "Fiyat yakında" placeholder'ı gitti); yasal satıcı bilgileri (LEGAL_NAME/ADDRESS/EMAIL/PHONE) hâlâ bekleniyor; tahsilat manuel havale/EFT ile yapılacak (PayTR kapsam dışı)
 
 ### Canlı işletme kapısı — açılıştan önce zorunlu
 
@@ -35,7 +35,7 @@ Bu aday henüz production’a dağıtılmadı; aşağıdaki eski production kan�
 - [x] İzole staging veritabanına gerçek restore yapıldı — ✅ owner yedeği (`pg_dump --no-owner --no-privileges`, PG18) → yeni Neon branch'e `pg_restore --no-acl --exit-on-error`; STAGE=PROD (58 tablo, 47 RLS, 22 işletme, 30 satış, `report_due_tenants`). `scripts/backup-db.mjs`/`rehearse-restore.mjs` taşınabilirlik için güncellendi.
 - [x] Growth recipient_ref/approval şeması production'a uygulandı — ✅ `db:growth:verify` **9/9 OK**; canlı akış: onaysız audience **403**, onaylı **200**; imzalı webhook **201** + replay **200 duplicate** (idempotent). Geçici anahtar/kampanya temizlendi.
 - [x] Growth scope'lu key ile `RUNTIME_GROWTH_KEY=... BASE=<production> npm run audit:runtime` authenticated contract — ✅ **geçti**: feature-pack + insights + campaign listesi 200; audit anahtarı üretilip iptal edildi (`integration_keys` revoked). Tam runtime audit 16+3 PASS.
-- [~] `BILLING_PROVIDER=paytr` için canlı PayTR anahtarları ve bildirim URL'si doğrulandı — **ERTELENDİ (2026-11-09):** pilot tahsilatı elden/havale ile `npm run billing:manual` üzerinden yapılacak; PayTR yalnız self-servis otomatik yenileme için gerekli, genel satışa çıkmadan önce kapatılmalı.
+- [x] Ödeme yolu kararı (2026-11-10): **PayTR kullanılmayacak.** Pilot ve genel satışta tahsilat elden/havale/EFT ile alınır, abonelik `npm run billing:manual -- --email=... --months=... --confirm` ile uzatılır ve `audit_log`'a yazılır. PayTR yalnız ileride self-servis otomatik yenileme istenirse ayrı iş olarak eklenir; satış bloğu değildir.
 - [ ] Gerçek e-Arşiv entegratörü seçildi; sandbox kesim, iptal ve e-posta testleri tamamlandı
 - [ ] Bilgi fişi ile mali belge ayrımı mali müşavir tarafından onaylandı (`docs/MALI-UYUM-GATE.md`)
 - [~] ÖKC kullanım/entegrasyon sorumluluğu işletme bazında yazılı olarak netleştirildi — ✅ taslak şablon hazır: `docs/OKC-SORUMLULUK-YAZISI.md` (sorumluluk tablosu + beyan + imza alanları; MALI-UYUM-GATE kapı 1/3 ile hizalı). ⏳ kalan (insan): hukuk/mali müşavir onayı + ilk pilot işletmeyle doldurulup imzalanması
@@ -64,7 +64,7 @@ verilirse üç authenticated Growth contract kontrolü de eklenir.
 ## Yayına alma sırası
 
 1. Staging restore ve donanım provası.
-2. PayTR/e-Arşiv sandbox doğrulaması.
+2. e-Arşiv sandbox doğrulaması (tahsilat manuel havale/EFT).
 3. Tek pilot işletme ile sınırlı açılış.
 4. Pilot sonunda backup, audit log, bekleyen offline kuyruk ve ödeme mutabakatı kontrolü.
 5. Kritik hata yoksa satışa açılış; ilk hafta günlük operasyon gözden geçirmesi.
@@ -74,7 +74,7 @@ verilirse üç authenticated Growth contract kontrolü de eklenir.
 - deployment URL'si ve Ready kaydı
 - `npm run audit:runtime` çıktısı
 - backup dosyası, restore sonucu ve tarih
-- PayTR/e-Arşiv test numaraları
+- e-Arşiv test numaraları ve manuel tahsilat dekontu/audit kaydı
 - donanım test formu ve pilot işletme kabulü
 - mali müşavir/hukuk onayı
 
