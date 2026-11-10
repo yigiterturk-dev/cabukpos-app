@@ -11,6 +11,8 @@ name: qa
 on:
   deployment_status:
   workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"  # nightly; vars.QA_BASE_URL + QA_DATABASE_URL varsa
 
 concurrency:
   group: qa-${{ github.ref }}
@@ -18,7 +20,9 @@ concurrency:
 
 jobs:
   suleymancoder:
-    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    if: |
+      (github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success') ||
+      (github.event_name == 'schedule' && vars.QA_BASE_URL != '')
     runs-on: ubuntu-latest
     env:
       BASE_URL: ${{ github.event.deployment_status.target_url || vars.QA_BASE_URL }}
@@ -34,6 +38,11 @@ jobs:
 
       - name: Check BASE_URL
         run: test -n "$BASE_URL" || { echo "::error::BASE_URL yok (vars.QA_BASE_URL)"; exit 1; }
+      - name: Nightly QA prerequisites
+        if: github.event_name == 'schedule'
+        run: |
+          test -n "$QA_DATABASE_URL" || { echo "::error::nightly icin QA_DATABASE_URL secret'i sart"; exit 1; }
+          test -n "$QA_EMAIL" || { echo "::error::nightly icin sabit QA_EMAIL secret'i sart"; exit 1; }
 
       - name: Install Suleyman Coder
         env:
@@ -54,7 +63,7 @@ jobs:
           QA_DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
         run: |
           if [ -z "$QA_DATABASE_URL" ]; then echo "QA_DATABASE_URL yok; temizlik atlandi"; exit 0; fi
-          psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -f .github/qa/cleanup.sql
+          psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -v qa_email="${QA_EMAIL:-}" -f .github/qa/cleanup.sql
 
       - name: Login QA account
         if: env.QA_EMAIL != ''
@@ -108,7 +117,7 @@ jobs:
           QA_DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
         run: |
           if [ -z "$QA_DATABASE_URL" ]; then exit 0; fi
-          psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -f .github/qa/cleanup.sql
+          psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -v qa_email="${QA_EMAIL:-}" -f .github/qa/cleanup.sql
 
       - uses: actions/upload-artifact@v4
         if: always()

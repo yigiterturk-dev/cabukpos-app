@@ -5,14 +5,21 @@
 -- hesaplarin tenant'larini ve cascade ile bagli tum verilerini siler.
 -- Kullanim: psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -f cleanup.sql
 
+\if :{?qa_email}
+\else
+\set qa_email ''
+\endif
+
 BEGIN;
 
 CREATE TEMP TABLE qa_tenants ON COMMIT DROP AS
   SELECT DISTINCT tenant_id AS id
     FROM users
-   WHERE email LIKE 'qa-%@example.test';
+   WHERE email LIKE 'qa-%@example.test'
+    AND email <> COALESCE(NULLIF(:'qa_email', ''), '');
 
-DELETE FROM users WHERE email LIKE 'qa-%@example.test';
+DELETE FROM users WHERE email LIKE 'qa-%@example.test'
+    AND email <> COALESCE(NULLIF(:'qa_email', ''), '');
 
 -- Sadece QA tenant'ina ait ve baska kullanici birakmayan kayitlari sil.
 DELETE FROM tenants t
@@ -29,4 +36,5 @@ END $$;
 COMMIT;
 
 -- Dogrulama:
--- SELECT count(*) FROM users WHERE email LIKE 'qa-%@example.test';  -- 0 olmali
+-- SELECT count(*) FROM users WHERE email LIKE 'qa-%@example.test'
+--    AND email <> COALESCE(NULLIF(:'qa_email', ''), '');  -- 0 olmali
