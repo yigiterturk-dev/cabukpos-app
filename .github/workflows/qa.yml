@@ -48,9 +48,16 @@ jobs:
         env:
           SULEYMANCODER_REPO: ${{ secrets.SULEYMANCODER_REPO }}
           SULEYMANCODER_TOKEN: ${{ secrets.SULEYMANCODER_TOKEN }}
+          SULEYMANCODER_SSH_KEY: ${{ secrets.SULEYMANCODER_SSH_KEY }}
         run: |
           test -n "$SULEYMANCODER_REPO" || { echo "::error::SULEYMANCODER_REPO secret tanimli degil"; exit 1; }
-          if [ -n "$SULEYMANCODER_TOKEN" ]; then
+          if [ -n "$SULEYMANCODER_SSH_KEY" ]; then
+            mkdir -p ~/.ssh
+            printf '%s\n' "$SULEYMANCODER_SSH_KEY" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+            REPO_URL="$SULEYMANCODER_REPO"
+          elif [ -n "$SULEYMANCODER_TOKEN" ]; then
             REPO_URL=$(printf '%s' "$SULEYMANCODER_REPO" | sed "s#https://#https://x-access-token:${SULEYMANCODER_TOKEN}@#")
           else
             REPO_URL="$SULEYMANCODER_REPO"
