@@ -27,12 +27,8 @@ const ctx = async () => {
 const choose = async (p, combo, option) => { await combo.click(); await p.getByRole("option", { name: option, exact: true }).click(); };
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 const step = (m) => console.log("•", m);
-const hubLinks = [
-  ["/yonetim/stok", "Merkez depo"],
-  ["/yonetim/ayarlar", "Franchise"],
-  ["/yonetim/ayarlar", "Şubeler"],
-  ["/yonetim/personel", "Panel kullanıcıları"],
-];
+const hubLinks = ["Merkez depo", "Bayilik", "Şubeler", "Panel kullanıcıları"];
+const ownerOnlyLinks = ["Merkez depo", "Bayilik", "Panel kullanıcıları"];
 
 try {
   const owner = await ctx();
@@ -96,9 +92,11 @@ try {
   assert(bmLink.includes("/sifre-yenile?t=") && !bmLink.includes("object"), "yenilenen davet bağlantısı geçersiz");
   step("mevcut kullanıcıya yeniden davet bağlantısı");
 
-  for (const [path, name] of hubLinks) {
-    await owner.goto(`${BASE}${path}`);
+  for (const name of hubLinks) {
+    const search = owner.getByRole("textbox", { name: "Menüde ara" });
+    await search.fill(name);
     assert((await owner.getByRole("link", { name, exact: true }).count()) > 0, `menüde ${name} yok`);
+    await search.fill("");
   }
   await owner.goto(`${BASE}/yonetim/depo`);
   await owner.getByRole("heading", { name: "Merkez depo" }).waitFor();
@@ -114,9 +112,11 @@ try {
   await bm.getByRole("button", { name: "Şifreyi kaydet" }).click();
   await bm.waitForURL(`${BASE}/yonetim**`);
   await bm.locator('[aria-label="Şubeniz: Kadıköy"]').first().waitFor();
-  for (const [path, name] of hubLinks) {
-    await bm.goto(`${BASE}${path}`);
+  for (const name of ownerOnlyLinks) {
+    const search = bm.getByRole("textbox", { name: "Menüde ara" });
+    await search.fill(name);
     assert((await bm.getByRole("link", { name, exact: true }).count()) === 0, `şube müdüründe ${name} görünüyor`);
+    await search.fill("");
   }
   for (const path of ["/yonetim/hq", "/yonetim/kullanicilar", "/yonetim/franchise", "/yonetim/subeler", "/yonetim/musteriler", "/yonetim/kuponlar", "/yonetim/mali", "/yonetim/denetim", "/yonetim/veriler"]) {
     await bm.goto(`${BASE}${path}`);
@@ -131,9 +131,11 @@ try {
   await hq.fill("input[name=password]", pass);
   await hq.getByRole("button", { name: "Şifreyi kaydet" }).click();
   await hq.waitForURL(`${BASE}/yonetim**`);
-  for (const [path, name] of hubLinks) {
-    await hq.goto(`${BASE}${path}`);
+  for (const name of hubLinks) {
+    const search = hq.getByRole("textbox", { name: "Menüde ara" });
+    await search.fill(name);
     assert((await hq.getByRole("link", { name, exact: true }).count()) > 0, `HQ menüsünde ${name} yok`);
+    await search.fill("");
   }
   await hq.goto(`${BASE}/yonetim/kullanicilar`);
   await hq.getByText(bmEmail).waitFor();
