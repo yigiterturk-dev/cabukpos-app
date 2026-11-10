@@ -191,7 +191,7 @@ export default async function Abonelik({ searchParams }: { searchParams: Promise
       )}
       <Card className="mt-6 p-5 text-sm text-ink-2">
         <h2 className="mb-1 font-semibold text-ink">İptal</h2>
-        <p className="break-words">Abonelik otomatik yenilenmez: yeni dönem için ödeme yapmamanız aboneliği dönem sonunda eritir, ayrıca işlem gerekmez. Dönem bitince 7 günlük ek süre sonrasında yönetim paneli salt okunur olur; kasa satışa devam eder, verileriniz silinmez. Hesap ve verilerin tamamen silinmesini isterseniz {contact ? `${contact} adresine` : <Link href="/iletisim" className="underline">İletişim sayfasındaki adrese</Link>} yazmanız yeterli. Koşulların tamamı: <Link href="/yasal/iade-iptal" className="underline">İptal ve iade</Link>.</p>
+        <p className="break-words">Abonelik otomatik yenilenmez: yeni dönem için ödeme yapmamanız aboneliği dönem sonunda eritir, ayrıca işlem gerekmez. Dönem bitince 7 günlük ek süre sonrasında yönetim paneli salt okunur olur; kasa satışa devam eder, verileriniz silinmez. Hesap ve verilerin tamamen silinmesini isterseniz {contact ? `${contact} adresine` : <Link href="/yasal/iletisim" className="underline">İletişim sayfasındaki adrese</Link>} yazmanız yeterli. Koşulların tamamı: <Link href="/yasal/iade-iptal" className="underline">İptal ve iade</Link>.</p>
       </Card>
     </>
   );
