@@ -21,8 +21,8 @@ concurrency:
 jobs:
   suleymancoder:
     if: |
-      (github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success') ||
-      (github.event_name == 'schedule' && vars.QA_BASE_URL != '')
+      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success') ||
+      ((github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && vars.QA_BASE_URL != '')
     runs-on: ubuntu-latest
     env:
       BASE_URL: ${{ github.event.deployment_status.target_url || vars.QA_BASE_URL }}
@@ -130,6 +130,111 @@ jobs:
         if: always()
         with:
           name: qa-report-${{ github.run_id }}
+          path: |
+            suleymancoder-runs/
+            .qa/baseline.json
+          if-no-files-found: ignore
+
+
+  selfhosted:
+    # Staging URL/DB olmadan gece QA: Postgres + app ayni runner'da, veri ephemeral.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://cabukpos_app:dev-app-pass@127.0.0.1:5432/cabukpos_qa
+      MIGRATE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/cabukpos_qa
+      TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/cabukpos_qa
+      AUTH_SECRET: ci-only-secret-that-is-long-enough-123456
+      APP_URL: http://127.0.0.1:3810
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3810
+      ALLOW_FAKE_PROVIDERS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - name: Prepare ephemeral database
+        run: |
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE DATABASE cabukpos_qa;
+          SQL
+          npm run db:push:test
+          MIGRATE_DATABASE_URL="$TEST_DATABASE_URL" npm run db:verify:billing-report
+      - run: npm run build
+      - name: Install Suleyman Coder
+        env:
+          SULEYMANCODER_REPO: ${{ secrets.SULEYMANCODER_REPO }}
+          SULEYMANCODER_TOKEN: ${{ secrets.SULEYMANCODER_TOKEN }}
+          SULEYMANCODER_SSH_KEY: ${{ secrets.SULEYMANCODER_SSH_KEY }}
+        run: |
+          test -n "$SULEYMANCODER_REPO" || { echo "::error::SULEYMANCODER_REPO secret tanimli degil"; exit 1; }
+          if [ -n "$SULEYMANCODER_SSH_KEY" ]; then
+            mkdir -p ~/.ssh
+            printf '%s\n' "$SULEYMANCODER_SSH_KEY" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+            REPO_URL="$SULEYMANCODER_REPO"
+          elif [ -n "$SULEYMANCODER_TOKEN" ]; then
+            REPO_URL=$(printf '%s' "$SULEYMANCODER_REPO" | sed "s#https://#https://x-access-token:${SULEYMANCODER_TOKEN}@#")
+          else
+            REPO_URL="$SULEYMANCODER_REPO"
+          fi
+          python -m pip install "git+$REPO_URL"
+          python -m playwright install --with-deps chromium
+      - name: Start app
+        run: |
+          nohup npm start -- -p 3810 > /tmp/cabukpos-qa.log 2>&1 &
+          for i in {1..40}; do
+            curl --fail --silent http://127.0.0.1:3810/api/health && exit 0
+            sleep 1
+          done
+          cat /tmp/cabukpos-qa.log
+          exit 1
+      - name: Signup and QA
+        env:
+          QA_PASSWORD: ${{ secrets.QA_PASSWORD }}
+        run: |
+          test -n "$QA_PASSWORD" || { echo "::error::QA_PASSWORD secret yok"; exit 1; }
+          python -m suleymancoder.signup --base http://127.0.0.1:3810 \
+            --business "QA Selfhost" --sector-label "Restoran" --name "QA Selfhost" \
+            --email qa-selfhosted@example.test --password "$QA_PASSWORD" \
+            --out /tmp/qa-auth.json --wait-contains /yonetim
+          suleymancoder http://127.0.0.1:3810 --routes .github/qa/routes.txt \
+            --storage-state /tmp/qa-auth.json \
+            --baseline .qa/baseline.json --baseline-out .qa/baseline.json \
+            --fail-on-new --steps 12 --minutes 3 --workers 3 --quiet
+      - name: Annotate new bugs
+        if: always()
+        run: |
+          AGG=$(ls -t suleymancoder-runs/*/aggregate.json 2>/dev/null | head -1)
+          if [ -n "$AGG" ]; then python -m suleymancoder.annotate "$AGG" || true; fi
+      - name: App log on failure
+        if: failure()
+        run: cat /tmp/cabukpos-qa.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-selfhosted-${{ github.run_id }}
           path: |
             suleymancoder-runs/
             .qa/baseline.json
