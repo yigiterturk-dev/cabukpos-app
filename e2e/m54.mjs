@@ -43,9 +43,11 @@ try {
   // 2) Mobil çekmece navigasyonu: hamburger → Ürünler → çekmece kapanır
   await admin.getByRole("button", { name: "Menüyü aç" }).click();
   await admin.getByRole("dialog", { name: "Menü" }).waitFor();
-  await admin.getByRole("dialog").getByRole("link", { name: "Ürünler" }).click();
-  await admin.waitForURL(`${BASE}/yonetim/urunler`);
+  await admin.getByRole("dialog").getByRole("link", { name: "Menü", exact: true }).click();
+  await admin.waitForURL(`${BASE}/yonetim/menu`);
   if (await admin.getByRole("dialog", { name: "Menü" }).isVisible().catch(() => false)) throw new Error("çekmece rota değişince kapanmadı");
+  await admin.getByRole("link", { name: /Ürünler/ }).first().click();
+  await admin.waitForURL(`${BASE}/yonetim/urunler`);
   await admin.getByRole("heading", { name: "Ürünler" }).waitFor();
   await noOverflow(admin, "Ürünler (mobil)");
   step("mobil çekmece navigasyonu + kapanma");
