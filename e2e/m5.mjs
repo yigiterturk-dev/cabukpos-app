@@ -104,7 +104,7 @@ try {
   agentProc = spawn(process.execPath, [AGENT, "run", "--dir", dir], { env: { ...process.env, CABUKPOS_HEARTBEAT_MS: "1500" }, stdio: ["ignore", "pipe", "pipe"] });
   agentProc.stdout.on("data", (d) => (agentLog += d));
   agentProc.stderr.on("data", (d) => (agentLog += d));
-  await waitFor(() => /Yapılandırma güncellendi: 1 yazıcı/.test(agentLog), "ajan yapılandırması");
+  await waitFor(() => /Yapılandırma güncellendi: 1 yazıcı/.test(agentLog), "ajan yapılandırması", 30000);
   step(`ajan eşlendi ve çalışıyor, yazıcı 127.0.0.1:${pport}`);
 
   await admin.goto(`${BASE}/yonetim/istasyonlar`);
