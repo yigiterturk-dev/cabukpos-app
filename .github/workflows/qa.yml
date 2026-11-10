@@ -126,7 +126,7 @@ jobs:
           if [ -z "$QA_DATABASE_URL" ]; then exit 0; fi
           psql "$QA_DATABASE_URL" -v ON_ERROR_STOP=1 -v qa_email="${QA_EMAIL:-}" -f .github/qa/cleanup.sql
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: qa-report-${{ github.run_id }}
@@ -231,7 +231,7 @@ jobs:
       - name: App log on failure
         if: failure()
         run: cat /tmp/cabukpos-qa.log || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: qa-selfhosted-${{ github.run_id }}
