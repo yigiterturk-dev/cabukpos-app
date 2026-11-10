@@ -24,7 +24,7 @@ async function getJson(url: string, init?: RequestInit) {
   return r.json();
 }
 
-export function createSync(listener: Listener) {
+export function createSync(listener: Listener, discover = false) {
   const d = kasaDb();
   let status: SyncStatus = { online: typeof navigator === "undefined" ? true : navigator.onLine, pending: 0, rejected: 0, unpaired: false, lastOkAt: null, syncing: false, reset: null };
   let running: Promise<void> | null = null;
@@ -32,6 +32,7 @@ export function createSync(listener: Listener) {
   let failures = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
+  let canDiscover = discover;
 
   const emit = async (meta: Meta | null = null) => {
     const m = meta ?? (await loadMeta());
@@ -63,11 +64,16 @@ export function createSync(listener: Listener) {
   async function once() {
     const meta = await loadMeta();
     if (!meta.device) {
-      status = { ...status, unpaired: true };
-      await emit(meta);
-      return;
+      // Sunucuda eslenmis cihaz olabilir (esleme sonrasi cookie): bir kez kesfet.
+      if (!canDiscover) {
+        status = { ...status, unpaired: true };
+        await emit(meta);
+        return;
+      }
+      canDiscover = false;
+    } else {
+      await push(meta.device.id);
     }
-    await push(meta.device.id);
     const server = await getJson(`/api/sync/catalog?v=${encodeURIComponent(meta.v ?? "")}`);
     if (meta.device && meta.device.id !== server.device.id) {
       await resetForDevice("Bu tarayıcı başka bir cihaz olarak eşlendi.");

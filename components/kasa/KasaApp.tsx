@@ -516,7 +516,7 @@ function GunSonu({ meta, closed, onClose, onBack }: { meta: Meta; closed: boolea
   );
 }
 
-export function KasaApp() {
+export function KasaApp({ paired = false }: { paired?: boolean }) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [startupError, setStartupError] = useState(false);
@@ -584,7 +584,7 @@ export function KasaApp() {
       if (m) setMeta(m);
       // Çevrimdışı + kuyruk dolu: ağ dönünce SW uyandırsın.
       if (st.pending > 0 && !navigator.onLine) registerOutboxSync();
-    });
+    }, paired);
     sync.current = s;
     void s.kick().catch(() => setStartupError(true));
     const offSyncNow = onSyncNow(() => s.kick());
@@ -594,6 +594,7 @@ export function KasaApp() {
   // Bulut→istemci itme (#27): yalnız eşlenmiş cihazda SSE aç; aksi halde 401 gürültüsü olur.
   useEffect(() => {
     if (!deviceId) return;
+    void sync.current?.kick();
     const es = new EventSource("/api/sync/stream");
     es.onmessage = () => sync.current?.kick();
     return () => es.close();
