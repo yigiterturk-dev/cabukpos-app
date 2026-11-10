@@ -52,3 +52,5 @@ e2e/_probe.mjs
 
 qa-runs/
 suleymancoder-runs/
+
+suleymancoder-runs*/

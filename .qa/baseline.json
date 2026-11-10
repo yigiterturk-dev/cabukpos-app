@@ -1,14 +1,4 @@
 {
-  "generated_at": "2026-11-10T03:19:21",
-  "signatures": [
-    "a11y|-|axe:document-title: documents must have <title> element to aid in navigation — fix any of the following: document does not have a non-empty <title> element",
-    "a11y|-|axe:html-has-lang: <html> element must have a lang attribute — fix any of the following: the <html> element does not have a lang attribute",
-    "console|-|failed to load resource: net::err_connection_refused",
-    "network|-|net::err_connection_refused http://#.#.#.#:#/__nextjs_devtools_config",
-    "network|-|net::err_connection_refused http://#.#.#.#:#/demo/ai-siparis",
-    "network|-|net::err_connection_refused http://#.#.#.#:#/demo/konusarak-yonet",
-    "network|-|net::err_connection_refused http://#.#.#.#:#/sifre-yenile",
-    "network|-|net::err_connection_refused http://#.#.#.#:#/sifremi-unuttum",
-    "network|-|net::err_connection_refused http://#.#.#.#:#/yardim"
-  ]
+  "generated_at": "2026-11-10T00:00:00",
+  "signatures": []
 }
