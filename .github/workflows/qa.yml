@@ -112,6 +112,25 @@ jobs:
             --baseline .qa/baseline.json --baseline-out .qa/baseline.json \
             --fail-on-new --steps 12 --minutes 1 --workers 3 --quiet
 
+      - name: Role smoke (mudur)
+        env:
+          QA_PASSWORD: ${{ secrets.QA_PASSWORD }}
+        run: |
+          test -n "$QA_PASSWORD" || { echo "::error::QA_PASSWORD secret yok"; exit 1; }
+          TID=$(psql "$DATABASE_URL" -Atc "select tenant_id from users where email='qa-selfhosted@example.test' limit 1")
+          test -n "$TID" || { echo "::error::QA tenant bulunamadi"; exit 1; }
+          HASH=$(node -e "console.log(require('bcryptjs').hashSync(process.argv[1],12))" "$QA_PASSWORD")
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "insert into users (tenant_id,email,name,password_hash,role,active) values ('$TID','qa-manager@example.test','QA Manager','$HASH','mudur',true)"
+          python -m suleymancoder.login --base http://127.0.0.1:3810 \
+            --email qa-manager@example.test --password "$QA_PASSWORD" \
+            --out /tmp/qa-manager.json --wait-contains /yonetim
+          python -m suleymancoder.security --base http://127.0.0.1:3810 \
+            --storage-state /tmp/qa-manager.json --forbid /api/yonetim/veri-export
+          suleymancoder http://127.0.0.1:3810 --routes .github/qa/routes.txt \
+            --storage-state /tmp/qa-manager.json --out suleymancoder-runs/manager \
+            --baseline .qa/baseline-manager.json --baseline-out .qa/baseline-manager.json \
+            --fail-on-new --steps 6 --minutes 1 --workers 2 --quiet --no-submit \
+            --ignore '403|401'
       - name: Annotate new bugs
         if: always()
         run: |
