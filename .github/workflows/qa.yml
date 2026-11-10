@@ -249,7 +249,7 @@ jobs:
           TID=$(psql "$TEST_DATABASE_URL" -Atc "select tenant_id from users where email='qa-selfhosted@example.test' limit 1")
           STORE=$(psql "$TEST_DATABASE_URL" -Atc "select id from stores where tenant_id='$TID' order by created_at limit 1")
           test -n "$TID" -a -n "$STORE" || { echo "::error::QA tenant/store bulunamadi"; exit 1; }
-          STAFF=$(psql "$TEST_DATABASE_URL" -Atc "insert into staff (tenant_id,name,role,pin_hash) values ('$TID','QA Courier','kurye','') returning id")
+          STAFF=$(psql "$TEST_DATABASE_URL" -Atc "insert into staff (tenant_id,name,role,pin_hash) values ('$TID','QA Courier','kurye','') returning id" | head -1 | tr -d '[:space:]')
           TOKEN=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")
           HASH=$(node -e "console.log(require('crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" "$TOKEN")
           psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "insert into devices (tenant_id,store_id,name,receipt_prefix,token_hash,role,paired_at) values ('$TID','$STORE','QA Courier','QAQ1','$HASH','kurye',now())"
