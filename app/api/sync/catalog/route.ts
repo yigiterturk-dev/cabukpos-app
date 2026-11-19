@@ -65,12 +65,15 @@ export async function GET(req: Request) {
     ? staff.map(({ id, name, role }) => ({ id, name, role }))
     : staff;
   const expirySafety=await withTenant(device.tenantId,tx=>loadExpirySafety(tx,device.storeId));
+  const [ynr] = await getDb().select({ id: schema.platformConnections.id }).from(schema.platformConnections).where(and(eq(schema.platformConnections.storeId, device.storeId), eq(schema.platformConnections.platform, "ynr"), eq(schema.platformConnections.active, true))).limit(1);
+  const ynrConfigured = Boolean(ynr) || Boolean(process.env.YNR_API_BASE && process.env.YNR_TOKEN);
   const catalog = {
     expirySafety,
     categories: cats.map(({ id, name }) => ({ id, name })), products, staff: staffOut,
     priceLists: priceLists.length ? priceLists : undefined, // #50
     fiscal: { modes: { ...DEFAULT_MODES, ...fs?.modes }, provider: fs?.provider ?? "fake-earsiv", sellerTaxId: tn?.taxId ?? null }, // M8
     ...(salon ? { areas: salon.areas, tables: salon.tables, stations: salon.stations, optionGroups: salon.optionGroups, deliveryZones: salon.deliveryZones } : {}),
+    ...(ynrConfigured ? { deliveryProvider: "ynr" as const } : {}),
   };
   const v = await sha256(JSON.stringify(catalog));
   const [bt] = await getDb().select({ trialEndsAt: schema.tenants.trialEndsAt, paidUntil: schema.tenants.paidUntil }).from(schema.tenants).where(eq(schema.tenants.id, device.tenantId));

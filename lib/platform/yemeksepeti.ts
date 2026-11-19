@@ -4,7 +4,8 @@ import { z } from "zod";
 import type { IncomingOrder } from "@/lib/core/platform";
 import type { PayIntent } from "@/lib/core/tab";
 import { verifySignature } from "./mock";
-import { platformApi } from "./credentials";
+import { platformApi, readConnectionCredentials } from "./credentials";
+import { createYemeksepetiPartnerSource } from "./yemeksepeti-partner";
 import type { Conn, OrderSource, PlatformOrderStatus } from "./types";
 
 const kurus = z.number().int().min(0).max(100_000_000);
@@ -42,10 +43,13 @@ function requireConfig(conn: Conn) {
 }
 
 export function createYemeksepetiSource(enabled: boolean): OrderSource {
+  const partner = createYemeksepetiPartnerSource(enabled);
+  const partnerMode = (conn: Conn) => readConnectionCredentials(conn)?.mode === "partner";
   return {
     id: "yemeksepeti",
     parseWebhook(raw, headers, conn) {
       if (!enabled) return { error: "Yemeksepeti bağlantısı kapalı.", status: 400 };
+      if (partnerMode(conn)) return partner.parseWebhook(raw, headers, conn);
       if (!verifySignature(conn.webhookSecret, raw, headers.get("x-ys-signature"), headers.get("x-ys-signature-timestamp"))) return { error: "İmza geçersiz.", status: 401 };
       let json: unknown;
       try { json = JSON.parse(raw); } catch { return { error: "JSON değil.", status: 400 }; }
@@ -53,19 +57,22 @@ export function createYemeksepetiSource(enabled: boolean): OrderSource {
     },
     async accept(conn: Conn, externalId: string, prepMin: number) {
       if (!enabled) throw new Error("Yemeksepeti bağlantısı kapalı.");
+      if (partnerMode(conn)) return partner.accept(conn, externalId, prepMin);
       const { base, key } = requireConfig(conn);
       const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/accept`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ prepMin }) });
       if (!res.ok) throw new Error(`Yemeksepeti kabul hatası: HTTP ${res.status}`);
     },
     async reject(conn: Conn, externalId: string, reason: string) {
       if (!enabled) throw new Error("Yemeksepeti bağlantısı kapalı.");
+      if (partnerMode(conn)) return partner.reject(conn, externalId, reason);
       const { base, key } = requireConfig(conn);
       const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/reject`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ reason }) });
       if (!res.ok) throw new Error(`Yemeksepeti red hatası: HTTP ${res.status}`);
     },
     // Durum geri bildirimi (M6 kalanı): kurye aldı / teslim / iptal.
-    async pushStatus(conn: Conn, externalId: string, status: PlatformOrderStatus) {
+    async pushStatus(conn: Conn, externalId: string, status: PlatformOrderStatus, context) {
       if (!enabled) throw new Error("Yemeksepeti bağlantısı kapalı.");
+      if (partnerMode(conn)) return partner.pushStatus!(conn, externalId, status, context);
       const { base, key } = requireConfig(conn);
       const res = await fetch(`${base}/orders/${encodeURIComponent(externalId)}/status`, { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ status }) });
       if (!res.ok) throw new Error(`Yemeksepeti durum hatası: HTTP ${res.status}`);
@@ -73,6 +80,7 @@ export function createYemeksepetiSource(enabled: boolean): OrderSource {
     // Menü/fiyat/stok geri push'u (#29): eşlenmiş ürünleri sandbox'a yazar; hedef biçim {ok, failed}.
     async pushCatalog(conn: Conn, items) {
       if (!enabled) return { error: "Yemeksepeti bağlantısı kapalı." };
+      if (partnerMode(conn)) return partner.pushCatalog!(conn, items);
       const { base, key } = requireConfig(conn);
       const res = await fetch(`${base}/stores/${encodeURIComponent(conn.storeId)}/catalog`, { method: "PUT", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ items }), signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`Yemeksepeti katalog hatası: HTTP ${res.status}`);

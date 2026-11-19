@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { IncomingOrder } from "@/lib/core/platform";
 import type { PayIntent } from "@/lib/core/tab";
 import { verifySignature } from "./mock";
-import { platformApi } from "./credentials";
+import { platformApi, readConnectionCredentials } from "./credentials";
 import type { Conn, OrderSource, PlatformOrderStatus } from "./types";
 
 const kurus = z.number().int().min(0).max(100_000_000);
@@ -37,6 +37,11 @@ export function parseSandboxPayload(json: unknown): IncomingOrder[] {
 }
 
 function requireConfig(conn: Conn) {
+  // Panel üçlüsü (Zincir ID + Restoran ID + API Key) kaydedilebilir; ancak Migros'un
+  // sözleşmeye bağlı uçları/şartnamesi gelmeden canlı istek atılmaz.
+  if (readConnectionCredentials(conn)?.mode === "migros") {
+    throw new Error("Migros Yemek adaptörü sözleşme şartnamesi bekliyor; canlı uç henüz etkin değil.");
+  }
   return platformApi(conn, process.env.MIGROS_API_BASE, process.env.MIGROS_API_KEY, "Migros");
 }
 

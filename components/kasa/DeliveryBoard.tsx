@@ -14,7 +14,7 @@ import { PinPad } from "./PinPad";
 import { minutesSince } from "./useTabs";
 import { useKasaMainProps } from "./KasaPreviewContext";
 import { DeliveryOperations } from "./DeliveryOperations";
-import { courierSummary, deliveryTimes, dispatchFilter, isDeliveryActive, readyDispatchEvents } from "@/lib/core/dispatch";
+import { courierSummary, deliveryTimes, dispatchFilter, readyDispatchEvents } from "@/lib/core/dispatch";
 import { istToday } from "@/lib/core/report";
 import { StatCard } from "@/components/ui";
 import { DeliveryConnections } from "./DeliveryConnections";
@@ -73,15 +73,14 @@ type Dialog = { k: "accept" | "reject" | "courier" | "cancel"; tab: TabState };
 export type CourierJobView = { tabId: string; status: string; courierName: string | null; etaMinutes: number | null; collectionMinor: number | null };
 const JOB_LABEL: Record<string, string> = { sent: "Kuryeye iletildi", created: "Kurye bekliyor", picked_up: "Kurye aldı", on_the_way: "Yolda", delivered: "Teslim edildi", cancelled: "Kurye iptali" };
 
-export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onOpen, onBill, onHandover, loaded = false, courierJobs = {} }: {
+export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onOpen, onBill, loaded = false, courierJobs = {}, externalCourier = false }: {
   meta: Meta; onMeta: (m: Meta) => void; tabs: Map<string, TabState>; now: number; add: Add; waiter: Waiter;
-  onNew: () => void; onOpen: (tabId: string) => void; onBill: (tabId: string) => void; onHandover: (tab: TabState) => Promise<void>; loaded?: boolean; courierJobs?: Record<string, CourierJobView>;
+  onNew: () => void; onOpen: (tabId: string) => void; onBill: (tabId: string) => void; loaded?: boolean; courierJobs?: Record<string, CourierJobView>; externalCourier?: boolean;
 }) {
   const mainProps = useKasaMainProps();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [view, setView] = useState<"board" | "orders" | "couriers">("board");
   const [query, setQuery] = useState("");
-  const [autoAssign, setAutoAssign] = useState(false);
   const { TL } = kasaFmt(meta);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -113,7 +112,6 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
   const couriers = meta.catalog.staff.filter((s) => s.role === "kurye");
   const loads = courierSummary(tabs.values(), couriers, istToday(now), now);
   const matches = new Set(dispatchFilter(list, { query }).map(t => t.id));
-  const unassigned = list.filter(t => t.kind === "paket" && isDeliveryActive(t) && !t.delivery.courierId).length;
   const staffName = (id: string | null) => meta.catalog.staff.find((s) => s.id === id)?.name ?? null;
   const waiting = list.filter((t) => deliveryStatus(t) === "onay_bekliyor").length;
   const active = list.filter((t) => !["teslim", "iptal", "reddedildi"].includes(deliveryStatus(t))).length;
@@ -184,17 +182,16 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
         {waiting > 0 && <span className="rounded-full bg-bad-action px-2.5 py-0.5 text-xs font-medium text-white" data-testid="waiting-count">{waiting} onay bekliyor</span>}
         <button type="button" onClick={onNew} className="press ml-auto inline-flex min-h-12 items-center rounded-xl bg-brand-action px-4 text-sm font-semibold text-white shadow-rest ring-1 ring-inset ring-white/15 outline-none hover:bg-brand-action-hover hover:shadow-raised focus-visible:ring-4 focus-visible:ring-brand-ring/60">+ Yeni paket</button>
       </div>
+      {externalCourier ? <div className="mb-4 rounded-xl border border-info/30 bg-info-soft p-3 text-sm text-info">Kurye ataması yok. <b>Hazır</b>&apos;a basınca sipariş YNR&apos;ye gider; kurye gelip alır.</div> : <div className="mb-4 rounded-xl border border-warn/30 bg-warn-soft p-3 text-sm text-warn">Kurye bağlantısı yok. <b>Hazır</b> yalnızca siparişi hazır işaretler; kurye çağrılmaz. Yönetim → Pazaryerleri → YNR Kurye.</div>}
       {view === "board" && <DeliveryConnections meta={meta} preview={!("id" in mainProps)} />}
       {view === "board" && <DeliverySoundControls />}
-      {view === "board" && <label className="mb-4 flex min-h-12 items-center gap-3 rounded-xl border border-line bg-surface px-4 text-sm"><input type="checkbox" checked={autoAssign} onChange={e => setAutoAssign(e.target.checked)} disabled={!couriers.length} className="size-5 accent-brand" /><span>Hazır düğmesinde en az aktif işi olan kuryeye ata <span className="text-xs text-muted">· bu oturumda, işletmenin paket siparişleri için</span></span></label>}
       {view === "board" && <div className="mb-4 grid gap-3 grid-cols-2 lg:grid-cols-4">
         <StatCard label="Onay bekliyor" value={loaded ? String(waiting) : "—"} tone={waiting ? "warn" : "neutral"} />
         <StatCard label="Hazır" value={loaded ? String(list.filter(t => deliveryStatus(t) === "hazir").length) : "—"} tone="ok" />
         <StatCard label="Yolda" value={loaded ? String(list.filter(t => deliveryStatus(t) === "yolda").length) : "—"} tone="info" />
-        <StatCard label="Kurye atanmamış" value={loaded ? String(unassigned) : "—"} hint="İşletmenin paket siparişleri" tone={unassigned ? "warn" : "neutral"} />
       </div>}
       <div role="group" aria-label="Paket yönetimi görünümü" className="mb-4 flex flex-wrap gap-2">
-        {([["board", "Canlı akış"], ["orders", "Sipariş listesi"], ["couriers", "Kurye yönetimi"]] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)} className={`${btn} ${view === key ? "border-brand bg-brand-soft text-brand" : ""}`}>{label}</button>)}
+        {([["board", "Canlı akış"], ["orders", "Sipariş listesi"]] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)} className={`${btn} ${view === key ? "border-brand bg-brand-soft text-brand" : ""}`}>{label}</button>)}
         {view === "board" && <label className="ml-auto flex min-w-0 items-center gap-2 text-sm text-muted">Ara<input aria-label="Canlı paketlerde ara" value={query} onChange={e => setQuery(e.target.value)} placeholder="Müşteri, telefon, ürün…" className="min-h-12 min-w-0 rounded-xl border border-line bg-surface px-3 outline-none focus-visible:ring-4 focus-visible:ring-brand-ring/60" /></label>}
       </div>
       {view !== "board" && <DeliveryOperations meta={meta} tabs={tabs} now={now} view={view} onOpen={onOpen} preview={!("id" in mainProps)} />}
@@ -266,10 +263,8 @@ export function DeliveryBoard({ meta, onMeta, tabs, now, add, waiter, onNew, onO
                             </>
                           ) : st !== "yolda" && (
                             <>
-                              {st === "hazirlaniyor" && <button type="button" aria-label={`Hazır: ${orderLabel}`} disabled={busy} onClick={() => void run(() => add(readyDispatchEvents(t, tabs.values(), couriers, autoAssign, () => crypto.randomUUID(), now).map(event => ev(t, event))), "Sipariş hazır olarak kaydedildi.", `ready:${t.id}`, "Sipariş hazır olarak kaydediliyor.", t.id)} className={strong}>Hazır</button>}
+                              {st === "hazirlaniyor" && <button type="button" aria-label={`Hazır: ${orderLabel}`} disabled={busy} onClick={() => void run(() => add(readyDispatchEvents(t, tabs.values(), [], false, () => crypto.randomUUID(), now).map(event => ev(t, event))), "Sipariş hazır olarak kaydedildi.", `ready:${t.id}`, "Sipariş hazır olarak kaydediliyor.", t.id)} className={strong}>Hazır</button>}
                               {st === "hazir" && t.kind === "paket" && t.delivery.courierId && <button type="button" aria-label={`Yola çıkar: ${orderLabel}`} disabled={busy} onClick={() => void run(() => add([ev(t, { type: "out" })]), "Sipariş yola çıktı olarak kaydedildi.", `out:${t.id}`, "Yola çıkış kaydediliyor.", t.id)} className={strong}>Yola çıkar</button>}
-                              {t.kind === "paket" && couriers.length > 0 && <button type="button" aria-label={`${courier ? "Kurye değiştir" : "Kurye ata"}: ${orderLabel}`} disabled={busy} onClick={() => openDialog({ k: "courier", tab: t })} className={btn}>{courier ? "Kurye değiştir" : "Kurye ata"}</button>}
-                              {t.kind === "platform" && <button type="button" aria-label={`${pendingAction === `handover:${t.id}` ? "Kurye teslimi kaydediliyor" : "Kuryeye verildi"}: ${orderLabel}`} disabled={busy} aria-busy={pendingAction === `handover:${t.id}` || undefined} onClick={() => void run(() => onHandover(t), "Sipariş kurye teslimine verildi.", `handover:${t.id}`, "Sipariş kurye teslimine veriliyor.", t.id)} className={strong}>{pendingAction === `handover:${t.id}` ? "Kurye teslimi kaydediliyor…" : "Kuryeye verildi"}</button>}
                               {t.kind === "paket" && !t.delivery.courierId && <button type="button" aria-label={`Hesap (gel-al): ${orderLabel}`} disabled={busy || t.remaining === 0} onClick={() => onBill(t.id)} className={btn}>Hesap (gel-al)</button>}
                             </>
                           )}

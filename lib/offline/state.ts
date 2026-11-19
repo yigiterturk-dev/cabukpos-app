@@ -20,7 +20,7 @@ export type DeliveryZone = { id: string; name: string; fee: number; minOrder: nu
 // #50: fiyat listesi / happy hour (market + restoran; kasa satır eklerken uygular)
 export type KasaPriceList = { id: string; name: string; kind?: "fiyat" | "yuzde"; percent?: number | null; categoryIds?: string[] | null; days: number[]; startMin: number; endMin: number; storeId: string | null; items: { productId: string; price: number }[] };
 // M5: restoran salonu (market kataloğunda yok)
-export type Catalog = { expirySafety?: import("@/lib/core/stock-expiry").ExpirySafety; categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; priceLists?: KasaPriceList[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null } };
+export type Catalog = { expirySafety?: import("@/lib/core/stock-expiry").ExpirySafety; categories: { id: string; name: string }[]; products: KasaProduct[]; staff: KasaStaff[]; areas?: Area[]; tables?: Table[]; stations?: Station[]; optionGroups?: OptionGroup[]; deliveryZones?: DeliveryZone[]; priceLists?: KasaPriceList[]; fiscal?: { modes: ChannelModes; provider: string; sellerTaxId?: string | null }; deliveryProvider?: "ynr" | null };
 export type LocalShift = { id: string; openedBy: string; openedAt: string; openingCash: number };
 export type ClosedShift = LocalShift & { closedBy: string; closedAt: string; countedCash: number; expectedCash: number; dropped: number };
 /** #48: vardiyada seifeye alınan paralar (safe drop); beklenen kasadan düşer. */

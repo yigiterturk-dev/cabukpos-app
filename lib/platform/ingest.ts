@@ -2,18 +2,21 @@
 // Aynı şube + platform + externalId ikinci kez gelirse yazılmaz (kilit + kontrol + benzersiz indeks).
 // Otomatik kabulde accept + istasyona göre send de yazılır, platform işlem sonrası bilgilendirilir.
 import { and, eq, sql } from "drizzle-orm";
+import { audit } from "@/lib/audit";
 import { schema, withTenant, type Tx } from "@/db";
 import { isVatRate } from "@/lib/core/money";
 import { sendByStation, toTabEvents, AUTO_PREP_MIN, type IncomingOrder, type MappedProduct } from "@/lib/core/platform";
-import type { TabEv } from "@/lib/core/tab";
-import { upsertCustomer } from "@/lib/sync/apply";
+import { foldTabs, type TabEv } from "@/lib/core/tab";
+import { tabEventsOf, upsertCustomer } from "@/lib/sync/apply";
 import { categoryStationForStore, loadStoreStationRoutes, productStationForStore } from "@/lib/core/station-routing";
 import { notifyPlatform } from "./notify";
-import type { Conn } from "./types";
+import type { Conn, PlatformWebhookEvent } from "./types";
+import { notifyYnrCancel, pushYnrOrder } from "@/lib/delivery/ynr";
 
 export { AUTO_PREP_MIN }; // geriye uyumlu: eski içe aktarmalar kırılmasın
 
 export type IngestResult = { created: number; duplicates: number; unmapped: number };
+export type PlatformEventResult = { cancelled: number; ignored: number; review: number; catalogJobs: number };
 
 export async function ingestOrders(conn: Conn, orders: IncomingOrder[]): Promise<IngestResult> {
   const r: IngestResult = { created: 0, duplicates: 0, unmapped: 0 };
@@ -58,13 +61,52 @@ export async function ingestOrders(conn: Conn, orders: IncomingOrder[]): Promise
     });
     if (!out) { r.duplicates++; continue; }
     if (out.duplicate) r.duplicates++;
-    else r.created++;
+    else { r.created++; void pushYnrOrder(conn.tenantId, conn.storeId, o, false).catch(() => {}); }
     r.unmapped += out.unmapped;
     if (out.acceptId) await notifyPlatform(conn.tenantId, out.acceptId, out.tabId, { type: "accept", prepMin: out.prepMin });
   }
   return r;
 }
 
+
+/** Platform iptali: açık adisyonu kapatır; paket alınmışsa sessizce silmez, incelemeye açar. */
+export async function applyPlatformEvents(conn: Conn, events: PlatformWebhookEvent[]): Promise<PlatformEventResult> {
+  const result: PlatformEventResult = { cancelled: 0, ignored: 0, review: 0, catalogJobs: 0 };
+  for (const event of events) {
+    if (event.type === "catalog_job") {
+      await withTenant(conn.tenantId, (tx) => audit(tx, conn.tenantId, "system", "platform.catalog.job", { platform: conn.platform, storeId: conn.storeId, jobId: event.jobId, status: event.status, downloadUrl: event.downloadUrl }));
+      result.catalogJobs++;
+      continue;
+    }
+    if (event.type !== "cancel") continue;
+    const outcome = await withTenant(conn.tenantId, async (tx) => {
+      const E = schema.tabEvents;
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${JSON.stringify([conn.storeId, conn.platform, event.externalId])}))`);
+      const [order] = await tx.select({ tabId: E.tabId }).from(E).where(and(
+        eq(E.storeId, conn.storeId),
+        eq(E.type, "order"),
+        sql`${E.payload}->'source'->>'platform' = ${conn.platform}`,
+        sql`${E.payload}->'source'->>'externalId' = ${event.externalId}`,
+      ));
+      if (!order) return "ignored" as const;
+      const tab = foldTabs(await tabEventsOf(tx, order.tabId)).get(order.tabId);
+      if (!tab || tab.closed || tab.delivery.cancelled || tab.delivery.deliveredAt) return "ignored" as const;
+      const picked = Boolean(tab.delivery.outAt || tab.delivery.handedOver || event.postPickedUp);
+      await tx.insert(E).values({
+        id: crypto.randomUUID(), tenantId: conn.tenantId, storeId: conn.storeId, tabId: order.tabId,
+        tableId: null, deviceId: null, staffId: null, at: new Date(), type: "cancel",
+        payload: { type: "cancel", reason: event.reason } satisfies TabEv,
+        review: picked ? "platform iptali: paket kurye tarafından alınmış" : null,
+      });
+      void notifyYnrCancel(conn.tenantId, conn.storeId, order.tabId, event.reason).catch(() => {});
+      return picked ? "review" as const : "cancelled" as const;
+    });
+    if (outcome === "cancelled") result.cancelled++;
+    else if (outcome === "review") { result.cancelled++; result.review++; }
+    else result.ignored++;
+  }
+  return result;
+}
 
 /** Şubenin dış kod → ürün eşlemesi (istasyon: ürün ?? kategori). */
 async function codeMap(tx: Tx, conn: Conn): Promise<Map<string, MappedProduct>> {

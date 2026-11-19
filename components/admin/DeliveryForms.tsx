@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
-import { createConnection, pushCatalog, saveCode, saveConnectionCredentials, saveCustomer, saveZone, sendTestOrder, setConnection, type DeliveryState } from "@/lib/admin/delivery-actions";
+import { createConnection, pushCatalog, saveCode, saveConnectionCredentials, saveCustomer, saveMigrosCredentials, savePartnerCredentials, saveYnrConnection, saveZone, sendTestOrder, setConnection, type DeliveryState } from "@/lib/admin/delivery-actions";
 import { formatPlain } from "@/lib/core/money";
 import { useFormAction } from "@/components/useFormAction";
 import { PasswordInput } from "@/components/PasswordInput";
@@ -218,6 +218,94 @@ export function PlatformCredentialsForm({ connectionId, hasCredentials }: { conn
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Kaydediliyor…" : hasCredentials ? "Bağlantıyı güncelle" : "Bağlantıyı kaydet"}</Button>
         {pending && <span className="sr-only" role="status" aria-live="polite">Platform API bilgileri kaydediliyor.</span>}
+        {state.savedAt && !edited && !pending && !state.error && <Saved s={state} />}
+        <Err s={displayState} />
+      </div>
+    </form>
+  );
+}
+
+export function PartnerCredentialsForm({ connectionId, hasCredentials }: { connectionId: string; hasCredentials: boolean }) {
+  const { state, pending, onSubmit } = useFormAction(savePartnerCredentials.bind(null, connectionId), {} as DeliveryState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [edited, setEdited] = useState(false);
+  const displayState = edited || pending ? ({} as DeliveryState) : state;
+  const idPrefix = `partner-${connectionId}`;
+  useEffect(() => {
+    if (state.error && state.field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+  }, [state.error, state.field]);
+  return (
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="rounded-lg border border-line p-4">
+      <h3 className="text-sm font-semibold">Yemeksepeti Partner API (OAuth)</h3>
+      <p className="mt-1 text-sm text-muted">Partner Portal → Shop Integrations Plugin’te oluşturduğunuz Client ID/Secret ve zincir/mağaza kimlikleri. Boş bırakılan alan kayıtlı değeri korur; sır şifreli saklanır.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div><Field label="API adresi" hint="Boş = sandbox.partner.deliveryhero.io; canlı için https://yemeksepeti.partner.deliveryhero.io"><Input name="apiBase" disabled={pending} inputMode="url" maxLength={2048} placeholder={hasCredentials ? "Kayıtlı; değiştirmek için yazın" : "Boş = sandbox"} {...errorProps(displayState, "apiBase", idPrefix)} /></Field><Err s={displayState} f="apiBase" idPrefix={idPrefix} /></div>
+        <div><Field label="Client ID"><Input name="clientId" disabled={pending} maxLength={512} autoComplete="off" placeholder={hasCredentials ? "Kayıtlı; değiştirmek için yazın" : "Partner Portal Client ID"} {...errorProps(displayState, "clientId", idPrefix)} /></Field><Err s={displayState} f="clientId" idPrefix={idPrefix} /></div>
+        <div><Field label="Client Secret" hint={hasCredentials ? "Kayıtlı (şifreli); değiştirmek için yenisini yazın" : "Partner Portal Client Secret"}><PasswordInput name="clientSecret" disabled={pending} autoComplete="off" placeholder={hasCredentials ? "••••••••" : ""} {...errorProps(displayState, "clientSecret", idPrefix)} /></Field><Err s={displayState} f="clientSecret" idPrefix={idPrefix} /></div>
+        <div><Field label="Zincir ID"><Input name="chainId" disabled={pending} maxLength={200} placeholder={hasCredentials ? "Kayıtlı; değiştirmek için yazın" : "Partner Portal chain_id"} {...errorProps(displayState, "chainId", idPrefix)} /></Field><Err s={displayState} f="chainId" idPrefix={idPrefix} /></div>
+        <div><Field label="Mağaza/Vendor ID" hint="Katalog gönderimi ve sipariş eşlemesi için"><Input name="vendorId" disabled={pending} maxLength={200} placeholder={hasCredentials ? "Kayıtlı; değiştirmek için yazın" : "Partner Portal vendor_id"} {...errorProps(displayState, "vendorId", idPrefix)} /></Field><Err s={displayState} f="vendorId" idPrefix={idPrefix} /></div>
+        <div><Field label="Platform mağaza ID" hint="İsteğe bağlı; webhook’ta client.store_id ile eşleşir"><Input name="externalStoreId" disabled={pending} maxLength={200} placeholder="ör. nbet" {...errorProps(displayState, "externalStoreId", idPrefix)} /></Field><Err s={displayState} f="externalStoreId" idPrefix={idPrefix} /></div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Kaydediliyor…" : hasCredentials ? "Kimliği güncelle" : "Kimliği kaydet"}</Button>
+        {pending && <span className="sr-only" role="status" aria-live="polite">Yemeksepeti partner kimliği kaydediliyor.</span>}
+        {state.savedAt && !edited && !pending && !state.error && <Saved s={state} />}
+        <Err s={displayState} />
+      </div>
+    </form>
+  );
+}
+
+export function MigrosCredentialsForm({ connectionId, hasCredentials }: { connectionId: string; hasCredentials: boolean }) {
+  const { state, pending, onSubmit } = useFormAction(saveMigrosCredentials.bind(null, connectionId), {} as DeliveryState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [edited, setEdited] = useState(false);
+  const displayState = edited || pending ? ({} as DeliveryState) : state;
+  const idPrefix = `migros-${connectionId}`;
+  useEffect(() => {
+    if (state.error && state.field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+  }, [state.error, state.field]);
+  return (
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="rounded-lg border border-line p-4">
+      <h3 className="text-sm font-semibold">Migros Yemek POS entegrasyonu</h3>
+      <p className="mt-1 text-sm text-muted">Migros Yemek restoran paneli → Restoran Bilgileri → POS Entegrasyonları ekranındaki üçlü. Sözleşme ve uç adresleri gelmeden canlı akış açılmaz.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div><Field label="API adresi" hint="Boş bırakılabilir; Migros entegratör sözleşmesindeki adres"><Input name="apiBase" disabled={pending} inputMode="url" maxLength={2048} placeholder={hasCredentials ? "Kayıtlı; değiştirmek için yazın" : "Migros’un verdiği adres"} {...errorProps(displayState, "apiBase", idPrefix)} /></Field><Err s={displayState} f="apiBase" idPrefix={idPrefix} /></div>
+        <div><Field label="Zincir ID"><Input name="chainId" disabled={pending} maxLength={200} placeholder={hasCredentials ? "Kayıtlı; değiştirmek için yazın" : "ör. 4730"} {...errorProps(displayState, "chainId", idPrefix)} /></Field><Err s={displayState} f="chainId" idPrefix={idPrefix} /></div>
+        <div><Field label="Restoran ID"><Input name="restaurantId" disabled={pending} maxLength={200} placeholder={hasCredentials ? "Kayıtlı; değiştirmek için yazın" : "ör. 23000000212248"} {...errorProps(displayState, "restaurantId", idPrefix)} /></Field><Err s={displayState} f="restaurantId" idPrefix={idPrefix} /></div>
+        <div><Field label="API Key" hint={hasCredentials ? "Kayıtlı (şifreli); değiştirmek için yenisini yazın" : "Migros panelindeki API Key"}><PasswordInput name="apiKey" disabled={pending} autoComplete="off" placeholder={hasCredentials ? "••••••••" : ""} {...errorProps(displayState, "apiKey", idPrefix)} /></Field><Err s={displayState} f="apiKey" idPrefix={idPrefix} /></div>
+        <div><Field label="Platform mağaza ID" hint="İsteğe bağlı; sipariş eşlemesi için"><Input name="externalStoreId" disabled={pending} maxLength={200} placeholder="ör. 23000000212248" {...errorProps(displayState, "externalStoreId", idPrefix)} /></Field><Err s={displayState} f="externalStoreId" idPrefix={idPrefix} /></div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Kaydediliyor…" : hasCredentials ? "Kimliği güncelle" : "Kimliği kaydet"}</Button>
+        {pending && <span className="sr-only" role="status" aria-live="polite">Migros kimliği kaydediliyor.</span>}
+        {state.savedAt && !edited && !pending && !state.error && <Saved s={state} />}
+        <Err s={displayState} />
+      </div>
+    </form>
+  );
+}
+
+export function YnrCredentialsForm({ storeId, hasCredentials }: { storeId: string; hasCredentials: boolean }) {
+  const { state, pending, onSubmit } = useFormAction(saveYnrConnection.bind(null, storeId), {} as DeliveryState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [edited, setEdited] = useState(false);
+  const displayState = edited || pending ? ({} as DeliveryState) : state;
+  const idPrefix = `ynr-${storeId}`;
+  useEffect(() => {
+    if (state.error && state.field) requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+  }, [state.error, state.field]);
+  return (
+    <form ref={formRef} onChangeCapture={() => setEdited(true)} onSubmit={(e) => { setEdited(false); onSubmit(e); }} className="rounded-lg border border-line p-4">
+      <h3 className="text-sm font-semibold">YNR Kurye köprüsü</h3>
+      <p className="mt-1 text-sm text-muted">Platform siparişleri bu şubeden YNR&apos;ye aktarılır; telefon paketleri sunucu ortamındaki YNR_* ayarlarıyla çalışır. Mutfak hazır olunca kurye çağrısı yenilenir. Token, YNR&apos;de bu şubeye bağlı restoran hesabına ait olmalı. Boş bırakılan alan kayıtlı değeri korur.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div><Field label="YNR API adresi" hint="ör. https://ynr-kurye.example.com"><Input name="apiBase" disabled={pending} inputMode="url" maxLength={2048} placeholder={hasCredentials ? "Kayıtlı; değiştirmek için yazın" : "https://..."} {...errorProps(displayState, "apiBase", idPrefix)} /></Field><Err s={displayState} f="apiBase" idPrefix={idPrefix} /></div>
+        <div><Field label="YNR token" hint={hasCredentials ? "Kayıtlı (şifreli); değiştirmek için yenisini yazın" : "YNR restoran hesabının bearer token'ı"}><PasswordInput name="apiKey" disabled={pending} autoComplete="off" placeholder={hasCredentials ? "••••••••" : ""} {...errorProps(displayState, "apiKey", idPrefix)} /></Field><Err s={displayState} f="apiKey" idPrefix={idPrefix} /></div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button type="submit" variant="secondary" disabled={pending}>{pending ? "Kaydediliyor…" : hasCredentials ? "Bağlantıyı güncelle" : "YNR'yi bağla"}</Button>
+        {pending && <span className="sr-only" role="status" aria-live="polite">YNR bağlantısı kaydediliyor.</span>}
         {state.savedAt && !edited && !pending && !state.error && <Saved s={state} />}
         <Err s={displayState} />
       </div>

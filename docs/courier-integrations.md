@@ -1,8 +1,10 @@
 # Dış kurye (YNR) entegrasyonu
 
-Yalnız telefonla gelen paket adisyonları dış kurye sağlayıcısına (YNR) sevk edilir.
-Masa ve platform siparişleri dışarıda kalır: platform siparişinin kuryesi platformdan
-gelir. Yapılandırma yoksa hiçbir ağ isteği yapılmaz; mevcut kuryesiz akış bozulmaz.
+Telefonla gelen paket adisyonları bu belgedeki `lib/courier` akışıyla dış kurye
+sağlayıcısına (YNR) sevk edilir. **14 Kasım ek:** platform siparişleri (restoranın
+kendi kuryesiyle teslim ettiği `VENDOR_DELIVERY`) ayrı `lib/delivery/ynr.ts` köprüsüyle
+YNR'ye aktarılır; ikisi aynı anda aynı adisyonu göndermez. Yapılandırma yoksa hiçbir ağ
+isteği yapılmaz; mevcut kuryesiz akış bozulmaz.
 
 ## Akış
 
@@ -72,6 +74,7 @@ Uçlar `CRON_SECRET` olmadan 401 döner. Canlıda zamanlama netcup’taki
 ("cabukpos", "0 * * * *", "/api/cron/courier"),
 ("cabukpos", "*/5 * * * *", "/api/cron/courier-status"),
 ("cabukpos", "*/2 * * * *", "/api/cron/trendyol-yemek"),
+("cabukpos", "* * * * *", "/api/cron/ynr"),
 ```
 
 Sıra: yedek/restore kanıtı → migration → yeni uygulama → uçların tetik listesine

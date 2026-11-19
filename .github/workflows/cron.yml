@@ -19,6 +19,7 @@ on:
           - courier
           - courier-status
           - trendyol-yemek
+          - ynr-status
 
 permissions:
   contents: read
@@ -52,6 +53,7 @@ jobs:
             "0 * * * *"|"courier") PATHNAME="/api/cron/courier" ;;
             "*/5 * * * *"|"courier-status") PATHNAME="/api/cron/courier-status" ;;
             "*/2 * * * *"|"trendyol-yemek") PATHNAME="/api/cron/trendyol-yemek" ;;
+            "* * * * *"|"ynr-status") PATHNAME="/api/cron/ynr" ;;
             *) echo "Bilinmeyen zamanlama: $SCHEDULE" >&2; exit 1 ;;
           esac
           BASE="${APP_URL%/}"

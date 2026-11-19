@@ -6,9 +6,18 @@ import type { PayIntent, TabEv } from "./tab";
 
 export type IncomingOrder = {
   externalId: string;
+  /** Kuryenin restoranda söylediği kısa sipariş kodu (Yemeksepeti order_code). */
+  externalCode?: string | null;
   customer: { name: string; phone: string };
   address: string; directions: string | null; note: string | null;
+  dropoffLat?: number | null; dropoffLng?: number | null;
   payIntent: PayIntent; deadline: string | null;
+  /** Kapıda tahsil edilecek tutar (kuruş); online ödenmişse 0. */
+  collectAmount?: Kurus | null;
+  /** Teslimatı platformun kuryesi mi yoksa restoranın kuryesi mi yapıyor. */
+  deliveryOwner?: "platform" | "vendor" | null;
+  /** Platformun vaat ettiği teslim zamanı (ISO). */
+  promisedAt?: string | null;
   lines: { code: string; name: string; unitPrice: Kurus; qtyMilli: number; note: string | null }[];
   raw?: unknown;
   /** Geçmiş (bitmiş) sipariş: kapalı içe alınır — mutfağa gitmez, fiş basılmaz, platforma bildirim yok. */
@@ -17,7 +26,7 @@ export type IncomingOrder = {
 
 export type MappedProduct = { id: string; name: string; vatRate: VatRate; stationId: string | null };
 
-export const PLATFORM_NAMES: Record<string, string> = { mock: "Deneme", yemeksepeti: "Yemeksepeti", trendyol: "Trendyol Go", trendyol_yemek: "Trendyol Yemek (Go)", getir: "Getir", migros: "Migros Yemek", tiklagelsin: "Tıkla Gelsin", kiosk: "Kiosk / QR" };
+export const PLATFORM_NAMES: Record<string, string> = { mock: "Deneme", yemeksepeti: "Yemeksepeti", trendyol: "Trendyol Go", trendyol_yemek: "Trendyol Yemek (Go)", getir: "Getir", migros: "Migros Yemek", tiklagelsin: "Tıkla Gelsin", kiosk: "Kiosk / QR", ynr: "YNR Kurye" };
 
 /** Otomatik kabulün varsayılan hazırlık süresi (dk) — oto-kabul ve yönetim kabulü aynı süreyi kullanır. */
 export const AUTO_PREP_MIN = 20;
@@ -32,7 +41,7 @@ export function toTabEvents(o: IncomingOrder, platform: string, codes: Map<strin
   const events: TabEv[] = [
     { type: "open", guests: 0, kind: "platform" },
     {
-      type: "order", customerId: null, name: o.customer.name, phone: o.customer.phone, address: o.address, directions: o.directions, zoneId: null,
+      type: "order", customerId: null, name: o.customer.name, phone: o.customer.phone, address: o.address, directions: o.directions, zoneId: null, dropoffLat: o.dropoffLat ?? null, dropoffLng: o.dropoffLng ?? null,
       note: o.note, payIntent: o.payIntent, promisedAt: null, source: { platform, externalId: o.externalId, deadline: o.deadline, raw: o.raw },
     },
     ...adds,

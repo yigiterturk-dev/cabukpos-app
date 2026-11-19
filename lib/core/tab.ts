@@ -11,6 +11,7 @@ export type DeliveryMethod = PayIntent | "karma";
 // M6: paket/platform siparişinin müşteri + teslimat bilgisi. Birden çok "order" olayı → son geçerli (düzeltme).
 export type OrderInfo = {
   customerId: string | null; name: string; phone: string; address: string; directions: string | null; zoneId: string | null;
+  dropoffLat?: number | null; dropoffLng?: number | null;
   note: string | null; payIntent: PayIntent; promisedAt: string | null;
   source: { platform: string; externalId: string; deadline: string | null; raw?: unknown } | null;
 };

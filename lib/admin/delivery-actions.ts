@@ -12,11 +12,12 @@ import { CONNECTABLE_PLATFORMS } from "@/lib/platform";
 import { ingestOrders } from "@/lib/platform/ingest";
 import { provisionConnection } from "@/lib/platform/provision";
 import { pushStoreCatalog } from "@/lib/platform/outbound";
-import { encodePlatformApi, readPlatformApi } from "@/lib/platform/credentials";
+import { encodeConnectionCredentials, encodePlatformApi, readConnectionCredentials, readPlatformApi } from "@/lib/platform/credentials";
 import { applyDoc, tabEventsOf } from "@/lib/sync/apply";
 import { foldTabs } from "@/lib/core/tab";
 import { scopedStoreId } from "@/lib/admin/store-scope";
 import { canManageStores, canUseStore } from "@/lib/core/access";
+import { newDeviceToken } from "@/lib/auth/tokens";
 
 export type DeliveryState = { error?: string; field?: string; savedAt?: number; info?: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -179,6 +180,105 @@ export async function saveConnectionCredentials(connectionId: string, _: Deliver
   await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.credentials", { id: connectionId, platform: conn.platform, base: nextBase, keySet: true }));
   revalidatePath("/yonetim/platformlar");
   return { savedAt: Date.now() };
+}
+
+/** Yemeksepeti Partner API: OAuth istemci bilgileri + zincir/mağaza eşlemesi. */
+export async function savePartnerCredentials(connectionId: string, _: DeliveryState, form: FormData): Promise<DeliveryState> {
+  const a = await requireWriter();
+  const conn = await ownConnection(a, connectionId);
+  if (!conn) return { error: "Bağlantı bulunamadı." };
+  if (conn.platform !== "yemeksepeti") return { error: "Bu form yalnız Yemeksepeti bağlantısı içindir." };
+  const read = (key: string, label: string, max: number) => {
+    const value = str(form, key);
+    if (value.length > max) throw new Error(`${label} en çok ${max} karakter.`);
+    return value;
+  };
+  let clientId: string, clientSecret: string, chainId: string, vendorId: string, externalStoreId: string, base: string;
+  try {
+    clientId = read("clientId", "Client ID", 512);
+    clientSecret = read("clientSecret", "Client Secret", 4096);
+    chainId = read("chainId", "Zincir ID", 200);
+    vendorId = read("vendorId", "Mağaza/Vendor ID", 200);
+    externalStoreId = read("externalStoreId", "Platform mağaza ID", 200);
+    base = read("apiBase", "API adresi", 2048);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Girdi çok uzun." };
+  }
+  if (base && !/^https:\/\//i.test(base)) return { error: "API adresi https:// ile başlamalı.", field: "apiBase" };
+  const existing = readConnectionCredentials(conn);
+  const previous = existing?.mode === "partner" ? existing : null;
+  const next = {
+    mode: "partner" as const,
+    clientId: clientId || previous?.clientId || "",
+    clientSecret: clientSecret || previous?.clientSecret || "",
+    chainId: chainId || previous?.chainId || "",
+    vendorId: vendorId || previous?.vendorId || "",
+    ...(externalStoreId || previous?.externalStoreId ? { externalStoreId: externalStoreId || previous?.externalStoreId } : {}),
+    ...(base || previous?.base ? { base: base || previous?.base } : {}),
+  };
+  if (!next.clientId || !next.clientSecret) return { error: "Client ID ve Client Secret gerekli.", field: !next.clientId ? "clientId" : "clientSecret" };
+  if (!next.chainId) return { error: "Zincir ID gerekli.", field: "chainId" };
+  if (!next.vendorId) return { error: "Mağaza/Vendor ID gerekli.", field: "vendorId" };
+  const encoded = encodeConnectionCredentials(next);
+  if (encoded === null) return { error: "Sunucu anahtarı (AUTH_SECRET) yapılandırılmamış; kimlik saklanamaz." };
+  await getDb().update(P).set({ credentials: encoded }).where(and(eq(P.id, connectionId), eq(P.tenantId, a.tenantId)));
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.credentials", { id: connectionId, platform: conn.platform, mode: "partner", chainId: next.chainId, vendorId: next.vendorId, externalStoreId: next.externalStoreId ?? null, base: next.base ?? null, secretSet: true }));
+  revalidatePath("/yonetim/platformlar");
+  return { savedAt: Date.now() };
+}
+
+/** Migros Yemek: restoran panelindeki Zincir ID + Restoran ID + API Key. */
+export async function saveMigrosCredentials(connectionId: string, _: DeliveryState, form: FormData): Promise<DeliveryState> {
+  const a = await requireWriter();
+  const conn = await ownConnection(a, connectionId);
+  if (!conn) return { error: "Bağlantı bulunamadı." };
+  if (conn.platform !== "migros") return { error: "Bu form yalnız Migros Yemek bağlantısı içindir." };
+  const chainId = str(form, "chainId");
+  const restaurantId = str(form, "restaurantId");
+  const apiKey = str(form, "apiKey");
+  const externalStoreId = str(form, "externalStoreId");
+  const base = str(form, "apiBase");
+  if (chainId.length > 200 || restaurantId.length > 200 || apiKey.length > 4096 || externalStoreId.length > 200 || base.length > 2048) return { error: "Girdilerden biri çok uzun." };
+  if (base && !/^https:\/\//i.test(base)) return { error: "API adresi https:// ile başlamalı.", field: "apiBase" };
+  const existing = readConnectionCredentials(conn);
+  const previous = existing?.mode === "migros" ? existing : null;
+  const next = {
+    mode: "migros" as const,
+    chainId: chainId || previous?.chainId || "",
+    restaurantId: restaurantId || previous?.restaurantId || "",
+    apiKey: apiKey || previous?.apiKey || "",
+    ...(externalStoreId || previous?.externalStoreId ? { externalStoreId: externalStoreId || previous?.externalStoreId } : {}),
+    ...(base || previous?.base ? { base: base || previous?.base } : {}),
+  };
+  if (!next.chainId) return { error: "Zincir ID gerekli.", field: "chainId" };
+  if (!next.restaurantId) return { error: "Restoran ID gerekli.", field: "restaurantId" };
+  if (!next.apiKey) return { error: "API Key gerekli.", field: "apiKey" };
+  const encoded = encodeConnectionCredentials(next);
+  if (encoded === null) return { error: "Sunucu anahtarı (AUTH_SECRET) yapılandırılmamış; kimlik saklanamaz." };
+  await getDb().update(P).set({ credentials: encoded }).where(and(eq(P.id, connectionId), eq(P.tenantId, a.tenantId)));
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.credentials", { id: connectionId, platform: conn.platform, mode: "migros", chainId: next.chainId, restaurantIdSet: true, externalStoreId: next.externalStoreId ?? null, base: next.base ?? null, keySet: true }));
+  revalidatePath("/yonetim/platformlar");
+  return { savedAt: Date.now() };
+}
+
+/** YNR Kurye köprüsü: platform_connections üzerinde platform="ynr" satırı. */
+export async function saveYnrConnection(storeId: string, _: DeliveryState, form: FormData): Promise<DeliveryState> {
+  const a = await requireWriter();
+  if (!UUID.test(storeId) || !canUseStore(a, storeId)) return { error: "Şube bulunamadı." };
+  const base = str(form, "apiBase");
+  const key = str(form, "apiKey");
+  if (base.length > 2048) return { error: "API adresi en çok 2.048 karakter.", field: "apiBase" };
+  if (key.length > 4096) return { error: "YNR token çok uzun.", field: "apiKey" };
+  if (!/^https:\/\//i.test(base)) return { error: "API adresi https:// ile başlamalı.", field: "apiBase" };
+  if (!key) return { error: "YNR token gerekli.", field: "apiKey" };
+  const encoded = encodePlatformApi({ base, key });
+  if (encoded === null) return { error: "Sunucu anahtarı (AUTH_SECRET) yapılandırılmamış; bağlantı saklanamaz." };
+  const [existing] = await getDb().select({ id: P.id }).from(P).where(and(eq(P.tenantId, a.tenantId), eq(P.storeId, storeId), eq(P.platform, "ynr")));
+  if (existing) await getDb().update(P).set({ credentials: encoded, active: true }).where(and(eq(P.id, existing.id), eq(P.tenantId, a.tenantId)));
+  else await getDb().insert(P).values({ tenantId: a.tenantId, storeId, platform: "ynr", credentials: encoded, webhookSecret: newDeviceToken(), autoAccept: false, active: true });
+  await withTenant(a.tenantId, (tx) => audit(tx, a.tenantId, `user:${a.id}`, "platform.credentials", { platform: "ynr", storeId, base, keySet: true }));
+  revalidatePath("/yonetim/platformlar");
+  return { savedAt: Date.now(), info: "YNR Kurye bağlantısı kaydedildi." };
 }
 
 export async function clearConnectionCredentials(connectionId: string) {

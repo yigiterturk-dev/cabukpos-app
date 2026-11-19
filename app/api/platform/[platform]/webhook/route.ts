@@ -1,7 +1,7 @@
 // Platform sipariş webhook'u: POST /api/platform/<platform>/webhook?t=<bağlantı jetonu> (#30; eski ?c=<id> geçerliliğini korur).
 // İmza/biçim adaptörde doğrulanır; aynı sipariş ikinci kez gelirse 200 döner, yazılmaz (platform yeniden dener).
 import { connectionById, connectionByToken, sourceFor } from "@/lib/platform";
-import { ingestOrders } from "@/lib/platform/ingest";
+import { applyPlatformEvents, ingestOrders } from "@/lib/platform/ingest";
 import { audit as auditLog } from "@/lib/audit";
 import { hit } from "@/lib/ratelimit";
 import { withTenant } from "@/db";
@@ -19,6 +19,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ platform: stri
   if ((await hit(`platform-hook:${conn.id}`, 1)) > 60) return Response.json({ error: "Çok fazla istek." }, { status: 429, headers: noStore });
   const raw = await req.text();
   if (raw.length > 1_000_000) return Response.json({ error: "Gövde çok büyük." }, { status: 413 });
+  const events = source.parseEvent?.(raw, req.headers, conn);
+  if (events && !Array.isArray(events)) return Response.json({ error: events.error }, { status: events.status });
+  if (Array.isArray(events) && events.length) {
+    const result = await applyPlatformEvents(conn, events);
+    await withTenant(conn.tenantId, (tx) => auditLog(tx, conn.tenantId, `platform:${conn.platform}`, "platform.webhook.event", result));
+    return Response.json({ ok: true, ...result });
+  }
   const parsed = source.parseWebhook(raw, req.headers, conn);
   if (!Array.isArray(parsed)) return Response.json({ error: parsed.error }, { status: parsed.status });
   const result = await ingestOrders(conn, parsed);

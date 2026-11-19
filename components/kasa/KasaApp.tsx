@@ -47,6 +47,7 @@ import { DeliveryBoard, type CourierJobView } from "./DeliveryBoard";
 import { NewDelivery } from "./NewDelivery";
 import { CourierScreen } from "./CourierScreen";
 import { BugunScreen } from "./BugunScreen";
+import { KolayScreen } from "./KolayScreen";
 import { beep } from "./beep";
 
 type View = { name: "home" } | { name: "sale" } | { name: "bugun" } | { name: "tab"; tableId: string } | { name: "bill"; tabId: string } | { name: "receipt"; sale: LocalSale } | { name: "gun-sonu" } | { name: "closed" } | { name: "iade" } | { name: "cekmece" } | { name: "safe-drop" }
@@ -522,6 +523,12 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
   const [startupError, setStartupError] = useState(false);
   const [signedIn, setCashier] = useState<Cashier | null>(null);
   const [view, setView] = useState<View>({ name: "home" });
+  const [easy, setEasy] = useKasaSetting("kasa-kolay", ["0", "1"], "0");
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminPin, setAdminPin] = useState(false);
+  const afterAdmin = useRef<null | (() => void)>(null);
+  const easyMode = easy === "1";
+  const [easySalon, setEasySalon] = useState(false);
   const [prints, setPrints] = useState<Record<string, PrintState>>({});
   const [agent, setAgent] = useState<AgentStatus | null>(null);
   const sync = useRef<ReturnType<typeof createSync> | null>(null);
@@ -602,6 +609,20 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
 
   // Kasiyer yönetimden pasife alındıysa (katalogdan düştüyse) oturum geçersiz.
   const cashier = signedIn && meta?.catalog.staff.some((s) => s.id === signedIn.id) ? signedIn : null;
+  const managerPinRequired = Boolean(meta?.catalog.staff.some((s) => s.role === "mudur" && s.pinHash));
+  const runAdmin = (action: () => void) => {
+    if (adminUnlocked || !managerPinRequired) { action(); return; }
+    afterAdmin.current = action;
+    setAdminPin(true);
+  };
+  const lock = useCallback(() => {
+    setCashier(null);
+    setView({ name: "home" });
+    setAdminUnlocked(false);
+    setAdminPin(false);
+    setEasySalon(false);
+    afterAdmin.current = null;
+  }, []);
 
   // — M5 salon: adisyonlar, mutfak yazıcısı, hazır sesi —
   const role = meta?.device?.role ?? "kasa";
@@ -675,20 +696,6 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
     await tabsApi.reload();
     return afterSale(r.sale);
   }, [cashier, afterSale, tabsApi, meta]);
-
-  // M6 platform: "Kuryeye verildi" → handover + kalan tutar online satış (ödeme platformda alındı).
-  const onHandover = useCallback(async (tab: TabState) => {
-    if (!cashier) throw new Error("Kasiyer oturumu gerekli.");
-    const part = payableLines(tab);
-    if (part.length) {
-      const tableName = tabLabel(tab, meta?.catalog.tables ?? [], PLATFORM_NAMES);
-      const r = await recordSaleLocal(cashier, part, [{ method: "online", amount: totals(part).total }], tab.id, { tabId: tab.id, tableId: null, tableName, paidLines: paidLinesOf(part), kind: tab.kind });
-      if (!r.ok) throw new Error(r.error);
-      void afterSale(r.sale);
-    }
-    await tabsApi.add([{ tabId: tab.id, tableId: null, staffId: cashier.id, ev: { type: "handover" } }]);
-    await tabsApi.reload();
-  }, [cashier, tabsApi, meta, afterSale]);
 
   // M6 kurye: "Teslim ettim" → delivered + kalan tutar seçilen yöntemle satış (kuryenin vardiyasına).
   const onDeliver = useCallback(async (tab: TabState, method: DeliveryMethod, payments?: Payment[]) => {
@@ -798,8 +805,13 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
         </>
       )}
       <AgentBadge s={agentCfg ? agent : null} />
+      {easyMode && view.name !== "home" && view.name !== "bugun" && <Button variant="ghost" className="min-h-12" onClick={() => { setEasySalon(false); setView({ name: "home" }); }}><ArrowLeft aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Menü</span></Button>}
+      {cashier && meta?.shift && (easyMode
+        ? <Button variant="secondary" className="min-h-12" title="Uzman moda dön" onClick={() => runAdmin(() => { setEasy("0"); setEasySalon(false); setView({ name: "home" }); })}><LayoutDashboard aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Uzman</span></Button>
+        : <Button variant="secondary" className="min-h-12" title="Kolay moda geç" onClick={() => { setEasy("1"); setEasySalon(false); setView({ name: "home" }); }}><Zap aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Kolay</span></Button>)}
       {restoran && tabsApi.link === "lan" && <span data-testid="link-lan" className="text-xs font-medium text-info">Yerel ağ (internet yok)</span>}
       {status.rejected > 0 && <span role="status" className="inline-flex h-7 items-center rounded-full bg-bad-soft px-2.5 text-xs font-medium text-bad">{status.rejected} belge reddedildi</span>}
+      {!easyMode && <>
       {cashier && meta.agent?.drawer && atHome && (
         <Button variant="secondary" title="Çekmece" className="min-h-12" onClick={() => {
           if (staffCan(meta.catalog.staff.find((x) => x.id === cashier.id),"drawer")) void drawerBy(null);
@@ -809,11 +821,12 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
       {cashier && meta.shift && atHome && <Button variant="secondary" title="İade" className="min-h-12" onClick={() => setView({ name: "iade" })}><Undo2 aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">İade</span></Button>}
       {cashier && meta.shift && atHome && <Button variant="secondary" title="Güvenli kasaya aktar" data-testid="safe-drop-btn" className="min-h-12" onClick={() => setView({ name: "safe-drop" })}><Landmark aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Para aktar</span></Button>}
       {cashier && meta.shift && atHome && <Button variant="secondary" title="Gün sonu" className="min-h-12" onClick={() => setView({ name: "gun-sonu" })}><ClipboardCheck aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Gün sonu</span></Button>}
+      </>}
       {cashier && (
         <span className="flex min-h-12 items-center gap-1 rounded-full border border-line bg-surface pl-1 shadow-card">
           <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{cashier.name.trim().charAt(0).toLocaleUpperCase("tr")}</span>
           <span className="max-w-32 truncate px-1 text-sm font-medium text-ink" title={cashier.name}>{cashier.name}</span>
-          <button type="button" title="Kasiyer değiştir" aria-label="Kasiyer değiştir" onClick={() => { setCashier(null); setView({ name: "home" }); }} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60"><LogOut aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Kasiyer değiştir</span></button>
+          <button type="button" title="Kasiyer değiştir" aria-label="Kasiyer değiştir" onClick={lock} className="press flex h-full items-center gap-1.5 rounded-r-full border-l border-line px-3 text-sm text-muted outline-none hover:bg-surface-3 hover:text-ink focus-visible:ring-4 focus-visible:ring-brand-ring/60"><LogOut aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">Kasiyer değiştir</span></button>
         </span>
       )}
     </Bar>
@@ -839,14 +852,31 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
     return <>{header}<GunSonu meta={meta} closed onClose={async () => {}} onBack={() => setView({ name: "home" })} /></>;
   }
   if (!cashier) {
-    return <>{header}<Center logo title={d.tenantName} sub={d.name}><PinPad meta={meta} onMeta={setMeta} onOk={setCashier} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} autoFocusFirst /><Link href="/kasa/kurulum" className="mt-4 inline-flex min-h-11 items-center justify-center text-sm text-brand underline">PIN belirle / değiştir (isteğe bağlı)</Link><Link href="/kasa/devam" className="mt-2 inline-flex min-h-11 items-center justify-center text-sm text-brand underline">Personel giriş / çıkış</Link></Center></>;
+    return <>{header}<Center logo title={d.tenantName} sub={d.name}><PinPad meta={meta} onMeta={setMeta} onOk={(c) => { setCashier(c); setAdminUnlocked(false); setAdminPin(false); afterAdmin.current = null; }} only={role === "kurye" ? (x) => x.role === "kurye" : undefined} autoFocusFirst /><Link href="/kasa/kurulum" className="mt-4 inline-flex min-h-11 items-center justify-center text-sm text-brand underline">PIN belirle / değiştir (isteğe bağlı)</Link><Link href="/kasa/devam" className="mt-2 inline-flex min-h-11 items-center justify-center text-sm text-brand underline">Personel giriş / çıkış</Link></Center></>;
+  }
+  if (adminPin) {
+    return (
+      <>
+        {bar()}
+        <Center card title="Yönetici PIN'i" sub="Bu işlem için müdür PIN'i gerekir.">
+          <PinPad meta={meta} onMeta={setMeta} only={(s) => s.role === "mudur"} autoFocusFirst onOk={() => {
+            setAdminUnlocked(true);
+            setAdminPin(false);
+            const action = afterAdmin.current;
+            afterAdmin.current = null;
+            action?.();
+          }} />
+          <Button variant="ghost" className="mt-3 w-full" onClick={() => { afterAdmin.current = null; setAdminPin(false); }}>Vazgeç</Button>
+        </Center>
+      </>
+    );
   }
   if (restoran && role === "kurye") {
-    if (!meta.shift && !staffCan(meta.catalog.staff.find(s=>s.id===cashier.id),"shift")) return <Center title="Vardiya açma yetkisi yok" sub="İşletme yöneticisi Personel ekranından bu izni düzenleyebilir."><Button onClick={()=>setCashier(null)}>Giriş ekranına dön</Button></Center>;
+    if (!meta.shift && !staffCan(meta.catalog.staff.find(s=>s.id===cashier.id),"shift")) return <Center title="Vardiya açma yetkisi yok" sub="İşletme yöneticisi Personel ekranından bu izni düzenleyebilir."><Button onClick={lock}>Giriş ekranına dön</Button></Center>;
     const kHeader = (
       <Bar tenant={d.tenantName} device={cashier.name}>
         <LinkNote link={tabsApi.link} /><SyncBadge s={status} />
-        {view.name === "home" && <Button variant="ghost" className="min-h-12" onClick={() => setCashier(null)}><LogOut aria-hidden className="size-4" />Çıkış</Button>}
+        {view.name === "home" && <Button variant="ghost" className="min-h-12" onClick={lock}><LogOut aria-hidden className="size-4" />Çıkış</Button>}
       </Bar>
     );
     if (view.name === "kurye-kapat") {
@@ -858,6 +888,9 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
       return <>{kHeader}<GunSonu meta={meta} closed={false} onBack={() => setView({ name: "home" })} onClose={async (counted) => {
         setMeta(await closeShiftGuarded(by, counted));
         setCashier(null);
+        setAdminUnlocked(false);
+        setAdminPin(false);
+        afterAdmin.current = null;
         setView({ name: "closed" });
         void sync.current?.kick();
       }} /></>;
@@ -921,7 +954,7 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
   const icon = "size-4";
   const openSalon = [...openTabsByTable(tabsApi.tabs).values()].flat().filter((t) => !t.closed).length;
   const waitingPaket = [...tabsApi.tabs.values()].filter((t) => !t.closed && t.kind === "platform" && deliveryStatus(t) === "onay_bekliyor").length;
-  const kasaTabs = role === "kasa" && (
+  const kasaTabs = role === "kasa" && !easyMode && (
     <nav aria-label="Kasa bölümü" className="min-w-0 max-w-full">
       <Segmented size="lg" items={[
         ...(hasSalon ? [{ key: "salon", label: <><LayoutGrid aria-hidden className={icon} />Salon{openSalon > 0 && <span aria-label={`${openSalon} açık adisyon`} className="tabular rounded-full bg-brand-soft px-1.5 text-xs font-bold text-brand">{openSalon}</span>}</>, pressed: section === "salon", onClick: () => setView({ name: "home" }) }] : []),
@@ -947,6 +980,46 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
     }
     return null;
   };
+  if (easyMode && easySalon && hasSalon && (view.name === "home" || view.name === "bugun")) {
+    return (
+      <>
+        {bar()}
+        <div className="mx-auto w-full max-w-5xl px-4 pt-4">
+          <Button variant="ghost" onClick={() => setEasySalon(false)}><ArrowLeft aria-hidden className="size-4" />Kolay menü</Button>
+        </div>
+        {salonView()}
+      </>
+    );
+  }
+  if (easyMode && (view.name === "home" || view.name === "bugun")) {
+    const open = [...tabsApi.tabs.values()].filter((t) => !t.closed);
+    const ready = open.reduce((a, t) => a + t.tickets.filter((k) => k.status === "hazir").length, 0);
+    const waiting = open.filter((t) => t.kind === "platform" && deliveryStatus(t) === "onay_bekliyor").length;
+    return (
+      <>
+        {bar()}
+        <KolayScreen
+          cashierName={cashier.name}
+          shiftOpen={Boolean(meta.shift)}
+          openCount={open.length}
+          readyCount={ready}
+          waitingCount={waiting}
+          hasPaket={hasPaket}
+          adminUnlocked={adminUnlocked}
+          pinRequired={managerPinRequired}
+          hasSalon={hasSalon}
+          onSale={() => setView({ name: "sale" })}
+          onSalon={() => setEasySalon(true)}
+          onPaket={() => setView({ name: "paket" })}
+          onGunSonu={() => runAdmin(() => setView({ name: "gun-sonu" }))}
+          onIade={() => runAdmin(() => setView({ name: "iade" }))}
+          onSafeDrop={() => runAdmin(() => setView({ name: "safe-drop" }))}
+          onAdmin={() => { if (managerPinRequired) setAdminPin(true); else setAdminUnlocked(true); }}
+          onLock={lock}
+        />
+      </>
+    );
+  }
   if (restoran && role === "garson") return <>{header}{salonView() ?? <SalonScreen areas={meta.catalog.areas ?? []} tables={tables} tabs={tabsApi.tabs} tabsLoaded={tabsApi.loaded} now={now} currency={d.currency} onOpen={(tableId) => setView({ name: "tab", tableId })} />}</>;
   if (!meta.shift) {
     return (
@@ -973,6 +1046,9 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
           onClose={async (counted) => {
             setMeta(await closeShiftGuarded(cashier.id, counted));
             setCashier(null);
+            setAdminUnlocked(false);
+            setAdminPin(false);
+            afterAdmin.current = null;
             setView({ name: "closed" });
             void sync.current?.kick();
           }}
@@ -994,7 +1070,7 @@ export function KasaApp({ paired = false }: { paired?: boolean }) {
       <>
         {bar(kasaTabs)}
         {paketView() ?? <DeliveryBoard meta={meta} onMeta={setMeta} tabs={tabsApi.tabs} now={now} add={tabsApi.add} waiter={waiter} loaded={tabsApi.loaded}
-          onNew={() => setView({ name: "yeni-paket" })} onOpen={(tabId) => setView({ name: "ptab", tabId })} onBill={(tabId) => setView({ name: "bill", tabId })} onHandover={onHandover} courierJobs={courierJobs} />}
+          onNew={() => setView({ name: "yeni-paket" })} onOpen={(tabId) => setView({ name: "ptab", tabId })} onBill={(tabId) => setView({ name: "bill", tabId })} courierJobs={courierJobs} externalCourier={meta.catalog.deliveryProvider === "ynr"} />}
       </>
     );
   }

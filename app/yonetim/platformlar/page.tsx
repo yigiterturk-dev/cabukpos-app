@@ -13,7 +13,7 @@ import { foldTabs, type TabState } from "@/lib/core/tab";
 import { phoneHref } from "@/lib/core/delivery";
 import { initialEvents } from "@/lib/tabs/stream";
 import { moneyFormatter } from "@/lib/admin/currency";
-import { CodeForm, ConnectionForm, ConnectionToggles, PlatformCredentialsForm, PushCatalogButton, TestOrderButton } from "@/components/admin/DeliveryForms";
+import { CodeForm, ConnectionForm, ConnectionToggles, MigrosCredentialsForm, PartnerCredentialsForm, PlatformCredentialsForm, PushCatalogButton, TestOrderButton, YnrCredentialsForm } from "@/components/admin/DeliveryForms";
 import { WebhookCredentials } from "@/components/admin/WebhookCredentials";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
 import { PlatformOrderAction } from "@/components/admin/PlatformOrderAction";
@@ -145,6 +145,8 @@ export default async function Platformlar() {
   const money = await moneyFormatter(a.tenantId);
   const P = schema.platformConnections;
   const conns = (await getDb().select().from(P).where(eq(P.tenantId, a.tenantId)).orderBy(asc(P.createdAt))).filter((c) => canUseStore(a, c.storeId));
+  const platformConns = conns.filter((c) => c.platform !== "ynr");
+  const ynrConn = conns.find((c) => c.platform === "ynr");
   const [storeId, stores] = await withTenant(a.tenantId, (tx) => Promise.all([
     scopedStoreId(tx, a.tenantId, a.storeId),
     tx.select({ id: schema.stores.id, name: schema.stores.name }).from(schema.stores),
@@ -163,13 +165,14 @@ export default async function Platformlar() {
     const at = t.closedAt ?? t.delivery.deliveredAt;
     return at && bugunMu(at);
   }).length;
-  const free = CONNECTABLE_PLATFORMS.filter((p) => !conns.some((c) => c.storeId === storeId && c.platform === p)).map((p) => ({ value: p, label: PLATFORM_NAMES[p] ?? p }));
+  const free = CONNECTABLE_PLATFORMS.filter((p) => !platformConns.some((c) => c.storeId === storeId && c.platform === p)).map((p) => ({ value: p, label: PLATFORM_NAMES[p] ?? p }));
   return (
     <>
       <PageHeader title="Pazaryerleri" desc="Platform siparişleri kasada Paket sekmesine sesli uyarıyla düşer; kabul/red platforma bildirilir. Trendyol Yemek siparişleri webhook'suz, 2 dakikalık polling ile alınır; diğer sağlayıcılar entegratör onayıyla açılır." />
       <PaketHatti acik={acik} teslim={teslim} money={money} />
+      <Card className="mb-6 p-5">{storeId ? <YnrCredentialsForm storeId={storeId} hasCredentials={Boolean(ynrConn?.credentials)} /> : <p className="text-sm text-muted">YNR Kurye bağlantısı için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</p>}</Card>
       {free.length > 0 && <Card className="mb-6 p-5">{storeId ? <ConnectionForm platforms={free} /> : <p className="text-sm text-muted">Platform bağlamak için önce <Link href="/yonetim/subeler" className="font-medium text-brand underline">bir şube oluşturun</Link>.</p>}</Card>}
-      {conns.length === 0 ? <Empty>Henüz bağlı platform yok. Akışı denemek için Deneme platformunu bağlayın.</Empty> : await Promise.all(conns.map(async (c) => {
+      {platformConns.length === 0 ? <Empty>Henüz bağlı platform yok. Akışı denemek için Deneme platformunu bağlayın.</Empty> : await Promise.all(platformConns.map(async (c) => {
         const menuUrl = c.platform === "kiosk" ? `${origin}/menu/${c.storeId}?k=${c.webhookSecret}` : null;
         const qr = menuUrl ? await QRCode.toString(menuUrl, { type: "svg", margin: 1, width: 148 }) : null;
         return (
@@ -189,7 +192,11 @@ export default async function Platformlar() {
           {c.platform === "trendyol_yemek"
             ? <p className="rounded-lg border border-line bg-surface-2 p-3 text-sm">Bu platform webhook kullanmaz: siparişler 2 dakikada bir polling ile çekilir. Anahtarlar sunucu ortamında tanımlıdır; kabul/red bu bağlantı üzerinden platforma bildirilir.</p>
             : <WebhookCredentials url={`${origin}/api/platform/${c.platform}/webhook?t=${c.webhookToken}`} secret={c.webhookSecret} />}
-          {c.platform !== "mock" && c.platform !== "trendyol_yemek" && <PlatformCredentialsForm connectionId={c.id} hasCredentials={Boolean(c.credentials)} />}
+          {c.platform === "yemeksepeti"
+            ? <PartnerCredentialsForm connectionId={c.id} hasCredentials={Boolean(c.credentials)} />
+            : c.platform === "migros"
+            ? <MigrosCredentialsForm connectionId={c.id} hasCredentials={Boolean(c.credentials)} />
+            : c.platform !== "mock" && c.platform !== "trendyol_yemek" && <PlatformCredentialsForm connectionId={c.id} hasCredentials={Boolean(c.credentials)} />}
           {c.credentials && c.platform !== "mock" && c.platform !== "trendyol_yemek" && <ConfirmActionForm action={clearConnectionCredentials.bind(null, c.id)} ariaLabel={`Kayıtlı API anahtarını sil: ${PLATFORM_NAMES[c.platform] ?? c.platform}`} label="Kayıtlı API anahtarını sil" prompt="Bu bağlantının kayıtlı API anahtarı silinecek; kabul/red ve menü gönderimi çalışmayabilir. Devam etmek istiyor musunuz?" className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-xs text-bad underline outline-none hover:bg-bad-soft focus-visible:ring-4 focus-visible:ring-bad/20" />}
           {c.platform === "mock" && <TestOrderButton connectionId={c.id} />}
           {c.platform !== "kiosk" && c.platform !== "trendyol_yemek" && <PushCatalogButton connectionId={c.id} />}

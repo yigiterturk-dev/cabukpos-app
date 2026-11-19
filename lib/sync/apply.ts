@@ -21,6 +21,7 @@ import { foldTabs, isDeliveryPending, type TabEv, type TabEvent } from "@/lib/co
 import { normalizePhone } from "@/lib/core/delivery";
 import { endOfStoredIstanbulDay } from "@/lib/core/date";
 import { notifyPlatform, notifyPlatformStatus } from "@/lib/platform/notify";
+import { notifyYnrCancel, notifyYnrReady } from "@/lib/delivery/ynr";
 import { courierEventRelevant, onCourierEvent } from "@/lib/courier/hooks";
 import { onRefund, openFiscalDoc } from "@/lib/fiscal/issue";
 import { capDiscount, couponCheck, pointsEarned, pointsValue, type CouponLike } from "@/lib/loyalty";
@@ -46,8 +47,10 @@ export async function applyDoc(ctx: DeviceCtx, raw: unknown): Promise<DocResult>
     const ev = doc.ev;
     if (ev.type === "accept" || ev.type === "reject") await notifyPlatform(ctx.tenantId, doc.id, doc.tabId, ev);
     else {
-      const status = ev.type === "out" || ev.type === "handover" ? "picked" : ev.type === "delivered" ? "delivered" : ev.type === "cancel" ? "cancelled" : null;
+      const status = ev.type === "kitchen" && ev.status === "hazir" ? "ready" : ev.type === "out" || ev.type === "handover" ? "picked" : ev.type === "delivered" ? "delivered" : ev.type === "cancel" ? "cancelled" : null;
       if (status) await notifyPlatformStatus(ctx.tenantId, doc.id, doc.tabId, status);
+      if (ev.type === "kitchen" && ev.status === "hazir") void notifyYnrReady(ctx.tenantId, ctx.storeId, doc.tabId).catch(() => {});
+      if (ev.type === "cancel") void notifyYnrCancel(ctx.tenantId, ctx.storeId, doc.tabId, ev.reason).catch(() => {});
     }
     // Dış kurye sevki: ağ isteği cihazın senkron yanıtını bekletmesin; sonuç YNR'de tekilleşir.
     if (courierEventRelevant(ev)) void onCourierEvent(ctx.tenantId, doc.tabId, ev).catch((e) => console.error("kurye olayı işlenemedi", e));

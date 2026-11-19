@@ -3,7 +3,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { schema, withTenant, type Tx } from "@/db";
 import { audit } from "@/lib/audit";
-import { foldTabs, type TabEv } from "@/lib/core/tab";
+import { foldTabs, type TabEv, type TabState } from "@/lib/core/tab";
 import { tabEventsOf } from "@/lib/sync/apply";
 import { connectionFor, sourceFor } from "./index";
 import type { PlatformOrderStatus } from "./types";
@@ -74,6 +74,19 @@ export async function notifyPlatform(tenantId: string, eventId: string, tabId: s
 /** Durum geri bildirimi (M6 kalanı): kurye aldı (out/handover), teslim, iptal → platforma.
  *  İdempotent (aynı tabId+status audit'te varsa atlanır); sürücü pushStatus tanımlamıyorsa sessiz;
  *  kiosk sanal bağlantıdır, bildirilmez. Hata → olay review + platform.error. */
+async function platformItems(tx: Tx, tab: TabState | undefined, platform: string, storeId: string, status: PlatformOrderStatus) {
+  if (!tab) return [];
+  const lines = tab.lines.filter((line) => !line.voided);
+  if (!lines.length) return [];
+  const C = schema.productPlatformCodes;
+  const codes = await tx.select({ code: C.code, productId: C.productId }).from(C).where(and(eq(C.storeId, storeId), eq(C.platform, platform)));
+  const byProduct = new Map(codes.map((row) => [row.productId, row.code]));
+  return lines.flatMap((line) => {
+    const sku = line.productId ? byProduct.get(line.productId) : null;
+    return sku ? [{ sku, status: status === "ready" ? "PICKED" as const : "UNAVAILABLE" as const }] : [];
+  });
+}
+
 export async function notifyPlatformStatus(tenantId: string, eventId: string, tabId: string, status: PlatformOrderStatus) {
   const found = await withTenant(tenantId, async (tx) => {
     const events = await tabEventsOf(tx, tabId);
@@ -81,24 +94,28 @@ export async function notifyPlatformStatus(tenantId: string, eventId: string, ta
     const src = t?.kind === "platform" ? t.order?.source : null;
     if (!src || src.platform === "kiosk") return null;
     const E = schema.tabEvents;
-    const [event] = await tx.select({ storeId: E.storeId, type: E.type, review: E.review }).from(E).where(and(eq(E.id, eventId), eq(E.tabId, tabId)));
-    const expected = event?.type === "out" || event?.type === "handover" ? "picked" : event?.type === "delivered" ? "delivered" : event?.type === "cancel" ? "cancelled" : null;
+    const [event] = await tx.select({ storeId: E.storeId, type: E.type, review: E.review, payload: E.payload }).from(E).where(and(eq(E.id, eventId), eq(E.tabId, tabId)));
+    const kitchenReady = event?.type === "kitchen" && (event.payload as { status?: string } | null)?.status === "hazir";
+    const expected = kitchenReady ? "ready" : event?.type === "out" || event?.type === "handover" ? "picked" : event?.type === "delivered" ? "delivered" : event?.type === "cancel" ? "cancelled" : null;
     if (!event || expected !== status || (event.review && !event.review.startsWith("platform durum bildirimi başarısız:"))) return null;
     if (status === "picked" && (t?.delivery.deliveredAt || t?.delivery.cancelled || t?.delivery.rejected)) return null;
     if (status === "delivered" && (t?.delivery.cancelled || t?.delivery.rejected)) return null;
     const done = await recorded(tx, tabId, src, "platform.status", status);
-    return done ? null : { src, storeId: event.storeId };
+    if (done) return null;
+    const items = status === "ready" || status === "cancelled" ? await platformItems(tx, t, src.platform, event.storeId, status) : [];
+    return { src, storeId: event.storeId, items };
   });
   if (!found) return;
-  const { src, storeId } = found;
+  const { src, storeId, items } = found;
   const conn = await connectionFor(tenantId, storeId, src.platform);
   const source = sourceFor(src.platform);
   if (!source?.pushStatus) return; // sürücü desteklemiyor → sessiz atla
+  if (status === "ready" && !source.ready) return; // "hazır" kavramı olmayan platformlara gönderme
   let error: string | null = null;
   if (!conn?.active) error = "etkin platform bağlantısı yok";
   else {
     try {
-      await withTimeout(source.pushStatus(conn, src.externalId, status));
+      await withTimeout(source.pushStatus(conn, src.externalId, status, items.length ? { items } : undefined));
     } catch (e) { error = e instanceof Error ? e.message : String(e); }
   }
   await withTenant(tenantId, async (tx) => {
