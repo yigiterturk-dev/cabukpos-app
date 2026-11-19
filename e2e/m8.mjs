@@ -1,7 +1,8 @@
 // e2e/m8.mjs — Mali belge (sahte e-Arşiv). Ayar: vergi bilgisi + kasa = e-Arşiv → satış (nihai tüketici) → fişte e-Arşiv no + ETTN →
 // /f/<token> 200 + TEST bandı → hata simülasyonu açık, satış + "Fatura" (VKN, e-posta) → fişte "e-postayla" → error, 1. deneme →
 // simülasyon kapalı, yönetimde Yeniden dene → issued → tam iade → cancelled → gün sonunda "Kesilemeyen e-Arşiv" yok.
-// (Paket kanalı modu tests/fiscal-db.test.ts'te.) Kullanım: npm run build && node --env-file=.env.local e2e/m8.mjs (sunucu :3800)
+// (Paket kanalı modu tests/fiscal-db.test.ts'te.) Kullanım: npm run build && APP_URL=http://localhost:3800 ALLOW_FAKE_PROVIDERS=1 npx next start -p 3800, sonra node --env-file=.env.local e2e/m8.mjs
+// (APP_URL eşleşmezse kasa 403 verir; ALLOW_FAKE_PROVIDERS yoksa e-Arşiv seçeneği pasif gelir)
 import { chromium } from "playwright-core";
 import postgres from "postgres";
 
