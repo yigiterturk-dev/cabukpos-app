@@ -1,7 +1,7 @@
 // lib/growth/messaging/netgsm.ts — Netgsm REST v2 SMS sürücüsü.
 // Kimlik Basic auth ile gider; telefon yalnız istek gövdesinde kalır, log/audit'e yazılmaz.
 import { z } from "zod";
-import { netgsmConfig, normalizeTrPhone, type MessagingProvider, type MessagingSendResult, type NetgsmConfig } from "./types";
+import { commercialBody, iysRecipientType, netgsmConfig, normalizeTrPhone, type MessagingProvider, type MessagingSendResult, type NetgsmConfig } from "./types";
 
 const response = z.object({
   code: z.union([z.string(), z.number()]).transform(String),
@@ -12,19 +12,21 @@ const response = z.object({
 export function createNetgsmProvider(enabled: boolean, config: NetgsmConfig | null, fetchImpl: typeof fetch = fetch): MessagingProvider {
   return {
     id: "netgsm",
-    async send({ body, targets }): Promise<MessagingSendResult[]> {
+    async send({ body, targets, kind }): Promise<MessagingSendResult[]> {
       if (!enabled) throw new Error("Pazarlama gönderimi kapalı: MARKETING_SMS_ENABLED=1 gerekli.");
       const cfg = config ?? netgsmConfig();
       if (!targets.length) return [];
+      const text = kind === "commercial" ? commercialBody(body) : body;
       const auth = Buffer.from(`${cfg.username}:${cfg.password}`).toString("base64");
       const res = await fetchImpl(`${cfg.base.replace(/\/$/, "")}/sms/rest/v2/send`, {
         method: "POST",
         headers: { authorization: `Basic ${auth}`, "content-type": "application/json" },
         body: JSON.stringify({
           msgheader: cfg.header,
-          messages: targets.map((t) => ({ msg: body, no: normalizeTrPhone(t.phone) })),
+          messages: targets.map((t) => ({ msg: text, no: normalizeTrPhone(t.phone) })),
           encoding: "TR",
-          iysfilter: "0",
+          // 0 = bilgilendirme (İYS kontrolü yok); 11 bireysel / 12 tacir = ticari, Netgsm İYS onayı olmayanı göndermez.
+          iysfilter: kind === "commercial" ? (iysRecipientType() === "TACIR" ? "12" : "11") : "0",
           appname: "CabukPOS",
         }),
         signal: AbortSignal.timeout(15_000),

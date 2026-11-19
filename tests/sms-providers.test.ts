@@ -21,7 +21,7 @@ test("normalizeTrPhone: 90..., 0..., 10 hane", () => {
 test("Netgsm: kapalıyken ağa çıkmaz", async () => {
   let called = 0;
   const p = createNetgsmProvider(false, { base: "https://x", username: "u", password: "p", header: "H" }, async () => { called++; return new Response("{}"); });
-  await assert.rejects(p.send({ body: "x", targets }), /Pazarlama gönderimi kapalı/);
+  await assert.rejects(p.send({ kind: "transactional", body: "x", targets }), /Pazarlama gönderimi kapalı/);
   assert.equal(called, 0);
 });
 
@@ -29,7 +29,7 @@ test("Netgsm: eksik ayar Türkçe hata verir", async () => {
   const old = { ...process.env };
   delete process.env.NETGSM_USERNAME; delete process.env.NETGSM_PASSWORD; delete process.env.NETGSM_HEADER;
   assert.throws(() => netgsmConfig(), /Netgsm yapılandırılmamış/);
-  await assert.rejects(createNetgsmProvider(true, null).send({ body: "x", targets }), /Netgsm yapılandırılmamış/);
+  await assert.rejects(createNetgsmProvider(true, null).send({ kind: "transactional", body: "x", targets }), /Netgsm yapılandırılmamış/);
   Object.assign(process.env, old);
 });
 
@@ -39,7 +39,7 @@ test("Netgsm: istek gövdesi, Basic auth ve başarı eşlemesi", async () => {
     url = String(u); init = i;
     return new Response(JSON.stringify({ code: "00", jobid: 12345 }), { status: 200 });
   }) as typeof fetch);
-  const results = await p.send({ body: "Kampanya!", targets });
+  const results = await p.send({ kind: "transactional", body: "Kampanya!", targets });
   assert.equal(url, "https://api.netgsm.test/sms/rest/v2/send");
   const body = JSON.parse(String(init?.body));
   assert.equal(body.msgheader, "CABUKPOS");
@@ -54,17 +54,17 @@ test("Netgsm: istek gövdesi, Basic auth ve başarı eşlemesi", async () => {
 test("Netgsm: sağlayıcı kodu hata → tümü hata, HTTP/tanınmayan → throw", async () => {
   const err = createNetgsmProvider(true, { base: "https://x", username: "u", password: "p", header: "H" }, (async () =>
     new Response(JSON.stringify({ code: "30", description: "yetkisiz" }), { status: 200 })) as typeof fetch);
-  const results = await err.send({ body: "x", targets });
+  const results = await err.send({ kind: "transactional", body: "x", targets });
   assert.equal(results[0]?.externalId, null);
   assert.match(results[0]?.error ?? "", /yetkisiz/);
 
   const http = createNetgsmProvider(true, { base: "https://x", username: "u", password: "p", header: "H" }, (async () =>
     new Response("patladi", { status: 502 })) as typeof fetch);
-  await assert.rejects(http.send({ body: "x", targets }), /HTTP 502/);
+  await assert.rejects(http.send({ kind: "transactional", body: "x", targets }), /HTTP 502/);
 
   const weird = createNetgsmProvider(true, { base: "https://x", username: "u", password: "p", header: "H" }, (async () =>
     new Response(JSON.stringify({ wrong: 1 }), { status: 200 })) as typeof fetch);
-  await assert.rejects(weird.send({ body: "x", targets }), /tanınmadı/);
+  await assert.rejects(weird.send({ kind: "transactional", body: "x", targets }), /tanınmadı/);
 });
 
 test("İletimerkezi: eksik ayar ve istek gövdesi/başarı eşlemesi", async () => {
@@ -78,7 +78,7 @@ test("İletimerkezi: eksik ayar ve istek gövdesi/başarı eşlemesi", async () 
     url = String(u); init = i;
     return new Response(JSON.stringify({ response: { status: { code: 200 }, order: { id: "o-1" } } }), { status: 200 });
   }) as typeof fetch);
-  const results = await p.send({ body: "Kampanya!", targets });
+  const results = await p.send({ kind: "transactional", body: "Kampanya!", targets });
   assert.equal(url, "https://api.iletimerkezi.test/v1/send-sms/json");
   const body = JSON.parse(String(init?.body));
   assert.equal(body.request.authentication.username, "u");
@@ -91,7 +91,7 @@ test("İletimerkezi: eksik ayar ve istek gövdesi/başarı eşlemesi", async () 
 test("İletimerkezi: 200 dışı kod → tümü hata", async () => {
   const p = createIletimerkeziProvider(true, { base: "https://x", username: "u", password: "p", sender: "H" }, (async () =>
     new Response(JSON.stringify({ response: { status: { code: 401, message: "kimlik hatası" } } }), { status: 200 })) as typeof fetch);
-  const results = await p.send({ body: "x", targets });
+  const results = await p.send({ kind: "transactional", body: "x", targets });
   assert.equal(results[0]?.externalId, null);
   assert.match(results[0]?.error ?? "", /kimlik hatası/);
 });
@@ -107,11 +107,34 @@ test("messagingProvider: sağlayıcı seçimi ve bilinmeyen ad", async () => {
     process.env.MARKETING_SMS_PROVIDER = "yok";
     const p = messagingProvider();
     assert.equal(p?.id, "yok");
-    await assert.rejects(p!.send({ body: "x", targets }), /Bilinmeyen SMS sağlayıcısı/);
+    await assert.rejects(p!.send({ kind: "transactional", body: "x", targets }), /Bilinmeyen SMS sağlayıcısı/);
     delete process.env.MARKETING_SMS_ENABLED;
     assert.equal(messagingProvider(), null);
   } finally {
     if (old.enabled === undefined) delete process.env.MARKETING_SMS_ENABLED; else process.env.MARKETING_SMS_ENABLED = old.enabled;
     if (old.provider === undefined) delete process.env.MARKETING_SMS_PROVIDER; else process.env.MARKETING_SMS_PROVIDER = old.provider;
+  }
+});
+
+test("Ticari ileti: Netgsm İYS filtresi (11/12) + ret satırı; ret satırı yoksa göndermez", async () => {
+  let init: RequestInit | undefined;
+  const fetchMock = (async (_u: string | URL | Request, i?: RequestInit) => { init = i; return new Response(JSON.stringify({ code: "00", jobid: 1 }), { status: 200 }); }) as typeof fetch;
+  const cfg = { base: "https://api.netgsm.test", username: "u", password: "p", header: "CABUKPOS" };
+  const prev = { f: process.env.MARKETING_SMS_FOOTER, t: process.env.MARKETING_SMS_IYS_TYPE };
+  try {
+    delete process.env.MARKETING_SMS_FOOTER;
+    await assert.rejects(createNetgsmProvider(true, cfg, fetchMock).send({ kind: "commercial", body: "İndirim!", targets }), /MARKETING_SMS_FOOTER/);
+    process.env.MARKETING_SMS_FOOTER = "Ret: RET yaz 4609";
+    await createNetgsmProvider(true, cfg, fetchMock).send({ kind: "commercial", body: "İndirim!", targets });
+    let body = JSON.parse(String(init?.body));
+    assert.equal(body.iysfilter, "11");
+    assert.equal(body.messages[0].msg, "İndirim!\nRet: RET yaz 4609");
+    process.env.MARKETING_SMS_IYS_TYPE = "tacir";
+    await createNetgsmProvider(true, cfg, fetchMock).send({ kind: "commercial", body: "İndirim!", targets });
+    body = JSON.parse(String(init?.body));
+    assert.equal(body.iysfilter, "12");
+  } finally {
+    if (prev.f === undefined) delete process.env.MARKETING_SMS_FOOTER; else process.env.MARKETING_SMS_FOOTER = prev.f;
+    if (prev.t === undefined) delete process.env.MARKETING_SMS_IYS_TYPE; else process.env.MARKETING_SMS_IYS_TYPE = prev.t;
   }
 });

@@ -3,10 +3,23 @@
 export type MessagingTarget = { recipientRef: string; phone: string };
 export type MessagingSendResult = { recipientRef: string; externalId: string | null; error?: string };
 
+export type MessageKind = "commercial" | "transactional";
+
+/** İYS alıcı tipi: bireysel (11) ya da tacir (12). Varsayılan bireysel. */
+export const iysRecipientType = () => (process.env.MARKETING_SMS_IYS_TYPE?.trim().toUpperCase() === "TACIR" ? "TACIR" : "BIREYSEL");
+
+/** 6563 m.5: ticari iletide ret yolu (ör. "Ret için RET yazıp 4609'a gönderin. MERSIS: …"). Yoksa ticari gönderim yapılmaz. */
+export function commercialBody(body: string): string {
+  const footer = process.env.MARKETING_SMS_FOOTER?.trim();
+  if (!footer) throw new Error("Ticari SMS için MARKETING_SMS_FOOTER (ret yolu + gönderen kimliği) tanımlı değil.");
+  return body.includes(footer) ? body : `${body}\n${footer}`;
+}
+
 export interface MessagingProvider {
   id: string;
   /** Onaylı kampanyanın bir sayfasını gönderir; sonuçlar girdi sırasıyla döner. Gönderen kimliği sağlayıcı config'inden gelir. */
-  send(input: { body: string; targets: MessagingTarget[] }): Promise<MessagingSendResult[]>;
+  /** kind: "commercial" = 6563 ticari ileti (İYS kontrolü sağlayıcıda), "transactional" = fiş/bilgilendirme. */
+  send(input: { body: string; targets: MessagingTarget[]; kind: MessageKind }): Promise<MessagingSendResult[]>;
 }
 
 export type SmsConfig = { base: string; key: string; from: string };

@@ -71,7 +71,7 @@ export async function sendGrowthCampaignPage(input: { tenantId: string; campaign
 
     let results: MessagingSendResult[];
     try {
-      results = await provider.send({ body: campaign.message, targets: fresh.map((r) => ({ recipientRef: recipientRef(secret, r.phone), phone: r.phone })) });
+      results = await provider.send({ kind: "commercial", body: campaign.message, targets: fresh.map((r) => ({ recipientRef: recipientRef(secret, r.phone), phone: r.phone })) });
     } catch {
       return { sent, failed, remaining: Math.max(0, campaign.audienceCount - sentRefs.size - sent) };
     }

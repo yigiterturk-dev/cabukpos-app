@@ -12,7 +12,7 @@ const targets: MessagingTarget[] = [
 test("kapalıyken ağa çıkmaz, Türkçe hata atar", async () => {
   let called = 0;
   const provider = createSandboxSmsProvider(false, { base: "https://sms.test", key: "k", from: "KAFE" }, async () => { called++; throw new Error("ağa çıkılmamalı"); });
-  await assert.rejects(provider.send({ body: "selam", targets }), /Pazarlama gönderimi kapalı/);
+  await assert.rejects(provider.send({ kind: "transactional", body: "selam", targets }), /Pazarlama gönderimi kapalı/);
   assert.equal(called, 0);
 });
 
@@ -31,7 +31,7 @@ test("gönderim: gövde + ref sırası korunur, hedef bazlı hata eşlenir", asy
     body = init?.body as string;
     return new Response(JSON.stringify({ messages: [{ ref: "hmac-sha256:aa", id: "m-1" }, { ref: "hmac-sha256:bb", error: "geçersiz numara" }] }), { status: 200 });
   });
-  const results = await provider.send({ body: "Kampanya!", targets });
+  const results = await provider.send({ kind: "transactional", body: "Kampanya!", targets });
   const sent = JSON.parse(body);
   assert.equal(sent.from, "KAFE");
   assert.deepEqual(sent.messages, [{ to: "+905551110011", ref: "hmac-sha256:aa" }, { to: "+905551110022", ref: "hmac-sha256:bb" }]);
@@ -43,10 +43,10 @@ test("gönderim: gövde + ref sırası korunur, hedef bazlı hata eşlenir", asy
 
 test("sağlayıcı HTTP hatası ve tanınmayan cevap Türkçe hatayla düşer", async () => {
   const bad = createSandboxSmsProvider(true, { base: "https://sms.test", key: "k", from: "KAFE" }, async () => new Response("patladi", { status: 502 }));
-  await assert.rejects(bad.send({ body: "x", targets }), /HTTP 502/);
+  await assert.rejects(bad.send({ kind: "transactional", body: "x", targets }), /HTTP 502/);
   const weird = createSandboxSmsProvider(true, { base: "https://sms.test", key: "k", from: "KAFE" }, async () => new Response(JSON.stringify({ wrong: 1 }), { status: 200 }));
-  await assert.rejects(weird.send({ body: "x", targets }), /tanınmadı/);
+  await assert.rejects(weird.send({ kind: "transactional", body: "x", targets }), /tanınmadı/);
   const missing = createSandboxSmsProvider(true, { base: "https://sms.test", key: "k", from: "KAFE" }, async () => new Response(JSON.stringify({ messages: [{ ref: "hmac-sha256:aa", id: "m-1" }] }), { status: 200 }));
-  const partial = await missing.send({ body: "x", targets });
+  const partial = await missing.send({ kind: "transactional", body: "x", targets });
   assert.match(partial[1]?.error ?? "", /cevabında yok/);
 });

@@ -39,6 +39,7 @@ export async function POST(req: Request) {
   let result: { error?: string } | undefined;
   try {
     [result] = await provider.send({
+      kind: "transactional",
       body: receiptSmsText({ storeName: row.storeName, receiptNo: row.receiptNo, at: row.at.toISOString(), total: row.total - row.discount, lines: row.lines, currency: row.currency }),
       targets: [{ recipientRef: `receipt:${saleId}`, phone }],
     });

@@ -1,7 +1,7 @@
 // lib/growth/messaging/iletimerkezi.ts — İletimerkezi v1 SMS sürücüsü (JSON).
 // Kimlik istek gövdesinde gider; telefon yalnız istek gövdesinde kalır, log/audit'e yazılmaz.
 import { z } from "zod";
-import { iletimerkeziConfig, normalizeTrPhone, type MessagingProvider, type MessagingSendResult, type IletimerkeziConfig } from "./types";
+import { iletimerkeziConfig, normalizeTrPhone, type MessagingProvider, type MessagingSendResult, type IletimerkeziConfig, commercialBody, iysRecipientType } from "./types";
 
 const response = z.object({
   response: z.object({
@@ -16,17 +16,19 @@ const response = z.object({
 export function createIletimerkeziProvider(enabled: boolean, config: IletimerkeziConfig | null, fetchImpl: typeof fetch = fetch): MessagingProvider {
   return {
     id: "iletimerkezi",
-    async send({ body, targets }): Promise<MessagingSendResult[]> {
+    async send({ body, targets, kind }): Promise<MessagingSendResult[]> {
       if (!enabled) throw new Error("Pazarlama gönderimi kapalı: MARKETING_SMS_ENABLED=1 gerekli.");
       const cfg = config ?? iletimerkeziConfig();
       if (!targets.length) return [];
+      const commercial = kind === "commercial";
+      const text = commercial ? commercialBody(body) : body;
       const res = await fetchImpl(`${cfg.base.replace(/\/$/, "")}/v1/send-sms/json`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           request: {
             authentication: { username: cfg.username, password: cfg.password },
-            message: { sender: cfg.sender, text: body },
+            message: { sender: cfg.sender, text, ...(commercial ? { iys: "1", iysList: iysRecipientType() } : { iys: "0" }) },
             receivers: { receiver: targets.map((t) => ({ number: normalizeTrPhone(t.phone) })) },
           },
         }),
